@@ -1,0 +1,30 @@
+# Chạy bộ kiểm mỗi lần đẩy mã lên. Sao lại đúng mẫu đã chạy thật bên Tracking
+# (.github/workflows/kiem.yml).
+#
+# GIỚI HẠN PHẢI BIẾT: nếu Cloudflare build trực tiếp từ nhánh chính, việc đó
+# ĐỘC LẬP với GitHub Actions — workflow này đỏ thì KHÔNG tự chặn được deploy.
+# Muốn chặn thật thì đưa `npm test` vào Build command của Cloudflare (cả hai
+# Worker), y như CLAUDE.md yêu cầu ("Bộ kiểm hỏng là build hỏng").
+
+name: Bộ kiểm
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  kiem:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Không có `npm ci`: bộ kiểm không phụ thuộc gói ngoài nào. Chỉ cần
+      # node là chạy.
+      - name: Chạy bộ kiểm
+        run: npm test

@@ -1,0 +1,40 @@
+# Cloudflare Worker Gateway cho "Báo cáo Kinh doanh V2" (Tín Phát).
+# Tên Worker: reportv2-gateway — xác nhận cùng chủ dự án trước khi deploy lần
+# đầu (P1, ROADMAP.md).
+#
+# *.workers.dev lúc làm (Q6 trong docs/audit/...): route thật và
+# ENFORCE_CANONICAL_HOST là việc của P8, không mở trước.
+
+name = "reportv2-gateway"
+main = "src/index.js"
+compatibility_date = "2026-09-11"
+
+# File tĩnh nằm trong ./public. run_worker_first = true: MỌI request chạy
+# qua src/index.js trước, kể cả request vào file tĩnh — điều kiện để chặn
+# đường nhạy cảm và gắn security header cho cả phần tĩnh (giống Worker
+# `tracking` — xem wrangler.toml của repo đó).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+# ---- Service Binding tới Report Engine ----
+# Engine không route công khai, không workers.dev — chỉ Gateway gọi được nó,
+# và chỉ qua đường này (kiem/engine-rieng-tu.js canh cả hai đầu).
+[[services]]
+binding = "REPORT_ENGINE"
+service = "reportv2-engine"
+
+[vars]
+# Cùng một Firebase project với Tracking và Marketing (CLAUDE.md — dùng
+# chung hạ tầng). Có giá trị mặc định trong src/auth.js và src/firebase.js;
+# khai ở đây để đổi được mà không phải sửa code.
+FB_PROJECT_ID = "tinphattracking"
+FB_DB_URL = "https://tinphattracking-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+# ---- Secret còn thiếu, phải đặt tay trước khi deploy thật ----
+# FB_SA_EMAIL, FB_SA_KEY — tài khoản dịch vụ Firebase, dùng để đọc
+# profiles/<uid> khi xác thực (src/auth.js gọi qua src/firebase.js). Đặt
+# bằng: wrangler secret put FB_SA_EMAIL / FB_SA_KEY.
+# Thiếu hai Secret này thì /api/me luôn trả 503 "thieu-service-account" —
+# ĐÚNG hành vi mong muốn (fail closed), không phải lỗi.

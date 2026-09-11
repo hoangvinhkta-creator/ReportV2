@@ -1,0 +1,20 @@
+{
+  "bc": {
+    "ky": {
+      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('perms').child('quantri').val() === true || root.child('profiles').child(auth.uid).child('perms').child('quanly').val() === true)",
+      ".write": false
+    },
+    "quyetdinh": {
+      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('perms').child('quantri').val() === true || root.child('profiles').child(auth.uid).child('perms').child('quanly').val() === true)",
+      ".write": false
+    },
+    "khach": {
+      ".read": false,
+      ".write": false
+    },
+    "imei": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

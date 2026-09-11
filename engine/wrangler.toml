@@ -1,0 +1,27 @@
+# Report Engine — Worker RIÊNG TƯ, không có đường vào từ Internet.
+#
+# Đây là nơi nghiệp vụ báo cáo (doanh thu, giá vốn, lợi nhuận...) sẽ sống từ
+# P2 trở đi. Lý do tách hẳn thành một Worker thay vì thêm route vào Gateway:
+# KHÔNG CÓ URL THÌ KHÔNG AI DÒ THẲNG VÀO ĐƯỢC, kể cả người đã có tài khoản
+# nhân viên. Nó chỉ nhận lời gọi nội bộ từ Gateway qua Service Binding.
+# Sao lại đúng mẫu đã chạy thật bên Tracking (price-engine/wrangler.toml).
+#
+# BA ĐIỀU KHÔNG ĐƯỢC THÊM VÀO FILE NÀY — cả ba đều mở đường công khai:
+#   [[routes]]            gắn Worker vào một đường dẫn trên tên miền
+#   [route]                như trên
+#   workers_dev = true    cấp cho nó một địa chỉ <name>.<account>.workers.dev
+#
+# kiem/engine-rieng-tu.js canh đúng ba điều đó.
+
+name = "reportv2-engine"
+main = "src/index.js"
+compatibility_date = "2026-09-11"
+
+# Cấm dứt khoát địa chỉ workers.dev. Bỏ dòng này thì Cloudflare cấp địa chỉ
+# công khai theo mặc định — Engine hết riêng tư mà không ai nhận ra.
+workers_dev = false
+
+# KHÔNG có [assets]: Engine không phục vụ file nào, nó chỉ tính toán.
+# KHÔNG có [vars]/Secret ở P1: chưa nghiệp vụ nào cần đọc gì. Từ P3 khi Engine
+# cần dữ liệu Tracking (POST /api/min-ngay), khoá đi ở Secret riêng của chính
+# Worker này — không dùng chung với Gateway (nguyên tắc quyền tối thiểu).
