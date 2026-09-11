@@ -1,5 +1,5 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
-import { docDb } from './firebase.js';
+import { docDb, docDbNong, ghiDb, vaDb, xoaDb } from './firebase.js';
 
 /**
  * Cloudflare Worker Gateway — Worker DUY NHẤT chạm Firebase (CLAUDE.md LUẬT
@@ -180,10 +180,345 @@ const laySucKhoeCongTy = boc(true, async ({ env }) => {
   }
 });
 
+/* =================== P3 — tải sổ bán hàng, nối dài dữ liệu ===================
+ *
+ * Đường ngược chiều với mọi endpoint trước đó: màn hình → Firebase. Trình
+ * duyệt đọc .xlsx ra ma trận ô THÔ rồi gửi lên; cột nào là gì, dòng nào bỏ,
+ * tiền tính thế nào đều quyết ở Engine (CLAUDE.md — LUẬT SỐ 1). Gateway ở
+ * giữa chỉ làm bốn việc: xác thực, canh luật đè, lưu bản cũ, rồi ghi.
+ */
+
+/* Sổ một tháng thật nặng ~0,45 MB JSON (1.607 dòng, 08/2026); sổ cả năm
+ * 7,2 MB (25.083 dòng). Cho rộng tới 24 MB để còn nhận được sổ nhiều năm,
+ * nhưng phải có TRẦN: không có trần thì một request hỏng đủ sức làm Worker
+ * hết bộ nhớ giữa chừng, và lúc đó không ai biết đã ghi tới đâu. */
+const GIOI_HAN_THAN = 24 * 1024 * 1024;
+
+/* Giữ ba bản lưu gần nhất cho mỗi kỳ — chủ dự án chốt 11/09/2026. */
+const SO_BAN_LUU = 3;
+
+const laKy = k => typeof k === "string" && /^\d{4}-\d{2}$/.test(k);
+
+/** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
+ *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
+ *  gạch ngang. Vẫn sắp xếp đúng thứ tự thời gian khi so chuỗi.
+ *
+ *  Kèm bốn ký tự ngẫu nhiên ở cuối: hai lượt tải trong cùng một mili giây
+ *  (tải lại ngay, hoặc hoàn tác nối tiếp một lượt tải) sẽ ra cùng một mốc,
+ *  và bản lưu sau đè mất bản lưu trước — đúng thứ không được phép mất. */
+const mocBayGio = () =>
+  new Date().toISOString().replace(/[:.]/g, "-") + "-"
+  + Math.random().toString(36).slice(2, 6);
+
+/** Đọc thân JSON của request, có trần. */
+async function docThan(request) {
+  const dai = Number(request.headers.get("Content-Length") || 0);
+  if (dai > GIOI_HAN_THAN) {
+    const e = new LoiXacThuc(400, "than-qua-lon:" + dai);
+    throw e;
+  }
+  try { return await request.json(); }
+  catch (e) { throw new LoiXacThuc(400, "than-khong-phai-json"); }
+}
+
+/** Lỗi Engine ném ra khi sổ không dùng được, đổi thành câu cho người đọc.
+ *
+ *  Service Binding giữ được `message` của Error nhưng KHÔNG chắc giữ được
+ *  thuộc tính tự thêm (`e.ma`), nên nhận dạng theo message. Không khớp mẫu
+ *  nào thì trả câu chung — không bao giờ ném nguyên văn lỗi nội bộ ra ngoài. */
+function cauLoiSo(e) {
+  const m = String((e && e.message) || "");
+  if (/bo cuc so khong khop|bo-cuc-khong-khop/.test(m)) {
+    return "Bố cục file không giống Sổ chi tiết bán hàng của MISA — kiểm tra lại đúng file "
+      + "(tiêu đề ở hàng 4, dữ liệu từ hàng 6).";
+  }
+  if (/can mot ma tran o/.test(m)) return "Không đọc được nội dung file.";
+  return "Không xử lý được file này.";
+}
+
+/* =================== POST /api/tai-so ===================
+ * Một lượt tải sổ, chạy theo thứ tự CỐ ĐỊNH — mỗi bước là một cửa chặn, và
+ * không bước nào ghi gì trước khi mọi cửa đều mở:
+ *
+ *   1. Engine trích sổ (tổng + dòng hàng). Sổ sai bố cục → dừng.
+ *   2. Đối chiếu NỘI BỘ lệch → DỪNG, KHÔNG GHI. Script chạy tay của P2
+ *      (`bin/nap-so-legacy.mjs`) chặn đúng như vậy; đường upload phải chặn y
+ *      hệt, nếu không thì hai đường vào cùng một nhánh dữ liệu có hai mức
+ *      chặt khác nhau.
+ *   3. Luật phủ sóng theo TỪNG KỲ → thiếu ngày thì TỪ CHỐI CẢ LƯỢT. Từ chối
+ *      cả lượt chứ không ghi những kỳ hợp lệ: ghi nửa chừng là để lại một dải
+ *      kỳ nửa cũ nửa mới mà không ai biết ranh giới ở đâu.
+ *   4. Lưu bản cũ (3 bản gần nhất) TRƯỚC khi đè.
+ *   5. Ghi: bc/ky, bc/dong, bc/khach, bc/imei.
+ */
+const taiSo = boc(true, async ({ nguoi, request, env }) => {
+  const than = await docThan(request);
+  if (!than || !Array.isArray(than.bang)) {
+    return { ghi: false, ly_do: "than-khong-hop-le",
+      cau: "Không nhận được nội dung file. Chọn lại file rồi thử lại." };
+  }
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  // ── 1. Engine trích sổ ───────────────────────────────────────────────
+  let kq;
+  try {
+    kq = await env.REPORT_ENGINE.xuLySoBanHang(than.bang);
+  } catch (e) {
+    return { ghi: false, ly_do: "so-khong-doc-duoc", cau: cauLoiSo(e) };
+  }
+
+  const cacKy = Object.keys(kq.pham_vi || {}).sort();
+  if (!cacKy.length) {
+    return { ghi: false, ly_do: "so-rong",
+      cau: "File không có dòng bán hàng nào đọc được.", tom_tat: kq.tom_tat };
+  }
+  for (const k of cacKy) {
+    if (!laKy(k)) throw new LoiXacThuc(500, "ky-la:" + k);
+  }
+
+  // ── 2. Đối chiếu nội bộ lệch thì KHÔNG GHI ───────────────────────────
+  const dc = kq.tom_tat && kq.tom_tat.doi_chieu_noi_bo;
+  if (!dc || dc.khop !== true) {
+    return {
+      ghi: false, ly_do: "doi-chieu-noi-bo-lech",
+      cau: "Cộng theo ngày không bằng cộng theo dòng — file có dòng bị rơi hoặc chứng từ bị "
+        + "đếm hai lần. KHÔNG ghi gì cả, để số liệu đang có không bị làm hỏng.",
+      tom_tat: kq.tom_tat, canh_bao: kq.canh_bao,
+    };
+  }
+
+  // ── 3. Luật phủ sóng, áp theo TỪNG KỲ ────────────────────────────────
+  const cayKyCu = {};      // kỳ → cây bc/ky đang có (hoặc null)
+  const phamViCu = {};
+  for (const ky of cacKy) {
+    const doc = await docDb("bc/ky/" + ky, env);
+    if (!doc.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-ky:" + doc.ma);
+    cayKyCu[ky] = doc.val || null;
+    const pv = await env.REPORT_ENGINE.phamViCayKy(doc.val || null);
+    if (pv) phamViCu[ky] = pv;
+  }
+  const phu = await env.REPORT_ENGINE.kiemPhuSong(kq.pham_vi, phamViCu);
+  if (!phu.hop_le) {
+    return {
+      ghi: false, ly_do: "khong-phu-song", thieu: phu.thieu,
+      cau: "File mới không phủ hết khoảng ngày đang có của kỳ đó, nên tải lên sẽ làm mất "
+        + "những ngày còn thiếu. Xuất lại sổ cho đủ khoảng rồi tải lại.",
+      tom_tat: kq.tom_tat,
+    };
+  }
+
+  // ── 4+5. Từng kỳ: đối chiếu, lưu bản cũ, rồi ghi ─────────────────────
+  const ky_da_ghi = [];
+  for (const ky of cacKy) {
+    const dongCuDoc = await docDb("bc/dong/" + ky, env);
+    if (!dongCuDoc.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + dongCuDoc.ma);
+    const quyetDinh = await docDb("bc/quyetdinh/dong/" + ky, env);
+    if (!quyetDinh.ok) throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + quyetDinh.ma);
+
+    const sanh = await env.REPORT_ENGINE.doiChieuKy(
+      dongCuDoc.val || {}, kq.dong[ky] || {}, Object.keys(quyetDinh.val || {}));
+
+    const moc = await luuBanCu(ky, cayKyCu[ky], dongCuDoc.val || null, nguoi, than.ten_file, env);
+
+    const ghiKy = await ghiDb("bc/ky/" + ky, kq.ky[ky], env);
+    if (!ghiKy.ok) throw new LoiXacThuc(503, "ghi-bc-ky-loi:" + ghiKy.ma);
+    const ghiDong = await ghiDb("bc/dong/" + ky, sanh.cay, env);
+    if (!ghiDong.ok) throw new LoiXacThuc(503, "ghi-bc-dong-loi:" + ghiDong.ma);
+
+    ky_da_ghi.push({
+      ky,
+      moc_luu: moc,
+      la_ky_moi: !cayKyCu[ky],
+      pham_vi: kq.pham_vi[ky],
+      thang: kq.tom_tat.thang[ky],
+      doi_chieu: sanh.tom_tat,
+      them: sanh.them, doi: sanh.doi, mat: sanh.mat, bi_khoa: sanh.bi_khoa,
+    });
+  }
+
+  /* Khách và IMEI ghi bằng PATCH, không PUT: hai nhánh này khoá theo số
+     chứng từ / theo IMEI chứ không theo kỳ, nên PUT là xoá sạch dữ liệu của
+     mọi kỳ khác. */
+  if (Object.keys(kq.khach || {}).length) {
+    const r = await vaDb("bc/khach", kq.khach, env);
+    if (!r.ok) throw new LoiXacThuc(503, "ghi-bc-khach-loi:" + r.ma);
+  }
+  if (Object.keys(kq.imei || {}).length) {
+    const r = await vaDb("bc/imei", kq.imei, env);
+    if (!r.ok) throw new LoiXacThuc(503, "ghi-bc-imei-loi:" + r.ma);
+  }
+
+  return {
+    ghi: true,
+    ky_da_ghi,
+    tom_tat: kq.tom_tat,
+    canh_bao: kq.canh_bao,
+    dong_khong_co_ky: kq.dong_khong_co_ky,
+  };
+});
+
+/** Lưu bản cũ của một kỳ trước khi đè, và cắt về ba bản gần nhất.
+ *
+ *  Kỳ chưa có gì thì không lưu bản rỗng — "quay lại bản trước" của một kỳ
+ *  chưa từng tồn tại không có nghĩa gì, và ba ô lưu quý hơn thế. */
+async function luuBanCu(ky, cayKy, dong, nguoi, truoc_khi, env) {
+  if (!cayKy && !dong) return null;
+  const moc = mocBayGio();
+  const r = await ghiDb("bc/backup/" + ky + "/" + moc, {
+    luc: new Date().toISOString(),
+    boi: nguoi.email || nguoi.uid,
+    /* Tên trường nói đúng thứ nó chứa: đây là tên file SẮP ĐÈ lên trạng
+       thái này, KHÔNG phải file đã tạo ra nó (file đó không được lưu ở đâu
+       cả). Gọi nó là `ten_file` thì màn hình sẽ hiện "bản lưu · lan2.xlsx"
+       trong khi nội dung là trạng thái TRƯỚC lan2 — đọc ngược hẳn nghĩa. */
+    truoc_khi: typeof truoc_khi === "string" ? truoc_khi.slice(0, 200) : null,
+    ky: cayKy || null,
+    dong: dong || null,
+  }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "luu-ban-cu-loi:" + r.ma);
+
+  const ds = await docDbNong("bc/backup/" + ky, env);
+  if (ds.ok && ds.val) {
+    const moc_cu = Object.keys(ds.val).sort();
+    for (const m of moc_cu.slice(0, Math.max(0, moc_cu.length - SO_BAN_LUU))) {
+      await xoaDb("bc/backup/" + ky + "/" + m, env);
+    }
+  }
+  return moc;
+}
+
+/* =================== POST /api/hoan-tac ===================
+ * Quay một kỳ về đúng trạng thái của một bản lưu. Bản hiện tại được lưu
+ * TRƯỚC khi quay — quay nhầm cũng quay lại được, vì nếu không thì "hoàn
+ * tác" lại chính là thao tác mất dữ liệu nguy hiểm nhất trong màn này.
+ */
+const hoanTac = boc(true, async ({ nguoi, request, env }) => {
+  const than = await docThan(request);
+  const ky = than && than.ky, moc = than && than.moc;
+  /* Mốc là tên khoá do chính Gateway sinh ra (`mocBayGio`) — chữ số, chữ
+     cái, gạch ngang. Canh chặt ở đây vì nó đi thẳng vào đường dẫn Firebase;
+     `kiemDuong()` bên `src/firebase.js` là lớp canh thứ hai, không phải lớp
+     duy nhất. */
+  if (!laKy(ky) || typeof moc !== "string" || !/^[0-9A-Za-z-]{10,48}$/.test(moc)) {
+    return { xong: false, cau: "Thiếu kỳ hoặc mốc bản lưu." };
+  }
+
+  const ban = await docDb("bc/backup/" + ky + "/" + moc, env);
+  if (!ban.ok) throw new LoiXacThuc(503, "khong-doc-duoc-ban-luu:" + ban.ma);
+  if (!ban.val) return { xong: false, cau: "Không còn bản lưu này — có thể nó đã bị đẩy ra khỏi ba ô gần nhất." };
+
+  const kyHienTai = await docDb("bc/ky/" + ky, env);
+  const dongHienTai = await docDb("bc/dong/" + ky, env);
+  if (!kyHienTai.ok || !dongHienTai.ok) throw new LoiXacThuc(503, "khong-doc-duoc-hien-tai");
+  await luuBanCu(ky, kyHienTai.val || null, dongHienTai.val || null, nguoi, "(trước khi hoàn tác)", env);
+
+  const a = await ghiDb("bc/ky/" + ky, ban.val.ky || null, env);
+  if (!a.ok) throw new LoiXacThuc(503, "hoan-tac-bc-ky-loi:" + a.ma);
+  const b = await ghiDb("bc/dong/" + ky, ban.val.dong || null, env);
+  if (!b.ok) throw new LoiXacThuc(503, "hoan-tac-bc-dong-loi:" + b.ma);
+
+  return { xong: true, ky, moc, luc: ban.val.luc || null, truoc_khi: ban.val.truoc_khi || null };
+});
+
+/* =================== GET /api/ban-luu?ky= =================== */
+const layBanLuu = boc(true, async ({ request, env }) => {
+  const ky = new URL(request.url).searchParams.get("ky");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  const ds = await docDb("bc/backup/" + ky, env);
+  if (!ds.ok) throw new LoiXacThuc(503, "khong-doc-duoc-ban-luu:" + ds.ma);
+
+  /* Chỉ trả NHÃN của từng bản lưu, không trả nội dung: mỗi bản chứa trọn
+     cây dòng của một kỳ (~390 KB) và màn hình chỉ cần biết "lưu lúc nào, ai
+     tải, từ file nào" để bấm quay lại. */
+  const ban = [];
+  for (const moc of Object.keys(ds.val || {}).sort().reverse()) {
+    const b = ds.val[moc] || {};
+    ban.push({ moc, luc: b.luc || null, boi: b.boi || null, truoc_khi: b.truoc_khi || null,
+      co_dong: !!b.dong });
+  }
+  return { ky, ban };
+});
+
+/* =================== GET /api/ky-co-don ===================
+ * Những kỳ đã có dòng hàng, gom theo năm — để màn hình dựng tab.
+ *
+ * Đọc NÔNG: hỏi tên các kỳ chứ không kéo cả cây về. `bc/dong` một tháng
+ * nặng ~390 KB, hỏi tên 12 tháng bằng lượt đọc đầy đủ là kéo về vài MB chỉ
+ * để đọc mấy cái nhãn.
+ */
+const layKyCoDon = boc(true, async ({ env }) => {
+  const ds = await docDbNong("bc/dong", env);
+  if (!ds.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + ds.ma);
+  const ky = Object.keys(ds.val || {}).filter(laKy).sort();
+
+  const nam = {};
+  for (const k of ky) (nam[k.slice(0, 4)] ||= []).push(k);
+  return { ky, nam, thu_tu_nam: Object.keys(nam).sort() };
+});
+
+/* =================== GET /api/don-hang?ky=&line= ===================
+ * Bảng đơn hàng của một kỳ, lọc theo line. Mọi con số ĐÃ TÍNH SẴN ở Engine
+ * — trình duyệt chỉ vẽ ra (LUẬT SỐ 1).
+ *
+ * Thông tin khách đi qua đây, và đây là ĐƯỜNG DUY NHẤT nó đi: `bc/khach`
+ * đóng với MỌI vai kể cả quantri (CLAUDE.md), chỉ tài khoản dịch vụ của
+ * Worker đọc được.
+ */
+const layDonHang = boc(true, async ({ request, env }) => {
+  const q = new URL(request.url).searchParams;
+  const ky = q.get("ky");
+  const line = q.get("line");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (line !== null && (typeof line !== "string" || line.length > 60)) {
+    throw new LoiXacThuc(400, "line-khong-hop-le");
+  }
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  const dong = await docDb("bc/dong/" + ky, env);
+  if (!dong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + dong.ma);
+  const bangLine = await docDb("bc/quyetdinh/line", env);
+  if (!bangLine.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bang-line:" + bangLine.ma);
+  if (!bangLine.val) throw new LoiXacThuc(503, "thieu-bang-line");
+
+  const khach = await docDb("bc/khach", env);
+  if (!khach.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-khach:" + khach.ma);
+
+  try {
+    const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
+    const bang = await env.REPORT_ENGINE.dungBangDon(
+      dong.val || {}, khach.val || {}, bangLine.val, line || null);
+    return { ky, tom_tat_line, bang };
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
+  }
+});
+
 const API_ROUTES = new Map([
   ["GET /api/me", layMe],
   ["GET /api/bao-cao/suc-khoe", laySucKhoeCongTy],
+  ["POST /api/tai-so", taiSo],
+  ["POST /api/hoan-tac", hoanTac],
+  ["GET /api/ban-luu", layBanLuu],
+  ["GET /api/ky-co-don", layKyCoDon],
+  ["GET /api/don-hang", layDonHang],
 ]);
+
+/** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn
+ *  tại. Đường lạ phải ra 404 ("không có gì ở đây"), KHÔNG phải 405 ("có,
+ *  nhưng anh gõ sai cửa") — 405 cho đường lạ là tự khai đường nào có thật.
+ *  HEAD đi kèm GET vì `xuLy` phục vụ HEAD bằng chính handler của GET. */
+function methodChoPhep(duong) {
+  let co = false;
+  const ra = new Set();
+  for (const k of API_ROUTES.keys()) {
+    const cach = k.slice(0, k.indexOf(" "));
+    if (k.slice(k.indexOf(" ") + 1) !== duong) continue;
+    co = true;
+    ra.add(cach);
+    if (cach === "GET") ra.add("HEAD");
+  }
+  return co ? ra : null;
+}
 
 async function xuLy(request, env) {
   const url = new URL(request.url);
@@ -195,8 +530,15 @@ async function xuLy(request, env) {
   }
 
   if (duong.startsWith("/api/")) {
-    if (method !== "GET" && method !== "HEAD") {
-      return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+    /* Method nào được đi đường nào suy THẲNG từ `API_ROUTES`, không khai
+       lại thành một danh sách thứ hai. P3 mở POST cho đúng hai đường (tải
+       sổ, hoàn tác); mọi đường khác vẫn chỉ GET/HEAD như từ P1 — và chúng
+       vẫn 405 mà không ai phải nhớ cập nhật thêm chỗ nào. Khai hai lần là
+       hai lần trôi khỏi nhau, và chỗ trôi ở đây là một lỗ mở ra ngoài. */
+    const duoc = methodChoPhep(duong);
+    if (!duoc) return new Response("Not Found", { status: 404 });
+    if (!duoc.has(method)) {
+      return new Response("Method Not Allowed", { status: 405, headers: { Allow: [...duoc].join(", ") } });
     }
     const handler = API_ROUTES.get(method + " " + duong) || (method === "HEAD" && API_ROUTES.get("GET " + duong));
     if (!handler) return new Response("Not Found", { status: 404 });

@@ -15,6 +15,14 @@
     "imei": {
       ".read": false,
       ".write": false
+    },
+    "dong": {
+      ".read": false,
+      ".write": false
+    },
+    "backup": {
+      ".read": false,
+      ".write": false
     }
   }
 }

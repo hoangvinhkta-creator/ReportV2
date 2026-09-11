@@ -91,6 +91,47 @@
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
+
+  /* ---- Màn nhập sổ + màn đơn hàng (P3) ---- */
+  .hangChon { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .nutNho {
+    border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
+    padding: 6px 12px; font-size: 13px; cursor: pointer; color: #1f2430;
+  }
+  .nutNho:disabled { color: #9ca3af; cursor: default; }
+  .khoiKq { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .khoiKq h3 { margin: 0 0 10px; font-size: 15px; }
+  .khoiXong { border-left: 4px solid #16a34a; }
+  .khoiTuChoi { border-left: 4px solid #b91c1c; }
+  .soLieu { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0 0 10px; font-size: 13px; }
+  .soLieu dt { color: #6b7280; }
+  .soLieu dd { margin: 0; font-weight: 600; }
+  .tomTatDoi, .tomTatDon { font-size: 13px; margin: 8px 0; }
+  .canhBaoDam { color: #b45309; font-size: 13px; font-weight: 600; margin: 8px 0; }
+  .dsCanhBao { margin: 8px 0; padding-left: 20px; font-size: 13px; }
+  .dsCanhBao li { margin-bottom: 4px; }
+  .viDu { color: #6b7280; font-size: 12px; }
+  .khoiDoi { margin-top: 8px; font-size: 13px; }
+  .khoiDoi summary { cursor: pointer; color: #2563eb; }
+  .motBanLuu { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    font-size: 13px; padding: 6px 0; border-top: 1px solid #f3f4f6; }
+  .bangNho { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
+  .bangNho th, .bangNho td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
+  .bangNho th { background: #f9fafb; }
+
+  #manDonHang { max-width: none; }
+  .bocBang { overflow-x: auto; }
+  .bangDon { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
+  .bangDon th { background: #f9fafb; position: sticky; top: 0; }
+  .bangDon .oSo { text-align: right; }
+  .bangDon .oTen, .bangDon .oDiaChi { white-space: normal; max-width: 260px; }
+  .hangNgay td { background: #eef2ff; font-weight: 600; }
+  .hangDauDon td { border-top: 2px solid #d1d5db; }
+  .hangChietKhau td { color: #b45309; font-style: italic; }
+  .hangTongDon td { background: #fafafa; font-weight: 600; }
+  #oDashboardBoc { background: #fff; border: 1px dashed #d1d5db; border-radius: 10px;
+    padding: 16px; margin-bottom: 12px; color: #6b7280; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -121,7 +162,8 @@
     <div class="the"><div class="tenThe">Nhân viên</div><div class="trangThai">chưa có gì</div></div>
     <div class="the bam" id="theBieuDoKy" role="button" tabindex="0"><div class="tenThe">Biểu đồ theo kỳ</div><div class="trangThai">sức khoẻ kinh doanh</div></div>
     <div class="the"><div class="tenThe">Sản phẩm &amp; thương hiệu</div><div class="trangThai">chưa có gì</div></div>
-    <div class="the"><div class="tenThe">Nhập sổ bán hàng</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the bam" id="theNhapSo" role="button" tabindex="0"><div class="tenThe">Nhập sổ bán hàng</div><div class="trangThai">tải sổ .xlsx lên</div></div>
+    <div class="the bam" id="theDonHang" role="button" tabindex="0"><div class="tenThe">Đơn hàng theo line</div><div class="trangThai">danh sách từng đơn</div></div>
   </div>
 </div>
 
@@ -138,6 +180,41 @@
   <p class="canhBao" id="loiSucKhoe"></p>
   <div id="veSucKhoe"></div>
 </div>
+
+
+<section id="manTaiLen" class="wrap" hidden>
+  <header class="thanhTren">
+    <h1>Nhập sổ bán hàng</h1>
+    <button class="dangXuat" id="nutQuayTaiLen" type="button">← Quay lại</button>
+  </header>
+  <p class="viDu">Chọn file <b>Sổ chi tiết bán hàng</b> xuất từ MISA (.xlsx). Tải lại một kỳ thì
+    kỳ đó bị ghi đè, không cộng dồn; kỳ không có trong file thì không bị đụng tới.</p>
+  <div class="hangChon">
+    <input type="file" id="oFileSo" accept=".xlsx">
+    <button class="nutNho" id="nutTaiLen" type="button">Tải lên</button>
+    <span class="dangTai" id="trangThaiTaiLen"></span>
+  </div>
+  <p class="canhBao" id="loiTaiLen"></p>
+  <div id="kqTaiLen"></div>
+  <div id="banLuu"></div>
+</section>
+
+<section id="manDonHang" class="wrap" hidden>
+  <header class="thanhTren">
+    <h1>Đơn hàng theo line</h1>
+    <button class="dangXuat" id="nutQuayDonHang" type="button">← Quay lại</button>
+  </header>
+  <div class="tabDonVi" id="tabNam"></div>
+  <div class="tabDonVi" id="tabLine"></div>
+  <div class="tabDonVi" id="tabThang"></div>
+  <!-- Ô CHỪA SẴN cho nhánh P2(b) lắp biểu đồ vào. Quy ước ở ROADMAP.md:
+       P3 sở hữu khung tab, P2(b) sở hữu nội dung #o-dashboard. -->
+  <div id="oDashboardBoc">
+    <div id="o-dashboard">Biểu đồ của màn này do nhánh P2(b) lắp vào (ô <code>#o-dashboard</code>).</div>
+  </div>
+  <p class="canhBao" id="loiDonHang"></p>
+  <div id="veDonHang"></div>
+</section>
 
 <script>
 /* Đây là TOÀN BỘ những gì trang tĩnh này làm: hiển thị, và gọi Gateway kèm
@@ -209,5 +286,8 @@ firebase.auth().onAuthStateChanged(async (user) => {
 });
 </script>
 <script src="/suc-khoe.js"></script>
+<script src="/doc-xlsx.js"></script>
+<script src="/tai-len.js"></script>
+<script src="/don-hang.js"></script>
 </body>
 </html>

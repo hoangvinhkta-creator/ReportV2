@@ -1,7 +1,7 @@
 # Nhánh rules `bc/` — hợp nhất vào rules chung, KHÔNG tự deploy từ đây
 
 `bc.rules.json` trong thư mục này là nhánh rules MỚI cho Báo cáo Kinh doanh
-V2, đúng bốn nhánh và đúng mức mở CLAUDE.md đã chốt:
+V2, đúng mức mở CLAUDE.md đã chốt:
 
 | Nhánh | `.read` | `.write` |
 |---|---|---|
@@ -9,6 +9,21 @@ V2, đúng bốn nhánh và đúng mức mở CLAUDE.md đã chốt:
 | `bc/quyetdinh/…` | `quantri` hoặc `quanly` | `false` (ghi qua Gateway, service account đi vòng qua rules) |
 | `bc/khach/<mã đơn>` | `false` | `false` |
 | `bc/imei/<imei>` | `false` | `false` |
+| `bc/dong/<kỳ>/<khoá dòng>` | `false` | `false` |
+| `bc/backup/<kỳ>/<mốc>` | `false` | `false` |
+
+**Hai nhánh cuối thêm ở P3** (chủ dự án chốt 11/09/2026), khi màn "Đơn hàng
+theo line" cần từng dòng hàng và nút "quay lại bản trước" cần bản lưu. Cả
+hai đóng hẳn với mọi vai: trình duyệt không bao giờ đọc thẳng, mọi lượt xem
+đi qua Gateway. `bc/dong` cố ý KHÔNG chứa tên/SĐT/địa chỉ khách — phần đó ở
+`bc/khach` như cũ.
+
+Đường tải sổ của P3 **vẫn chạy được** khi chưa thêm hai nhánh này vào rules
+đang chạy — Gateway ghi bằng service account, và service account đi vòng qua
+rules. Khai tường minh là để chuyện KHÁC: mặc định của Firebase RTDB ở một
+nhánh không được khai là kế thừa nhánh cha, nên nếu về sau ai đó nới `bc`
+lên một mức mở rộng hơn thì `bc/dong` và `bc/backup` sẽ mở theo mà không ai
+nhận ra. Khai `false` tại chỗ là chốt cứng, không phụ thuộc nhánh cha.
 
 ## Vì sao KHÔNG nằm sẵn trong file rules đang chạy
 

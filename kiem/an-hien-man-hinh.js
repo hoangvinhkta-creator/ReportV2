@@ -19,11 +19,22 @@
  * Bộ này canh cả hai đầu: có tấm lưới `[hidden]{display:none!important}`, và
  * mọi id được bật/tắt bằng `.hidden` đều nằm dưới tấm lưới ấy.
  */
-const { doc, ok, xong } = require('./khung');
+const fs = require('fs');
+const path = require('path');
+const { GOC, doc, ok, xong } = require('./khung');
 
 const HTML = doc('public/index.html');
 const CSS = (HTML.match(/<style>([\s\S]*?)<\/style>/) || [, ''])[1];
-const JS = (HTML.match(/<script>([\s\S]*?)<\/script>/) || [, ''])[1];
+
+/* Mã JS nằm ở HAI chỗ và bẫy này rình ở CẢ HAI: khối <script> inline, và
+   mọi file .js rời trong public/ (mỗi màn một file — quy ước từ lúc P2(b)
+   và P3 tách hai nhánh song song). Chỉ soi khối inline thì đúng lúc màn
+   hình mới chuyển ra file rời là lưới hở, mà bộ kiểm vẫn xanh. */
+const JS_ROI = fs.existsSync(path.join(GOC, 'public'))
+  ? fs.readdirSync(path.join(GOC, 'public')).filter((f) => f.endsWith('.js'))
+      .map((f) => doc('public/' + f)).join('\n')
+  : '';
+const JS = (HTML.match(/<script>([\s\S]*?)<\/script>/) || [, ''])[1] + '\n' + JS_ROI;
 
 console.log('\n1) Có tấm lưới [hidden] — thứ giữ cho el.hidden luôn có nghĩa');
 {
@@ -47,22 +58,31 @@ console.log('\n2) Mọi phần tử bật/tắt bằng .hidden đều được t
   const bienHidden = new Set(
     [...JS.matchAll(/(\w+)\s*\.\s*hidden\s*=/g)].map((m) => m[1]));
   const idCua = {};
-  for (const m of JS.matchAll(/(\w+)\s*=\s*\$\('([^']+)'\)/g)) idCua[m[1]] = m[2];
+  for (const m of JS.matchAll(/(\w+)\s*=\s*\$\(['"]([^'"]+)['"]\)/g)) idCua[m[1]] = m[2];
 
-  ok('có ít nhất một màn hình bật/tắt bằng .hidden', bienHidden.size > 0, true);
+  /* Dạng viết thứ hai, dùng ở các file màn rời: `$('manTaiLen').hidden = true`
+     — không đi qua một biến nào, nên vòng dò theo biến ở trên không thấy.
+     Bỏ sót dạng này nghĩa là bỏ sót đúng những màn hình mới nhất. */
+  const idTrucTiep = [...JS.matchAll(/\$\(\s*['"]([^'"]+)['"]\s*\)\s*\.\s*hidden\s*=/g)]
+    .map((m) => m[1]);
+
+  ok('có ít nhất một màn hình bật/tắt bằng .hidden',
+     bienHidden.size > 0 || idTrucTiep.length > 0, true);
 
   const cssSach = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
   const coLuoi = /\[hidden\]\s*\{[^}]*display\s*:\s*none[^}]*!important/.test(cssSach);
 
   /* Phần tử nào vừa bật/tắt bằng `.hidden` VỪA bị CSS đặt `display` theo id
      thì bắt buộc phải có tấm lưới — không có lưới là `hidden` chết lâm sàng. */
+  const moiId = new Set(idTrucTiep);
+  for (const bien of bienHidden) if (idCua[bien]) moiId.add(idCua[bien]);
+
   const nguyHiem = [];
-  for (const bien of bienHidden) {
-    const id = idCua[bien];
-    if (!id) continue;
+  for (const id of moiId) {
     const luatId = cssSach.match(new RegExp('#' + id + '\\s*\\{[^}]*\\}'));
     if (luatId && /display\s*:/.test(luatId[0])) nguyHiem.push(id);
   }
+  console.log('     (soi ' + moiId.size + ' id: ' + [...moiId].sort().join(', ') + ')');
 
   /* In ra để người đọc thấy bài kiểm đang canh CÁI GÌ, không phải một con số
      trừu tượng. */
