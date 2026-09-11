@@ -21,6 +21,12 @@ compatibility_date = "2026-09-11"
 # công khai theo mặc định — Engine hết riêng tư mà không ai nhận ra.
 workers_dev = false
 
+# KHÔNG có [build]: thư mục này không có package.json riêng, `npm test` chạy
+# từ gốc repo. Bộ kiểm của Engine (kiem/engine-rieng-tu.js) nằm trong `npm
+# test` ở gốc, tức nó đã là cửa chặn của build Gateway — và GitHub Actions
+# chạy nó mỗi lần push. Nối git integration cho Worker này thì đặt Root
+# directory = `engine`, để trống Build command.
+#
 # KHÔNG có [assets]: Engine không phục vụ file nào, nó chỉ tính toán.
 # KHÔNG có [vars]/Secret ở P1: chưa nghiệp vụ nào cần đọc gì. Từ P3 khi Engine
 # cần dữ liệu Tracking (POST /api/min-ngay), khoá đi ở Secret riêng của chính
