@@ -75,8 +75,8 @@ export const BANG_LINE_HAT_GIONG = {
   ghi_chu: {
     "Nội thành": "Kênh do 4 người phụ trách; Lê Văn Quân đã nghỉ.",
     "Fanpage": "Tống Khánh Linh đã nghỉ; từ 09/2026 người mới ghi tên là 'Fanpage 0327339229'.",
-    "Shopee": "Chỉ bắt đầu có dòng từ 09/2026.",
-    [LINE_KHAC]: "Hứng mọi tên chưa xếp vào line nào, kể cả dòng sổ để trống ô nhân viên.",
+    "Shopee": "Tên trên sổ là 'Shopee 0865111033'; chỉ bắt đầu có dòng từ 09/2026.",
+    [LINE_KHAC]: "Năm tên nhỏ chủ dự án chốt để lại đây (kể cả dòng sổ trống ô nhân viên), cộng mọi tên mới chưa ai xếp line.",
   },
 
   cua_ten: {
@@ -99,7 +99,26 @@ export const BANG_LINE_HAT_GIONG = {
     "Tống Khánh Linh 0865111033": "Fanpage",
     "Fanpage 0327339229": "Fanpage",
 
-    // Shopee: chưa có tên nào — line vẫn tồn tại, hiện ra với số 0.
+    /* Shopee: khai sẵn tên sẽ xuất hiện trên sổ từ 09/2026. Chưa có dòng nào
+       — line vẫn tồn tại và hiện ra với số 0, vì `thu_tu` là danh sách khai
+       tường minh chứ không suy từ dữ liệu. */
+    "Shopee 0865111033": "Shopee",
+
+    /* Khác — chủ dự án chốt 11/09/2026: năm tên này Ở LẠI "Khác", không tách
+       line riêng. Khai TƯỜNG MINH thay vì để rơi vào Khác theo mặc định, và
+       đây là khác biệt quan trọng: khai rồi thì chúng không còn bị kể trong
+       `chua_xep`, nên danh sách `chua_xep` từ nay chỉ còn chứa tên THẬT SỰ
+       mới — một nhân viên vào sau mà chưa ai xếp line. Để mặc định thì cảnh
+       báo kêu mãi về năm tên đã có quyết định, và một tên mới lọt vào giữa
+       đám đó sẽ không ai thấy. */
+    "Thảo Linh": LINE_KHAC,
+    "Lê Quang Trường 0589691228": LINE_KHAC,
+    "Nguyễn Thị Minh Bảo": LINE_KHAC,
+    "Đinh Thùy Dương": LINE_KHAC,
+    /* Dòng sổ để TRỐNG ô nhân viên. Khai vào Khác để `chua_xep` sạch, KHÔNG
+       làm mất việc của P5: cảnh báo `thieu-nhan-vien` của `gopSoBanHang()` là
+       một cảnh báo KHÁC và vẫn kêu đủ 25 dòng mỗi lượt trích. */
+    "_chua_xac_dinh": LINE_KHAC,
   },
 };
 
