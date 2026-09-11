@@ -91,16 +91,26 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
 
 ## Chín phase
 
+**Sắp xếp lại 11/09/2026** sau khi chủ dự án làm rõ nhu cầu thật: doanh số
++ số đơn theo (nhân viên, ngày) để vẽ biểu đồ và đối chiếu — KHÔNG cần chi
+tiết từng dòng hàng hay khách hàng. Phát hiện quan trọng: sổ bán hàng thô
+(định dạng MISA) đã có sẵn cột nhân viên (`raw_reader.py` cột thứ 12 ở
+Reports V1) — nhu cầu này lấy thẳng từ sổ thô, KHÔNG cần khớp mã hàng,
+KHÔNG cần giá vốn. Vì vậy phase "biểu đồ" và "nhân viên" được đưa lên
+trước, phase "giá vốn/lợi nhuận" lùi xuống và bị giới hạn theo đúng dữ
+liệu Tracking thật có (xem P5). "Sản phẩm/thương hiệu" hạ xuống tuỳ chọn
+vì chủ dự án xác nhận không cần chi tiết mặt hàng.
+
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
-| P2 | Một con số thật, đi hết đường | 1–2 tuần | ⬜ Chưa bắt đầu |
-| P3 | Giá vốn và lợi nhuận | 2 tuần | ⬜ Chưa bắt đầu |
-| P4 | Nhân viên | 1–2 tuần | ⬜ Chưa bắt đầu |
-| P5 | Biểu đồ và so sánh kỳ | 1 tuần | ⬜ Chưa bắt đầu |
-| P6 | Sản phẩm, thương hiệu, cơ cấu | 1–2 tuần | ⬜ Chưa bắt đầu |
-| P7 | Di trú số 2025 → nay | 1 tuần | ⬜ Chưa bắt đầu |
+| P2 | Doanh số + số đơn theo nhân viên/ngày, một kỳ thật | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P3 | Biểu đồ và so sánh kỳ | 1 tuần | ⬜ Chưa bắt đầu |
+| P4 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
+| P5 | Giá vốn và lợi nhuận (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
+| P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
+| P7 | Di trú số 2025 → nay (qua sổ thô gốc) | 1 tuần | ⬜ Chưa bắt đầu |
 | P8 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
 
 ---
@@ -145,92 +155,127 @@ giá: xem "Trạng thái hiện tại" ở đầu file.
 
 ---
 
-### P2 — Một con số thật, đi hết đường
+### P2 — Doanh số + số đơn theo nhân viên/ngày, một kỳ thật
 
-Tải lên sổ bán của **một kỳ**. Trình duyệt đọc file .xlsx và gửi lên;
-Gateway tách làm hai chỗ ghi:
+Tải lên sổ bán hàng thô (định dạng MISA) của **một kỳ**. Trình duyệt đọc
+file và gửi lên; Gateway trích trực tiếp từ các cột có sẵn — KHÔNG khớp
+mã hàng, KHÔNG cần Tracking, KHÔNG cần bảng giá:
 
-- số liệu → `bc/ky/<kỳ>`
-- thông tin khách + bảng tra IMEI → nhánh đóng (`bc/khach`, `bc/imei`)
+- ngày bán
+- số chứng từ (đếm distinct → số đơn)
+- nhân viên (cột có sẵn trên sổ — `employee`, cột 12 theo Reports V1)
+- doanh số của dòng (cộng theo chứng từ → doanh số/đơn)
 
-Trả về đúng **một** con số: doanh thu của kỳ đó.
+Ghi vào `bc/ky/<kỳ>/<nhân viên>/<ngày>`: `{doanh_so, so_don}`. Thông tin
+khách (nếu cột đó có mặt trên sổ) vẫn đi vào nhánh đóng `bc/khach` /
+`bc/imei` theo đúng Q1 — không bị bỏ, chỉ không phải trọng tâm phase này.
 
-Phase này bé đến mức trông như lãng phí, và nó là phase quan trọng nhất:
-nó chốt hình dạng dữ liệu, cách tính sẵn lúc ghi, và cách đưa sổ vào — ba
-thứ mà V1 chốt sai và phải sống với suốt ba tuần.
+Đây là phase quan trọng nhất: nó chốt đúng GRAIN dữ liệu (nhân viên ×
+ngày — không phải tổng công ty, không phải từng dòng hàng), cách tính sẵn
+lúc ghi, và cách đưa sổ vào. V1 chốt sai cả ba và trả giá ba tuần.
 
-**Bạn nhìn thấy gì:** nhập sổ tháng 9, màn hình hiện doanh thu tháng 9,
-đối chiếu được với Excel trong một phút.
+**Bạn nhìn thấy gì:** nhập sổ tháng 9, thấy doanh số + số đơn của TỪNG
+nhân viên trong tháng đó, đối chiếu khớp Excel trong một phút.
 
-**Ra khỏi phase khi:** một kỳ thật đối chiếu khớp với Excel gốc.
+**Ra khỏi phase khi:** một kỳ thật đối chiếu khớp Excel, đúng theo từng
+nhân viên (không chỉ tổng công ty).
 
 ---
 
-### P3 — Giá vốn và lợi nhuận
+### P3 — Biểu đồ và so sánh kỳ
+
+Vẽ từ `bc/ky` đã tính sẵn ở P2, không tính lại lúc mở trang. Theo nhân
+viên, cuộn lên tháng/quý/năm. So kỳ này với kỳ trước, cùng kỳ năm trước.
+
+Đưa lên trước P4/P5 vì nó không phụ thuộc gì ngoài P2 — đây chính là thứ
+chủ dự án cần nhìn thấy sớm nhất để đánh giá được sản phẩm bằng kết quả
+thật, đúng tinh thần "làm đến đâu thấy đến đó".
+
+**Bạn nhìn thấy gì:** biểu đồ doanh số + số đơn theo nhân viên theo thời
+gian; bấm vào một cột thấy chi tiết ngày.
+
+**Ra khỏi phase khi:** so sánh tháng này với tháng trước ra đúng số, cho
+mọi nhân viên.
+
+---
+
+### P4 — Chỉnh sửa tay + audit trail
+
+Sửa tay khi cột nhân viên trên sổ sai/thiếu (ghi nhầm người, để trống),
+và các trường hợp cần điều chỉnh số liệu một ngày cụ thể. Mọi lần sửa ghi
+kèm người sửa + thời điểm vào `bc/quyetdinh`, hợp nhất lúc đọc — đúng cơ
+chế đè-không-mất ở mục 8 của audit. Đây là audit trail thật đầu tiên của
+V2 (F-05 của V1 không có ai để ghi).
+
+**Bạn nhìn thấy gì:** sửa một dòng gán sai nhân viên, số liệu cập nhật
+ngay trên biểu đồ P3, và lịch sử ai sửa gì lúc nào.
+
+**Ra khỏi phase khi:** có ít nhất một sửa tay thật, sống qua một lần nhập
+lại kỳ đó (không bị đè mất).
+
+---
+
+### P5 — Giá vốn và lợi nhuận (chỉ áp dụng từ ~07/09/2026)
+
+Chủ dự án xác nhận vẫn cần giá vốn/lợi nhuận, nhưng CHỈ từ khoảng
+07/09/2026 trở đi — đây không phải lựa chọn tuỳ ý mà là giới hạn DỮ LIỆU
+THẬT: hệ Min theo ngày bán của Tracking (`min_ngay`) chỉ có bản ghi ổn
+định từ cron chạy 20 phút/lượt bắt đầu khoảng mốc đó (xem audit F-03/F-08
+và ghi chú "bản ngày cron chỉ từ 07/09" trong `PROJECT_PROGRESS.md` của
+Reports V1). Kỳ trước mốc đó KHÔNG có giá vốn theo ngày để đối chiếu —
+không phải lỗi, không phải việc chưa làm.
 
 Nối vào hệ Min theo ngày bán đang có sẵn bên Tracking (`POST
 /api/min-ngay`) — không viết lại. Mỗi dòng hàng có giá vốn theo đúng
-ngày bán, hoặc nói rõ vì sao chưa có.
+ngày bán, hoặc nói rõ vì sao chưa có. Đây là nơi bài toán khớp tên hàng
+(Q5 — gán thủ công kiểu Tracking) thật sự chạm vào lần đầu — và CHỈ ở
+phase này, không ở P2/P3/P4.
 
-Đây là nơi bài toán khớp tên hàng (Q5 — gán thủ công kiểu Tracking) thật
-sự chạm vào lần đầu.
+**Bạn nhìn thấy gì:** lợi nhuận của một kỳ ≥ 07/09/2026, cộng danh sách
+rõ ràng "N dòng chưa có giá vốn, vì lý do gì". Kỳ trước mốc đó ghi rõ
+"ngoài phạm vi dữ liệu Tracking", không hiện số 0 gây hiểu nhầm.
 
-**Bạn nhìn thấy gì:** doanh thu, giá vốn, lợi nhuận của kỳ — và một danh
-sách rõ ràng "N dòng chưa có giá vốn, vì lý do gì".
-
-**Ra khỏi phase khi:** lợi nhuận một kỳ thật đối chiếu khớp tay.
-
----
-
-### P4 — Nhân viên
-
-Gán dòng hàng cho nhân viên, tổng theo người, target tháng. Mọi lần sửa
-ghi kèm người sửa và thời điểm vào `bc/quyetdinh` — đây là màn hình audit
-trail thật đầu tiên của V2 (F-05 của V1 không có).
-
-**Bạn nhìn thấy gì:** bảng nhân viên với doanh số, lợi nhuận, target, và
-lịch sử ai sửa gì lúc nào.
-
-**Ra khỏi phase khi:** bảng chạy thật, đủ số liệu để thay Excel cho một
-kỳ — đã merge, chờ chủ dự án dùng thử.
+**Ra khỏi phase khi:** lợi nhuận một kỳ thật ≥ 07/09/2026 đối chiếu khớp
+tay.
 
 ---
 
-### P5 — Biểu đồ và so sánh kỳ
+### P6 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
 
-Chỉ sau khi con số đã đúng và đã được nghiệm thu. Biểu đồ vẽ từ
-`bc/ky` đã tính sẵn ở P2, không tính lại lúc mở trang.
+Chủ dự án xác nhận KHÔNG cần chi tiết từng mặt hàng cho nhu cầu hiện tại.
+Phase này ở lại roadmap chỉ để không mất bối cảnh kỹ thuật (nhãn thương
+hiệu/nhóm hàng đọc từ Tracking, `GET /api/xuat/`, danh sách đóng 40
+hãng) — KHÔNG làm trừ khi chủ dự án yêu cầu rõ. Không tính vào ước lượng
+tổng của lộ trình.
 
-**Bạn nhìn thấy gì:** một biểu đồ doanh thu theo ngày, bấm vào một cột
-thì thấy cột đó gồm những gì.
-
-**Ra khỏi phase khi:** so sánh tháng này với tháng trước ra đúng số.
-
----
-
-### P6 — Sản phẩm, thương hiệu, cơ cấu
-
-Các lát báo cáo còn lại. Nhãn thương hiệu và nhóm hàng đọc từ Tracking
-(`GET /api/xuat/`, danh sách đóng 40 hãng) — không dựng bộ phân loại thứ
-hai.
-
-**Bạn nhìn thấy gì:** mặt hàng nào tạo doanh thu, hãng nào tạo lợi nhuận.
-
-**Ra khỏi phase khi:** mọi báo cáo cần dùng hàng ngày đã có mặt.
+**Nếu được yêu cầu, bạn sẽ thấy gì:** mặt hàng nào tạo doanh thu, hãng
+nào tạo lợi nhuận.
 
 ---
 
-### P7 — Di trú số 2025 → nay
+### P7 — Di trú số 2025 → nay (qua sổ thô gốc)
 
-Trích từ PostgreSQL của V1 và từ `data/chart_gapfill/*.jsonl` (repo
-Reports cũ), nạp vào `bc/ky`, đối chiếu từng tháng với Excel gốc. Chỉ làm
-sau khi P2–P6 đã chứng minh hình dạng dữ liệu đúng — nạp trước là nạp lại
-lần hai.
+**Rescoped 11/09/2026.** Chủ dự án xác nhận còn giữ sổ bán hàng thô gốc
+(định dạng MISA) của 2025 và sẽ cung cấp. Đây là nguồn ĐÚNG và ĐƠN GIẢN —
+đi thẳng vào đường trích của P2 (nhân viên × ngày → doanh số + số đơn),
+KHÔNG cần qua PostgreSQL hay `data/chart_gapfill/*.jsonl` của V1 (hai
+nguồn đó chỉ có tổng cả công ty, không tách theo nhân viên — xem audit
+mục 1, bảng "Dữ liệu đang chảy thế nào" đã kiểm chứng lại 11/09/2026).
 
-**Bạn nhìn thấy gì:** biểu đồ chạy liền mạch từ tháng 1/2025 tới hôm nay,
-bảng đối chiếu tháng-với-tháng lệch 0.
+Với 2026 trước 07/09: nếu chủ dự án cũng có sổ thô gốc của giai đoạn đó
+thì dùng luôn đường này cho đồng nhất; nếu không, PostgreSQL của V1 (đã
+nạp đủ dữ liệu 2026) là nguồn dự phòng — nhưng KHÔNG có giá vốn cho giai
+đoạn đó (xem P5).
 
-**Ra khỏi phase khi:** đối chiếu 2025–2026 lệch 0 trên toàn bộ các tháng.
+Đối chiếu từng tháng với Excel gốc sau khi nạp. Chỉ làm sau khi P2–P4 đã
+chứng minh hình dạng dữ liệu đúng trên dữ liệu hiện tại — nạp trước là
+nạp lại lần hai.
+
+**Bạn nhìn thấy gì:** biểu đồ P3 chạy liền mạch từ tháng 1/2025 tới hôm
+nay, theo từng nhân viên; bảng đối chiếu tháng-với-tháng lệch 0.
+
+**Ra khỏi phase khi:** đối chiếu 2025 → nay lệch 0 trên toàn bộ các
+tháng, theo từng nhân viên.
 
 ---
 
