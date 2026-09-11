@@ -1,4 +1,5 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
+import { docDb } from './firebase.js';
 
 /**
  * Cloudflare Worker Gateway — Worker DUY NHẤT chạm Firebase (CLAUDE.md LUẬT
@@ -158,8 +159,30 @@ const layMe = boc(true, async ({ nguoi, vai, env }) => {
   };
 });
 
+/* =================== /api/bao-cao/suc-khoe ===================
+ * "Màn mở" (P2(b) bước 1) — sức khoẻ kinh doanh toàn công ty: doanh số +
+ * số đơn theo ngày/tháng/năm, kèm cùng kỳ năm trước. Đọc thẳng `bc/ky`
+ * (chưa lọc theo Line, chưa khớp mã hàng — những việc đó là các bước sau),
+ * gộp qua Engine, trả cây kết quả ĐÃ TÍNH SẴN cho màn hình vẽ (LUẬT SỐ 1).
+ *
+ * Nguồn hỏng (đọc `bc/ky` lỗi, hoặc Engine ném lỗi) → 503, KHÔNG bao giờ
+ * trả cây rỗng giả làm "chưa có đơn nào" (CLAUDE.md — "Nguồn hỏng thì BÁO
+ * LỖI").
+ */
+const laySucKhoeCongTy = boc(true, async ({ env }) => {
+  const cayKy = await docDb("bc/ky", env);
+  if (!cayKy.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-ky:" + cayKy.ma);
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+  try {
+    return await env.REPORT_ENGINE.gopSucKhoeCongTy(cayKy.val || {});
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-suc-khoe:" + (e && e.message));
+  }
+});
+
 const API_ROUTES = new Map([
   ["GET /api/me", layMe],
+  ["GET /api/bao-cao/suc-khoe", laySucKhoeCongTy],
 ]);
 
 async function xuLy(request, env) {
