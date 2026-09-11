@@ -9,6 +9,24 @@ name = "reportv2-gateway"
 main = "src/index.js"
 compatibility_date = "2026-09-11"
 
+# ---- Cửa chặn của bộ kiểm (CLAUDE.md: "Bộ kiểm hỏng là build hỏng") ----
+#
+# ĐỂ Ở ĐÂY chứ không để trong ô "Build command" trên dashboard Cloudflare, và
+# đây là lý do — bài học đã trả giá bên Tracking (xem wrangler.toml repo đó):
+# ô trên dashboard CHỈ áp cho nhánh production; build của nhánh phụ KHÔNG kế
+# thừa nó, log ghi thẳng "Build command: None" rồi nhảy vào `wrangler deploy`.
+# Khai ở đây thì lệnh nằm trong repo, đi theo MỌI build — production, nhánh
+# phụ, hay chạy tay dưới máy — và sửa nó phải qua commit chứ không phải qua
+# một ô nhập trên web mà không ai thấy khi nó đổi.
+#
+# `npm test` hỏng thì build dừng ngay tại đây, `wrangler deploy` không chạy,
+# Cloudflare GIỮ NGUYÊN bản đang chạy. Đó là chỗ DUY NHẤT bộ kiểm thật sự
+# chặn được một bản hỏng lên production — GitHub Actions chỉ báo, không chặn.
+#
+# Không có bước dựng ./dist như Tracking: Gateway phục vụ thẳng ./public.
+[build]
+command = "npm test"
+
 # File tĩnh nằm trong ./public. run_worker_first = true: MỌI request chạy
 # qua src/index.js trước, kể cả request vào file tĩnh — điều kiện để chặn
 # đường nhạy cảm và gắn security header cho cả phần tĩnh (giống Worker

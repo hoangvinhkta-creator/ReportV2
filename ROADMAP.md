@@ -64,11 +64,19 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
    trình duyệt. Đã có tấm lưới `[hidden]{display:none!important}` trong
    `public/index.html` và `kiem/an-hien-man-hinh.js` canh — đừng gỡ.
 
-4. **Merge KHÔNG phải deploy.** Hai Worker deploy bằng `wrangler deploy`
-   chạy tay từ máy chủ dự án, KHÔNG nối git integration. Sau mỗi lần merge
-   phải `git pull origin main && wrangler deploy` (và `cd engine &&
-   wrangler deploy` nếu đụng Engine). Deploy Engine TRƯỚC Gateway nếu cả
-   hai cùng đổi — Gateway khai `[[services]]` trỏ vào Engine.
+4. **Merge vào `main` là deploy thật.** Hai Worker nối git integration
+   (Cloudflare Workers Builds) — merge xong là Cloudflare tự build và đẩy
+   lên production, không cần chạy tay. Cửa chặn nằm ở `[build] command =
+   "npm test"` trong `wrangler.toml`: bộ kiểm đỏ thì build dừng, deploy
+   không chạy, bản đang chạy được giữ nguyên. `kiem/cua-chan-build.js`
+   canh cửa ấy còn đó — đừng gỡ, và đừng chuyển nó lên ô "Build command"
+   của dashboard (ô đó chỉ áp cho nhánh production, nhánh phụ không kế
+   thừa — Tracking đã mất gần một giờ vì đúng chuyện này).
+
+   Muốn deploy tay (ví dụ lúc gỡ lỗi) thì vẫn được: `git pull origin main
+   && wrangler deploy`, và `cd engine && wrangler deploy` nếu đụng Engine.
+   Deploy Engine TRƯỚC Gateway nếu cả hai cùng đổi — Gateway khai
+   `[[services]]` trỏ vào Engine.
 
 5. **Thêm tên miền mới phải khai ở API key.** Browser key
    `AIzaSyD2W_zJSmFXVgtlnr3aGAbYbO07bhpWXds` (Google Cloud Console → APIs
