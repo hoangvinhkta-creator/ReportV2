@@ -255,5 +255,81 @@ console.log('\n10) Cây bc/ky méo thì không làm sập phép gộp');
   ok('cây không phải đối tượng → ném', nem, true);
 }
 
+console.log('\n11) gopLineTheoThoiGian — nền của bảng xếp hạng Line trên Dashboard');
+{
+  const c = cay({
+    '2025-08': { A1: { '2025-08-10': [1000, 2] }, B1: { '2025-08-11': [500, 1] } },
+    '2026-08': { A1: { '2026-08-10': [1200, 3] }, A2: { '2026-08-10': [800, 2] } },
+    '2026-09': { B1: { '2026-09-02': [300, 1] }, LA: { '2026-09-03': [700, 4] } },
+  });
+  const r = L.gopLineTheoThoiGian(c, BANG);
+
+  ok('thu_tu giữ nguyên thứ tự bảng, "Khác" ở cuối', r.thu_tu, ['Nội thành', 'Fanpage', 'Shopee', 'Khác']);
+
+  /* Hai nhân viên cùng line phải CỘNG vào nhau, không đè nhau. */
+  ok('Nội thành T8/2026 gộp cả A1 lẫn A2', r.theo_thang['Nội thành'][2026][8],
+     { doanh_so: 2000, so_don: 5, khoa: '2026-08' });
+  ok('Nội thành T8/2025 tách riêng năm', r.theo_thang['Nội thành'][2025][8],
+     { doanh_so: 1000, so_don: 2, khoa: '2025-08' });
+  ok('theo_nam bỏ tầng vị trí, đọc thẳng theo năm', r.theo_nam['Nội thành'],
+     { 2025: { doanh_so: 1000, so_don: 2 }, 2026: { doanh_so: 2000, so_don: 5 } });
+  ok('Fanpage có mặt ở cả hai năm', r.theo_nam.Fanpage,
+     { 2025: { doanh_so: 500, so_don: 1 }, 2026: { doanh_so: 300, so_don: 1 } });
+
+  /* Line khai tường minh nhưng CHƯA có dòng nào vẫn phải có mặt — Shopee
+     trước 09/2026 đúng là ca này. Biến mất khỏi bảng xếp hạng thì người xem
+     tưởng công ty không có kênh đó. */
+  ok('Shopee chưa có dòng nào → vẫn có mặt, cây rỗng', [r.theo_nam.Shopee, r.theo_thang.Shopee], [{}, {}]);
+
+  /* Tên chưa khai (LA) KHÔNG được tan biến — phải rơi vào "Khác". */
+  ok('tên chưa khai rơi vào "Khác"', r.theo_nam['Khác'], { 2026: { doanh_so: 700, so_don: 4 } });
+
+  /* BẤT BIẾN ĐẮT NHẤT: cộng mọi line == tổng công ty. Lệch nghĩa là có tiền
+     rơi ra ngoài mọi line, mà nhìn bảng thì không cách nào biết. */
+  const tongThat = 1000 + 500 + 1200 + 800 + 300 + 700;
+  const donThat = 2 + 1 + 3 + 2 + 1 + 4;
+  ok('tổng công ty đúng', [r.tom_tat.doanh_so_tong, r.tom_tat.so_don_tong], [tongThat, donThat]);
+  ok('cộng mọi line == tổng công ty', r.tom_tat.khop_tong, true);
+
+  let congLine = 0, congDon = 0;
+  for (const ten of r.thu_tu) {
+    for (const nam of Object.keys(r.theo_nam[ten])) {
+      congLine += r.theo_nam[ten][nam].doanh_so;
+      congDon += r.theo_nam[ten][nam].so_don;
+    }
+  }
+  ok('cộng tay lại từng line cũng ra đúng tổng', [congLine, congDon], [tongThat, donThat]);
+
+  /* Cộng theo THÁNG cũng phải ra đúng tổng đó — hai đường gộp độc lập. */
+  let congThang = 0, congThangDon = 0;
+  for (const ten of r.thu_tu) {
+    for (const nam of Object.keys(r.theo_thang[ten])) {
+      for (const vt of Object.keys(r.theo_thang[ten][nam])) {
+        congThang += r.theo_thang[ten][nam][vt].doanh_so;
+        congThangDon += r.theo_thang[ten][nam][vt].so_don;
+      }
+    }
+  }
+  ok('cộng theo tháng cũng ra đúng tổng', [congThang, congThangDon], [tongThat, donThat]);
+}
+
+console.log('\n12) gopLineTheoThoiGian — nguồn hỏng thì NỔ, không trả bảng thiếu line');
+{
+  const c = cay({ '2026-01': { A1: { '2026-01-05': [100, 1] } } });
+  const nem = (bang, cay2) => {
+    try { L.gopLineTheoThoiGian(cay2 === undefined ? c : cay2, bang); return null; }
+    catch (e) { return e.ma || 'loi'; }
+  };
+  ok('bảng rỗng → ném', nem(null), 'bang-line-khong-hop-le');
+  ok('bảng thiếu thu_tu → ném', nem({ cua_ten: {} }), 'bang-line-khong-hop-le');
+  ok('bảng thiếu line "Khác" → ném (tên lạ sẽ rơi vào hư không)',
+     nem({ thu_tu: ['Nội thành'], cua_ten: { A1: 'Nội thành' } }), 'bang-line-khong-hop-le');
+  ok('cây bc/ky không phải đối tượng → ném', nem(BANG, null), 'loi');
+  ok('cây rỗng → không ném, mọi line rỗng',
+     L.gopLineTheoThoiGian({}, BANG).tom_tat, { doanh_so_tong: 0, so_don_tong: 0, khop_tong: true });
+  ok('cây méo (kỳ null) không làm sập',
+     L.gopLineTheoThoiGian({ '2026-01': null }, BANG).tom_tat.khop_tong, true);
+}
+
 xong();
 })().catch(e => { console.error(e); process.exit(1); });
