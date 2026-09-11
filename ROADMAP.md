@@ -396,10 +396,24 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
    với mức đã chốt của kỳ trước". Số đơn giữ 1 số lẻ khi làm tròn hiển thị
    ("trung bình 4,3 đơn/ngày" có nghĩa thật, không như số đơn MỘT ngày —
    luôn nguyên); tiền làm tròn về đồng (VND không có đơn vị nhỏ hơn đồng).
-5. **Lưới nhỏ (small-multiples) từng Line** — mỗi line một biểu đồ đường
-   nhỏ để đọc XU HƯỚNG riêng của nó, thứ bảng xếp hạng không nói được (xếp
-   hạng chỉ cho biết ai to ai nhỏ ở MỘT kỳ). Số đã có sẵn trong khối `line`
+5. ~~Lưới nhỏ (small-multiples) từng Line~~ — **XONG 11/09/2026.** Mỗi
+   line một biểu đồ đường nhỏ (12 tháng của năm đang xem — `trangThai.nam`,
+   KHÔNG ăn theo tab Ngày/Tháng/Quý ở trên, xu hướng cả năm là khái niệm
+   riêng), đọc XU HƯỚNG riêng của nó — thứ vòng cơ cấu không nói được (vòng
+   cơ cấu chỉ cho biết ai to ai nhỏ ở MỘT kỳ). Kèm nút chuyển **Doanh
+   số/Số đơn** áp cho CẢ LƯỚI (không phải mỗi ô tự chọn — 10 line × 2 chỉ
+   số cùng lúc là 20 ô, không ai đọc hết được); đổi nút thì thứ tự sắp xếp
+   cũng tính lại theo đúng chỉ số đang xem. Số đã có sẵn trong khối `line`
    mà endpoint đang trả, không phải sửa Engine.
+
+   Mỗi ô dùng TRỤC DỌC RIÊNG (theo giá trị lớn nhất của chính line đó):
+   hình dạng luôn đọc được dù line to hay nhỏ, đổi lại không so được biên
+   độ giữa hai ô — nhưng "ai to ai nhỏ" đã có vòng cơ cấu trả lời. Tháng
+   nào line không có dòng nào (nghỉ, chưa có kênh) là NGẮT ĐOẠN, không vẽ
+   liền một đường phẳng ở đáy như thể vẫn bán với giá 0 — dùng chung nguyên
+   tắc "khoảng trống thật" với mọi biểu đồ khác trong file. Nhãn duy nhất
+   là giá trị tháng CUỐI CÙNG có số ("Lines → value at the end", không ghi
+   số lên từng tháng — dataviz).
 6. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
    `theo_ngay` (366 điểm), `theo_nam`, `hai_nam` mà giao diện mới không
    còn đọc. Giữ lại có chủ ý cho khoảng giữa hai lượt deploy (bẫy số 4).

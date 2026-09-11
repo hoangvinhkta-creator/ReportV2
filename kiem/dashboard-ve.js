@@ -101,11 +101,29 @@ function duLieuGia() {
 const LINE_GIA = {
   thu_tu: ['Nội thành', 'Tín Phát', 'Shopee', 'Khác'],
   theo_thang: {
-    'Nội thành': { 2026: { 9: { doanh_so: 500, so_don: 5, khoa: '2026-09' } },
-                   2025: { 9: { doanh_so: 400, so_don: 4, khoa: '2025-09' } } },
-    'Tín Phát': { 2026: { 9: { doanh_so: 900, so_don: 9, khoa: '2026-09' } } },
-    Shopee: {},
-    'Khác': { 2026: { 9: { doanh_so: 9999, so_don: 99, khoa: '2026-09' } } },
+    /* Nội thành: có LỖ HỔNG ở tháng 4-6 (nhân viên nghỉ rồi bán lại) — canh
+       việc lưới nhỏ NGẮT đoạn chứ không vẽ liền một đường giả qua đó. */
+    'Nội thành': {
+      2026: {
+        1: { doanh_so: 100, so_don: 1, khoa: '2026-01' },
+        2: { doanh_so: 150, so_don: 2, khoa: '2026-02' },
+        3: { doanh_so: 200, so_don: 2, khoa: '2026-03' },
+        7: { doanh_so: 300, so_don: 3, khoa: '2026-07' },
+        /* so_don CỐ Ý cao (50, không phải 5) — chỉ số này khi đổi sang tab
+           "Số đơn" phải đưa Nội thành VƯỢT Tín Phát về thứ hạng, để canh
+           việc lưới nhỏ SẮP LẠI theo đúng chỉ số đang xem, không kẹt theo
+           thứ hạng doanh số đã tính từ lúc mở màn. */
+        9: { doanh_so: 500, so_don: 50, khoa: '2026-09' },
+      },
+      2025: { 9: { doanh_so: 400, so_don: 4, khoa: '2025-09' } },
+    },
+    /* Tín Phát: ĐỦ tháng 1-9, không lỗ hổng — ca "đường bình thường". */
+    'Tín Phát': {
+      2026: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [i + 1,
+        { doanh_so: 100 * (i + 1) + 800, so_don: i + 1, khoa: '2026-' + String(i + 1).padStart(2, '0') }])),
+    },
+    Shopee: {},   // chưa có số năm nào — ca "Chưa có số năm 2026"
+    'Khác': { 2026: { 9: { doanh_so: 9999, so_don: 99, khoa: '2026-09' } } },   // MỘT tháng duy nhất
   },
   theo_nam: {
     'Nội thành': { 2026: { doanh_so: 5000, so_don: 50 }, 2025: { doanh_so: 4000, so_don: 40 } },
@@ -426,6 +444,78 @@ function kiemMoc(ten, gtThat, doiSo) {
     LINE_GIA.thu_tu = cuThuTu; LINE_GIA.theo_thang = cuThoiThang; LINE_GIA.theo_nam = cuThoiNam;
   }
 
+  console.log('\n11c) Lưới nhỏ — xu hướng theo Line, năm đang xem, trục dọc RIÊNG từng ô');
+  {
+    // Đưa trạng thái về đúng năm 2026, chỉ số Doanh số (mặc định) trước khi kiểm.
+    cbAuth(null); cbAuth(NGUOI);
+    await nghi(); await nghi(); await nghi();
+
+    /* CÙNG kiểu stub với `nutTab()`/`nutPhu()` ở các mục trên: nút bấm được
+       thêm bằng `appendChild`, KHÔNG qua chuỗi `innerHTML`, nên phải đọc
+       trực tiếp `skLuoiChiSo` — đọc qua `skLuoiNho` (cha) sẽ luôn thấy rỗng
+       vì stub không lồng cây DOM thật. Ngược lại lưới các ô LÀ một chuỗi
+       `innerHTML` thật (gán thẳng vào `skLuoiGrid`), đọc trực tiếp ở đó. */
+    const tieuDe = () => CAY.skLuoiNho.innerHTML;
+    const nutChiSo = () => CAY.skLuoiChiSo.con;
+    const luoi = () => CAY.skLuoiGrid.innerHTML;
+    const miniCua = (ten) => luoi().split('<svg').slice(1).map((s) => '<svg' + s.split('</svg>')[0])
+      .find((s) => s.includes('aria-label="Xu hướng ' + ten + '"')) || '';
+    const tenTheoThuTu = () => [...luoi().matchAll(/class="tenMini">([^<]*)</g)].map((m) => m[1]);
+    const dCua = (svg) => (svg.match(/<path[^>]*d="([^"]*)"/) || [, ''])[1];
+
+    ok('tiêu đề nói đúng năm và đơn vị đang xem (nghìn đồng)',
+       /Xu hướng theo Line · năm 2026[^<]*<span class="donViCua">\(nghìn đồng\)/.test(tieuDe()), true);
+    ok('có nút chuyển Doanh số/Số đơn, Doanh số đang chọn',
+       nutChiSo().map((n) => n.textContent + (n.className.includes('tabDang') ? '*' : '')),
+       ['Doanh số*', 'Số đơn']);
+    ok('đúng 4 ô, một cho mỗi line', tenTheoThuTu().length, 4);
+    /* Tín Phát (tổng 11.700đ) > Nội thành (1.250đ) > Shopee (0đ) > Khác
+       (9.999đ nhưng luôn cuối) — cùng luật "Khác xếp cuối" của vòng cơ cấu. */
+    ok('sắp giảm dần theo TỔNG CẢ NĂM của chỉ số đang xem, "Khác" vẫn cuối dù số to nhất',
+       tenTheoThuTu(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
+    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(luoi()), false);
+
+    console.log('    (Nội thành có lỗ hổng tháng 4-6 — phải NGẮT đoạn, không vẽ liền)');
+    const ntSvg = miniCua('Nội thành');
+    ok('có vẽ biểu đồ cho Nội thành (không rơi vào ca "chưa có số")', !!ntSvg, true);
+    ok('đường Nội thành TÁCH thành 3 đoạn (1-2-3, rồi 7 lẻ, rồi 9 lẻ) vì lỗ hổng 4-6 và 8',
+       (dCua(ntSvg).match(/M/g) || []).length, 3);
+
+    console.log('    (Tín Phát đủ tháng 1-9, không lỗ hổng — đường liền MỘT đoạn)');
+    const tpSvg = miniCua('Tín Phát');
+    ok('đường Tín Phát chỉ MỘT đoạn (một chữ M duy nhất)',
+       (dCua(tpSvg).match(/M/g) || []).length, 1);
+
+    console.log('    (Shopee chưa có số năm nào — hiện câu nói rõ, không vẽ SVG rỗng)');
+    const shopeeMini = luoi().split(/(?=<div class="oMini)/).find((s) => s.includes('>Shopee<'));
+    ok('Shopee hiện "Chưa có số năm 2026", KHÔNG có <svg>',
+       !!shopeeMini && shopeeMini.includes('Chưa có số năm 2026') && !shopeeMini.includes('<svg'), true);
+
+    console.log('    (Khác chỉ có MỘT tháng — vẫn phải hiện chấm, không phải "không vẽ được gì")');
+    const khacSvg = miniCua('Khác');
+    ok('Khác có đúng 1 chấm, không có nét path nào (một điểm không có gì để nối)',
+       (khacSvg.match(/<circle/g) || []).length, 1);
+    // lamGon(9999) = round(9999/1000) = 10 — làm gọn CHIA 1.000 rồi làm tròn.
+    ok('Khác vẫn có nhãn giá trị cuối kỳ (không vì chỉ 1 điểm mà bỏ nhãn)',
+       /font-weight="600"[^>]*>10</.test(khacSvg), true);
+
+    ok('rê chuột vào một tháng đọc được tên line, tháng/năm và tiền đầy đủ',
+       /<title>Tín Phát · Tháng 9\/2026: [\d.]+ đ<\/title>/.test(tpSvg), true);
+
+    console.log('    (đổi qua "Số đơn" — Nội thành (58 đơn) phải VƯỢT Tín Phát (45 đơn), đảo thứ hạng)');
+    nutChiSo().find((n) => n.textContent === 'Số đơn').click();
+    ok('tiêu đề đổi sang đơn vị "đơn"', /<span class="donViCua">\(đơn\)/.test(tieuDe()), true);
+    ok('nút "Số đơn" giờ đang chọn',
+       nutChiSo().find((n) => n.textContent === 'Số đơn').className.includes('tabDang'), true);
+    ok('đổi chỉ số → THỨ HẠNG đổi theo (Nội thành vượt lên trên Tín Phát)',
+       tenTheoThuTu(), ['Nội thành', 'Tín Phát', 'Shopee', 'Khác']);
+    ok('nhãn cuối kỳ của Tín Phát giờ là số đơn (9), không phải tiền',
+       />9</.test(miniCua('Tín Phát')), true);
+
+    // Đổi lại Doanh số cho các mục sau, tránh rò trạng thái.
+    nutChiSo().find((n) => n.textContent === 'Doanh số').click();
+  }
+
   console.log('\n12) Engine chưa trả khối `line` (giữa hai lượt deploy) → bỏ khối, KHÔNG nổ');
   {
     /* Bẫy số 4: có lúc Gateway cũ còn đang chạy và chưa trả `line`. Dashboard
@@ -436,6 +526,7 @@ function kiemMoc(ten, gtThat, doiSo) {
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được hai biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 2);
     ok('khối cơ cấu để trống', CAY.skCoCau.innerHTML, '');
+    ok('khối lưới nhỏ cũng để trống', CAY.skLuoiNho.innerHTML, '');
     LINE_GIA.thu_tu = cu;
   }
 
@@ -450,6 +541,7 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('không còn biểu đồ cũ nằm lại', /<svg/.test(veHtml()), false);
     ok('dải phụ cũng dọn sạch', CAY.skDaiPhu.innerHTML, '');
     ok('khối cơ cấu cũng dọn sạch', CAY.skCoCau.innerHTML, '');
+    ok('khối lưới nhỏ cũng dọn sạch', CAY.skLuoiNho.innerHTML, '');
   }
 
   xong();

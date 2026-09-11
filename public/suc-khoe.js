@@ -257,6 +257,62 @@
     },
   ];
 
+  /* ─────────── Lưới nhỏ (small multiples) — xu hướng theo Line ─────────── */
+
+  const RONG_MINI = 148, CAO_MINI = 56;
+  const LE_MINI_TRAI = 4, LE_MINI_PHAI = 4, LE_MINI_TREN = 16, LE_MINI_DUOI = 4;
+  const RONG_VE_MINI = RONG_MINI - LE_MINI_TRAI - LE_MINI_PHAI;
+  const CAO_VE_MINI = CAO_MINI - LE_MINI_TREN - LE_MINI_DUOI;
+
+  /** MỘT ô của lưới — đường xu hướng theo 12 tháng của một line, trục dọc
+   *  RIÊNG theo giá trị lớn nhất của CHÍNH line đó (không theo line khác):
+   *  hình dạng luôn đọc được dù line to hay nhỏ — "ai to ai nhỏ" đã có
+   *  vòng cơ cấu ở trên trả lời, ô này chỉ làm một việc là hình dạng.
+   *
+   *  Tháng nào line đó không có dòng nào (nhân viên nghỉ, chưa có kênh) là
+   *  một KHOẢNG TRỐNG THẬT, không phải số 0 — ngắt đoạn giống mọi biểu đồ
+   *  khác trong file này, để một line đã dừng bán không vẽ liền thành một
+   *  đường phẳng ở đáy như thể vẫn đang bán với giá 0. */
+  function veMiniDuong(ten, diem, bd, nam) {
+    if (!diem.length) {
+      return '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
+        + '<p class="miniRong">Chưa có số năm ' + nam + "</p></div>";
+    }
+    const yMax = Math.max(1, ...diem.map(bd.layGiaTri));
+    const x = (vt) => LE_MINI_TRAI + ((vt - 1) / 11) * RONG_VE_MINI;   // luôn 1..12, cố định
+    const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
+
+    let d = "", cham = "", vtTruoc = null;
+    for (const p of diem) {
+      const px = x(p.vt), py = y(bd.layGiaTri(p));
+      d += (vtTruoc === null || p.vt - vtTruoc > 1 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      vtTruoc = p.vt;
+      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2" fill="' + MAU_NAY + '">'
+        + "<title>" + thoat(ten + " · Tháng " + p.vt + "/" + nam + ": " + bd.taDayDu(bd.layGiaTri(p))) + "</title></circle>";
+    }
+
+    /* Nhãn giá trị tháng CUỐI CÙNG có số — "Lines -> value at the end"
+       (dataviz skill), chọn lọc một nhãn chứ không ghi số lên từng tháng.
+       Neo chữ theo NỬA nào của khung mà điểm cuối rơi vào, không thì
+       tháng 11-12 sẽ đẩy nhãn tràn ra ngoài viewBox. */
+    const cuoi = diem[diem.length - 1];
+    const pxCuoi = x(cuoi.vt), pyCuoi = y(bd.layGiaTri(cuoi));
+    const neoPhai = pxCuoi > LE_MINI_TRAI + RONG_VE_MINI / 2;
+    const nhanCuoi = '<text x="' + (pxCuoi + (neoPhai ? -3 : 3)).toFixed(1) + '" y="' + (pyCuoi - 5).toFixed(1)
+      + '" font-size="9" font-weight="600" fill="#1f2430" text-anchor="' + (neoPhai ? "end" : "start") + '">'
+      + bd.nhanDoc(bd.layGiaTri(cuoi)) + "</text>";
+
+    const nenDuoi = LE_MINI_TREN + CAO_VE_MINI;
+    const svg = '<svg viewBox="0 0 ' + RONG_MINI + " " + CAO_MINI + '" width="100%" role="img" aria-label="Xu hướng '
+      + thoat(ten) + '">'
+      + '<line x1="' + LE_MINI_TRAI + '" x2="' + (RONG_MINI - LE_MINI_PHAI) + '" y1="' + nenDuoi + '" y2="' + nenDuoi
+      + '" stroke="#e5e7eb" stroke-width="1"/>'
+      + '<path d="' + d.trim() + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="1.75"/>'
+      + cham + nhanCuoi + "</svg>";
+
+    return '<div class="oMini"><p class="tenMini">' + thoat(ten) + "</p>" + svg + "</div>";
+  }
+
   /* ─────────── Cơ cấu theo Line — hai vòng khuyên lồng nhau ─────────── */
 
   /* Tám hue categorical đã qua kiểm CVD (kỹ năng dataviz, palette chuẩn) —
@@ -401,7 +457,7 @@
 
   /* ─────────── Điều phối ─────────── */
 
-  const trangThai = { donVi: "ngay", nam: null, thang: null };
+  const trangThai = { donVi: "ngay", nam: null, thang: null, luoiChiSo: 0 };
   let duLieu = null;     // kết quả /api/bao-cao/suc-khoe, nhớ lại để đổi tab không gọi lại
   let dangTai = false;
 
@@ -523,6 +579,64 @@
       + veCoCau(hang, L.thu_tu);
   }
 
+  /** Lưới nhỏ — xu hướng theo THÁNG của TỪNG line trong năm đang xem, cạnh
+   *  nhau để so hình dạng: line nào đang lên, đang xuống, đứt gãy đột ngột
+   *  (nhân viên nghỉ), hay chỉ mới xuất hiện. Vòng cơ cấu ở trên đã trả lời
+   *  "ai to ai nhỏ Ở MỘT KỲ" — lưới này trả lời "line đó đang đi về đâu",
+   *  việc vòng cơ cấu không nói được.
+   *
+   *  Luôn dùng NĂM ĐANG XEM (`trangThai.nam`), KHÔNG theo tab đơn vị: xu
+   *  hướng cả năm là một khái niệm riêng, không ăn theo "đang xem theo
+   *  ngày/tháng/quý" của hai biểu đồ phía trên.
+   *
+   *  Có nút chuyển Doanh số/Số đơn — CẢ LƯỚI đổi theo, không phải mỗi ô tự
+   *  chọn: 10 line × 2 chỉ số cùng lúc là 20 ô, không ai đọc hết được. */
+  function veKhoiLuoiNho() {
+    const o = $("skLuoiNho");
+    if (!o) return;
+    if (!duLieu || !duLieu.line) { o.innerHTML = ""; return; }
+
+    const L = duLieu.line;
+    const nam = trangThai.nam;
+    const bd = BIEU_DO[trangThai.luoiChiSo] || BIEU_DO[0];
+    const thuTu = L.thu_tu || [];
+    if (!thuTu.length) { o.innerHTML = ""; return; }
+    const tenCuoi = thuTu[thuTu.length - 1];
+
+    const dsLine = thuTu.map((ten) => ({
+      ten, diem: layDiem(((L.theo_thang || {})[ten] || {})[nam]),
+    }));
+
+    /* Sắp GIẢM DẦN theo tổng cả năm của CHÍNH chỉ số đang xem, "Khác" luôn
+       cuối — cùng luật đã áp cho vòng cơ cấu, để đổi chỉ số không làm lưới
+       xáo trộn lộn xộn ngoài dự đoán. */
+    dsLine.sort((a, b) => {
+      if (a.ten === tenCuoi) return 1;
+      if (b.ten === tenCuoi) return -1;
+      const tong = (arr) => arr.reduce((t, p) => t + bd.layGiaTri(p), 0);
+      return tong(b.diem) - tong(a.diem);
+    });
+
+    o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · năm ' + nam
+      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
+      + '<div class="tabDonVi" id="skLuoiChiSo"></div>'
+      + '<div class="luoiXuHuong" id="skLuoiGrid"></div>';
+
+    const oChiSo = $("skLuoiChiSo");
+    oChiSo.innerHTML = "";   // đề phòng trình duyệt không coi id trong innerHTML mới là một phần tử khác hẳn
+    BIEU_DO.forEach((m, i) => {
+      const nut = document.createElement("button");
+      nut.type = "button";
+      nut.className = "tabNut" + (i === trangThai.luoiChiSo ? " tabDang" : "");
+      nut.textContent = m.ten;
+      nut.addEventListener("click", () => { trangThai.luoiChiSo = i; veKhoiLuoiNho(); });
+      oChiSo.appendChild(nut);
+    });
+
+    const oGrid = $("skLuoiGrid");
+    oGrid.innerHTML = dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, nam)).join("");
+  }
+
   /** Dải nút phụ dưới biểu đồ — nội dung ĐỔI THEO TAB. */
   function veDaiPhu() {
     const hang = $("skDaiPhu");
@@ -579,6 +693,7 @@
     veDaiPhu();
     veBieuDoHienTai();
     veKhoiCoCau();
+    veKhoiLuoiNho();
   }
 
   /** Khung cố định của Dashboard, dựng một lần vào ô P3 chừa sẵn.
@@ -593,6 +708,7 @@
       + '<div id="skVe"></div>'
       + '<div class="tabDonVi daiPhu" id="skDaiPhu"></div>'
       + '<div id="skCoCau" class="khoiCoCauBoc"></div>'
+      + '<div id="skLuoiNho" class="khoiLuoiNhoBoc"></div>'
       + '<p class="canhBao" id="skLoi"></p>';
     return true;
   }
@@ -627,6 +743,7 @@
       oVe.innerHTML = "";
       $("skDaiPhu").innerHTML = "";
       $("skCoCau").innerHTML = "";
+      $("skLuoiNho").innerHTML = "";
       oLoi.textContent = "Không lấy được số liệu biểu đồ: " + e.message;
     } finally {
       dangTai = false;
