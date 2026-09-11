@@ -67,20 +67,36 @@
   const CAO_VE = CAO - LE_TREN - LE_DUOI;
   const RONG_VE = RONG - LE_TRAI - LE_PHAI;
 
-  /** Đỉnh trục dọc "đẹp": bước chia làm tròn về 1/2/5 × 10^n để nhãn ra số
-   *  chẵn. Lấy thẳng giá trị lớn nhất làm đỉnh thì ba mốc chia ra những con
-   *  số như 6.667 và 13.333 — đọc biểu đồ mà phải nhẩm là hỏng.
+  /* Bước chia "đẹp" cho trục dọc. Bước KHÔNG NGUYÊN bị bỏ (2,5 chỉ dùng được
+     từ 25 trở lên): số đơn không có nửa đơn, và một bước 2,5 đ thì nhãn tiền
+     chia nghìn xong cũng chỉ ra rác. */
+  const BUOC_DEP = [1, 2, 2.5, 5];
+  const MOC_IT_NHAT = 3, MOC_NHIEU_NHAT = 5;
+
+  /** Đỉnh trục dọc + số mốc chia.
    *
-   *  `nguyen` cho biểu đồ SỐ ĐƠN: đơn hàng không có nửa đơn, bước chia phải
-   *  là số nguyên, không thì trục hiện "1, 1, 2" vì hai mốc lẻ cùng làm tròn
-   *  về 1. */
-  function dinhTruc(gtLonNhat, soBuoc, nguyen) {
-    if (!(gtLonNhat > 0)) return soBuoc;
-    let buoc = gtLonNhat / soBuoc;
-    const bac = Math.pow(10, Math.floor(Math.log10(buoc)));
-    buoc = ([1, 2, 5, 10].find((n) => n * bac >= buoc) || 10) * bac;
-    if (nguyen) buoc = Math.max(1, Math.round(buoc));
-    return buoc * soBuoc;
+   *  Trả cả `soBuoc` chứ không chỉ đỉnh, vì SỐ MỐC PHẢI CO GIÃN ĐƯỢC. Bản
+   *  trước ép đúng 3 mốc nên bước chia bị làm tròn rất thô: doanh số ngày
+   *  cao nhất ~2 tỉ thì bước 667 triệu bị đẩy lên 1 tỉ, đỉnh thành 3 tỉ —
+   *  đường thật chỉ cao hai phần ba khung, nhìn mất cân đối (chủ dự án báo
+   *  11/09/2026). Cho số mốc chạy 3..5 rồi lấy BƯỚC NHỎ NHẤT vừa đủ thì
+   *  chính ca đó ra bước 500 triệu × 4 mốc = đỉnh đúng 2 tỉ, không dư một
+   *  khoảng nào.
+   *
+   *  Duyệt bước từ nhỏ tới lớn nên luôn lấy được đỉnh sát nhất. */
+  function dinhTruc(gtLonNhat) {
+    if (!(gtLonNhat > 0)) return { dinh: MOC_IT_NHAT, soBuoc: MOC_IT_NHAT };
+    const muDau = Math.max(0, Math.floor(Math.log10(gtLonNhat)) - 1);
+    for (let mu = muDau; mu <= muDau + 3; mu++) {
+      for (const m of BUOC_DEP) {
+        const buoc = m * Math.pow(10, mu);
+        if (!Number.isInteger(buoc)) continue;
+        const soBuoc = Math.ceil(gtLonNhat / buoc);
+        if (soBuoc >= MOC_IT_NHAT && soBuoc <= MOC_NHIEU_NHAT) return { dinh: buoc * soBuoc, soBuoc };
+      }
+    }
+    /* Giá trị quá nhỏ để chia được 3 mốc số nguyên (1 hay 2 đơn cả kỳ). */
+    return { dinh: Math.max(gtLonNhat, MOC_IT_NHAT), soBuoc: MOC_IT_NHAT };
   }
 
   /** Vẽ MỘT chuỗi thành các đoạn path + chấm điểm.
@@ -119,17 +135,18 @@
    *  · `moTa(p, nam)` — câu hiện khi rê chuột (kể CẢ HAI con số, để rê ở
    *                     biểu đồ nào cũng đọc được đủ) */
   function veBieuDo(c) {
-    const dinh = Math.max(c.dinhToiThieu || 0, dinhTruc(
-      Math.max(0, ...c.diemNay.map((p) => c.layGiaTri(p)), ...c.diemTruoc.map((p) => c.layGiaTri(p))),
-      3, c.nguyen));
+    const gtLonNhat = Math.max(
+      c.sanGiaTri || 0,
+      ...c.diemNay.map((p) => c.layGiaTri(p)), ...c.diemTruoc.map((p) => c.layGiaTri(p)));
+    const { dinh, soBuoc } = dinhTruc(gtLonNhat);
     const x = (vt) => LE_TRAI
       + (c.vtMax > c.vtMin ? ((vt - c.vtMin) / (c.vtMax - c.vtMin)) * RONG_VE : RONG_VE / 2);
     const y = (v) => LE_TREN + CAO_VE - (v / dinh) * CAO_VE;
 
-    // Bốn mốc lưới ngang, đều từ 0 tới đỉnh.
+    // Mốc lưới ngang, đều từ 0 tới đỉnh — số mốc do `dinhTruc` chọn.
     let luoi = "";
-    for (let i = 0; i <= 3; i++) {
-      const gt = (dinh / 3) * i, gy = y(gt);
+    for (let i = 0; i <= soBuoc; i++) {
+      const gt = (dinh / soBuoc) * i, gy = y(gt);
       luoi += '<line x1="' + LE_TRAI + '" x2="' + (RONG - LE_PHAI) + '" y1="' + gy.toFixed(1)
         + '" y2="' + gy.toFixed(1) + '" stroke="#e5e7eb" stroke-width="1"/>'
         + '<text x="' + (LE_TRAI - 8) + '" y="' + (gy + 4).toFixed(1)
@@ -177,17 +194,17 @@
      người đọc so hai đường không so được với nhau. */
   const BIEU_DO = [
     {
-      ten: "Doanh số", donVi: "nghìn đồng", nguyen: false,
+      ten: "Doanh số", donVi: "nghìn đồng",
       layGiaTri: (p) => p.doanh_so,
       nhanDoc: lamGon,
       /* Nhãn trục chia 1.000 rồi làm tròn, nên một kỳ mà doanh số cả kỳ
-         dưới 3.000 đ sẽ ra bốn mốc cùng là "0". Nghe vô lý nhưng có thật:
+         dưới 3.000 đ sẽ ra các mốc cùng là "0". Nghe vô lý nhưng có thật:
          đơn bị chiết khấu hết thành 0 đ đã xuất hiện trong sổ 09/2026. Sàn
          này giữ trục luôn đọc được 0|1|2|3. */
-      dinhToiThieu: 3000,
+      sanGiaTri: 3000,
     },
     {
-      ten: "Số đơn", donVi: "đơn", nguyen: true,
+      ten: "Số đơn", donVi: "đơn",
       layGiaTri: (p) => p.so_don,
       nhanDoc: (v) => Math.round(v).toLocaleString("vi-VN"),
     },
@@ -258,7 +275,7 @@
         + veBieuDo({
           diemNay, diemTruoc, namNay: nam, namTruoc,
           vtMin: k.vtMin, vtMax: k.vtMax, nhanTruc: k.nhanTruc, moTa: k.moTa,
-          layGiaTri: bd.layGiaTri, nhanDoc: bd.nhanDoc, nguyen: bd.nguyen,
+          layGiaTri: bd.layGiaTri, nhanDoc: bd.nhanDoc, sanGiaTri: bd.sanGiaTri,
           nhanKhung,
         }) + "</div>";
     }
