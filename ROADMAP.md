@@ -362,14 +362,21 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
    `6.667`, `13.333`), ép bước NGUYÊN cho số đơn, và có sàn 3.000 đ cho
    trục tiền vì cả kỳ dưới 3.000 đ thì bốn mốc cùng ra "0" sau khi chia
    nghìn — ca có thật, sổ 09/2026 có đơn bị chiết khấu hết thành 0 đ.
-3. Vá `gopTheoLine()` cũ (hoặc thay hẳn) bằng bản dùng
-   `gop-theo-thoi-gian.mjs::gopCayKyThanhChuoiNgay(cayKy, locNhanVien)` —
-   lọc nhân viên theo từng Line (`line.mjs::xepLine()`/`BANG_LINE_HAT_GIONG`)
-   rồi gộp qua đơn vị thời gian như Dashboard đã làm cho cả công ty. Từ đó
-   mới có xếp hạng theo Line (cột dọc sequential một màu, KHÔNG 10 hue
-   riêng — xem dataviz) + lưới nhỏ (small-multiples) từng Line, Line khác
-   xếp cuối, không cần đơn trung bình.
-4. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
+3. ~~Gộp theo từng Line + bảng xếp hạng~~ — **XONG 11/09/2026 (PR #35 +
+   #37).** `line.mjs::gopLineTheoThoiGian()` lọc `bc/ky` theo nhân viên của
+   từng line rồi gộp qua đúng `gop-theo-thoi-gian.mjs` mà Dashboard dùng cho
+   toàn công ty — một đường tính, không đẻ phép cộng thứ hai dễ lệch. KHÔNG
+   đụng `gopTheoLine()` cũ: hàm kia gộp theo kỳ và tách từng nhân viên, hình
+   dạng khác hẳn. Chỉ tháng + năm, không có ngày (xếp hạng theo ngày không ai
+   đọc, mà ×10 line là gấp mười dữ liệu mỗi lượt mở).
+   Giao diện: thanh ngang, một màu nhấn + một màu xám (KHÔNG 10 hue — xem
+   dataviz), sắp giảm dần nhưng giữ line cuối bảng ở cuối, cùng kỳ với hai
+   biểu đồ ngay trên nó.
+4. **Lưới nhỏ (small-multiples) từng Line** — mỗi line một biểu đồ đường
+   nhỏ để đọc XU HƯỚNG riêng của nó, thứ bảng xếp hạng không nói được (xếp
+   hạng chỉ cho biết ai to ai nhỏ ở MỘT kỳ). Số đã có sẵn trong khối `line`
+   mà endpoint đang trả, không phải sửa Engine.
+5. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
    `theo_ngay` (366 điểm), `theo_nam`, `hai_nam` mà giao diện mới không
    còn đọc. Giữ lại có chủ ý cho khoảng giữa hai lượt deploy (bẫy số 4).
    Sau khi chủ dự án xác nhận bản mới chạy thật thì bỏ cả ba — payload
