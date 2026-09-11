@@ -40,8 +40,15 @@ const lamTron = x => Math.round(x * 100) / 100;
 /* Ký tự Firebase cấm trong tên khoá. Tên hàng thật có dấu chấm và dấu gạch
  * chéo rất nhiều — 1.360/27.299 dòng của ba sổ thật (ví dụ
  * "RS57DG400EM9/S"). Thay bằng "~" chứ không bỏ đi: bỏ đi thì "A.B" và "AB"
- * thành cùng một khoá, tức gộp nhầm hai mặt hàng thành một. */
-const FIREBASE_CAM = /[.#$/[\]]/g;
+ * thành cùng một khoá, tức gộp nhầm hai mặt hàng thành một.
+ *
+ * PHẢI khớp CHÍNH XÁC danh sách `kiemDuong()` cấm ở `src/firebase.js` —
+ * đó là cổng THẬT sự chặn trước mỗi lượt gọi Firebase, còn hàm này chỉ là
+ * lớp làm sạch ở Engine. Từng thiếu `?&%` ở đây (chỉ chặn `.#$/[]`), và
+ * lộ ra thật trên sổ 2025: một ô IMEI ghi "%F1518279574 ~ %E1330129573"
+ * lọt qua `deKhoa()` nguyên vẹn, rồi bị `kiemDuong()` chặn ở vòng SAU —
+ * làm CẢ LƯỢT ghi `bc/imei` hỏng vì một dòng, dù chỉ một ký tự sai. */
+const FIREBASE_CAM = /[.#$/[\]?&%]/g;
 const DIEU_KHIEN = new RegExp("[\\u0000-\\u001f\\u007f]", "g");
 
 /** Một mẩu chữ → dùng được làm khoá Firebase. */

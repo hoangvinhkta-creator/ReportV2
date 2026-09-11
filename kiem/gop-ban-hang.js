@@ -203,10 +203,16 @@ console.log('\n9) Khoá Firebase: ký tự cấm bị thay, KHÔNG bị bỏ (b�
   ok('tên thật của sổ đi qua nguyên vẹn',
      G.khoaNhanVien(' Thu Hà - Đại Lý 0900000000 '), 'Thu Hà - Đại Lý 0900000000');
 
+  /* `?&%` cũng phải bị thay — cùng lý do đã trả giá thật bên `dong-hang.mjs`
+     (một IMEI sổ 2025 ghi "%F1518279574…" lọt qua bản cũ của hàm này, thiếu
+     `?&%`, rồi bị `kiemDuong()` chặn Ở VÒNG SAU). Tên nhân viên chưa gặp ca
+     này, nhưng khoá phải cấm ĐÚNG danh sách `kiemDuong()` cấm, không thiếu. */
+  ok('?, &, % cũng → ~', G.khoaNhanVien('a?b&c%d'), 'a~b~c~d');
+
   /* Khoá sinh ra phải là đường dẫn Firebase hợp lệ theo đúng bộ canh của
      Gateway — hai chỗ này không được nghĩ khác nhau. */
   const { kiemDuong } = await import('../src/firebase.js');
-  for (const ten of ['A.B', 'a/b#c$d[e]f', 'Thu Hà - Đại Lý 0900000000', null]) {
+  for (const ten of ['A.B', 'a/b#c$d[e]f', 'a?b&c%d', 'Thu Hà - Đại Lý 0900000000', null]) {
     ok('bc/ky/2026-01/<khoá>/ngày hợp lệ với kiemDuong: ' + String(ten),
        kiemDuong('bc/ky/2026-01/' + G.khoaNhanVien(ten) + '/2026-01-02'), null);
   }
