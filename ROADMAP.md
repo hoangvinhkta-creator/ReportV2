@@ -20,52 +20,72 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**Đang ở: P1 — Nền móng rỗng, chạy thật.** Mã đã dựng và đẩy lên nhánh
-`claude/reportv2-p1-foundation-djkhlo` (commit `cd0f987`, 2026-09-11) —
-NHƯNG **chưa ra khỏi phase**: tiêu chí ra khỏi phase là "chủ dự án tự đăng
-nhập được trên máy thật", và điều đó chưa xảy ra vì bốn bước hạ tầng dưới
-đây còn cần người có quyền truy cập Cloudflare/Firebase làm tay.
+**P1 XONG (11/09/2026). Việc tiếp theo: P2 — Một con số thật, đi hết
+đường.**
 
-Việc đã xong ở P1:
-- Gateway Worker (`reportv2-gateway`): xác minh Firebase ID token, tra vai
-  `quantri`/`quanly` trong `profiles/<uid>`, một endpoint `/api/me` chứng
-  minh cả đường dây trình duyệt → Gateway → Engine.
-- Report Engine (`reportv2-engine`): Worker riêng tư, không route công
-  khai, không `workers.dev` — sao lại đúng mẫu `price-engine` đã chạy thật
-  bên Tracking.
-- Trang tĩnh `public/index.html`: đăng nhập email/mật khẩu, hiện tên người
-  dùng, sáu thẻ xám "chưa có gì". Không nạp SDK Realtime Database — trình
-  duyệt không có đường nào chạm thẳng RTDB.
-- `firebase-rules/bc.rules.json`: fragment rules mới cho bốn nhánh `bc/`,
-  kèm `firebase-rules/README.md` giải thích cách hợp nhất vào rules chung.
-- `kiem/`: khung bộ kiểm chép từ Tracking + năm bộ kiểm P1 (xác thực token,
-  Engine riêng tư, định tuyến/security header, hình dạng rules `bc/`, quét
-  tĩnh LUẬT SỐ 1). `npm test`: 5 bộ, 116 đạt, 0 hỏng. `wrangler deploy
-  --dry-run` xanh cho cả hai Worker.
-- CI: `.github/workflows/kiem.yml` chạy `npm test` mỗi lần push.
+Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
+Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
+qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xám.
 
-**Bốn việc còn lại, CẦN CHỦ DỰ ÁN LÀM (phiên này không có quyền/khoá để tự
-làm)** — xem chi tiết ở cuối `wrangler.toml` từng Worker và ở
-`firebase-rules/README.md`:
+### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 
-1. **Nối hai Worker vào Cloudflare dashboard**, cùng account đang chạy
-   Worker `tracking` (đã hỏi và được xác nhận dùng chung account). Tên
-   Worker đã xác nhận: `reportv2-gateway` và `reportv2-engine`. Chưa có
-   Secret nên có nối cũng chưa đăng nhập được — xem bước 2.
-2. **Đặt hai Secret cho `reportv2-gateway`**: `FB_SA_EMAIL`, `FB_SA_KEY`
-   (`wrangler secret put ...`) — tài khoản dịch vụ Firebase đọc
-   `profiles/<uid>`. Thiếu thì `/api/me` trả 503 (đúng ý, không phải lỗi).
-3. **Hợp nhất `firebase-rules/bc.rules.json` vào file rules chung** (hiện
-   sống ở repo Tracking, dùng chung với Marketing) — xem
-   `firebase-rules/README.md` cho từng bước và vì sao KHÔNG tự sửa thẳng
-   từ đây.
-4. **Dựng Cloudflare Access** cho `reportv2-gateway` trước khi có người
-   dùng thật ngoài chủ dự án (CLAUDE.md/ROADMAP mục P1).
+| Thứ | Giá trị | Ghi chú |
+|---|---|---|
+| Gateway | `reportv2-gateway` → `https://reportv2-gateway.hoangvinhkta.workers.dev` | phục vụ `public/`, endpoint `/api/me` |
+| Engine | `reportv2-engine` | riêng tư, `workers_dev = false`, gọi qua binding `REPORT_ENGINE` |
+| Secret trên Gateway | `FB_SA_EMAIL`, `FB_SA_KEY` | service account `firebase-adminsdk-fbsvc@tinphattracking...` |
+| Cloudflare Access | app self-hosted, destination = **Workers** scope `reportv2-gateway` | đăng nhập bằng **One-time PIN**, allowlist theo TỪNG email (công ty không có domain email riêng) |
+| Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
+| CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-Sau khi xong bốn bước trên, việc còn lại chỉ là mở `*.workers.dev` bằng
-điện thoại, đăng nhập bằng tài khoản đã có `perms.quantri` hoặc
-`perms.quanly`, chụp lại màn hình sáu thẻ xám — đó mới là bằng chứng đủ để
-đánh dấu P1 ✅ trong bảng dưới.
+`npm test`: 6 bộ, 122 đạt, 0 hỏng.
+
+### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
+
+1. **Quyền đọc từ `profiles/<uid>/vai`, KHÔNG phải `perms.quantri`.**
+   Tracking dùng `vai` (một chuỗi: `quantri`/`quanly`/`saleadmin`/
+   `marketing`/`sale`) làm nguồn sự thật; `perms` chỉ là bản chiếu bảy cờ
+   (`admin`/`board`/`bedit`/`edit`/`compare`/`summary`/`mkt`) — **không có
+   khoá nào tên `quantri`/`quanly` trong `perms`**. Nguồn: `VAI_KN` và
+   `admSetVai()` trong `public/index.html` repo Tracking. Đoán sai chỗ này
+   làm `/api/me` trả 403 với mọi tài khoản. Reports chỉ nhận `quantri` +
+   `quanly` (quyết định chủ dự án — không nới theo
+   `VAI_KN.saleadmin.baoCao`).
+
+2. **KHÔNG BAO GIỜ sửa tay `profiles/<uid>` trong Firebase Console.** Ở P1
+   việc này đã ghi đè mất hồ sơ thật của chủ dự án (mất `perms`, Tracking
+   từ chối đọc `state`/`alias`/`dnhap`/`profiles` cho tài khoản đó). Muốn
+   đổi quyền thì dùng chính màn Quản trị của Tracking — `admSetVai()` ghi
+   `vai` + `perms` MỘT LƯỢT, không bao giờ lệch nhau. Tự ghi tay là tự tạo
+   ra trạng thái nửa cũ nửa mới.
+
+3. **`el.hidden` chết nếu CSS đặt `display` cho chính phần tử đó.** Luật
+   của file CSS (author) luôn thắng luật `[hidden]{display:none}` của
+   trình duyệt. Đã có tấm lưới `[hidden]{display:none!important}` trong
+   `public/index.html` và `kiem/an-hien-man-hinh.js` canh — đừng gỡ.
+
+4. **Merge KHÔNG phải deploy.** Hai Worker deploy bằng `wrangler deploy`
+   chạy tay từ máy chủ dự án, KHÔNG nối git integration. Sau mỗi lần merge
+   phải `git pull origin main && wrangler deploy` (và `cd engine &&
+   wrangler deploy` nếu đụng Engine). Deploy Engine TRƯỚC Gateway nếu cả
+   hai cùng đổi — Gateway khai `[[services]]` trỏ vào Engine.
+
+5. **Thêm tên miền mới phải khai ở API key.** Browser key
+   `AIzaSyD2W_zJSmFXVgtlnr3aGAbYbO07bhpWXds` (Google Cloud Console → APIs
+   & Services → Credentials) giới hạn theo Website restrictions. Tên miền
+   nào chưa nằm trong danh sách thì `signInWithPassword` trả **403**, và
+   màn hình chỉ báo "sai email/mật khẩu" — dễ truy nhầm hàng giờ. Danh
+   sách hiện có: `price.tinphatcrm.com`, `mkt.tinphatcrm.com`,
+   `marketing.hoangvinhkta.workers.dev`,
+   `https://reportv2-gateway.hoangvinhkta.workers.dev/*`.
+
+### Việc còn treo, không chặn P2
+
+- PR đồng bộ rules bên repo **Tracking** (nhánh
+  `claude/reportv2-p1-foundation-djkhlo`) đang MỞ, chờ chủ dự án merge.
+  Rules thật đã publish đúng trên Console rồi; PR này chỉ để file nguồn
+  trong repo Tracking khớp với Console, tránh lần sau ai deploy rules từ
+  repo đó làm mất nhánh `bc/`.
 
 ---
 
@@ -74,7 +94,7 @@ Sau khi xong bốn bước trên, việc còn lại chỉ là mở `*.workers.de
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
-| P1 | Nền móng rỗng, chạy thật | 1 tuần | ⬜ Chưa bắt đầu |
+| P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
 | P2 | Một con số thật, đi hết đường | 1–2 tuần | ⬜ Chưa bắt đầu |
 | P3 | Giá vốn và lợi nhuận | 2 tuần | ⬜ Chưa bắt đầu |
 | P4 | Nhân viên | 1–2 tuần | ⬜ Chưa bắt đầu |
@@ -95,7 +115,7 @@ Sáu quyết định (lưu đủ thông tin khách, vai Quản trị/Quản lí,
 
 ---
 
-### P1 — Nền móng rỗng, chạy thật
+### P1 — Nền móng rỗng, chạy thật ✅
 
 Repo private (đã có). Dựng:
 
@@ -119,7 +139,9 @@ màn hình.
 nhập bằng tài khoản công ty, thấy tên mình và sáu thẻ xám ghi "chưa có
 gì".
 
-**Ra khỏi phase khi:** tự đăng nhập được trên bản deploy thật, đã merge.
+**Ra khỏi phase khi:** tự đăng nhập được trên bản deploy thật, đã merge —
+**đã làm 11/09/2026**. Chi tiết hạ tầng đang sống và năm cái bẫy đã trả
+giá: xem "Trạng thái hiện tại" ở đầu file.
 
 ---
 
