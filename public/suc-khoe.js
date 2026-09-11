@@ -210,6 +210,43 @@
     },
   ];
 
+  /* ─────────── Xếp hạng theo Line ─────────── */
+
+  const RONG_XH = 640, LE_TRAI_XH = 112, LE_PHAI_XH = 86;
+  const CAO_HANG = 28, CAO_COT = 9;
+
+  /** Thanh ngang cho từng line, kỳ đang xem chồng lên cùng kỳ năm trước.
+   *
+   *  Thanh NGANG chứ không cột dọc: tên line là chữ tiếng Việt dài ("Nội
+   *  thành", "Quyết chiến") — dựng đứng thì phải xoay chữ hoặc cắt bớt.
+   *
+   *  Một màu nhấn + một màu xám, KHÔNG mười màu cho mười line: mười màu thì
+   *  không màu nào còn nghĩa, mà thứ cần đọc ở đây là DÀI NGẮN chứ không
+   *  phải màu. */
+  function veXepHang(hang, gtLonNhat, nhanSo) {
+    const rongVe = RONG_XH - LE_TRAI_XH - LE_PHAI_XH;
+    const dinh = Math.max(1, gtLonNhat);
+    const beRong = (v) => Math.max(0, (v / dinh) * rongVe);
+    const CAO = hang.length * CAO_HANG + 10;
+
+    let than = "";
+    hang.forEach((h, i) => {
+      const y0 = 6 + i * CAO_HANG;
+      const thanh = (v, mo, mau, moTa) =>
+        '<rect x="' + LE_TRAI_XH + '" y="' + (y0 + mo) + '" width="' + beRong(v).toFixed(1)
+        + '" height="' + CAO_COT + '" rx="2" fill="' + mau + '">'
+        + "<title>" + thoat(moTa) + "</title></rect>";
+      than += '<text x="' + (LE_TRAI_XH - 8) + '" y="' + (y0 + 13)
+        + '" font-size="11" fill="#4b5563" text-anchor="end">' + thoat(h.ten) + "</text>"
+        + thanh(h.nay.doanh_so, 1, MAU_NAY, h.moTaNay)
+        + thanh(h.truoc.doanh_so, 12, MAU_TRUOC, h.moTaTruoc)
+        + '<text x="' + (RONG_XH - LE_PHAI_XH + 8) + '" y="' + (y0 + 14)
+        + '" font-size="11" fill="#1f2430">' + nhanSo(h.nay.doanh_so) + "</text>";
+    });
+    return '<svg viewBox="0 0 ' + RONG_XH + " " + CAO + '" width="100%" role="img"'
+      + ' aria-label="Xếp hạng doanh số theo line">' + than + "</svg>";
+  }
+
   /* ─────────── Điều phối ─────────── */
 
   const trangThai = { donVi: "ngay", nam: null, thang: null };
@@ -282,6 +319,61 @@
     oVe.innerHTML = html + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
   }
 
+  /** Bảng xếp hạng Line cho ĐÚNG kỳ mà hai biểu đồ trên đang vẽ.
+   *
+   *  Tab Ngày đang xem tháng nào thì xếp hạng tháng đó; tab Tháng và tab Quý
+   *  đang xem cả năm thì xếp hạng cả năm. Cùng một kỳ với biểu đồ ngay trên
+   *  nó — nếu lệch kỳ thì người đọc so hai khối với nhau là ra kết luận sai.
+   *
+   *  Không vẽ gì nếu `line` chưa có trong dữ liệu: giữa hai lượt deploy
+   *  (bẫy số 4) bản Gateway cũ còn đang chạy và chưa trả khối này. Thà thiếu
+   *  một khối còn hơn cả Dashboard nổ. */
+  function veKhoiXepHang() {
+    const o = $("skXepHang");
+    if (!o) return;
+    if (!duLieu || !duLieu.line) { o.innerHTML = ""; return; }
+
+    const L = duLieu.line;
+    const nam = trangThai.nam, namTruoc = nam - 1;
+    const theoNgay = trangThai.donVi === "ngay";
+    const th = trangThai.thang;
+
+    const layO = (ten, n) => {
+      const c = theoNgay
+        ? (((L.theo_thang || {})[ten] || {})[n] || {})[th]
+        : ((L.theo_nam || {})[ten] || {})[n];
+      return c ? { doanh_so: c.doanh_so, so_don: c.so_don } : { doanh_so: 0, so_don: 0 };
+    };
+    const tenKy = (n) => (theoNgay ? "tháng " + th + "/" + n : "năm " + n);
+
+    const hang = (L.thu_tu || []).map((ten) => {
+      const nay = layO(ten, nam), truoc = layO(ten, namTruoc);
+      return {
+        ten, nay, truoc,
+        moTaNay: ten + " · " + tenKy(nam) + " · " + tienDay(nay.doanh_so) + " · " + soDon(nay.so_don) + " đơn",
+        moTaTruoc: ten + " · " + tenKy(namTruoc) + " · " + tienDay(truoc.doanh_so) + " · " + soDon(truoc.so_don) + " đơn",
+      };
+    });
+    if (!hang.length) { o.innerHTML = ""; return; }
+
+    /* Sắp giảm dần theo kỳ đang xem, NHƯNG giữ nguyên line cuối bảng ở cuối
+       — chủ dự án chốt "Line khác xếp cuối", và `thu_tu` là thứ tự chính chủ
+       dự án khai trên Firebase với "Khác" nằm cuối. Đọc từ bảng thay vì viết
+       chết chữ "Khác" vào đây: đổi tên line là chỗ này tự theo. */
+    const tenCuoi = L.thu_tu[L.thu_tu.length - 1];
+    hang.sort((a, b) => {
+      if (a.ten === tenCuoi) return 1;
+      if (b.ten === tenCuoi) return -1;
+      return b.nay.doanh_so - a.nay.doanh_so;
+    });
+
+    const gtLonNhat = Math.max(0, ...hang.map((h) => Math.max(h.nay.doanh_so, h.truoc.doanh_so)));
+    o.innerHTML = '<p class="tieuDeSk">Xếp hạng theo Line · ' + thoat(tenKy(nam))
+      + " so với " + thoat(tenKy(namTruoc))
+      + ' <span class="donViCua">(nghìn đồng)</span></p>'
+      + veXepHang(hang, gtLonNhat, lamGon);
+  }
+
   /** Dải nút phụ dưới biểu đồ — nội dung ĐỔI THEO TAB. */
   function veDaiPhu() {
     const hang = $("skDaiPhu");
@@ -337,15 +429,21 @@
     veTabDonVi();
     veDaiPhu();
     veBieuDoHienTai();
+    veKhoiXepHang();
   }
 
-  /** Khung cố định của Dashboard, dựng một lần vào ô P3 chừa sẵn. */
+  /** Khung cố định của Dashboard, dựng một lần vào ô P3 chừa sẵn.
+   *
+   *  Dải nút phụ nằm NGAY DƯỚI hai biểu đồ, xếp hạng nằm dưới cùng: dải nút
+   *  đổi kỳ cho cả khối, để nó sát biểu đồ thì bấm xong thấy ngay cái vừa
+   *  đổi, không phải cuộn qua bảng xếp hạng mới tới chỗ bấm. */
   function dungKhungHtml() {
     const o = $("o-dashboard");
     if (!o) return false;
     o.innerHTML = '<div class="tabDonVi" id="skTabDonVi"></div>'
       + '<div id="skVe"></div>'
       + '<div class="tabDonVi daiPhu" id="skDaiPhu"></div>'
+      + '<div id="skXepHang" class="khoiXepHang"></div>'
       + '<p class="canhBao" id="skLoi"></p>';
     return true;
   }
@@ -379,6 +477,7 @@
     } catch (e) {
       oVe.innerHTML = "";
       $("skDaiPhu").innerHTML = "";
+      $("skXepHang").innerHTML = "";
       oLoi.textContent = "Không lấy được số liệu biểu đồ: " + e.message;
     } finally {
       dangTai = false;

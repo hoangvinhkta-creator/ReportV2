@@ -42,6 +42,15 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   let hoSoDangDung = HO_SO_QUANLY;
   let choBcKyLoi = false;
   let choBcKyRong = false;
+  let choBangLineLoi = false;
+  let choBangLineThieu = false;
+
+  /* Bảng line nhỏ, đủ phủ hai tên nhân viên của CAY_KY. KHÔNG dùng bảng hạt
+     giống thật để bài kiểm không đỏ mỗi lần chủ dự án thêm một nhân viên. */
+  const BANG_LINE = {
+    thu_tu: ['Nội thành', 'Shopee', 'Khác'],
+    cua_ten: { An: 'Nội thành', Binh: 'Nội thành' },
+  };
 
   globalThis.fetch = async (url, opts) => {
     const u = String(url);
@@ -61,12 +70,17 @@ const b64u = (b) => Buffer.from(b).toString('base64')
       if (choBcKyLoi) return new Response('loi', { status: 500 });
       return new Response(JSON.stringify(choBcKyRong ? null : CAY_KY), { status: 200 });
     }
+    if (u.includes('/bc/quyetdinh/line.json')) {
+      if (choBangLineLoi) return new Response('loi', { status: 500 });
+      return new Response(JSON.stringify(choBangLineThieu ? null : BANG_LINE), { status: 200 });
+    }
     throw new Error('bài kiểm không cho gọi ra ngoài: ' + u);
   };
 
   const mod = await import('file://' + path.join(GOC, 'src/index.js'));
   const w = mod.default;
   const engineThat = await import('file://' + path.join(GOC, 'engine/src/gop-theo-thoi-gian.mjs'));
+  const lineThat = await import('file://' + path.join(GOC, 'engine/src/line.mjs'));
 
   const gio = Math.floor(Date.now() / 1000);
   function tokenChuan(uid) {
@@ -84,7 +98,12 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ASSETS: { fetch: async () => new Response('DA-ROI-XUONG-ASSETS', { headers: { 'Content-Type': 'text/html' } }) },
     FB_SA_EMAIL: 'sa@tinphat.test.iam.gserviceaccount.com',
     FB_SA_KEY,
-    REPORT_ENGINE: { gopSucKhoeCongTy: async (cayKy) => engineThat.gopSucKhoeCongTy(cayKy) },
+    /* Gọi ĐÚNG hàm Engine thật, không phải bản giả — bài kiểm này canh cả
+       chỗ nối giữa Gateway và Engine, không chỉ phần định tuyến. */
+    REPORT_ENGINE: {
+      gopSucKhoeCongTy: async (cayKy) => engineThat.gopSucKhoeCongTy(cayKy),
+      gopLineTheoThoiGian: async (cayKy, bang) => lineThat.gopLineTheoThoiGian(cayKy, bang),
+    },
   };
 
   const goi = (env, duong, headers) => w.fetch(
@@ -114,7 +133,14 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('quanly → 200', r.status, 200);
     const than = await r.json();
     ok('có đủ nhóm kết quả Dashboard cần', Object.keys(than).sort(),
-       ['cac_nam', 'hai_nam', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
+       ['cac_nam', 'hai_nam', 'line', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
+    ok('phần xếp hạng có đủ line theo thứ tự bảng', than.line.thu_tu, ['Nội thành', 'Shopee', 'Khác']);
+    ok('Nội thành gộp cả An lẫn Bình, năm 2026', than.line.theo_nam['Nội thành'][2026],
+       { doanh_so: 1500, so_don: 7 });
+    ok('Shopee chưa có dòng nào → vẫn có mặt, rỗng', than.line.theo_nam.Shopee, {});
+    /* Bất biến quan trọng nhất của phần này: cộng mọi line == tổng công ty.
+       Lệch là có tiền rơi ra ngoài mọi line mà nhìn bảng không cách nào biết. */
+    ok('cộng mọi line == tổng công ty', than.line.tom_tat.khop_tong, true);
     ok('theo_thang cộng đúng cả An và Bình tháng 08/2026', than.theo_thang[2026][8],
        { doanh_so: 1500, so_don: 7, khoa: '2026-08' });
     ok('theo_thang năm 2025 riêng, không lẫn 2026', than.theo_thang[2025][8],
@@ -169,6 +195,33 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     const envThieuEngine = { ...ENV_CO_FIREBASE, REPORT_ENGINE: undefined };
     const r = await goiCoToken(envThieuEngine, '/api/bao-cao/suc-khoe');
     ok('thiếu REPORT_ENGINE → 503', r.status, 503);
+  }
+
+  console.log('\n8b) Bảng line hỏng → 503 CẢ endpoint, không lặng lẽ bỏ riêng phần xếp hạng');
+  {
+    /* Bảng line là thứ người sửa tay trên Firebase Console. Sai mà vẫn trả
+       200 kèm một bảng xếp hạng thiếu line thì không ai biết là đang đọc số
+       thiếu — đúng cái CLAUDE.md cấm ("Nguồn hỏng thì BÁO LỖI"). */
+    hoSoDangDung = HO_SO_QUANLY;
+    choBangLineLoi = true;
+    ok('đọc bảng line lỗi → 503', (await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe')).status, 503);
+    choBangLineLoi = false;
+
+    choBangLineThieu = true;
+    ok('thiếu hẳn bảng line → 503', (await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe')).status, 503);
+    choBangLineThieu = false;
+
+    const envLineHong = {
+      ...ENV_CO_FIREBASE,
+      REPORT_ENGINE: {
+        ...ENV_CO_FIREBASE.REPORT_ENGINE,
+        gopLineTheoThoiGian: async () => { throw new Error('bang-line-khong-hop-le'); },
+      },
+    };
+    const r = await goiCoToken(envLineHong, '/api/bao-cao/suc-khoe');
+    ok('Engine từ chối bảng line → 503', r.status, 503);
+    ok('không lộ mã lỗi nội bộ ra ngoài',
+       JSON.stringify(await r.json()).includes('bang-line-khong-hop-le'), false);
   }
 
   console.log('\n9) Sai method → 405, đúng như mọi endpoint /api/ khác');
