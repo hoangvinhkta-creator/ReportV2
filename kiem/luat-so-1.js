@@ -41,9 +41,10 @@ console.log('\n3) Mọi lời gọi "phía sau" của trang tĩnh đều đi qua
 
 console.log('\n4) Không file mã nguồn nào trong repo mang khoá riêng service account viết chết');
 {
-  /* Quét TOÀN BỘ src/, engine/src/, public/ — không chỉ index.html — vì
-     khoá lộ có thể nằm ở bất kỳ file nào ai đó lỡ tay dán vào. */
-  const CAY = ['src', 'engine/src', 'public'];
+  /* Quét TOÀN BỘ src/, engine/src/, public/, bin/ — không chỉ index.html — vì
+     khoá lộ có thể nằm ở bất kỳ file nào ai đó lỡ tay dán vào. `bin/` có mặt
+     từ P2 (script nạp sổ chạy tay, dùng service account). */
+  const CAY = ['src', 'engine/src', 'public', 'bin'];
   const timFile = (thuMuc, ra = []) => {
     const day = path.join(GOC, thuMuc);
     if (!fs.existsSync(day)) return ra;
@@ -51,7 +52,7 @@ console.log('\n4) Không file mã nguồn nào trong repo mang khoá riêng serv
       const p = path.join(day, ten);
       const rel = path.join(thuMuc, ten);
       if (fs.statSync(p).isDirectory()) timFile(rel, ra);
-      else if (/\.(js|html|json)$/.test(ten)) ra.push(rel);
+      else if (/\.(js|mjs|html|json)$/.test(ten)) ra.push(rel);
     }
     return ra;
   };
