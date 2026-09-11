@@ -72,6 +72,17 @@
 
   /* ---- Tab + Dashboard ---- */
   .tabDonVi { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  /* Hàng tab CHÍNH ([Báo cáo doanh số] / [Biểu đồ]): tách khỏi các hàng tab
+     con bên dưới bằng một gạch, để mắt thấy ngay đây là hai màn khác nhau
+     chứ không phải một cấp lọc nữa. */
+  .tabChinh { border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
+  .tabChinh .tabNut { padding: 8px 18px; font-size: 14px; }
+  /* Năm và tháng nằm CÙNG một hàng, cách nhau một khoảng trống (chủ dự án
+     chốt 11/09/2026). Hai nhóm là hai flex riêng để mỗi nhóm tự xuống dòng
+     mà không trộn lẫn nút năm với nút tháng. */
+  .hangThoiGian { gap: 0; align-items: center; }
+  .hangThoiGian .nhomTab { display: flex; gap: 6px; flex-wrap: wrap; }
+  .hangThoiGian .nhomTab + .nhomTab { margin-left: 28px; }
   .tabNut {
     border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
     padding: 6px 14px; font-size: 13px; cursor: pointer; color: #4b5563;
@@ -141,7 +152,33 @@
   .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangDon th { background: #f9fafb; position: sticky; top: 0; }
   .bangDon .oSo { text-align: right; }
-  .bangDon .oTen, .bangDon .oDiaChi { white-space: normal; max-width: 260px; }
+  .bangDon .oTen { white-space: normal; max-width: 260px; }
+
+  /* Bốn cột thông tin khách + IMEI: thu hẹp và CẮT bớt, không xuống dòng
+     (chủ dự án chốt 11/09/2026). Một địa chỉ dài từng đẩy chiều cao dòng lên
+     gấp ba và làm mất nhịp đọc theo hàng ngang của cả bảng.
+
+     `max-width` đặt trên <td> bị bố cục bảng tự động bỏ qua, nên phải bọc nội
+     dung trong một <span> khối — đó là lý do `oHep()` bên don-hang.js dựng
+     thêm một thẻ con thay vì gán thẳng textContent. Chữ đầy đủ vẫn còn ở
+     `title`, rê chuột là đọc được. */
+  .bangDon .oHep > span {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bangDon .oKhach > span { max-width: 130px; }
+  .bangDon .oDienThoai > span { max-width: 92px; }
+  .bangDon .oDiaChi > span { max-width: 150px; }
+  .bangDon .oImei > span { max-width: 110px; }
+
+  /* Hai cột icon cuối bảng. Ở lượt này nút còn `disabled` — Sửa/Xoá là việc
+     của P3 lượt 2; hiện ra mờ để thấy trước chỗ, bấm vào không làm gì. */
+  .bangDon .oIcon { text-align: center; padding: 2px 4px; }
+  .nutIcon {
+    border: 1px solid transparent; background: none; border-radius: 5px;
+    padding: 2px 6px; font-size: 13px; line-height: 1; cursor: pointer;
+  }
+  .nutIcon:hover { background: #f3f4f6; border-color: #e5e7eb; }
+  .nutIcon:disabled { opacity: .35; cursor: default; background: none; border-color: transparent; }
   .hangNgay td { background: #eef2ff; font-weight: 600; }
   .hangDauDon td { border-top: 2px solid #d1d5db; }
   .hangChietKhau td { color: #b45309; font-style: italic; }
@@ -174,16 +211,30 @@
   </header>
   <p id="hopLoi"></p>
 
-  <!-- Trang chủ ĐI THẲNG vào đây (chủ dự án chốt 11/09/2026): chỉ còn một
-       màn báo cáo nên không chia tab màn, không có lưới thẻ trung gian.
-       Khung tab do P3 dựng (tabNam / tabLine / tabThang + bảng đơn hàng);
-       ô `#o-dashboard` là phần của P2(b) — xem ROADMAP.md. -->
-  <div class="tabDonVi" id="tabNam"></div>
-  <div class="tabDonVi" id="tabLine"></div>
-  <div id="oDashboardBoc"><div id="o-dashboard"></div></div>
-  <div class="tabDonVi" id="tabThang"></div>
-  <p class="canhBao" id="loiDonHang"></p>
-  <div id="veDonHang"></div>
+  <!-- Hai tab CHÍNH (chủ dự án chốt 11/09/2026). Đăng nhập xong vào thẳng
+       [Báo cáo doanh số]; biểu đồ không còn tự hiện ra nữa mà nằm sau tab
+       [Biểu đồ]. Nút do don-hang.js gắn sự kiện. -->
+  <div class="tabDonVi tabChinh" id="tabChinh">
+    <button class="tabNut tabDang" id="nutManBaoCao" type="button">Báo cáo doanh số</button>
+    <button class="tabNut" id="nutManBieuDo" type="button">Biểu đồ</button>
+  </div>
+
+  <section id="manBaoCao">
+    <!-- Năm và tháng CÙNG một hàng, cách nhau một khoảng trống. -->
+    <div class="tabDonVi hangThoiGian">
+      <div class="nhomTab" id="tabNam"></div>
+      <div class="nhomTab" id="tabThang"></div>
+    </div>
+    <div class="tabDonVi" id="tabLine"></div>
+    <p class="canhBao" id="loiDonHang"></p>
+    <div id="veDonHang"></div>
+  </section>
+
+  <!-- Ô `#o-dashboard` là phần của nhánh P2(b) (xem ROADMAP.md). P3 chỉ dời
+       cả cái hộp vào đây và bật/tắt nó; không đụng vào suc-khoe.js. -->
+  <section id="manBieuDo" hidden>
+    <div id="oDashboardBoc"><div id="o-dashboard"></div></div>
+  </section>
 </div>
 
 <section id="manTaiLen" class="wrap" hidden>
