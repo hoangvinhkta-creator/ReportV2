@@ -290,7 +290,7 @@ lượt merge sau), nên phần (b) chỉ còn phải thêm phía Gateway + tran
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 10 bộ, 372 đạt, 0 hỏng.
+`npm test`: 11 bộ, 382 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 

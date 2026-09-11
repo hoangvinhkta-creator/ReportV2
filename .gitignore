@@ -1,0 +1,34 @@
+# Những thứ KHÔNG BAO GIỜ được vào repo.
+#
+# File này ra đời sau một tình huống thật (11/09/2026): để chạy script nạp sổ,
+# chủ dự án phải tải khoá service account Firebase về máy và đặt ngay trong
+# thư mục repo. Lúc đó repo chưa có .gitignore — một lệnh `git add -A` là đủ
+# đẩy khoá riêng lên GitHub. Khoá đã vào lịch sử git thì không xoá sạch được
+# bằng một commit; phải xoay khoá và viết lại lịch sử.
+
+# ── Khoá và bí mật ────────────────────────────────────────────────────────
+# `khoa.json` là đúng cái tên hướng dẫn nạp sổ bảo chủ dự án dùng.
+khoa.json
+*firebase-adminsdk*.json
+service-account*.json
+*.pem
+*.key
+.env
+.env.*
+.dev.vars
+
+# ── Sổ bán hàng và mọi workbook khác ──────────────────────────────────────
+# Sổ chi tiết bán hàng có TÊN, SỐ ĐIỆN THOẠI, ĐỊA CHỈ khách hàng ở các cột
+# 4–7. CLAUDE.md: dữ liệu đó đi qua bộ nhớ tiến trình rồi bỏ, không ghi ra
+# file trung gian trong repo. Reports V1 cũng chặn đúng kiểu này
+# (`.gitignore: *.xlsx` bên repo đó) — giữ nguyên luật, đừng nới.
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+
+# ── Rác của máy và công cụ ────────────────────────────────────────────────
+node_modules/
+.DS_Store
+.wrangler/
+*.log
