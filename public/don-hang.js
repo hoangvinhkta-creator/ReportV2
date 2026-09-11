@@ -25,11 +25,32 @@
 
   const $ = (id) => document.getElementById(id);
 
+  /* Tiền hiện theo nghìn đồng (`6.450` = 6.450.000 đ) — chủ dự án chốt
+     11/09/2026. Đây là ĐỊNH DẠNG, không phải phép tính nghiệp vụ: con số
+     gốc vẫn là đồng, do Engine tính.
+
+     Hai hàm chứ không một, vì hai chỗ cần hai thứ khác nhau:
+
+     · `nghin` — DÒNG HÀNG. Giữ tới 3 số lẻ. Trên 27.299 dòng của ba sổ
+       thật có 5 dòng không chẵn nghìn (9.950.001 đ, 4.090.909,09 đ — số
+       tính ngược từ giá gồm VAT). Làm tròn ở đây là bịa mất phần lẻ của
+       chính sổ, và người đối chiếu từng dòng với MISA sẽ thấy lệch.
+
+     · `nghinTron` — DÒNG TỔNG. Làm tròn về nghìn chẵn. Một cái đuôi ",001"
+       ở dòng tổng của cả line không nói thêm điều gì mà chỉ làm số khó
+       đọc — chủ dự án chốt sau khi thấy "4.047.885,001" trên bản thật. Chỉ
+       đổi cách VIẾT: số trong Firebase không đổi một đồng nào. */
   function nghin(v) {
     if (v === null || v === undefined || v === "") return "—";
     const n = Number(v);
     if (!Number.isFinite(n)) return "—";
     return (n / 1000).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+  }
+  function nghinTron(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "—";
+    return Math.round(n / 1000).toLocaleString("vi-VN");
   }
   const soNguyen = (v) => (Number(v) || 0).toLocaleString("vi-VN");
 
@@ -80,7 +101,7 @@
     }
 
     const tt = el("p", "tomTatDon");
-    tt.appendChild(el("b", null, nghin(b.tom_tat.doanh_so) + " nghìn đ"));
+    tt.appendChild(el("b", null, nghinTron(b.tom_tat.doanh_so) + " nghìn đ"));
     tt.appendChild(document.createTextNode(" · " + soNguyen(b.tom_tat.so_don) + " đơn · "
       + soNguyen(b.tom_tat.so_dong) + " dòng"));
     khung.appendChild(tt);
@@ -100,7 +121,7 @@
          tổng của ngày để đọc dọc không phải tự cộng. */
       const trNgay = el("tr", "hangNgay");
       const tdNgay = el("td", null, nhanNgayDay(ng.ngay) + "  ·  " + soNguyen(ng.so_don)
-        + " đơn  ·  " + nghin(ng.doanh_so) + " nghìn đ");
+        + " đơn  ·  " + nghinTron(ng.doanh_so) + " nghìn đ");
       tdNgay.colSpan = COT.length;
       trNgay.appendChild(tdNgay);
       tbody.appendChild(trNgay);
@@ -134,7 +155,7 @@
         const tdTrong = el("td");
         tdTrong.colSpan = 7;
         trTong.appendChild(tdTrong);
-        trTong.appendChild(el("td", "oSo", nghin(don.tong_ban)));
+        trTong.appendChild(el("td", "oSo", nghinTron(don.tong_ban)));
         const tdSau = el("td");
         tdSau.colSpan = COT.length - 8;
         trTong.appendChild(tdSau);
@@ -230,7 +251,7 @@
           const l = kq.tom_tat_line.line[ten];
           const r = el("tr");
           r.appendChild(el("td", null, ten));
-          r.appendChild(el("td", "oSo", nghin(l.doanh_so)));
+          r.appendChild(el("td", "oSo", nghinTron(l.doanh_so)));
           r.appendChild(el("td", "oSo", soNguyen(l.so_don)));
           r.appendChild(el("td", "oSo", soNguyen(l.so_dong)));
           b.appendChild(r);
