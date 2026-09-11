@@ -75,15 +75,26 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
    production, nhánh phụ không kế thừa — Tracking đã mất gần một giờ vì
    đúng chuyện này).
 
-   **Cách nối trên dashboard** (giao diện Cloudflare KHÔNG có ô "Root
-   directory" cho Worker có sẵn — đã tìm, không có): cả hai Worker nối vào
-   gốc repo, nhánh `main`, để TRỐNG ô Build command. Riêng Engine đổi
-   **Deploy command** thành:
-   ```
-   npx wrangler deploy --config engine/wrangler.toml
-   ```
-   Đường dẫn trong `engine/wrangler.toml` tính theo vị trí chính file đó,
-   không theo nơi gọi lệnh — đã thử bằng `--dry-run` từ gốc repo.
+   **Cách nối trên dashboard.** Ô "Root directory" nằm trong khối *Build
+   configuration* ở Settings → Builds của từng Worker — KHÔNG nằm ở wizard
+   tạo Worker mới, nên rất dễ tưởng là không có (đã tưởng nhầm một lượt).
+
+   | | Gateway | Engine |
+   |---|---|---|
+   | Root directory | `/` | `engine` |
+   | Build command | (trống) | (trống) |
+   | Deploy command | mặc định | mặc định |
+   | Version command | mặc định | mặc định |
+
+   Đặt Root directory đúng thì cả ba lệnh mặc định tự trỏ đúng Worker, và
+   hết cảnh báo cam "Update wrangler.toml … name = …". Nếu buộc phải để
+   Root directory = `/` cho Engine thì **cả** Deploy command **lẫn** Version
+   command đều phải thêm `--config engine/wrangler.toml` — thiếu ở Version
+   command là nó deploy nhầm sang Gateway.
+
+   Còn một cảnh báo nữa phải để ý: *"This project is disconnected from your
+   Git account"*. Repo hiện đúng tên nhưng uỷ quyền GitHub App đã rớt →
+   build không chạy. Sửa ở nút **Manage** cạnh dòng Git repository.
 
    Muốn deploy tay (ví dụ lúc gỡ lỗi) thì vẫn được: `git pull origin main
    && wrangler deploy`, và `wrangler deploy --config engine/wrangler.toml`
