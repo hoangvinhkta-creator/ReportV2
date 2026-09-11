@@ -22,8 +22,11 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 **P1 XONG. P2 phần (a) — trích + nạp — XONG THẬT (11/09/2026): dữ liệu 20
 tháng (01/2025–08/2026) ĐÃ NẰM TRÊN FIREBASE, đã đọc ngược xác nhận khớp
-từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. Việc TRƯỚC MẶT
-tiếp theo: P2 phần (b) — biểu đồ theo line.**
+từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. P2 phần (b) —
+biểu đồ — bước 1 (màn mở, sức khoẻ kinh doanh toàn công ty) ĐÃ MERGE THẲNG
+(11/09/2026, PR #22 + #23) — CHƯA CHỦ DỰ ÁN TỰ MỞ BẰNG MÁY THẬT ĐỂ XÁC
+NHẬN. Việc TRƯỚC MẶT tiếp theo: xem "Việc còn lại của P2 phần (b)" dưới
+mục LINE.**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -298,15 +301,37 @@ node bin/nap-line.mjs --doc-lai     # đọc thử, KHÔNG ghi gì — phép th�
 3. **Phần (b) — biểu đồ — ĐANG LÀM ở nhánh riêng.** Xem mục "Hai nhánh
    chạy song song" ngay dưới.
 
-**Phần (b) làm gì:** Gateway đọc `bc/ky` + `bc/quyetdinh/line`, gọi
-`gopTheoLine()` ở Engine, trả số đã tính sẵn cho trang tĩnh; trang tĩnh vẽ
-biểu đồ doanh số + số đơn **theo LINE** từ 01/2025 tới hôm nay (bấm vào
-một line thì mở ra `nguon` — từng nhân viên trong line đó), cuộn được lên
-tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước.
+**Phần (b) — bước 1 (màn mở) ĐÃ MERGE (11/09/2026, PR #22 + #23):**
+`engine/src/gop-theo-thoi-gian.mjs` (gộp doanh số theo ngày/tháng/quý/năm,
+so cùng kỳ năm trước — thuần, không phụ thuộc `line.mjs`) + RPC
+`gopSucKhoeCongTy()` ở Engine + `GET /api/bao-cao/suc-khoe` ở Gateway +
+`public/suc-khoe.js` (3 tab Ngày/Tháng/Năm, hai đường năm nay/năm trước,
+mở từ thẻ "Biểu đồ theo kỳ" ở màn chủ). Đây LÀ màn hình mở đầu mà chủ dự
+án yêu cầu lúc duyệt mockup ("Bản Vẽ Biểu Đồ Line" v3) — sức khoẻ kinh
+doanh toàn công ty, CHƯA lọc theo Line.
 
-Engine ĐÃ có sẵn `gopSoBanHang()` và `gopTheoLine()` qua Service Binding
-(bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt merge sau), nên phần
-(b) chỉ còn phải thêm **endpoint ở Gateway + phần vẽ ở trang tĩnh**.
+**Việc còn lại của P2 phần (b):**
+1. Chủ dự án tự mở `public/suc-khoe.js` bằng máy thật, xác nhận số đúng —
+   CHƯA làm, đây là điều kiện ra khỏi bước 1 thật sự (xem "Nguyên tắc làm
+   việc" đầu file: deploy rồi tự xác nhận, không phải "code xong" là xong).
+2. Thêm biểu đồ **số đơn hàng** — cùng cấu trúc 3 tab, cùng hai đường —
+   cạnh biểu đồ doanh số (KHÔNG gộp vào một biểu đồ dual-axis, hai thẻ
+   riêng — chủ dự án chốt lúc duyệt mockup).
+3. Vá `gopTheoLine()` cũ (hoặc thay hẳn) bằng bản dùng
+   `gop-theo-thoi-gian.mjs::gopCayKyThanhChuoiNgay(cayKy, locNhanVien)` —
+   lọc nhân viên theo từng Line (`line.mjs::xepLine()`/`BANG_LINE_HAT_GIONG`)
+   rồi gộp qua đơn vị thời gian như màn mở đã làm cho cả công ty. Từ đó
+   mới có xếp hạng theo Line (cột dọc sequential một màu, KHÔNG 10 hue
+   riêng — xem dataviz) + lưới nhỏ (small-multiples) từng Line, Line khác
+   xếp cuối, không cần đơn trung bình.
+4. Tab **Quý** (đã có sẵn trong `DON_VI_HOP_LE`, `gopMotChuoiNgay()`) —
+   chỉ màn mở cố định 3 tab Ngày/Tháng/Năm; các biểu đồ theo Line ở bước 3
+   dùng 3 tab Ngày/Tháng/**Quý** (không có Năm — chốt lúc duyệt mockup).
+
+Engine ĐÃ có sẵn `gopSoBanHang()`, `gopTheoLine()`, `gopSucKhoeCongTy()`
+qua Service Binding (bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt
+merge sau) — bước 3 phải theo đúng nếp này: hàm gộp-theo-Line mới lên
+Engine ở MỘT lượt merge riêng, Gateway gọi nó ở lượt sau.
 
 ### Hai nhánh chạy SONG SONG — P2(b) và P3
 
@@ -340,11 +365,14 @@ thứ tự các dòng đang có — đó mới là thứ biến một dòng thà
 
 **3. `public/index.html` — MỘT file, hai màn hình. Quy ước bắt buộc:**
 
-- Mỗi màn một file `.js` RIÊNG trong `public/`: `public/bieu-do.js`
-  (P2b), `public/tai-len.js` (P3).
+- Mỗi màn một file `.js` RIÊNG trong `public/`: P2(b) đã dùng
+  `public/suc-khoe.js` cho màn mở (11/09/2026) — P2(b) có thể còn thêm
+  file khác cho các màn sau (biểu đồ theo Line...), P3 dùng
+  `public/tai-len.js`. Tên cụ thể không quan trọng, chỉ cần MỖI màn một
+  file riêng, không màn nào viết chung vào khối `<script>` inline.
 - `index.html` mỗi bên chỉ thêm **một thẻ `<script src>`** và **một thẻ
-  chứa màn hình** (`<section id="man-bieu-do" hidden>` /
-  `<section id="man-tai-len" hidden>`).
+  chứa màn hình** (P2(b) màn mở dùng `<div id="manSucKhoe" hidden>`; P3
+  tự đặt id riêng cho màn tải file).
 - KHÔNG viết logic màn mới vào khối `<script>` inline đang có. Khối đó là
   của phần đăng nhập, để yên.
 
