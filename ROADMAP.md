@@ -24,9 +24,19 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 tháng (01/2025–08/2026) ĐÃ NẰM TRÊN FIREBASE, đã đọc ngược xác nhận khớp
 từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. P2 phần (b) —
 biểu đồ — bước 1 (màn mở, sức khoẻ kinh doanh toàn công ty) ĐÃ MERGE THẲNG
-(11/09/2026, PR #22 + #23) — CHƯA CHỦ DỰ ÁN TỰ MỞ BẰNG MÁY THẬT ĐỂ XÁC
-NHẬN. Việc TRƯỚC MẶT tiếp theo: xem "Việc còn lại của P2 phần (b)" dưới
-mục LINE.**
+(11/09/2026, PR #22 + #23). P3 LƯỢT 1 — đường tải sổ qua trình duyệt +
+danh sách đơn hàng theo line — ĐÃ MERGE THẲNG (11/09/2026, PR #24 + #25).
+CẢ HAI CHƯA ĐƯỢC CHỦ DỰ ÁN TỰ MỞ BẰNG MÁY THẬT ĐỂ XÁC NHẬN.**
+
+> ⚠️ **HAI VIỆC TAY PHẢI LÀM TRƯỚC KHI DÙNG P3** (chi tiết ở mục "P3" dưới):
+> 1. Thêm hai nhánh `bc/dong` và `bc/backup` vào rules đang chạy —
+>    `firebase-rules/bc.rules.json` đã có sẵn nội dung.
+> 2. Nạp lại bảng line: `node bin/nap-line.mjs --ghi --doc-lai` — hai tên
+>    `FANPAGE`/`SHOPEE` đã đổi sang chữ HOA cho khớp sổ 09/2026.
+
+**Việc TRƯỚC MẶT tiếp theo:** P3 lượt 2 (nút sửa/xoá đơn + audit trail) —
+xem "P3 — lượt 2 còn lại". Hoặc P2(b) bước 2, xem "Việc còn lại của P2
+phần (b)".
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -333,6 +343,177 @@ qua Service Binding (bẫy số 4: hàm Engine lên trước, Gateway gọi ở 
 merge sau) — bước 3 phải theo đúng nếp này: hàm gộp-theo-Line mới lên
 Engine ở MỘT lượt merge riêng, Gateway gọi nó ở lượt sau.
 
+### P3 — tải sổ qua trình duyệt: LƯỢT 1 ĐÃ MERGE (11/09/2026)
+
+Chủ dự án mở rộng phạm vi P3 ngay trong phiên (11/09/2026), nên P3 chia
+**hai lượt merge**. Lượt 1 xong; lượt 2 còn lại ở cuối mục này.
+
+**Bối cảnh: chủ dự án đã gửi ba sổ thật trong phiên** — sổ 2025 (25.089
+hàng), sổ **08/2026** (1.613 hàng) và sổ **09/2026** (615 hàng, tới
+20/09), cộng file báo cáo tay `Báo cáo Kinh doanh 2026.xlsx` (58 sheet
+kiểu "08.2026 Tín Phát") làm mẫu bố cục. Mọi con số dưới đây đo trên
+chính ba sổ đó, không phải số giả lập.
+
+#### Phép kiểm mạnh nhất của P3 — đã chạy, khớp tuyệt đối
+
+Đẩy sổ 08/2026 qua TRỌN đường upload (bộ đọc trong trình duyệt → POST
+`/api/tai-so` → Engine → Firebase) rồi đọc ngược:
+
+| Sổ | .xlsx | JSON gửi lên | đọc ở trình duyệt | trọn lượt Gateway | kết quả |
+|---|---|---|---|---|---|
+| 08/2026 | 0,23 MB | 0,45 MB | 95 ms | 112 ms | **15.818.470.000 đ · 1.150 đơn** |
+| 09/2026 | 0,09 MB | 0,17 MB | 37 ms | 34 ms | **5.704.985.001 đ · 445 đơn** |
+
+Con số 08/2026 **trùng khít từng đồng, từng đơn** với `bc/ky/2026-08` mà
+script chạy tay của P2 đã nạp — hai đường khác hẳn nhau, cùng một hàm
+`gopSoBanHang()`, cùng một con số.
+
+#### Giới hạn kỹ thuật — đã đo, KHÔNG cắt lô
+
+| Sổ | dòng | JSON ma trận | gzip | parse | gộp | CPU |
+|---|---|---|---|---|---|---|
+| 09/2026 (nửa tháng) | 609 | 0,17 MB | 0,04 MB | 0,9 ms | 6,2 ms | ~7 ms |
+| một tháng đầy (mô phỏng) | 2.600 | 0,72 MB | 0,15 MB | 3,0 ms | 15,9 ms | ~19 ms |
+| cả năm 2025 | 25.083 | 7,22 MB | 1,54 MB | 85 ms | 176 ms | ~261 ms |
+
+Gói **Workers Paid** (trần 30 s CPU) nên một sổ tháng đi gọn trong MỘT
+lượt POST. Cắt lô chỉ làm phức tạp đường ghi và phá luật "đè trọn kỳ
+trong một lượt PUT" mà không giải quyết gì. Trần thân request đặt 24 MB.
+
+#### Bốn quyết định nghiệp vụ chủ dự án chốt trong phiên
+
+1. **`FANPAGE 0327339229` / `SHOPEE 0865111033` viết HOA.** Sổ 09/2026
+   thật in HOA; bảng line khai chữ thường nên line Fanpage hiện 0 đ trong
+   khi 15.700.000 đ rơi sang "Khác". Hai cách viết là MỘT, lấy dạng sổ
+   ghi. **Phải chạy lại `node bin/nap-line.mjs --ghi --doc-lai`.**
+2. **Chiết khấu là một DÒNG, không phải một phép trừ ẩn.** MISA rải chiết
+   khấu ra từng dòng của đơn (`BH72812` sổ 08/2026: 100.000 đ ở cả hai
+   dòng). Bảng đơn hàng gộp toàn bộ lại thành đúng MỘT dòng mã
+   `Chiết khấu`, giá nhập 0, giá bán mang dấu âm. Cộng các dòng ra đúng
+   con số `bc/ky` giữ — bảng đơn và biểu đồ không kể hai câu chuyện khác
+   nhau.
+3. **Luật đè áp theo TỪNG KỲ** (thay cho "đè trọn kỳ" đọc theo nghĩa cả
+   file): kỳ chưa có dữ liệu → ghi mới; kỳ đã có → file mới phải phủ trọn
+   khoảng ngày cũ, không phủ thì **từ chối CẢ LƯỢT**; kỳ vắng mặt trong
+   file mới → không đụng tới. Tải riêng sổ T10 không xoá T9; file
+   1/9–15/10 đè trọn T9 rồi ghi mới T10.
+4. **Tiền hiện theo NGHÌN ĐỒNG** (`6.450` = 6.450.000 đ), đúng như file
+   báo cáo tay. Giữ tới 3 số lẻ chứ không làm tròn: trên 27.299 dòng của
+   ba sổ có 5 dòng không chẵn nghìn (`9.950.001 đ`, `4.090.909,09 đ`).
+
+Và hai quyết định về phạm vi: dòng biến mất khỏi file mới thì **xoá thẳng**
+(xuất hiện lại sau này là một dòng mới độc lập); **KHÔNG bơm ngược dòng
+hàng cho 20 kỳ legacy** — chủ dự án chốt theo dõi kỳ cũ ở file tay, nên
+tab đơn hàng của 2025 và 01–08/2026 rỗng là ĐÚNG, không phải lỗi.
+
+#### Mười sáu cột của bảng đơn hàng — sáu cột chờ P4
+
+`[ngày][số BH][nơi nhập][mã sản phẩm][SL][giá nhập][giá bán][tổng bán]`
+`[lợi nhuận][tên khách][SĐT][địa chỉ][hãng][ngành hàng][IMEI][ghi chú]`
+
+Sổ MISA **không có** `nơi nhập`, `hãng`, `ngành hàng`, `ghi chú`, và cột
+`mã sản phẩm` của nó thật ra là TÊN hàng (`"Máy giặt LG FX1412N5G"`),
+không phải mã. Bốn cột đó cộng `giá nhập`/`lợi nhuận` trả `null` TƯỜNG
+MINH và màn hình hiện `—`, không hiện 0 — P4 lấy từ Tracking. Cột
+`Lợi nhuận` MISA có in ra nhưng vô nghĩa (bằng đúng doanh số, giá vốn
+chưa nhập vào MISA) nên không dùng.
+
+#### Hai nhánh dữ liệu MỚI — chủ dự án phải thêm vào rules đang chạy
+
+| Nhánh | Chứa gì | `.read` / `.write` |
+|---|---|---|
+| `bc/dong/<kỳ>/<khoá dòng>` | từng dòng hàng — KHÔNG một chữ nào của khách | `false` / `false` |
+| `bc/backup/<kỳ>/<mốc>` | ba bản lưu gần nhất của mỗi kỳ | `false` / `false` |
+
+PII vẫn đi đúng chỗ cũ: tên/SĐT/địa chỉ → `bc/khach` (khoá theo số chứng
+từ), IMEI → `bc/imei`. Đã kiểm trên sổ thật: **0 SĐT khách, 0 địa chỉ, 0
+tên khách lọt vào `bc/dong`**.
+
+Nội dung cần thêm nằm sẵn ở `firebase-rules/bc.rules.json`; cách làm ở
+`firebase-rules/README.md`. Đường tải sổ vẫn chạy được khi chưa thêm
+(Gateway ghi bằng service account, đi vòng qua rules) — khai tường minh là
+để một lần nới `bc` về sau không vô tình mở luôn hai nhánh này.
+
+Dung lượng đo thật: một tháng ≈ 390 KB (`bc/dong`) + 140 KB (`bc/khach`)
++ 45 KB (`bc/imei`).
+
+#### Năm đường mới ở Gateway, và khoá dòng
+
+```
+POST /api/tai-so      nhận ma trận ô → Engine → PUT bc/ky + bc/dong
+POST /api/hoan-tac    quay một kỳ về một bản lưu
+GET  /api/ban-luu     ba bản lưu của một kỳ (chỉ NHÃN, không kèm cây dòng)
+GET  /api/ky-co-don   kỳ nào có dòng hàng, gom theo năm → dựng tab
+GET  /api/don-hang    bảng đơn hàng ĐÃ TÍNH SẴN của (kỳ, line)
+```
+
+Khoá dòng đúng công thức CLAUDE.md chốt: **(số chứng từ, tên hàng chuẩn
+hoá, lần xuất hiện thứ mấy trong chứng từ)**. "Lần thứ mấy" là cần thật
+chứ không phòng xa — `BH71909` sổ 08/2026 có BỐN dòng cùng tên
+`"Chân máy giặt Đa Năng - chiều"` với số lượng khác nhau. Tên hàng thật
+có dấu chấm/gạch chéo ở **1.360/27.299 dòng** và dài tới **190 ký tự**,
+nên khoá thay ký tự Firebase cấm bằng `~` và cắt kèm dấu vân.
+
+#### Ba chỗ đụng với P2(b) — đã xử đúng quy ước
+
+- `src/index.js` cửa chặn method: nới POST cho **đúng hai đường**, suy
+  thẳng từ `API_ROUTES` chứ không khai lại danh sách thứ hai. Mọi đường
+  khác vẫn 405; đường lạ ra 404 chứ không 405. `kiem/dinh-tuyen.js` bài 1
+  đã sửa cho khớp và **giữ nguyên phép canh cho mọi đường khác**.
+- `API_ROUTES`: chỉ THÊM năm dòng vào cuối, không sắp xếp lại. Có bài kiểm
+  ghim thứ tự để đường của P1 và P2(b) không bị dời.
+- `public/index.html`: thêm ba thẻ `<script src>` và hai `<section>`.
+  Toàn bộ logic ở `public/doc-xlsx.js`, `public/tai-len.js`,
+  `public/don-hang.js`. Không đụng khối `<script>` inline.
+
+#### Quy ước cho P2(b): ô `#o-dashboard`
+
+Màn "Đơn hàng theo line" có tab năm → tab con (Dashboard + từng line) →
+chọn tháng. Tab **Dashboard** chứa sẵn một ô trống `#o-dashboard` —
+**P2(b) sở hữu nội dung ô đó**, P3 sở hữu khung tab. P3 không vẽ biểu đồ
+nào ở đó, chỉ liệt kê line của tháng.
+
+Có thêm hàng CHỌN THÁNG mà file tay không có, vì dữ liệu lưu theo kỳ và
+một tháng nặng ~390 KB — mở thẳng cả năm là kéo về ~4,7 MB cho một lượt
+xem.
+
+#### Đọc .xlsx trong trình duyệt — không nới CSP
+
+`public/doc-xlsx.js` là bản port của `bin/doc-xlsx.mjs` (đã chạy trên
+40.118 dòng sổ thật ở P2), khác mỗi chỗ giải nén: `DecompressionStream`
+thay cho `zlib`. Tự viết vì CSP chỉ cho script từ `'self'` và gstatic —
+kéo SheetJS từ CDN là nới một lỗ thật trên bản deploy.
+
+**Đã kiểm giống hệt bản Node trên cả bốn file thật**, kể cả sổ 25.089
+hàng. `kiem/doc-xlsx-trinh-duyet.js` dựng một .xlsx thật trong bộ nhớ
+(ZIP + deflate + SpreadsheetML) rồi so từng ô giữa hai bộ, và ghim luôn
+LUẬT SỐ 1: file đó không được biết "cột 12 là nhân viên".
+
+#### P3 — lượt 2 còn lại
+
+Chủ dự án đã chốt nội dung, chưa code:
+
+1. **Nút sửa / xoá đơn** trên bảng đơn hàng — để bỏ mã phụ kiện, mã vận
+   chuyển khỏi doanh số, hoặc sửa giá nhập.
+2. **Khoá chống đè** — cơ chế đã dựng sẵn và có bài kiểm ở lượt 1:
+   `doiChieuKy()` nhận tập khoá đã sửa tay từ `bc/quyetdinh/dong/<kỳ>`,
+   dòng nào đã sửa thì GIỮ BẢN CŨ và cảnh báo riêng thay vì bị đè. Lượt 2
+   chỉ còn phải GHI vào nhánh đó và dựng giao diện. Khoá đặt ở mức DÒNG,
+   cảnh báo gom theo ĐƠN (chủ dự án chốt).
+3. **Audit trail** — ai sửa gì lúc nào.
+4. Dòng đã sửa tay mà biến mất khỏi file mới thì **giữ lại + cảnh báo**
+   (ngoại lệ duy nhất của luật "xoá thẳng") — xoá nó là xoá một quyết
+   định của người mà không hỏi ai.
+
+Và một quan sát từ sổ thật, để lượt 2 biết trước: hai đơn Shopee của
+09/2026 (`BH74228`, `BH74234`, đều là tủ đông Sanaky) có **doanh số 0 đ**
+nhưng vẫn đếm là 2 đơn. Cả tháng 9 có 18 dòng 0 đồng, 16 dòng còn lại rõ
+ràng là quà tặng/phụ kiện. Chứng từ `BTL` (đoán là *bán trả lại*, 122
+dòng ở sổ 2025) cũng 0 đ và vẫn đếm là đơn — số legacy đã tính như vậy
+nên P3 giữ nguyên để không phá tính liên tục.
+
+---
+
 ### Hai nhánh chạy SONG SONG — P2(b) và P3
 
 Chủ dự án chốt 11/09/2026: **P2(b) (biểu đồ) và P3 (tải file) làm song
@@ -521,7 +702,7 @@ phẩm/thương hiệu tuỳ chọn (P6), khai tử V1 (P7).
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
 | P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | 🟨 Đang làm — xem "Trạng thái hiện tại" |
-| P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | 🟨 Lượt 1 đã merge — còn lượt 2 (sửa/xoá + audit) |
 | P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
 | P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
 | P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |

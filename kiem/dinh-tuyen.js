@@ -22,15 +22,42 @@ const GOC = path.resolve(__dirname, '..');
   const goi = (duong, method, headers) => w.fetch(
     new Request('https://reportv2-gateway.workers.dev' + duong, { method: method || 'GET', headers }), ENV);
 
-  console.log('\n1) P1 chỉ có GET/HEAD — method khác bị 405 ở khắp nơi');
+  console.log('\n1) Cửa chặn method — P3 mở POST cho ĐÚNG hai đường, mọi đường khác vẫn 405');
   {
+    /* Bài này là cửa chặn của P1 ("chỉ GET/HEAD"), được P3 nới đúng một
+       khe. Phép canh cho MỌI đường khác giữ nguyên không đổi một chữ — đó
+       là cả điểm của việc nới có kiểm soát: nếu ai đó mở POST cho cả
+       `/api/` thì những dòng dưới đây đỏ ngay. */
     ok('POST / bị chặn 405', (await goi('/', 'POST')).status, 405);
     ok('POST /api/me bị chặn 405', (await goi('/api/me', 'POST')).status, 405);
     ok('PUT /api/me bị chặn 405', (await goi('/api/me', 'PUT')).status, 405);
     ok('DELETE / bị chặn 405', (await goi('/', 'DELETE')).status, 405);
+    ok('POST /api/bao-cao/suc-khoe (đường của P2b) vẫn 405',
+       (await goi('/api/bao-cao/suc-khoe', 'POST')).status, 405);
+    ok('POST /api/don-hang (đường chỉ đọc) vẫn 405', (await goi('/api/don-hang', 'POST')).status, 405);
 
     const r = await goi('/', 'POST');
     ok('405 có nói rõ method nào được phép', r.headers.get('Allow'), 'GET, HEAD');
+
+    /* Hai đường P3 mở: KHÔNG còn 405. Chưa kèm token thì phải rơi vào cửa
+       xác thực (401) — tức là request đã đi qua cửa method và tới được lớp
+       "anh là ai", đúng thứ tự CLAUDE.md đòi. */
+    ok('POST /api/tai-so KHÔNG còn 405', (await goi('/api/tai-so', 'POST')).status, 401);
+    ok('POST /api/hoan-tac KHÔNG còn 405', (await goi('/api/hoan-tac', 'POST')).status, 401);
+
+    /* Nhưng chỉ POST — không phải mở toang cho mọi method. */
+    ok('PUT /api/tai-so vẫn bị chặn 405', (await goi('/api/tai-so', 'PUT')).status, 405);
+    ok('DELETE /api/tai-so vẫn bị chặn 405', (await goi('/api/tai-so', 'DELETE')).status, 405);
+    /* `/api/tai-so` là đường CHỈ nhận POST — nó không có gì để GET. Allow
+       phải nói đúng ngần ấy, không kèm GET/HEAD cho đẹp đội hình. */
+    ok('405 của /api/tai-so kể đúng một method', (await goi('/api/tai-so', 'PUT')).headers.get('Allow'), 'POST');
+    ok('GET /api/tai-so cũng 405 (đường có thật, sai cửa)', (await goi('/api/tai-so', 'GET')).status, 405);
+
+    /* Đường KHÔNG có trong bảng phải ra 404 (không có gì ở đây), không phải
+       405 (có, nhưng sai cửa) — 405 cho đường lạ là tự khai báo đường nào
+       tồn tại. */
+    ok('POST vào đường /api/ lạ vẫn 404, không phải 405',
+       (await goi('/api/khong-he-co', 'POST')).status, 404);
   }
 
   console.log('\n2) /api/ lạ phải 404, KHÔNG rơi xuống file tĩnh');
