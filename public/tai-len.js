@@ -280,6 +280,84 @@
     }
   }
 
+  /* ---- Xoá trọn một kỳ ----
+   *
+   * Cứu cho ca: tải nhầm sổ, một dòng gõ sai ngày thành "2031-03" chẳng
+   * hạn, kỳ rác đó nằm lại VĨNH VIỄN vì không kỳ nào tự "hết hạn" — nó
+   * không có bản lưu (kỳ mới tinh) nên hoàn tác cũng không giúp gì.
+   *
+   * `/api/xoa-ky` tự lưu bản cũ TRƯỚC khi xoá, nên xoá nhầm một kỳ ĐÃ CÓ
+   * dữ liệu thật vẫn cứu được qua chính "Bản lưu" ở trên — không cần một
+   * đường cứu hộ riêng.
+   */
+
+  async function veQuanLyKy() {
+    const khung = $("quanLyKy");
+    khung.innerHTML = '<p class="dangTai">Đang tải danh sách kỳ…</p>';
+    let ds;
+    try { ds = await goi("/api/ky-co-don"); }
+    catch (e) { khung.innerHTML = ""; khung.appendChild(el("p", "canhBao", "Không đọc được danh sách kỳ: " + e.message)); return; }
+
+    khung.innerHTML = "";
+    if (!ds.ky.length) {
+      khung.appendChild(el("p", "dangTai", "Chưa có kỳ nào."));
+      return;
+    }
+
+    const h = el("div", "khoiKq");
+    h.appendChild(el("h3", null, "Các kỳ đã có"));
+    for (const nam of ds.thu_tu_nam) {
+      const dong = el("div", "motBanLuu");
+      dong.appendChild(el("span", null, nam + ": " + ds.nam[nam].map(nhanKy).join(", ")));
+      h.appendChild(dong);
+    }
+    h.appendChild(el("p", "viDu", "Xoá một kỳ — chỉ dùng cho kỳ tải NHẦM. Bản cũ được lưu lại trước khi xoá, "
+      + "quay lại được qua mục “Bản lưu” ở trên."));
+
+    const chonKy = el("div", "hangChon");
+    const oChon = document.createElement("select");
+    oChon.className = "nutNho";
+    for (const ky of ds.ky) {
+      const opt = document.createElement("option");
+      opt.value = ky; opt.textContent = nhanKy(ky);
+      oChon.appendChild(opt);
+    }
+    chonKy.appendChild(oChon);
+    const nutXoa = el("button", "nutNho", "Xoá kỳ này");
+    nutXoa.type = "button";
+    nutXoa.addEventListener("click", () => xoaMotKy(oChon.value, nutXoa));
+    chonKy.appendChild(nutXoa);
+    h.appendChild(chonKy);
+
+    khung.appendChild(h);
+  }
+
+  async function xoaMotKy(ky, nut) {
+    if (!ky) return;
+    if (!window.confirm("XOÁ TRỌN " + nhanKy(ky) + "? Toàn bộ doanh số, đơn hàng, dòng hàng của kỳ này "
+      + "sẽ biến mất khỏi các màn hình — chỉ dùng khi tải nhầm. Bản cũ được lưu lại, quay lại được sau.")) return;
+    nut.disabled = true;
+    try {
+      const kq = await goi("/api/xoa-ky", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ky: ky }),
+      });
+      $("loiTaiLen").textContent = "";
+      $("kqTaiLen").innerHTML = "";
+      const h = el("div", "khoiKq khoiXong");
+      h.appendChild(el("h3", null, kq.xong ? "Đã xoá" : "Không xoá được"));
+      h.appendChild(el("p", null, kq.xong ? (nhanKy(ky) + " đã xoá.") : (kq.cau || "")));
+      $("kqTaiLen").appendChild(h);
+      await veQuanLyKy();
+      if (kq.xong) veBanLuu(ky);
+    } catch (e) {
+      $("loiTaiLen").textContent = "Không xoá được: " + e.message;
+    } finally {
+      nut.disabled = false;
+    }
+  }
+
   /* ---- Lượt tải ---- */
 
   async function taiLen() {
@@ -309,6 +387,7 @@
 
       trangThai.textContent = "";
       veKetQua(kq);
+      if (kq.ghi) veQuanLyKy();
     } catch (e) {
       trangThai.textContent = "";
       loi.textContent = e.message;
@@ -321,6 +400,7 @@
   function moMan() {
     $("manChu").hidden = true;
     $("manTaiLen").hidden = false;
+    veQuanLyKy();
   }
   function dongMan() {
     $("manTaiLen").hidden = true;

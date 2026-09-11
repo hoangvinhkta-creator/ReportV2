@@ -87,8 +87,13 @@ const GOC = path.resolve(__dirname, '..');
     ok('bc/dong KHÔNG chứa số điện thoại', /0988456479/.test(chuoiDong), false);
     ok('bc/dong KHÔNG chứa địa chỉ', /ngõ 28/.test(chuoiDong), false);
 
-    ok('bc/khach khoá theo SỐ CHỨNG TỪ, không theo dòng', Object.keys(t.khach).sort(), ['BH1', 'BH2']);
-    ok('bc/khach giữ đủ ba trường', t.khach.BH1,
+    /* Khoá HAI TẦNG: kỳ rồi mới tới số chứng từ — không phẳng như bản đầu.
+       Đây là chỗ giải quyết việc `bc/khach` bị đọc TOÀN BỘ mỗi lần mở một
+       kỳ (đo trên sổ thật: 151 KB/tháng, phẳng thì con số đó cộng dồn mãi
+       mãi — 36 tháng đã 5,29 MB cho một lượt xem). */
+    ok('bc/khach khoá theo KỲ trước', Object.keys(t.khach), ['2026-09']);
+    ok('rồi mới tới SỐ CHỨNG TỪ, không theo dòng', Object.keys(t.khach['2026-09']).sort(), ['BH1', 'BH2']);
+    ok('bc/khach giữ đủ ba trường', t.khach['2026-09'].BH1,
        { ten: 'Chị Nga', dien_thoai: '0988456479', dia_chi: 'Số 5 ngõ 28' });
     ok('bc/imei trỏ ngược về đơn', t.imei.SN123, { so_ct: 'BH1', ngay: '2026-09-02', ten_hang: 'Tủ lạnh' });
 
@@ -202,7 +207,7 @@ const GOC = path.resolve(__dirname, '..');
       dg({ ngay: '2026-09-02', ct: 'BH72812', ten: 'Máy rửa bát', sl: 1, dg: 6600000,
            ds: 6600000, ck: 100000, nv: 'Đức Hiệp', khach: 'Chị Nga', dt: '0988456479' }),
     ]));
-    const bang = D.dungBangDon(t.dong['2026-09'], t.khach, L.BANG_LINE_HAT_GIONG, null);
+    const bang = D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], L.BANG_LINE_HAT_GIONG, null);
     const don = bang.ngay[0].don[0];
 
     ok('hai dòng hàng + đúng MỘT dòng chiết khấu', don.dong.length, 3);
@@ -251,18 +256,18 @@ const GOC = path.resolve(__dirname, '..');
     ]));
     const B = L.BANG_LINE_HAT_GIONG;
 
-    const noiThanh = D.dungBangDon(t.dong['2026-09'], t.khach, B, 'Nội thành');
+    const noiThanh = D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], B, 'Nội thành');
     ok('lọc Nội thành chỉ còn đơn của Đức Hiệp', noiThanh.ngay.map(n => n.don.map(d => d.so_ct)), [['BH1']]);
 
     /* Chính là ca đã sửa ở lượt này: sổ 09/2026 ghi HOA "FANPAGE 0327339229".
        Bảng line khai đúng dạng đó nên đơn rơi vào Fanpage, không rơi "Khác". */
-    const fanpage = D.dungBangDon(t.dong['2026-09'], t.khach, B, 'Fanpage');
+    const fanpage = D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], B, 'Fanpage');
     ok('FANPAGE viết hoa rơi ĐÚNG line Fanpage', fanpage.ngay.map(n => n.don.map(d => d.so_ct)), [['BH2']]);
     ok('và KHÔNG rơi nhầm sang Khác',
-       D.dungBangDon(t.dong['2026-09'], t.khach, B, L.LINE_KHAC).ngay, []);
+       D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], B, L.LINE_KHAC).ngay, []);
 
-    ok('không lọc thì có cả hai ngày', D.dungBangDon(t.dong['2026-09'], t.khach, B, null).ngay.length, 2);
-    ok('ngày sắp tăng dần', D.dungBangDon(t.dong['2026-09'], t.khach, B, null).ngay.map(n => n.ngay),
+    ok('không lọc thì có cả hai ngày', D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], B, null).ngay.length, 2);
+    ok('ngày sắp tăng dần', D.dungBangDon(t.dong['2026-09'], t.khach['2026-09'], B, null).ngay.map(n => n.ngay),
        ['2026-09-02', '2026-09-03']);
   }
 
