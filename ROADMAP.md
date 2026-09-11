@@ -160,13 +160,20 @@ hiện ra thành hai cột rời, đứt đúng chỗ đổi người.
 | 6 | Đông Á | Lê Mạnh Hoàng 0865111533 |
 | 7 | Tân Á | Đức Kiên - Tân Á 0867666533 |
 | 8 | Fanpage | Tống Khánh Linh *(đã nghỉ)*, Fanpage 0327339229 *(người mới, từ 09/2026)* |
-| 9 | Shopee | *(chưa có — chỉ bắt đầu từ 09/2026)* |
-| 10 | Khác | mọi tên chưa xếp, kể cả `_chua_xac_dinh` |
+| 9 | Shopee | Shopee 0865111033 *(chưa có dòng nào tới 08/2026)* |
+| 10 | Khác | Thảo Linh, Lê Quang Trường, Nguyễn Thị Minh Bảo, Đinh Thùy Dương, `_chua_xac_dinh` — **chốt để lại đây**, cộng mọi tên mới chưa ai xếp |
 
 **Nội thành vẫn tách được 4 nguồn** — yêu cầu tường minh của chủ dự án.
 `gopTheoLine()` luôn trả `nguon` (tách theo từng tên, theo từng tháng) bên
 cạnh tổng của line, nên "kênh này do 4 người phụ trách" đọc được cả ở mức
 line lẫn mức người.
+
+**Bằng chứng quyết định rằng gộp theo TÊN là đúng, không theo hotline:**
+số `0865111033` đã đi qua BA tên ở BA line khác nhau —
+`Lê Văn Quân 0865111033` (Nội thành) → `Tống Khánh Linh 0865111033`
+(Fanpage) → `Shopee 0865111033` (Shopee, từ 09/2026). Gộp theo hotline là
+trộn doanh số của ba kênh vào một con số vô nghĩa. Có bài kiểm ghim đúng
+việc này, để không ai "tối ưu" lại thành gộp theo số điện thoại.
 
 **Bảng ánh xạ là DỮ LIỆU trên Firebase, không phải code** —
 `bc/quyetdinh/line`. Nó đổi theo NHÂN SỰ, không theo phiên bản phần mềm;
@@ -201,21 +208,31 @@ công ty, đã canh bằng bất biến trong `gopTheoLine`):
 | Miền Bắc | 3.341.556.000 | 248 | 1 |
 | Khác | 3.187.320.000 | 196 | 5 |
 | Fanpage | 129.850.000 | 10 | 1 |
-| Shopee | 0 | 0 | — |
+| Shopee | 0 | 0 | 1 *(tên đã khai, chưa có dòng)* |
 | **TỔNG** | **369.778.152.568** | **29.883** | |
 
-**Năm tên đang nằm trong "Khác", chờ chủ dự án xếp:** `Thảo Linh`
-(3.059.270.000 đ — lớn nhất, hoạt động liên tục cả 20 tháng),
-`_chua_xac_dinh` (65.300.000 đ — dòng sổ để trống ô nhân viên, việc của
-P5), `Lê Quang Trường 0589691228` (34.800.000 đ), `Nguyễn Thị Minh Bảo`
-(14.750.000 đ), `Đinh Thùy Dương` (13.200.000 đ). Tên chưa khai KHÔNG
-được tan biến trong im lặng — `gopTheoLine` luôn trả `chua_xep` kèm số
-tiền, và script nạp in ra danh sách đó mỗi lượt chạy.
+**Năm tên ở "Khác" — chủ dự án chốt GIỮ NGUYÊN (11/09/2026):** `Thảo Linh`
+(3.059.270.000 đ), `_chua_xac_dinh` (65.300.000 đ),
+`Lê Quang Trường 0589691228` (34.800.000 đ), `Nguyễn Thị Minh Bảo`
+(14.750.000 đ), `Đinh Thùy Dương` (13.200.000 đ).
+
+Cả năm được khai TƯỜNG MINH vào `Khác`, không để rơi vào đó theo mặc định
+— khác biệt thật: khai rồi thì `chua_xep` sạch, nên **một nhân viên mới
+vào sau sẽ nổi lên một mình** thay vì lẫn vào đám đã có quyết định. Để mặc
+định thì cảnh báo kêu mãi về năm tên đã chốt và tên mới sẽ không ai thấy.
+
+Khai `_chua_xac_dinh` vào `Khác` KHÔNG làm mất việc của P5: cảnh báo
+`thieu-nhan-vien` của `gopSoBanHang()` là một cảnh báo KHÁC, vẫn kêu đủ 25
+dòng mỗi lượt trích.
+
+Tên chưa khai vẫn KHÔNG được tan biến trong im lặng — `gopTheoLine` luôn
+trả `chua_xep` kèm số tiền, và script nạp in danh sách đó mỗi lượt chạy.
+Hiện danh sách đó RỖNG: cả 16 tên trên sổ đều đã có line.
 
 ### P2 — còn thiếu gì để ra khỏi phase
 
 **Phần (a) — trích + nạp — đối chiếu nội bộ đã khớp 0 lệch cho TOÀN BỘ
-01/2025–08/2026.** Ba việc còn lại của phần (a):
+01/2025–08/2026.** Việc còn lại của phần (a) — chỉ còn CHỜ KHOÁ:
 
 1. **Chưa ghi vào Firebase.** Không có phiên làm việc nào tới nay có
    `FB_SA_EMAIL`/`FB_SA_KEY` (đó là Secret của Worker, không nằm trong
@@ -244,11 +261,10 @@ tiền, và script nạp in ra danh sách đó mỗi lượt chạy.
    xuyên thời gian rồi. Hai cách viết của cùng một người, nếu cả hai đều
    được xếp vào đúng một line, thì ra cùng một cột — tên trùng chỉ còn ảnh
    hưởng tới phần tách `nguon` bên trong line.
-3. **Năm tên chưa xếp line** — đang tạm dồn vào "Khác": `Thảo Linh`,
-   `_chua_xac_dinh`, `Lê Quang Trường 0589691228`, `Nguyễn Thị Minh Bảo`,
-   `Đinh Thùy Dương` (xem mục LINE ở trên cho số tiền từng tên). KHÔNG
-   chặn lượt ghi `bc/ky`: bảng line nằm nhánh riêng và gộp lúc đọc, nên
-   xếp sau cũng được, số đổi ngay không cần nạp lại sổ.
+3. ~~Năm tên chưa xếp line~~ — **XONG 11/09/2026**: chủ dự án chốt giữ cả
+   năm ở "Khác", và đã khai tường minh. `chua_xep` hiện RỖNG. Bảng line
+   sẵn sàng nạp bằng `node bin/nap-line.mjs --ghi --doc-lai` (lượt ghi
+   riêng, không liên quan tới lượt ghi `bc/ky`).
 
 **Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Đọc từ `bc/ky` + `bc/quyetdinh/line`
 sau khi đã ghi, gọi `gopTheoLine()` ở Engine, dựng biểu đồ doanh số + số
@@ -274,7 +290,7 @@ lượt merge sau), nên phần (b) chỉ còn phải thêm phía Gateway + tran
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 10 bộ, 364 đạt, 0 hỏng.
+`npm test`: 10 bộ, 372 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 

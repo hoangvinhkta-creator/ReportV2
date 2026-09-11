@@ -174,8 +174,29 @@ console.log('\n7) Bảng hạt giống thật — 10 line chủ dự án chốt 
   ok('Fanpage có cả người cũ và tên người mới 09/2026', fanpage.sort(),
      ['Fanpage 0327339229', 'Tống Khánh Linh 0865111033']);
 
-  ok('Shopee chưa khai tên nào (chỉ có dòng từ 09/2026)',
-     Object.values(B.cua_ten).includes('Shopee'), false);
+  /* Shopee: tên nhân viên đã khai SẴN (chủ dự án chốt 'Shopee 0865111033'),
+     nhưng chưa có dòng nào trên sổ tới 08/2026. Line vẫn phải hiện ra — đó là
+     việc của `thu_tu`, đã canh ở bài 4. */
+  ok('Shopee đã khai đúng một tên',
+     Object.entries(B.cua_ten).filter(([, l]) => l === 'Shopee').map(([t]) => t),
+     ['Shopee 0865111033']);
+
+  /* Năm tên chủ dự án chốt để lại "Khác" — khai TƯỜNG MINH, không để mặc
+     định. Khác biệt thật: khai rồi thì `chua_xep` sạch, nên một nhân viên mới
+     vào sau sẽ nổi lên một mình thay vì lẫn vào đám đã có quyết định. */
+  ok('năm tên nhỏ được khai tường minh vào Khác',
+     Object.entries(B.cua_ten).filter(([, l]) => l === L.LINE_KHAC).map(([t]) => t).sort(),
+     ['Thảo Linh', 'Đinh Thùy Dương', 'Lê Quang Trường 0589691228',
+      'Nguyễn Thị Minh Bảo', '_chua_xac_dinh'].sort());
+
+  /* Hotline KHÔNG dùng được làm khoá gộp: cùng số 0865111033 đã đi qua ba tên
+     ở BA line khác nhau (Nội thành → Fanpage → Shopee). Gộp theo hotline là
+     trộn doanh số của ba kênh vào một. Đây là lý do tầng line gộp theo TÊN. */
+  const soTrung = '0865111033';
+  const lineCuaSo = new Set(
+    Object.entries(B.cua_ten).filter(([t]) => t.includes(soTrung)).map(([, l]) => l));
+  ok('hotline 0865111033 trải trên 3 line → không được gộp theo hotline',
+     [...lineCuaSo].sort(), ['Fanpage', 'Nội thành', 'Shopee']);
 
   /* `cua_ten` PHẢI khoá theo khoaNhanVien() — nếu khoá theo tên nguyên văn thì
      tên có dấu chấm sẽ không bao giờ join được với khoá của bc/ky. */
