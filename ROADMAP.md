@@ -20,11 +20,10 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG (11/09/2026). P2 phần (a) — trích + nạp — CÓ ĐỦ DỮ LIỆU và đối
-chiếu khớp 0 lệch cho TOÀN BỘ 01/2025–08/2026. Tầng LINE (phân tích theo
-kênh, cố định xuyên thời gian) đã chốt và đã code — xem "LINE" ngay dưới.
-Còn CHỜ khoá service account để ghi, và phần (b) — biểu đồ — CHƯA LÀM
-(xem "P2 — còn thiếu gì").**
+**P1 XONG. P2 phần (a) — trích + nạp — XONG THẬT (11/09/2026): dữ liệu 20
+tháng (01/2025–08/2026) ĐÃ NẰM TRÊN FIREBASE, đã đọc ngược xác nhận khớp
+từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. Việc TRƯỚC MẶT
+tiếp theo: P2 phần (b) — biểu đồ theo line.**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -229,27 +228,44 @@ Tên chưa khai vẫn KHÔNG được tan biến trong im lặng — `gopTheoLin
 trả `chua_xep` kèm số tiền, và script nạp in danh sách đó mỗi lượt chạy.
 Hiện danh sách đó RỖNG: cả 16 tên trên sổ đều đã có line.
 
-### P2 — còn thiếu gì để ra khỏi phase
+### P2 phần (a) ĐÃ XONG — dữ liệu đang nằm thật trên Firebase
 
-**Phần (a) — trích + nạp — đối chiếu nội bộ đã khớp 0 lệch cho TOÀN BỘ
-01/2025–08/2026.** Việc còn lại của phần (a) — chỉ còn CHỜ KHOÁ:
+**Chủ dự án tự chạy lượt ghi ngày 11/09/2026, cả hai lệnh xanh:**
 
-1. **Chưa ghi vào Firebase.** Không có phiên làm việc nào tới nay có
-   `FB_SA_EMAIL`/`FB_SA_KEY` (đó là Secret của Worker, không nằm trong
-   repo — đúng như phải vậy). Script đã chạy xong phần trích và in bảng
-   đối chiếu ở chế độ **chạy thử** (mặc định, không cần khoá) cho cả hai
-   sổ cùng lúc. Lượt ghi thật cần chủ dự án chạy trên máy có khoá:
+```
+node bin/nap-line.mjs --ghi --doc-lai
+  → ✓ đã ghi bc/quyetdinh/line
+  → ✓ đọc lại: 10 line · 18 tên
 
-   ```
-   export FB_SA_EMAIL='firebase-adminsdk-fbsvc@tinphattracking.iam.gserviceaccount.com'
-   export FB_SA_KEY="$(cat khoa.pem)"
-   node bin/nap-so-legacy.mjs --ghi --doc-lai "So chi tiet ban hang 2025.xlsx" "So chi tiet ban hang 2026.xlsx"
-   ```
+node bin/nap-so-legacy.mjs --ghi --doc-lai <sổ 2025> <sổ 2026>
+  → 20/20 kỳ ghi xong, 20/20 kỳ đọc ngược khớp
+  → "Mọi kỳ đọc lại khớp."
+```
 
-   `--doc-lai` đọc ngược từng kỳ vừa ghi và so lại tổng — "đã ghi" không
-   phải là một dòng chữ script tự in ra.
-2. **Danh sách nhân viên chuẩn chưa có.** Chủ dự án chốt: chuẩn hoá tên
-   dựa vào danh sách CÓ SẴN trong **file kế toán** (`Báo cáo Kinh doanh
+Nên `bc/ky/2025-01/…` tới `bc/ky/2026-08/…` và `bc/quyetdinh/line` đều có
+số thật. Đây KHÔNG phải "script tự nói là đã ghi": `--doc-lai` đọc ngược
+từng kỳ từ Firebase rồi so lại tổng doanh số và số đơn.
+
+Cách lấy khoá để chạy lại về sau (secret của Worker KHÔNG đọc lại được —
+Cloudflare cố ý làm một chiều, `wrangler secret list` chỉ trả tên): tạo
+khoá mới ở Firebase Console → Project settings → Service accounts →
+Generate new private key. Tạo khoá mới KHÔNG vô hiệu hoá khoá cũ, nên
+Worker đang chạy không bị ảnh hưởng. Tải file JSON về, rồi:
+
+```
+export FB_SA_EMAIL="$(node -e "console.log(require('./khoa.json').client_email)")"
+export FB_SA_KEY="$(node -e "console.log(require('./khoa.json').private_key)")"
+node bin/nap-line.mjs --doc-lai     # đọc thử, KHÔNG ghi gì — phép thử khoá an toàn
+```
+
+`.gitignore` đã chặn `khoa.json`, `*firebase-adminsdk*.json`, `*.pem` và
+`*.xlsx` (xem `kiem/gitignore.js`) — nhưng vẫn xoá file khoá sau khi dùng.
+
+### Việc còn lại của P2
+
+1. **Danh sách nhân viên chuẩn chưa có** *(không chặn gì — ghi chú để
+   nhớ)*. Chủ dự án chốt: chuẩn hoá tên dựa vào danh sách CÓ SẴN trong
+   **file kế toán** (`Báo cáo Kinh doanh
    2025/2026.xlsx`) — file đó KHÔNG được gửi và không có trong repo nào
    (`.gitignore: *.xlsx` bên Reports V1). Nên script làm đúng nửa việc
    thuộc về nó: **liệt kê 16 tên như sổ ghi, kèm số dòng và doanh số,
@@ -261,23 +277,18 @@ Hiện danh sách đó RỖNG: cả 16 tên trên sổ đều đã có line.
    xuyên thời gian rồi. Hai cách viết của cùng một người, nếu cả hai đều
    được xếp vào đúng một line, thì ra cùng một cột — tên trùng chỉ còn ảnh
    hưởng tới phần tách `nguon` bên trong line.
-3. ~~Năm tên chưa xếp line~~ — **XONG 11/09/2026**: chủ dự án chốt giữ cả
-   năm ở "Khác", và đã khai tường minh. `chua_xep` hiện RỖNG. Bảng line
-   sẵn sàng nạp bằng `node bin/nap-line.mjs --ghi --doc-lai` (lượt ghi
-   riêng, không liên quan tới lượt ghi `bc/ky`).
+2. **Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Giờ đã hết vướng: dữ liệu và
+   bảng line đều đã nằm trên Firebase.
 
-**Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Đọc từ `bc/ky` + `bc/quyetdinh/line`
-sau khi đã ghi, gọi `gopTheoLine()` ở Engine, dựng biểu đồ doanh số + số
-đơn **theo LINE** từ 01/2025 tới hôm nay (bấm vào một line thì mở ra
-`nguon` — từng nhân viên trong line đó), cuộn được lên
-tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước. Đây là việc
-TRƯỚC MẶT tiếp theo, và cần dữ liệu đã NẰM Ở FIREBASE trước (việc 1 ở
-trên) — không đọc thẳng từ script chạy tay.
+**Phần (b) làm gì:** Gateway đọc `bc/ky` + `bc/quyetdinh/line`, gọi
+`gopTheoLine()` ở Engine, trả số đã tính sẵn cho trang tĩnh; trang tĩnh vẽ
+biểu đồ doanh số + số đơn **theo LINE** từ 01/2025 tới hôm nay (bấm vào
+một line thì mở ra `nguon` — từng nhân viên trong line đó), cuộn được lên
+tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước.
 
-Việc Gateway cần thêm ở phần (b): một endpoint đọc `bc/ky` + bảng line rồi
-gọi Engine. Engine ĐÃ có sẵn `gopSoBanHang()` và `gopTheoLine()` qua
-Service Binding — theo đúng bẫy số 4 (hàm Engine lên trước, Gateway gọi ở
-lượt merge sau), nên phần (b) chỉ còn phải thêm phía Gateway + trang tĩnh.
+Engine ĐÃ có sẵn `gopSoBanHang()` và `gopTheoLine()` qua Service Binding
+(bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt merge sau), nên phần
+(b) chỉ còn phải thêm **endpoint ở Gateway + phần vẽ ở trang tĩnh**.
 
 ### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 
