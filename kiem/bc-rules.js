@@ -15,13 +15,18 @@ console.log('\n1) Đúng bốn nhánh, không thừa không thiếu');
 
 console.log('\n2) bc/ky và bc/quyetdinh — đọc được cho quantri/quanly, KHÔNG ai ghi thẳng được');
 {
+  /* Rules đọc `profiles/<uid>/vai` — NGUỒN SỰ THẬT bên Tracking
+     (admSetVai() ghi `vai` cùng lúc với chiếu ra `perms`). KHÔNG đọc
+     `perms.quantri`/`perms.quanly` — hai khoá đó không tồn tại trong hồ sơ
+     Tracking thật, và đọc nhầm chúng đã gây mất quyền một tài khoản thật
+     trên máy thật. Bộ này giữ nguyên bài học đó. */
   for (const nhanh of ['ky', 'quyetdinh']) {
     const doc = R.bc[nhanh]['.read'];
     ok(nhanh + '.read đòi auth != null', /auth != null/.test(doc), true);
-    ok(nhanh + '.read nhắc tới quantri', doc.includes("perms').child('quantri')"), true);
-    ok(nhanh + '.read nhắc tới quanly', doc.includes("perms').child('quanly')"), true);
-    ok(nhanh + '.read so sánh CHẶT === true (không nhận chuỗi "true")',
-       /\.val\(\)\s*===\s*true/.test(doc), true);
+    ok(nhanh + '.read đọc profiles/<uid>/vai, KHÔNG đọc perms',
+       doc.includes("child('vai')") && !doc.includes("child('perms')"), true);
+    ok(nhanh + '.read nhắc tới vai "quantri"', doc.includes("=== 'quantri'"), true);
+    ok(nhanh + '.read nhắc tới vai "quanly"', doc.includes("=== 'quanly'"), true);
     ok(nhanh + '.write đóng hẳn cho trình duyệt — chỉ Gateway ghi bằng service account',
        R.bc[nhanh]['.write'], false);
   }
