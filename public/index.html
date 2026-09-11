@@ -9,6 +9,17 @@
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
+
+  /* Thuộc tính `hidden` của HTML chạy bằng luật `[hidden]{display:none}` của
+     TRÌNH DUYỆT. Mọi luật trong file này (author) đều thắng luật trình duyệt
+     trong thứ tự cascade — nên `#manDangNhap{display:flex}` bên dưới đã vô
+     hiệu hoá `hidden`, và `manDangNhap.hidden = true` không giấu được gì.
+     Hậu quả thật 11/09/2026: đăng nhập THÀNH CÔNG nhưng khung đăng nhập cao
+     100vh vẫn che kín màn hình, màn chủ render phía dưới mép màn hình, người
+     dùng thấy đúng như "bấm xong không có gì xảy ra" — mất gần một buổi truy
+     nhầm sang phía quyền và rules. Dòng này là thứ giữ cho `el.hidden` luôn
+     có nghĩa, kể cả khi ai đó đặt `display` cho chính phần tử ấy. */
+  [hidden] { display: none !important; }
   body {
     margin: 0; min-height: 100vh; background: #f4f5f7;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
