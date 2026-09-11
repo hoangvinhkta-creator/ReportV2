@@ -20,8 +20,8 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG (11/09/2026). Việc tiếp theo: P2 — Một con số thật, đi hết
-đường.**
+**P1 XONG (11/09/2026). Việc tiếp theo: P2 — Mốc legacy: doanh số + số
+đơn theo nhân viên/ngày, 2025 → hết 08/2026.**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -105,26 +105,33 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
 
 ## Chín phase
 
-**Sắp xếp lại 11/09/2026** sau khi chủ dự án làm rõ nhu cầu thật: doanh số
-+ số đơn theo (nhân viên, ngày) để vẽ biểu đồ và đối chiếu — KHÔNG cần chi
-tiết từng dòng hàng hay khách hàng. Phát hiện quan trọng: sổ bán hàng thô
-(định dạng MISA) đã có sẵn cột nhân viên (`raw_reader.py` cột thứ 12 ở
-Reports V1) — nhu cầu này lấy thẳng từ sổ thô, KHÔNG cần khớp mã hàng,
-KHÔNG cần giá vốn. Vì vậy phase "biểu đồ" và "nhân viên" được đưa lên
-trước, phase "giá vốn/lợi nhuận" lùi xuống và bị giới hạn theo đúng dữ
-liệu Tracking thật có (xem P5). "Sản phẩm/thương hiệu" hạ xuống tuỳ chọn
-vì chủ dự án xác nhận không cần chi tiết mặt hàng.
+**Sắp xếp lại 11/09/2026, lần hai cùng ngày.** Lần một: chuyển trọng tâm
+sang doanh số + số đơn theo (nhân viên, ngày) — KHÔNG cần chi tiết dòng
+hàng hay khách hàng (xem lý do vẫn đúng ở dưới). Lần hai: chủ dự án xác
+nhận sẽ cung cấp **"Sổ chi tiết bán hàng"** năm 2025 và 2026 (tới hết
+08/2026) — ĐÚNG hai file Reports V1 đã từng dùng để đếm số đơn
+(`tools/chart_gapfill/extract_daily_orders.py`, đọc qua `raw_reader.
+read_raw_rows` — cùng hàm có cột `employee`). Hai file này cho CẢ doanh số
+lẫn số đơn, theo nhân viên, cho toàn bộ 01/2025–08/2026 — tốt hơn giả định
+ban đầu (không phải chỉ workbook kế toán revenue-only).
+
+Việc "nạp mốc legacy trước, không phải tải-lên-rồi-mới-tính" (yêu cầu
+tường minh của chủ dự án) không cần dựng UI tải file — đó là một lát cắt
+NHỎ HƠN và làm TRƯỚC được, nên được đôn lên P2. Phase "một kỳ thật, đi hết
+đường" (upload UI cho kỳ hiện tại/tương lai) lùi xuống P4, nối tiếp trên
+đúng hình dạng dữ liệu mà P2 đã chốt. "Giá vốn/lợi nhuận" và "sản phẩm/
+thương hiệu" giữ nguyên lý do đã nêu ở lần sắp xếp thứ nhất.
 
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
-| P2 | Doanh số + số đơn theo nhân viên/ngày, một kỳ thật | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P2 | Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025→08/2026 | 1 tuần | ⬜ Chưa bắt đầu |
 | P3 | Biểu đồ và so sánh kỳ | 1 tuần | ⬜ Chưa bắt đầu |
-| P4 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
-| P5 | Giá vốn và lợi nhuận (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
-| P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
-| P7 | Di trú số 2025 → nay (qua sổ thô gốc) | 1 tuần | ⬜ Chưa bắt đầu |
+| P4 | Một kỳ SỐNG thật, đi hết đường (upload UI, kỳ hiện tại/tương lai) | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
+| P6 | Giá vốn và lợi nhuận (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
+| P7 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
 | P8 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
 
 ---
@@ -169,67 +176,106 @@ giá: xem "Trạng thái hiện tại" ở đầu file.
 
 ---
 
-### P2 — Doanh số + số đơn theo nhân viên/ngày, một kỳ thật
+### P2 — Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025 → 08/2026
 
-Tải lên sổ bán hàng thô (định dạng MISA) của **một kỳ**. Trình duyệt đọc
-file và gửi lên; Gateway trích trực tiếp từ các cột có sẵn — KHÔNG khớp
-mã hàng, KHÔNG cần Tracking, KHÔNG cần bảng giá:
+Trích trực tiếp từ **"Sổ chi tiết bán hàng"** 2025 và 2026 (tới hết
+08/2026) mà chủ dự án cung cấp — KHÔNG qua UI tải file, nạp thẳng vào
+Firebase trước khi P4 (upload sống) tồn tại. Đây là mốc để đối chiếu và
+vẽ biểu đồ ngay, đúng yêu cầu "có dữ liệu trước, không phải tải lên mới
+tính".
+
+**Bước 0 — xác minh nguồn trước khi trích, đừng giả định:** mở file, kiểm
+có đúng cột `employee`/nhân viên + số chứng từ + ngày bán + tiền theo
+từng DÒNG hay không (khớp `app/modules/importing/raw_reader.py` của
+Reports V1, cột `employee` ở vị trí 12). Nếu khớp → đi theo đường dưới.
+Nếu hoá ra là workbook kế toán dạng sheet-mỗi-nhân viên (không phải sổ
+chi tiết từng dòng) → ĐỪNG đoán cách đọc, dừng lại đọc
+`data/chart_gapfill/PROVENANCE.md` trong repo Reports V1 (chỉ tham khảo,
+không sửa) — ở đó đã giải sẵn 7 biến thể bố cục và công thức chia lệch
+nhau giữa sheet nhân viên/sheet kênh, và trong trường hợp đó KHÔNG có số
+đơn (nguồn không cung cấp), chỉ có doanh số.
+
+**Đường trích (khi đúng là sổ chi tiết từng dòng):**
 
 - ngày bán
-- số chứng từ (đếm distinct → số đơn)
-- nhân viên (cột có sẵn trên sổ — `employee`, cột 12 theo Reports V1)
-- doanh số của dòng (cộng theo chứng từ → doanh số/đơn)
+- số chứng từ (đếm distinct trong ngày, theo nhân viên → số đơn)
+- nhân viên (cột có sẵn trên sổ)
+- doanh số của dòng (cộng theo chứng từ, theo ngày, theo nhân viên)
 
-Ghi vào `bc/ky/<kỳ>/<nhân viên>/<ngày>`: `{doanh_so, so_don}`. Thông tin
-khách (nếu cột đó có mặt trên sổ) vẫn đi vào nhánh đóng `bc/khach` /
-`bc/imei` theo đúng Q1 — không bị bỏ, chỉ không phải trọng tâm phase này.
+KHÔNG khớp mã hàng, KHÔNG cần Tracking, KHÔNG cần bảng giá — xem CLAUDE.md
+mục "Khớp mã hàng". KHÔNG cần lưu tên/SĐT/địa chỉ khách cho việc này (dù
+kiến trúc chung vẫn cho phép sau — Q1); PII đi qua bộ nhớ tiến trình rồi
+bỏ, không log, không ghi ra file trung gian trong repo.
 
-Đây là phase quan trọng nhất: nó chốt đúng GRAIN dữ liệu (nhân viên ×
-ngày — không phải tổng công ty, không phải từng dòng hàng), cách tính sẵn
-lúc ghi, và cách đưa sổ vào. V1 chốt sai cả ba và trả giá ba tuần.
+Ghi vào `bc/ky/<YYYY-MM>/<nhân viên>/<ngày>`: `{doanh_so, so_don}` — MỘT
+THÁNG là một `<kỳ>`, đúng quy ước sẽ dùng cho P4 sau này, để P3 (biểu đồ)
+đọc được liền mạch bất kể dữ liệu tới từ đợt nạp này hay từ upload sống
+sau này. Viết logic gộp này thành MỘT hàm dùng chung ở Engine — P4 sau
+này gọi lại đúng hàm đó cho dữ liệu sống, không viết hai lần.
 
-**Bạn nhìn thấy gì:** nhập sổ tháng 9, thấy doanh số + số đơn của TỪNG
-nhân viên trong tháng đó, đối chiếu khớp Excel trong một phút.
+Đối chiếu công ty theo THÁNG với `MONTH_TOTAL` mà chủ dự án có (Excel/sổ
+sách) trước khi coi là xong.
 
-**Ra khỏi phase khi:** một kỳ thật đối chiếu khớp Excel, đúng theo từng
-nhân viên (không chỉ tổng công ty).
+**Bạn nhìn thấy gì:** một script/endpoint chạy một lần, nạp xong đọc lại
+được `bc/ky/2025-01/...` tới `bc/ky/2026-08/...`, mỗi nhân viên mỗi ngày
+có số.
+
+**Ra khỏi phase khi:** tổng công ty theo từng tháng (01/2025–08/2026)
+đối chiếu khớp 0 lệch với số chủ dự án đang có.
 
 ---
 
 ### P3 — Biểu đồ và so sánh kỳ
 
 Vẽ từ `bc/ky` đã tính sẵn ở P2, không tính lại lúc mở trang. Theo nhân
-viên, cuộn lên tháng/quý/năm. So kỳ này với kỳ trước, cùng kỳ năm trước.
+viên, cuộn lên tuần/tháng/quý/năm. So kỳ này với kỳ trước, cùng kỳ năm
+trước. Chạy được ngay trên dữ liệu legacy của P2 — không cần chờ P4.
 
-Đưa lên trước P4/P5 vì nó không phụ thuộc gì ngoài P2 — đây chính là thứ
-chủ dự án cần nhìn thấy sớm nhất để đánh giá được sản phẩm bằng kết quả
-thật, đúng tinh thần "làm đến đâu thấy đến đó".
+**Bạn nhìn thấy gì:** biểu đồ doanh số + số đơn theo nhân viên, từ
+01/2025 tới hôm nay; bấm vào một cột thấy chi tiết ngày.
 
-**Bạn nhìn thấy gì:** biểu đồ doanh số + số đơn theo nhân viên theo thời
-gian; bấm vào một cột thấy chi tiết ngày.
-
-**Ra khỏi phase khi:** so sánh tháng này với tháng trước ra đúng số, cho
-mọi nhân viên.
+**Ra khỏi phase khi:** so sánh tháng này với tháng trước, quý này với quý
+trước, ra đúng số cho mọi nhân viên.
 
 ---
 
-### P4 — Chỉnh sửa tay + audit trail
+### P4 — Một kỳ SỐNG thật, đi hết đường
+
+Tải lên sổ bán hàng thô của **một kỳ hiện tại/tương lai** (từ tháng bắt
+đầu dùng V2 hàng ngày trở đi). Trình duyệt đọc file và gửi lên; Gateway
+trích ĐÚNG hàm đã viết ở P2 — cùng grain, cùng nhánh `bc/ky/<YYYY-MM>/
+<nhân viên>/<ngày>`, nối liền vào chuỗi legacy mà không cần đổi gì ở P3.
+
+Đây là phase chứng minh đường dây UPLOAD chạy đầu-cuối (trình duyệt →
+Gateway → Engine → Firebase → màn hình) — thứ P2 không cần vì P2 nạp
+thẳng, không qua UI.
+
+**Bạn nhìn thấy gì:** nhập sổ tháng hiện tại, biểu đồ P3 nối tiếp liền
+mạch từ tháng trước, không đứt gãy ở mốc chuyển từ legacy sang sống.
+
+**Ra khỏi phase khi:** một kỳ tải qua UI đối chiếu khớp Excel, nối đúng
+vào chuỗi thời gian đã có từ P2/P3.
+
+---
+
+### P5 — Chỉnh sửa tay + audit trail
 
 Sửa tay khi cột nhân viên trên sổ sai/thiếu (ghi nhầm người, để trống),
-và các trường hợp cần điều chỉnh số liệu một ngày cụ thể. Mọi lần sửa ghi
+áp dụng cho cả dữ liệu legacy (P2) lẫn dữ liệu sống (P4). Mọi lần sửa ghi
 kèm người sửa + thời điểm vào `bc/quyetdinh`, hợp nhất lúc đọc — đúng cơ
 chế đè-không-mất ở mục 8 của audit. Đây là audit trail thật đầu tiên của
 V2 (F-05 của V1 không có ai để ghi).
 
-**Bạn nhìn thấy gì:** sửa một dòng gán sai nhân viên, số liệu cập nhật
-ngay trên biểu đồ P3, và lịch sử ai sửa gì lúc nào.
+**Bạn nhìn thấy gì:** sửa một dòng gán sai nhân viên (kể cả trong dữ liệu
+legacy), số liệu cập nhật ngay trên biểu đồ P3, và lịch sử ai sửa gì lúc
+nào.
 
 **Ra khỏi phase khi:** có ít nhất một sửa tay thật, sống qua một lần nhập
 lại kỳ đó (không bị đè mất).
 
 ---
 
-### P5 — Giá vốn và lợi nhuận (chỉ áp dụng từ ~07/09/2026)
+### P6 — Giá vốn và lợi nhuận (chỉ áp dụng từ ~07/09/2026)
 
 Chủ dự án xác nhận vẫn cần giá vốn/lợi nhuận, nhưng CHỈ từ khoảng
 07/09/2026 trở đi — đây không phải lựa chọn tuỳ ý mà là giới hạn DỮ LIỆU
@@ -254,7 +300,7 @@ tay.
 
 ---
 
-### P6 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
+### P7 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
 
 Chủ dự án xác nhận KHÔNG cần chi tiết từng mặt hàng cho nhu cầu hiện tại.
 Phase này ở lại roadmap chỉ để không mất bối cảnh kỹ thuật (nhãn thương
@@ -267,37 +313,16 @@ nào tạo lợi nhuận.
 
 ---
 
-### P7 — Di trú số 2025 → nay (qua sổ thô gốc)
-
-**Rescoped 11/09/2026.** Chủ dự án xác nhận còn giữ sổ bán hàng thô gốc
-(định dạng MISA) của 2025 và sẽ cung cấp. Đây là nguồn ĐÚNG và ĐƠN GIẢN —
-đi thẳng vào đường trích của P2 (nhân viên × ngày → doanh số + số đơn),
-KHÔNG cần qua PostgreSQL hay `data/chart_gapfill/*.jsonl` của V1 (hai
-nguồn đó chỉ có tổng cả công ty, không tách theo nhân viên — xem audit
-mục 1, bảng "Dữ liệu đang chảy thế nào" đã kiểm chứng lại 11/09/2026).
-
-Với 2026 trước 07/09: nếu chủ dự án cũng có sổ thô gốc của giai đoạn đó
-thì dùng luôn đường này cho đồng nhất; nếu không, PostgreSQL của V1 (đã
-nạp đủ dữ liệu 2026) là nguồn dự phòng — nhưng KHÔNG có giá vốn cho giai
-đoạn đó (xem P5).
-
-Đối chiếu từng tháng với Excel gốc sau khi nạp. Chỉ làm sau khi P2–P4 đã
-chứng minh hình dạng dữ liệu đúng trên dữ liệu hiện tại — nạp trước là
-nạp lại lần hai.
-
-**Bạn nhìn thấy gì:** biểu đồ P3 chạy liền mạch từ tháng 1/2025 tới hôm
-nay, theo từng nhân viên; bảng đối chiếu tháng-với-tháng lệch 0.
-
-**Ra khỏi phase khi:** đối chiếu 2025 → nay lệch 0 trên toàn bộ các
-tháng, theo từng nhân viên.
-
----
-
 ### P8 — Khai tử V1
 
-Bốn việc (xem `docs/audit/...` mục 5):
+Phần "di trú số 2025 → nay" đã làm ở P2 (qua sổ chi tiết bán hàng thô,
+không qua PostgreSQL/JSONL của V1 — hai nguồn đó chỉ có tổng cả công ty,
+không tách theo nhân viên). Bốn việc còn lại khi khai tử (xem
+`docs/audit/...` mục 5):
 
-1. Trích số 2025–2026 ra khỏi PostgreSQL + JSONL trước khi tắt bất cứ gì.
+1. Đối chiếu chéo một lần với PostgreSQL + JSONL của V1 (không phải
+   nguồn trích chính, chỉ để xác nhận không lệch) trước khi tắt bất cứ
+   gì.
 2. Xoay `REPORT_API_KEY`.
 3. Tắt Render service, PostgreSQL, R2 bucket.
 4. Trỏ `reports.tinphatcrm.com` sang V2 (bật `ENFORCE_CANONICAL_HOST=1`).
