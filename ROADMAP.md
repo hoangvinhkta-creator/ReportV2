@@ -23,10 +23,31 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 **P1 XONG. P2 phần (a) — trích + nạp — XONG THẬT (11/09/2026): dữ liệu 20
 tháng (01/2025–08/2026) ĐÃ NẰM TRÊN FIREBASE, đã đọc ngược xác nhận khớp
 từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. P2 phần (b) —
-biểu đồ — bước 1 (màn mở, sức khoẻ kinh doanh toàn công ty) ĐÃ MERGE THẲNG
-(11/09/2026, PR #22 + #23). P3 LƯỢT 1 — đường tải sổ qua trình duyệt +
-danh sách đơn hàng theo line — ĐÃ MERGE THẲNG (11/09/2026, PR #24 + #25).
+biểu đồ — bước 1 (Dashboard sức khoẻ kinh doanh) ĐÃ MERGE THẲNG
+(11/09/2026, PR #22 + #23, dựng lại bố cục ở PR #27 + #28). P3 LƯỢT 1 —
+đường tải sổ qua trình duyệt + danh sách đơn hàng theo line — ĐÃ MERGE
+THẲNG (11/09/2026, PR #24 + #25 + #26).
 CẢ HAI CHƯA ĐƯỢC CHỦ DỰ ÁN TỰ MỞ BẰNG MÁY THẬT ĐỂ XÁC NHẬN.**
+
+**BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI (11/09/2026, PR #28) — đọc trước khi sửa
+`public/index.html`:** không còn lưới thẻ, không còn màn con nào để bấm ra
+bấm vào. Đăng nhập xong là ra THẲNG trang báo cáo:
+
+```
+Báo cáo bán hàng            [Nhập sổ] [Đăng xuất]   ← nút trên thanh tiêu đề
+[2025] [2026]                                       ← tab năm      (P3)
+  [Dashboard] [Nội thành] [Tín Phát] …              ← tab con      (P3)
+    ┌─ #o-dashboard ────────────────────────┐
+    │ [Ngày] [Tháng] [Quý]                  │       ← tab đơn vị   (P2b)
+    │ biểu đồ                               │
+    │ [T1][T2]…[T12]  /  [2026][2025]  /  — │       ← dải phụ đổi theo tab
+    └───────────────────────────────────────┘
+    [T07] [T08] [T09]                               ← chọn tháng   (P3)
+    bảng đơn hàng của line đang chọn                (P3)
+```
+
+Chọn line nào khác Dashboard thì P3 ẩn cả ô `#o-dashboard`. "Nhập sổ" vẫn
+mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm.
 
 > ⚠️ **HAI VIỆC TAY PHẢI LÀM TRƯỚC KHI DÙNG P3** (chi tiết ở mục "P3" dưới):
 > 1. Thêm hai nhánh `bc/dong` và `bc/backup` vào rules đang chạy —
@@ -311,32 +332,44 @@ node bin/nap-line.mjs --doc-lai     # đọc thử, KHÔNG ghi gì — phép th�
 3. **Phần (b) — biểu đồ — ĐANG LÀM ở nhánh riêng.** Xem mục "Hai nhánh
    chạy song song" ngay dưới.
 
-**Phần (b) — bước 1 (màn mở) ĐÃ MERGE (11/09/2026, PR #22 + #23):**
-`engine/src/gop-theo-thoi-gian.mjs` (gộp doanh số theo ngày/tháng/quý/năm,
-so cùng kỳ năm trước — thuần, không phụ thuộc `line.mjs`) + RPC
-`gopSucKhoeCongTy()` ở Engine + `GET /api/bao-cao/suc-khoe` ở Gateway +
-`public/suc-khoe.js` (3 tab Ngày/Tháng/Năm, hai đường năm nay/năm trước,
-mở từ thẻ "Biểu đồ theo kỳ" ở màn chủ). Đây LÀ màn hình mở đầu mà chủ dự
-án yêu cầu lúc duyệt mockup ("Bản Vẽ Biểu Đồ Line" v3) — sức khoẻ kinh
-doanh toàn công ty, CHƯA lọc theo Line.
+**Phần (b) — bước 1 (Dashboard) ĐÃ MERGE (11/09/2026, PR #22 + #23, dựng
+lại bố cục ở PR #27 + #28):** `engine/src/gop-theo-thoi-gian.mjs` (gộp
+doanh số theo ngày/tháng/quý/năm, so cùng kỳ năm trước — thuần, không phụ
+thuộc `line.mjs`) + RPC `gopSucKhoeCongTy()` ở Engine +
+`GET /api/bao-cao/suc-khoe` ở Gateway + `public/suc-khoe.js` vẽ vào ô
+`#o-dashboard` trong khung tab của P3. Ba tab **Ngày / Tháng / Quý** (bỏ
+tab Năm — năm đã thành dải chọn riêng), mỗi tab chồng đường kỳ đang xem
+lên đúng kỳ đó của năm trước. Toàn công ty, CHƯA lọc theo Line.
+
+Hai điều chốt thêm lúc dựng lại (11/09/2026):
+
+- **Biểu đồ ngày xem mỗi lần MỘT THÁNG.** Vẽ cả 366 ngày lên một trục thì
+  "quá dày", không đọc được. Engine chia sẵn `theo_ngay_thang`, vị trí là
+  NGÀY TRONG THÁNG để hai năm chồng đúng. Mặc định mở đúng tháng hiện tại;
+  tháng chưa có số thì nút vẫn hiện nhưng bấm không được.
+- **Dải nút phụ đổi theo tab**: Ngày → `[T1…T12]`, Tháng → `[2026][2025]`,
+  Quý → không có (chờ giàu dữ liệu hơn rồi tính).
 
 **Việc còn lại của P2 phần (b):**
-1. Chủ dự án tự mở `public/suc-khoe.js` bằng máy thật, xác nhận số đúng —
-   CHƯA làm, đây là điều kiện ra khỏi bước 1 thật sự (xem "Nguyên tắc làm
-   việc" đầu file: deploy rồi tự xác nhận, không phải "code xong" là xong).
+1. Chủ dự án tự mở bằng máy thật, xác nhận số đúng — CHƯA làm, đây là
+   điều kiện ra khỏi bước 1 thật sự (xem "Nguyên tắc làm việc" đầu file:
+   deploy rồi tự xác nhận, không phải "code xong" là xong).
 2. Thêm biểu đồ **số đơn hàng** — cùng cấu trúc 3 tab, cùng hai đường —
    cạnh biểu đồ doanh số (KHÔNG gộp vào một biểu đồ dual-axis, hai thẻ
-   riêng — chủ dự án chốt lúc duyệt mockup).
+   riêng — chủ dự án chốt lúc duyệt mockup). Số đã có sẵn: mỗi ô của
+   `theo_*` đều mang `so_don` bên cạnh `doanh_so`, không phải sửa Engine.
 3. Vá `gopTheoLine()` cũ (hoặc thay hẳn) bằng bản dùng
    `gop-theo-thoi-gian.mjs::gopCayKyThanhChuoiNgay(cayKy, locNhanVien)` —
    lọc nhân viên theo từng Line (`line.mjs::xepLine()`/`BANG_LINE_HAT_GIONG`)
-   rồi gộp qua đơn vị thời gian như màn mở đã làm cho cả công ty. Từ đó
+   rồi gộp qua đơn vị thời gian như Dashboard đã làm cho cả công ty. Từ đó
    mới có xếp hạng theo Line (cột dọc sequential một màu, KHÔNG 10 hue
    riêng — xem dataviz) + lưới nhỏ (small-multiples) từng Line, Line khác
    xếp cuối, không cần đơn trung bình.
-4. Tab **Quý** (đã có sẵn trong `DON_VI_HOP_LE`, `gopMotChuoiNgay()`) —
-   chỉ màn mở cố định 3 tab Ngày/Tháng/Năm; các biểu đồ theo Line ở bước 3
-   dùng 3 tab Ngày/Tháng/**Quý** (không có Năm — chốt lúc duyệt mockup).
+4. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
+   `theo_ngay` (366 điểm), `theo_nam`, `hai_nam` mà giao diện mới không
+   còn đọc. Giữ lại có chủ ý cho khoảng giữa hai lượt deploy (bẫy số 4).
+   Sau khi chủ dự án xác nhận bản mới chạy thật thì bỏ cả ba — payload
+   `theo_ngay` gần như trùng lặp hoàn toàn với `theo_ngay_thang`.
 
 Engine ĐÃ có sẵn `gopSoBanHang()`, `gopTheoLine()`, `gopSucKhoeCongTy()`
 qua Service Binding (bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt
@@ -477,6 +510,28 @@ Có thêm hàng CHỌN THÁNG mà file tay không có, vì dữ liệu lưu theo
 một tháng nặng ~390 KB — mở thẳng cả năm là kéo về ~4,7 MB cho một lượt
 xem.
 
+**Hợp đồng đã chạy thật (P2(b) lắp vào 11/09/2026, PR #28) — P3 đọc kỹ
+đoạn này trước lượt 2:**
+
+- `public/suc-khoe.js` chỉ đụng BÊN TRONG `#o-dashboard`, không bật/tắt màn
+  nào, không đụng `#tabNam` / `#tabLine` / `#tabThang` / `#veDonHang`.
+  Muốn dời ô đi đâu trong khung thì cứ dời — nó tìm theo id, không theo
+  chỗ đứng.
+- Nó tự chạy bằng `firebase.auth().onAuthStateChanged`, không chờ ai gọi
+  sang, và đọc `GET /api/bao-cao/suc-khoe` (nguồn là `bc/ky`, KHÁC nguồn
+  `bc/dong` của bảng đơn hàng). Nên Dashboard có đủ 2025 + 2026 kể cả khi
+  chưa kỳ nào được tải lên qua trình duyệt — cũng vì vậy nó tự giữ NĂM
+  riêng ở dải `[2026][2025]`, không ăn theo tab năm của P3.
+- **Đã sửa `public/don-hang.js`** (PR #28): bỏ `moMan()`/`dongMan()` phần
+  bật tắt màn và bỏ dây vào thẻ `#theDonHang` — màn đó giờ LÀ trang chủ
+  nên không còn thẻ để bấm mở, không còn nút "Quay lại". Thay bằng đúng
+  một khối `onAuthStateChanged` ở cuối file. Phần còn lại của file không
+  ai đụng vào.
+- `kiem/id-co-that.js` canh mọi id mà JS đi tìm đều có thật trong
+  `index.html` và không id nào khai trùng. Xoá một thẻ mà quên một chỗ
+  `getElementById` là lỗi `npm test` không thấy được — nó chỉ nổ trên máy
+  thật, đúng lúc đăng nhập.
+
 #### Đọc .xlsx trong trình duyệt — không nới CSP
 
 `public/doc-xlsx.js` là bản port của `bin/doc-xlsx.mjs` (đã chạy trên
@@ -546,14 +601,15 @@ thứ tự các dòng đang có — đó mới là thứ biến một dòng thà
 
 **3. `public/index.html` — MỘT file, hai màn hình. Quy ước bắt buộc:**
 
-- Mỗi màn một file `.js` RIÊNG trong `public/`: P2(b) đã dùng
-  `public/suc-khoe.js` cho màn mở (11/09/2026) — P2(b) có thể còn thêm
-  file khác cho các màn sau (biểu đồ theo Line...), P3 dùng
-  `public/tai-len.js`. Tên cụ thể không quan trọng, chỉ cần MỖI màn một
-  file riêng, không màn nào viết chung vào khối `<script>` inline.
+- Mỗi màn một file `.js` RIÊNG trong `public/`: P2(b) dùng
+  `public/suc-khoe.js`, P3 dùng `public/tai-len.js` +
+  `public/don-hang.js` + `public/doc-xlsx.js`. Tên cụ thể không quan
+  trọng, chỉ cần MỖI màn một file riêng, không màn nào viết chung vào
+  khối `<script>` inline.
 - `index.html` mỗi bên chỉ thêm **một thẻ `<script src>`** và **một thẻ
-  chứa màn hình** (P2(b) màn mở dùng `<div id="manSucKhoe" hidden>`; P3
-  tự đặt id riêng cho màn tải file).
+  chứa phần của mình**. Từ PR #28 chỉ còn HAI màn thật: trang báo cáo
+  (`#manChu`, là trang chủ) và màn nhập sổ (`#manTaiLen`). P2(b) không có
+  màn riêng nữa — nó sống trong ô `#o-dashboard` của trang báo cáo.
 - KHÔNG viết logic màn mới vào khối `<script>` inline đang có. Khối đó là
   của phần đăng nhập, để yên.
 
