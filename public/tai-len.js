@@ -225,7 +225,13 @@
     o.headers = Object.assign({}, o.headers, { Authorization: "Bearer " + token });
     const r = await fetch(duong, o);
     const than = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(than.loi || ("HTTP " + r.status));
+    /* Kèm `rid` vào câu lỗi hiện cho người dùng — Gateway ghi một dòng log
+       có cấu trúc cho MỖI lỗi (`ma`, `ly`, `rid`), nhưng chi tiết đó không
+       bao giờ ra khỏi log (CLAUDE.md — không lộ mã lỗi nội bộ). `rid` là
+       cầu nối AN TOÀN duy nhất: không nói lỗi gì, chỉ nói "tra dòng log
+       nào" — nên người đọc log tìm ra nguyên nhân mà không cần đoán, và
+       không phải đăng nhập Cloudflare Dashboard để dò cả nghìn dòng log. */
+    if (!r.ok) throw new Error((than.loi || ("HTTP " + r.status)) + (than.rid ? " (mã: " + than.rid + ")" : ""));
     return than;
   }
 

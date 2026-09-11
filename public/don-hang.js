@@ -84,7 +84,9 @@
     const token = await user.getIdToken();
     const r = await fetch(duong, { headers: { Authorization: "Bearer " + token } });
     const than = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(than.loi || ("HTTP " + r.status));
+    /* Kèm `rid` — cầu nối an toàn tới đúng dòng log của lượt gọi này, xem
+       chú thích đầy đủ ở hàm cùng tên trong tai-len.js. */
+    if (!r.ok) throw new Error((than.loi || ("HTTP " + r.status)) + (than.rid ? " (mã: " + than.rid + ")" : ""));
     return than;
   }
 
