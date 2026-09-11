@@ -17,6 +17,12 @@ name = "reportv2-engine"
 main = "src/index.js"
 compatibility_date = "2026-09-11"
 
+# Bật xem log — cùng lý do đặt ở đây như Gateway (xem wrangler.toml gốc
+# repo: bật bằng nút trên Dashboard bị build tự động kế tiếp tắt lại).
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # Cấm dứt khoát địa chỉ workers.dev. Bỏ dòng này thì Cloudflare cấp địa chỉ
 # công khai theo mặc định — Engine hết riêng tư mà không ai nhận ra.
 workers_dev = false
