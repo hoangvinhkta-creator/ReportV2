@@ -207,6 +207,13 @@
       dau.appendChild(el("p", "canhBaoDam",
         "⚠ " + soNguyen(kq.dong_khong_co_ky) + " dòng không đọc được ngày nên không vào kỳ nào."));
     }
+    if (kq.imei_loi) {
+      /* Doanh số, đơn hàng, khách đã ghi xong (khối "Đã ghi xong" ở trên) —
+         chỉ bảng tra IMEI (chưa màn nào dùng tới) bị lỗi. Không phải "tải
+         lại" — dữ liệu chính đã lưu, đây chỉ là một mảnh phụ chưa vào. */
+      dau.appendChild(el("p", "canhBaoDam",
+        "⚠ Doanh số/đơn hàng/khách đã lưu, nhưng bảng tra IMEI (dùng cho bảo hành sau này) chưa ghi được — không ảnh hưởng số liệu đang thấy."));
+    }
     khung.appendChild(dau);
 
     for (const k of kq.ky_da_ghi || []) veMotKy(khung, k);

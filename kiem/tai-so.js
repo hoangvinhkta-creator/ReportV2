@@ -73,7 +73,10 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   const nhanhDaGhi = (db) => [...new Set(db.daGhi.map(g => g.duong.split('/').slice(0, 2).join('/')))].sort();
 
   const fetchThat = globalThis.fetch;
-  function gai(db) {
+  /** `honKhiGhi(duong)` — trả `true` để bài kiểm GIẢ LẬP Firebase từ chối
+   *  đúng lượt ghi vào đường đó (bất kể PUT/PATCH/DELETE), mô phỏng ca
+   *  thật 11/09/2026: PATCH `bc/imei` bị Firebase trả về không phải 2xx. */
+  function gai(db, honKhiGhi) {
     globalThis.fetch = async (url, opt) => {
       const u = String(url);
       if (u.includes('securetoken@system.gserviceaccount.com')) {
@@ -101,6 +104,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
         }
         return new Response(JSON.stringify(v), { headers: { 'content-type': 'application/json' } });
       }
+      if (honKhiGhi && honKhiGhi(duong)) return new Response('{"error":"gia lap loi"}', { status: 400 });
       const than = opt && opt.body ? JSON.parse(opt.body) : null;
       db.daGhi.push({ cach, duong });
       if (cach === 'PUT') db.dat(duong, than);
@@ -147,9 +151,9 @@ const b64u = (b) => Buffer.from(b).toString('base64')
 
   /** Gọi Gateway như trình duyệt gọi. */
   async function goi(db, duong, tuyChon) {
-    gai(db);
+    const o = tuyChon || {};
+    gai(db, o.honKhiGhi);
     try {
-      const o = tuyChon || {};
       const h = { Authorization: 'Bearer ' + token(o.ai || 'sep') };
       if (o.than !== undefined) h['Content-Type'] = 'application/json';
       return await w.fetch(new Request('https://g.workers.dev' + duong, {
@@ -229,6 +233,27 @@ const b64u = (b) => Buffer.from(b).toString('base64')
        [r.than.tom_tat.dong_tong, r.than.tom_tat.doanh_so_tong, r.than.tom_tat.so_don_tong], [2, 2900, 2]);
     ok('và nhận diễn biến từng kỳ', r.than.ky_da_ghi.map(k => [k.ky, k.la_ky_moi, k.doi_chieu.them]),
        [['2026-09', true, 2]]);
+  }
+
+  console.log('\n2b) bc/imei hỏng KHÔNG được chặn cả lượt tải — ca thật 11/09/2026');
+  {
+    /* Tái hiện đúng sự cố thật: tải sổ 08/2026, bc/ky + bc/dong + bc/khach
+       ghi xong, nhưng Firebase từ chối PATCH bc/imei. Bản trước lượt sửa
+       này NÉM 503 ở đây — người dùng thấy "chưa phục vụ được" và tưởng
+       KHÔNG có gì được lưu, trong khi doanh số/đơn hàng/khách đã nằm trên
+       Firebase. bc/imei là bảng tra phụ, chưa màn nào đọc tới — không
+       được phép làm mất niềm tin vào phần đã ghi thành công. */
+    const db = dungDb(HAT());
+    const r = await doc(await goi(db, '/api/tai-so',
+      { than: { bang: SO_CHUAN }, honKhiGhi: (d) => d === 'bc/imei' }));
+
+    ok('vẫn trả 200, VẪN ghi (không ném 503 vì một bảng phụ hỏng)', [r.ma, r.than.ghi], [200, true]);
+    ok('và nói rõ bảng IMEI không ghi được, kèm chi tiết lỗi',
+       r.than.imei_loi, 'db-tu-choi:HTTP 400');
+    ok('doanh số VẪN được ghi đầy đủ', db.tra('bc/ky/2026-09/Đức Hiệp/2026-09-02').doanh_so, 900);
+    ok('dòng hàng VẪN được ghi đầy đủ', Object.keys(db.tra('bc/dong/2026-09')).length, 2);
+    ok('khách VẪN được ghi đầy đủ', db.tra('bc/khach/2026-09/BH1').ten, 'Chị Nga');
+    ok('chỉ riêng bc/imei là trống, đúng như Firebase đã từ chối', db.tra('bc/imei'), null);
   }
 
   console.log('\n3) Tải lại cùng kỳ — ĐÈ, không cộng dồn, và lưu bản cũ trước khi đè');
