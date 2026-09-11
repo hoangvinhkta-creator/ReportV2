@@ -6,10 +6,11 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { gopSoBanHang } from "./gop-ban-hang.mjs";
 import { gopTheoLine } from "./line.mjs";
+import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.2.0-p2";
+const PHIEN_BAN = "0.3.0-p2b";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -56,5 +57,16 @@ export default class extends WorkerEntrypoint {
    *  LỖI"). */
   async gopTheoLine(cayKy, bangLine) {
     return gopTheoLine(cayKy, bangLine);
+  }
+
+  /** Cây `bc/ky` → dữ liệu cho "màn mở" (sức khoẻ kinh doanh toàn công ty,
+   *  P2(b) bước 1): doanh số + số đơn theo ngày/tháng/năm, mỗi đơn vị tách
+   *  theo năm để màn hình chồng "năm nay" lên "cùng kỳ năm ngoái". Xem
+   *  `gop-theo-thoi-gian.mjs` cho toàn bộ luật.
+   *
+   *  Lên TRƯỚC lượt Gateway gọi nó (bẫy số 4, như `gopTheoLine` ở trên) —
+   *  đúng lượt merge này. */
+  async gopSucKhoeCongTy(cayKy) {
+    return gopSucKhoeCongTy(cayKy);
   }
 }
