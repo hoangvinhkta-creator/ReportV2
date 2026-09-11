@@ -1,0 +1,8 @@
+{
+  "name": "reportv2",
+  "private": true,
+  "description": "Bao cao Kinh doanh V2 - Cloudflare Worker Gateway + Engine",
+  "scripts": {
+    "test": "node kiem/chay.js"
+  }
+}

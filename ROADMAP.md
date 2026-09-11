@@ -15,12 +15,52 @@ tại chưa có bằng chứng chạy thật — không phải "code xong", mà 
 
 ## Trạng thái hiện tại
 
-**Đang ở: P1 — Nền móng rỗng, chạy thật.** Chưa bắt đầu code.
+**Đang ở: P1 — Nền móng rỗng, chạy thật.** Mã đã dựng và đẩy lên nhánh
+`claude/reportv2-p1-foundation-djkhlo` (commit `cd0f987`, 2026-09-11) —
+NHƯNG **chưa ra khỏi phase**: tiêu chí ra khỏi phase là "chủ dự án tự đăng
+nhập được trên máy thật", và điều đó chưa xảy ra vì bốn bước hạ tầng dưới
+đây còn cần người có quyền truy cập Cloudflare/Firebase làm tay.
 
-Việc vừa xong: P0 (sáu quyết định), `CLAUDE.md`, và audit đã đưa vào repo
-(commit `6854921`, 2026-09-11).
+Việc đã xong ở P1:
+- Gateway Worker (`reportv2-gateway`): xác minh Firebase ID token, tra vai
+  `quantri`/`quanly` trong `profiles/<uid>`, một endpoint `/api/me` chứng
+  minh cả đường dây trình duyệt → Gateway → Engine.
+- Report Engine (`reportv2-engine`): Worker riêng tư, không route công
+  khai, không `workers.dev` — sao lại đúng mẫu `price-engine` đã chạy thật
+  bên Tracking.
+- Trang tĩnh `public/index.html`: đăng nhập email/mật khẩu, hiện tên người
+  dùng, sáu thẻ xám "chưa có gì". Không nạp SDK Realtime Database — trình
+  duyệt không có đường nào chạm thẳng RTDB.
+- `firebase-rules/bc.rules.json`: fragment rules mới cho bốn nhánh `bc/`,
+  kèm `firebase-rules/README.md` giải thích cách hợp nhất vào rules chung.
+- `kiem/`: khung bộ kiểm chép từ Tracking + năm bộ kiểm P1 (xác thực token,
+  Engine riêng tư, định tuyến/security header, hình dạng rules `bc/`, quét
+  tĩnh LUẬT SỐ 1). `npm test`: 5 bộ, 116 đạt, 0 hỏng. `wrangler deploy
+  --dry-run` xanh cho cả hai Worker.
+- CI: `.github/workflows/kiem.yml` chạy `npm test` mỗi lần push.
 
-Việc tiếp theo: dựng khung repo theo đúng mục P1 bên dưới.
+**Bốn việc còn lại, CẦN CHỦ DỰ ÁN LÀM (phiên này không có quyền/khoá để tự
+làm)** — xem chi tiết ở cuối `wrangler.toml` từng Worker và ở
+`firebase-rules/README.md`:
+
+1. **Nối hai Worker vào Cloudflare dashboard**, cùng account đang chạy
+   Worker `tracking` (đã hỏi và được xác nhận dùng chung account). Tên
+   Worker đã xác nhận: `reportv2-gateway` và `reportv2-engine`. Chưa có
+   Secret nên có nối cũng chưa đăng nhập được — xem bước 2.
+2. **Đặt hai Secret cho `reportv2-gateway`**: `FB_SA_EMAIL`, `FB_SA_KEY`
+   (`wrangler secret put ...`) — tài khoản dịch vụ Firebase đọc
+   `profiles/<uid>`. Thiếu thì `/api/me` trả 503 (đúng ý, không phải lỗi).
+3. **Hợp nhất `firebase-rules/bc.rules.json` vào file rules chung** (hiện
+   sống ở repo Tracking, dùng chung với Marketing) — xem
+   `firebase-rules/README.md` cho từng bước và vì sao KHÔNG tự sửa thẳng
+   từ đây.
+4. **Dựng Cloudflare Access** cho `reportv2-gateway` trước khi có người
+   dùng thật ngoài chủ dự án (CLAUDE.md/ROADMAP mục P1).
+
+Sau khi xong bốn bước trên, việc còn lại chỉ là mở `*.workers.dev` bằng
+điện thoại, đăng nhập bằng tài khoản đã có `perms.quantri` hoặc
+`perms.quanly`, chụp lại màn hình sáu thẻ xám — đó mới là bằng chứng đủ để
+đánh dấu P1 ✅ trong bảng dưới.
 
 ---
 

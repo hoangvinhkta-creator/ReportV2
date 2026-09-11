@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Báo cáo Kinh doanh — Tín Phát</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #f4f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2430;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+
+  /* ---- Màn đăng nhập ---- */
+  #manDangNhap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .hopDangNhap {
+    width: 100%; max-width: 360px; background: #fff; border-radius: 12px;
+    padding: 32px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .hopDangNhap h1 { font-size: 18px; margin: 0 0 4px; }
+  .hopDangNhap p.phu { color: #6b7280; font-size: 13px; margin: 0 0 20px; }
+  .oNhap {
+    width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #d1d5db;
+    border-radius: 8px; font-size: 14px;
+  }
+  .oNhap:focus { outline: 2px solid #2563eb; outline-offset: -1px; }
+  button.chinh {
+    width: 100%; padding: 10px 12px; border: none; border-radius: 8px;
+    background: #2563eb; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button.chinh:disabled { background: #93c5fd; cursor: default; }
+  .canhBao { color: #b91c1c; font-size: 13px; margin: 0 0 12px; min-height: 16px; }
+
+  /* ---- Màn chủ ---- */
+  header.thanhTren {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  header.thanhTren h1 { font-size: 18px; margin: 0; }
+  .aiDangNhap { font-size: 13px; color: #4b5563; }
+  .aiDangNhap b { color: #1f2430; }
+  button.dangXuat {
+    border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
+    padding: 6px 10px; font-size: 13px; cursor: pointer; margin-left: 8px;
+  }
+
+  .luoiThe {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .the {
+    background: #e5e7eb; border-radius: 10px; padding: 20px; color: #6b7280;
+    min-height: 96px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .the .tenThe { font-size: 14px; font-weight: 600; color: #4b5563; }
+  .the .trangThai { font-size: 12px; margin-top: 8px; }
+
+  #hopLoi { color: #b91c1c; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="manDangNhap">
+  <div class="hopDangNhap">
+    <h1>Báo cáo Kinh doanh</h1>
+    <p class="phu">Tín Phát — đăng nhập bằng tài khoản công ty.</p>
+    <p class="canhBao" id="loiDangNhap"></p>
+    <input class="oNhap" id="oEmail" type="email" placeholder="Email" autocomplete="username">
+    <input class="oNhap" id="oMatKhau" type="password" placeholder="Mật khẩu" autocomplete="current-password">
+    <button class="chinh" id="nutDangNhap" type="button">Đăng nhập</button>
+  </div>
+</div>
+
+<div id="manChu" class="wrap" hidden>
+  <header class="thanhTren">
+    <h1>Báo cáo Kinh doanh</h1>
+    <div class="aiDangNhap">
+      <b id="tenNguoiDung"></b>
+      <button class="dangXuat" id="nutDangXuat" type="button">Đăng xuất</button>
+    </div>
+  </header>
+  <p id="hopLoi"></p>
+  <div class="luoiThe">
+    <div class="the"><div class="tenThe">Doanh thu &amp; lợi nhuận</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the"><div class="tenThe">Giá vốn</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the"><div class="tenThe">Nhân viên</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the"><div class="tenThe">Biểu đồ theo kỳ</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the"><div class="tenThe">Sản phẩm &amp; thương hiệu</div><div class="trangThai">chưa có gì</div></div>
+    <div class="the"><div class="tenThe">Nhập sổ bán hàng</div><div class="trangThai">chưa có gì</div></div>
+  </div>
+</div>
+
+<script>
+/* Đây là TOÀN BỘ những gì trang tĩnh này làm: hiển thị, và gọi Gateway kèm
+ * Firebase ID token (LUẬT SỐ 1 — CLAUDE.md). Không một công thức tiền nào,
+ * không một lượt đọc Realtime Database nào ở đây; nếu Ctrl+U đọc được cách
+ * tính ra một con số tiền thì chỗ đó đặt sai.
+ *
+ * Cùng một Firebase project với Worker `tracking` (CLAUDE.md — dùng chung hạ
+ * tầng). apiKey của Firebase không phải bí mật — nó định danh project, không
+ * xác thực ai cả; thứ xác thực thật là mật khẩu người dùng gõ, và Google
+ * kiểm nó, không phải trang này. */
+const FB_CONFIG = {
+  apiKey: "AIzaSyD2W_zJSmFXVgtlnr3aGAbYbO07bhpWXds",
+  authDomain: "tinphattracking.firebaseapp.com",
+  projectId: "tinphattracking",
+  databaseURL: "https://tinphattracking-default-rtdb.asia-southeast1.firebasedatabase.app",
+};
+firebase.initializeApp(FB_CONFIG);
+
+const $ = (id) => document.getElementById(id);
+const manDangNhap = $('manDangNhap'), manChu = $('manChu');
+const oEmail = $('oEmail'), oMatKhau = $('oMatKhau');
+const loiDangNhap = $('loiDangNhap'), hopLoi = $('hopLoi');
+const nutDangNhap = $('nutDangNhap');
+
+async function doDangNhap() {
+  const email = oEmail.value.trim(), mk = oMatKhau.value;
+  loiDangNhap.textContent = '';
+  if (!email || !mk) { loiDangNhap.textContent = 'Nhập đủ email và mật khẩu.'; return; }
+  nutDangNhap.disabled = true;
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, mk);
+  } catch (e) {
+    loiDangNhap.textContent = 'Đăng nhập không thành công — kiểm tra lại email/mật khẩu.';
+  } finally {
+    nutDangNhap.disabled = false;
+  }
+}
+nutDangNhap.addEventListener('click', doDangNhap);
+oMatKhau.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') doDangNhap(); });
+$('nutDangXuat').addEventListener('click', () => firebase.auth().signOut());
+
+/** Gọi Gateway — chỗ DUY NHẤT trang này nói chuyện với "phía sau", và luôn
+ *  kèm Firebase ID token, không bao giờ tự khai uid/vai trong request. */
+async function goiMe(user) {
+  const token = await user.getIdToken();
+  const r = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+  const than = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(than.loi || ('HTTP ' + r.status));
+  return than;
+}
+
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (!user) {
+    manDangNhap.hidden = false; manChu.hidden = true;
+    oMatKhau.value = '';
+    return;
+  }
+  manDangNhap.hidden = true; manChu.hidden = false;
+  hopLoi.textContent = '';
+  $('tenNguoiDung').textContent = user.email;
+  try {
+    const me = await goiMe(user);
+    $('tenNguoiDung').textContent = me.name || me.email;
+  } catch (e) {
+    hopLoi.textContent = 'Không lấy được hồ sơ: ' + e.message
+      + ' — liên hệ quản trị nếu tài khoản chưa được cấp quyền.';
+  }
+});
+</script>
+</body>
+</html>
