@@ -227,6 +227,23 @@ nhau giữa sheet nhân viên/sheet kênh, và trong trường hợp đó KHÔNG
 - nhân viên (cột có sẵn trên sổ)
 - doanh số của dòng (cộng theo chứng từ, theo ngày, theo nhân viên)
 
+**Chuẩn hoá tên nhân viên — dùng danh sách CÓ SẴN trong chính file kế
+toán, không tự suy đoán.** Chủ dự án xác nhận file có danh sách nhân
+viên; so khớp gần đúng (không phân biệt hoa/thường, không dấu) các biến
+thể cách viết trong cột `employee` vào danh sách đó. Tên nào KHÔNG khớp
+được rõ ràng → liệt kê riêng, báo cáo lại cho chủ dự án TRƯỚC khi ghi,
+đừng tự đoán ghép vào ai. Dòng thiếu hẳn nhân viên (cột rỗng) → gộp vào
+một khoá riêng `_chua_xac_dinh`, không bỏ dòng, không gán bừa cho ai.
+
+**Gộp theo NHÂN VIÊN như file ghi tại thời điểm bán — KHÔNG theo hotline.**
+Chủ dự án xác nhận: hotline được bàn giao giữa các nhân viên khi có người
+nghỉ, và về lâu dài cần xem được hiệu suất liên tục theo hotline chứ
+không vỡ vụn mỗi lần đổi người — NHƯNG file sổ bán hàng không có cột
+hotline riêng, nên việc đó cần một bảng ánh xạ (nhân viên → hotline →
+khoảng thời gian) chưa tồn tại. **Không tự suy đoán ánh xạ này.** P2 gộp
+đúng theo tên nhân viên ghi trên từng dòng; việc xem theo hotline để dành
+cho một phase sau, khi có bảng ánh xạ.
+
 KHÔNG khớp mã hàng, KHÔNG cần Tracking, KHÔNG cần bảng giá — xem CLAUDE.md
 mục "Khớp mã hàng". KHÔNG cần lưu tên/SĐT/địa chỉ khách cho việc này (dù
 kiến trúc chung vẫn cho phép sau — Q1); PII đi qua bộ nhớ tiến trình rồi
@@ -238,15 +255,28 @@ THÁNG là một `<kỳ>`, đúng quy ước sẽ dùng cho P4 sau này, để P
 sau này. Viết logic gộp này thành MỘT hàm dùng chung ở Engine — P4 sau
 này gọi lại đúng hàm đó cho dữ liệu sống, không viết hai lần.
 
-Đối chiếu công ty theo THÁNG với `MONTH_TOTAL` mà chủ dự án có (Excel/sổ
-sách) trước khi coi là xong.
+**Kỹ thuật: chạy như script offline, không chạy trong runtime Worker.**
+20 tháng sổ chi tiết có thể tới hàng chục nghìn dòng — Cloudflare Worker
+giới hạn CPU/bộ nhớ khá chặt, không hợp để parse file lớn ngay trong
+request. Trích + gộp bằng một script chạy trực tiếp trong phiên làm việc
+(không deploy như Worker), rồi ghi kết quả vào Firebase qua REST API bằng
+CHÍNH service account đã cấu hình (`FB_SA_EMAIL`/`FB_SA_KEY`) — tài khoản
+dịch vụ đi vòng qua rules, không cần route HTTP mới nào.
 
-**Bạn nhìn thấy gì:** một script/endpoint chạy một lần, nạp xong đọc lại
-được `bc/ky/2025-01/...` tới `bc/ky/2026-08/...`, mỗi nhân viên mỗi ngày
-có số.
+**Đối chiếu: NỘI BỘ, không cần số tham chiếu ngoài.** Không có số tổng
+tách riêng để so — kiểm tính nhất quán của chính phép cộng: tổng các
+ngày trong một tháng phải bằng đúng tổng tháng tính trực tiếp từ toàn bộ
+dòng của tháng đó (không rơi dòng, không đếm trùng số chứng từ). Chủ dự
+án tự xem lại vài tháng trên sản phẩm thật sau khi merge, theo đúng quy
+trình đã chốt — không phải điều kiện chặn merge.
 
-**Ra khỏi phase khi:** tổng công ty theo từng tháng (01/2025–08/2026)
-đối chiếu khớp 0 lệch với số chủ dự án đang có.
+**Bạn nhìn thấy gì:** một script chạy một lần, nạp xong đọc lại được
+`bc/ky/2025-01/...` tới `bc/ky/2026-08/...`, mỗi nhân viên mỗi ngày có
+số, cộng dồn ngày→tháng khớp đúng.
+
+**Ra khỏi phase khi:** đối chiếu nội bộ (ngày cộng lên tháng) khớp 0 lệch
+cho toàn bộ 01/2025–08/2026, và danh sách tên không khớp được (nếu có) đã
+báo cáo rõ.
 
 ---
 
