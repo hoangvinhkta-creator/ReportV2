@@ -9,6 +9,17 @@ name = "reportv2-gateway"
 main = "src/index.js"
 compatibility_date = "2026-09-11"
 
+# Bật xem log (Cloudflare Dashboard → Observability). ĐỂ Ở ĐÂY, không bật
+# bằng nút trên Dashboard: nút đó chỉ đổi cấu hình của MỘT lần build — build
+# tự động kế tiếp (git integration, mỗi lần merge) nạp lại từ file này và
+# tắt nó về mặc định, đúng như đã xảy ra thật 11/09/2026 lúc chủ dự án đang
+# dò lỗi giữa chừng thì một PR khác merge, log bị tắt lại. Khai ở đây thì
+# đi theo MỌI build — cùng lý do `[build] command` nằm ở đây, không nằm
+# trên ô web (xem chú thích bên dưới).
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 # ---- Cửa chặn của bộ kiểm (CLAUDE.md: "Bộ kiểm hỏng là build hỏng") ----
 #
 # ĐỂ Ở ĐÂY chứ không để trong ô "Build command" trên dashboard Cloudflare, và
