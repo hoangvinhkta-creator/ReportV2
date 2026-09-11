@@ -113,8 +113,8 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     const r = await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe');
     ok('quanly → 200', r.status, 200);
     const than = await r.json();
-    ok('có đủ năm nhóm kết quả', Object.keys(than).sort(),
-       ['hai_nam', 'theo_nam', 'theo_ngay', 'theo_thang', 'vi_tri_moi_nhat']);
+    ok('có đủ nhóm kết quả Dashboard cần', Object.keys(than).sort(),
+       ['cac_nam', 'hai_nam', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
     ok('theo_thang cộng đúng cả An và Bình tháng 08/2026', than.theo_thang[2026][8],
        { doanh_so: 1500, so_don: 7, khoa: '2026-08' });
     ok('theo_thang năm 2025 riêng, không lẫn 2026', than.theo_thang[2025][8],
@@ -148,7 +148,9 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('bc/ky null → vẫn 200', r.status, 200);
     const than = await r.json();
     ok('theo_ngay rỗng', than.theo_ngay, {});
-    ok('vi_tri_moi_nhat toàn null', than.vi_tri_moi_nhat, { ngay: null, thang: null, nam: null });
+    ok('vi_tri_moi_nhat toàn null', than.vi_tri_moi_nhat, { ngay: null, thang: null, quy: null, nam: null });
+    ok('theo_ngay_thang rỗng', than.theo_ngay_thang, {});
+    ok('cac_nam rỗng', than.cac_nam, []);
     ok('hai_nam rỗng', than.hai_nam, []);
     choBcKyRong = false;
   }
