@@ -7,6 +7,10 @@ giá vốn, lợi nhuận, số liệu theo nhân viên và mặt hàng. Dùng c
 Realtime Database với hai app đang chạy: Tracking (bảng giá, tồn kho) và
 Marketing. Người dùng: Quản trị và Quản lí.
 
+**Trước khi làm bất cứ việc gì, đọc `ROADMAP.md`** — đó là trạng thái
+sống, nói đang ở phase nào và việc tiếp theo là gì. File này chỉ có luật;
+tiến độ nằm ở `ROADMAP.md`, không nằm ở đây.
+
 Bối cảnh đầy đủ (audit hai repo cũ, lý do các quyết định dưới đây, lộ
 trình chín phase): `docs/audit/2026-09-11-audit-reports-tracking.md`.
 
