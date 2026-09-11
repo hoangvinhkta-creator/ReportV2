@@ -5,7 +5,8 @@
  * được vì Node và Cloudflare Workers dùng chung WebCrypto.
  *
  * Phần RIÊNG của ReportV2 (không có bên Tracking): vaiBaoCao()/doiVaiBaoCao()
- * — hai vai quantri/quanly, đọc thẳng từ perms dùng chung.
+ * — hai vai quantri/quanly, đọc thẳng từ trường `vai` dùng chung với
+ * Tracking (nguồn sự thật của admSetVai() bên đó, không phải `perms`).
  */
 const { ok, xong } = require('./khung');
 const crypto = require('crypto');
@@ -130,27 +131,35 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('5 lượt xác minh chỉ lấy khoá tối đa 1 lần', soLanLayKhoa <= 1, true);
   }
 
-  console.log('\n8) vaiBaoCao()/doiVaiBaoCao() — quantri bao trùm quanly, thiếu vai thì 403');
+  console.log('\n8) vaiBaoCao()/doiVaiBaoCao() — đọc `vai` (nguồn sự thật Tracking), không đọc `perms`');
   {
-    const thuVai = (perms) => {
-      try { return { vai: doiVaiBaoCao({ perms }), loi: null }; }
+    /* `vai` là một CHUỖI DUY NHẤT do Tracking ghi qua admSetVai() — không
+       phải một bộ cờ boolean như `perms`. Bộ này CỐ Ý không test qua
+       `perms.quantri`/`perms.quanly`: hai khoá đó không tồn tại trong hồ sơ
+       Tracking thật (xem VAI_KN/admSetVai() bên repo Tracking) — đọc chúng
+       là bug đã xảy ra thật ở bản đầu của auth.js, gây mất quyền một tài
+       khoản thật khi thử trên máy thật (xem lịch sử commit repo). */
+    const thuVai = (vai) => {
+      try { return { vai: doiVaiBaoCao({ vai }), loi: null }; }
       catch (e) { return { vai: null, loi: e.ma + ':' + e.ly }; }
     };
-    ok('quantri:true → vai quantri', vaiBaoCao({ perms: { quantri: true } }), 'quantri');
-    ok('quanly:true → vai quanly', vaiBaoCao({ perms: { quanly: true } }), 'quanly');
-    ok('cả hai true → quantri thắng', vaiBaoCao({ perms: { quantri: true, quanly: true } }), 'quantri');
-    ok('không có vai nào → null', vaiBaoCao({ perms: {} }), null);
-    ok('không có perms → null', vaiBaoCao({}), null);
+    ok('vai "quantri" → quantri', vaiBaoCao({ vai: 'quantri' }), 'quantri');
+    ok('vai "quanly" → quanly', vaiBaoCao({ vai: 'quanly' }), 'quanly');
+    ok('vai "saleadmin" (có ở Tracking, KHÔNG có ở Reports) → null',
+       vaiBaoCao({ vai: 'saleadmin' }), null);
+    ok('vai "marketing" → null', vaiBaoCao({ vai: 'marketing' }), null);
+    ok('vai "sale" → null', vaiBaoCao({ vai: 'sale' }), null);
+    ok('không có vai → null', vaiBaoCao({ vai: '' }), null);
+    ok('thiếu hẳn trường vai → null', vaiBaoCao({}), null);
 
-    ok('doiVaiBaoCao trả đúng vai', thuVai({ quanly: true }), { vai: 'quanly', loi: null });
-    ok('doiVaiBaoCao 403 khi thiếu vai', thuVai({}), { vai: null, loi: '403:chua-co-quyen-bao-cao' });
+    ok('doiVaiBaoCao trả đúng vai', thuVai('quanly'), { vai: 'quanly', loi: null });
+    ok('doiVaiBaoCao 403 khi thiếu vai', thuVai(''), { vai: null, loi: '403:chua-co-quyen-bao-cao' });
 
-    /* Client gửi "true" (chuỗi) thay vì true (boolean) — phải trượt. So sánh
-       lỏng ở đây là mở cửa cho tự phong quyền, giống bẫy doiQuyen() bên
-       Tracking đã canh. */
-    ok('perms kiểu chuỗi KHÔNG được coi là true',
-       vaiBaoCao({ perms: { quantri: 'true' } }), null);
-    ok('perms.admin (quyền bên Tracking) KHÔNG tự động cấp vai báo cáo',
+    /* `perms.admin` (quyền cao nhất bên Tracking) KHÔNG được tự động suy ra
+       vai báo cáo — vaiBaoCao() không hề đọc `perms`, chỉ đọc `vai`. Một hồ
+       sơ có `perms.admin: true` nhưng thiếu `vai` (dữ liệu cũ, hoặc hỏng)
+       vẫn bị từ chối — đúng ý, vì đó chính xác là ca lỗi thật đã xảy ra. */
+    ok('có perms.admin nhưng KHÔNG có vai → vẫn null',
        vaiBaoCao({ perms: { admin: true } }), null);
   }
 

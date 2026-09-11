@@ -1,11 +1,11 @@
 {
   "bc": {
     "ky": {
-      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('perms').child('quantri').val() === true || root.child('profiles').child(auth.uid).child('perms').child('quanly').val() === true)",
+      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('vai').val() === 'quantri' || root.child('profiles').child(auth.uid).child('vai').val() === 'quanly')",
       ".write": false
     },
     "quyetdinh": {
-      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('perms').child('quantri').val() === true || root.child('profiles').child(auth.uid).child('perms').child('quanly').val() === true)",
+      ".read": "auth != null && (root.child('profiles').child(auth.uid).child('vai').val() === 'quantri' || root.child('profiles').child(auth.uid).child('vai').val() === 'quanly')",
       ".write": false
     },
     "khach": {

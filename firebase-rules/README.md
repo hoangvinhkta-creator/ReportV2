@@ -33,11 +33,16 @@ cần thêm.
    KHÔNG sửa gì trong các nhánh khác.
 3. Kiểm bằng RTDB Rules Simulator (hoặc `firebase deploy --only database
    --dry-run` nếu có Firebase CLI) trước khi deploy thật.
-4. Deploy. Rules chỉ đọc `profiles/<uid>/perms/quantri` và
-   `perms/quanly` — hai trường này phải đã có trong hồ sơ của người dùng
-   thật thì `/api/me` mới trả vai đúng; nếu công ty chưa gán hai quyền này
-   cho ai thì đó là bước cấp quyền cần làm song song, không phải lỗi ở
-   rules.
+4. Deploy. Rules chỉ đọc `profiles/<uid>/vai` — đúng trường Tracking đã
+   dùng làm nguồn sự thật (`admSetVai()` trong `public/index.html` của repo
+   Tracking ghi `vai` cùng lúc với chiếu ra `perms`). Giá trị phải đúng
+   chuỗi `"quantri"` hoặc `"quanly"` thì `/api/me` mới trả vai đúng.
+
+   **KHÔNG đọc `perms.quantri`/`perms.quanly`** — hai khoá đó không tồn tại
+   trong mô hình quyền của Tracking (`perms` chỉ có bảy cờ: `admin`, `board`,
+   `bedit`, `edit`, `compare`, `summary`, `mkt`, xem `VAI_KN`/`admSetVai()`
+   trong `public/index.html` bên repo Tracking). Bản đầu của file này từng
+   đọc sai hai khoá đó — đã sửa (xem lịch sử commit).
 
 Không nhánh nào trong bốn nhánh trên có `.write` mở cho trình duyệt — Gateway
 ghi bằng service account, đi vòng qua rules đúng như `min_ngay` bên Tracking

@@ -126,7 +126,15 @@ export function tokenTuHeader(request) {
  * `profiles/<uid>` mới là "được công ty cấp quyền vào" — hồ sơ này DÙNG
  * CHUNG với Tracking và Marketing, Reports không có bảng người dùng riêng.
  *
- * Trả { uid, email, name, perms }. Ném LoiXacThuc nếu không qua.
+ * Trả { uid, email, name, vai, perms }. Ném LoiXacThuc nếu không qua.
+ *
+ * `vai` là NGUỒN SỰ THẬT bên Tracking (`admSetVai()` trong public/index.html
+ * của repo đó ghi `vai` + chiếu ra `perms` bảy cờ khả năng cùng một lượt —
+ * `vai` không bao giờ trôi khỏi `perms` vì `perms` được TÍNH TỪ `vai`, không
+ * phải ngược lại). Reports đọc thẳng `vai`, không tự chế thêm khoá `perms`
+ * kiểu `perms.quantri` — khoá đó không tồn tại trong hồ sơ Tracking và không
+ * ai ghi vào đó, nên đọc nó luôn ra `undefined`. Phiên bản trước của file này
+ * đã mắc đúng lỗi đó (đoán hình dạng thay vì đọc mã Tracking) và phải sửa.
  */
 export async function xacThuc(request, env) {
   const projectId = env.FB_PROJECT_ID || "tinphattracking";
@@ -140,25 +148,28 @@ export async function xacThuc(request, env) {
     uid: nguoi.uid,
     email: hs.val.email || nguoi.email,
     name: hs.val.name || "",
+    vai: hs.val.vai || "",
     perms: hs.val.perms || {},
   };
 }
 
 /**
- * Vai của người này TRONG Báo cáo — chỉ hai giá trị CLAUDE.md công nhận,
- * đọc thẳng từ `perms` dùng chung. `quantri` bao trùm `quanly`, giống cách
- * `admin` bao trùm mọi quyền khác bên Tracking — hai nơi hiểu khác nhau là
- * nguồn lỗi kinh điển nên giữ cùng nếp.
+ * Vai của người này TRONG Báo cáo — chỉ hai giá trị CLAUDE.md công nhận
+ * được vào: "quantri", "quanly". Đọc thẳng `vai` (một chuỗi duy nhất, không
+ * phải cờ boolean) nên không có chuyện "cả hai cùng true" như một bộ cờ
+ * `perms` — mỗi người đúng một vai.
  *
- * Trả "quantri" | "quanly" | null. So sánh CHẶT bằng `=== true`: client gửi
- * "true" (chuỗi) trong một trường nào đó của hồ sơ không được coi là cấp
- * quyền.
+ * Các vai khác của Tracking (`saleadmin`, `marketing`, `sale`) — dù
+ * `VAI_KN.saleadmin.baoCao === 1` bên Tracking — KHÔNG được vào Báo cáo
+ * Kinh doanh V2. Quyết định của chủ dự án: chỉ quantri + quanly, đúng
+ * nguyên văn CLAUDE.md ("Người dùng: Quản trị và Quản lí"), không suy rộng
+ * theo bảng quyền của Tracking.
+ *
+ * Trả "quantri" | "quanly" | null.
  */
 export function vaiBaoCao(nguoi) {
-  const p = (nguoi && nguoi.perms) || {};
-  if (p.quantri === true) return "quantri";
-  if (p.quanly === true) return "quanly";
-  return null;
+  const v = nguoi && nguoi.vai;
+  return (v === "quantri" || v === "quanly") ? v : null;
 }
 
 /** Đòi có vai báo cáo (quantri hoặc quanly). Ném LoiXacThuc 403 nếu không. */
