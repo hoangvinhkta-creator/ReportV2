@@ -71,29 +71,42 @@ export const NV_CHUA_GAN = "_chua_xac_dinh";
 
 /* ─────────────── "Doanh số của một dòng" là gì ───────────────
  *
- * Sổ có cả hai thứ, và chúng LỆCH NHAU THẬT (47.101.000 đ trên 8 tháng của
- * sổ 2026 — nhỏ, nhưng không phải 0):
+ * Hai luật, khác nhau đúng phần chiết khấu — 120.981.000 đ trên 20 tháng:
  *
- *   "cot-doanh-so-ban"  cột `Doanh số bán` nguyên văn của sổ. Cộng lại đúng
- *                       bằng dòng `Tổng cộng` mà chính sổ in ra
- *                       (137.844.307.240 đ cho 01–08/2026). Đây là con số
- *                       chủ dự án thấy khi tự mở file.
- *   "tru-chiet-khau"    `Số lượng × Đơn giá − Chiết khấu`. Đây là luật của
- *                       Reports V1 (DEC-114, ghi rõ "Owner xác nhận trực
- *                       tiếp 2026-08-23", xem `app/modules/importing/
- *                       normalizer.py` repo Reports).
+ *   "cot-doanh-so-ban"  cột `Doanh số bán` nguyên văn. Cộng lại đúng bằng
+ *                       dòng `Tổng cộng` mà chính sổ in ra
+ *                       (369.778.152.568 đ cho 01/2025–08/2026).
+ *   "tru-chiet-khau"    `Doanh số bán − Chiết khấu` → 369.657.171.568 đ.
  *
- * Đã kiểm trên file thật: `Doanh số bán` == `Số lượng × Đơn giá` ở CẢ 15.035
- * dòng, 0 dòng lệch. Nên hai luật chỉ khác nhau đúng phần chiết khấu.
+ * ĐANG DÙNG `tru-chiet-khau` — CHỦ DỰ ÁN CHỐT 11/09/2026: "doanh số sẽ phải
+ * trừ đi chiết khấu". Reports V1 cũng trừ chiết khấu (`DEC-114`, ghi rõ
+ * "Owner xác nhận trực tiếp 2026-08-23"), nên đây là hai lần xác nhận độc
+ * lập của cùng một người về cùng một quy tắc.
  *
- * ĐANG DÙNG `cot-doanh-so-ban`, và đây là lý do: chủ dự án KHÔNG có số tổng
- * tách riêng để so (nên điều kiện ra khỏi P2 đã đổi sang đối chiếu NỘI BỘ —
- * ROADMAP.md), và họ sẽ tự xem lại trên sản phẩm thật. Khi không có trọng tài
- * bên ngoài, con số mặc định phải là con số tự-nhất-quán với chính file họ
- * gửi — tức bằng đúng dòng `Tổng cộng` mà sổ tự in ra. Đổi luật = sửa đúng
- * hằng số này rồi chạy lại script nạp; không có chỗ thứ hai nào phải sửa
- * theo, và cả hai luật đều có bài kiểm canh. */
-export const LUAT_DOANH_SO = "cot-doanh-so-ban";
+ * ── VÌ SAO LẤY GỐC LÀ CỘT `Doanh số bán`, KHÔNG PHẢI `SL × ĐG` ──
+ * V1 tính gốc bằng `Số lượng × Đơn giá` (`normalizer.py` repo Reports). Trên
+ * sổ thật hai cách gần như trùng khít: 15.035/15.035 dòng của sổ 2026 và
+ * 25.081/25.083 dòng của sổ 2025 cho CÙNG một số.
+ *
+ * Đúng HAI dòng lệch, cả hai ở sổ 2025 (hàng 1130 và 1131, chứng từ BH43139,
+ * ngày 14/01/2025): đơn giá có phần lẻ — 4.090.909,09 và 1.681.818,18, kiểu
+ * số tính ngược từ giá đã gồm VAT. MISA làm tròn cột `Doanh số bán` về đồng
+ * chẵn, còn phép nhân thì giữ phần lẻ. Tổng chênh của cả 20 tháng: 0,27 đ.
+ *
+ * Lấy gốc là cột của sổ vì ba lẽ: (1) đó là con số CHÍNH SỔ khẳng định dòng
+ * đó bán được bao nhiêu, và là con số chủ dự án thấy khi mở file; (2) VND
+ * không có đơn vị nhỏ hơn đồng, nên báo cáo không nên đẻ ra "…568,27 đ";
+ * (3) 0,27 đ không đủ để đánh đổi lấy hai điều trên. Phép đối chiếu chéo với
+ * V1 ở P8 cũng không hề gãy vì 0,27 đ.
+ *
+ * Hệ quả phải nhớ: con số này KHÔNG còn bằng dòng `Tổng cộng` mà sổ tự in
+ * ra. Mở sổ so bằng mắt sẽ thấy "lệch" đúng bằng tổng chiết khấu — đó là
+ * ĐÚNG, không phải lỗi.
+ *
+ * Đổi luật = sửa đúng hằng số này rồi CHẠY LẠI script nạp. Không có chỗ thứ
+ * hai phải sửa theo, nhưng nhớ: `bc/ky` lưu số ĐÃ TÍNH, nên đổi hằng số mà
+ * không nạp lại thì Firebase vẫn giữ số cũ. Cả hai luật đều có bài kiểm canh. */
+export const LUAT_DOANH_SO = "tru-chiet-khau";
 
 /* ─────────────── Chuẩn hoá ─────────────── */
 
@@ -293,13 +306,12 @@ export function gopSoBanHang(bang) {
 
     // ---- tiền của dòng ----
     let tien;
+    const ban = doiSo(h[COT.doanh_so_ban]);
     if (LUAT_DOANH_SO === "tru-chiet-khau") {
-      const sl = doiSo(h[COT.so_luong]);
-      const dg = doiSo(h[COT.don_gia]);
       const ck = doiSo(h[COT.chiet_khau]);
-      tien = (sl === null || dg === null || ck === null) ? null : sl * dg - ck;
+      tien = (ban === null || ck === null) ? null : ban - ck;
     } else {
-      tien = doiSo(h[COT.doanh_so_ban]);
+      tien = ban;
     }
     if (tien === null) {
       // Không đoán là 0: một dòng tiền không đọc được phải nhìn thấy được.

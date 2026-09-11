@@ -52,27 +52,27 @@ KHÔNG phải đi đường `PROVENANCE.md`. `kiemBoCuc()` canh đúng sáu ô t
 
 | kỳ | doanh số (đ) | số đơn | nhân viên | ngày có số |
 |---|---|---|---|---|
-| 2025-01 | 25.810.873.727 | 1.928 | 8 | 26 |
-| 2025-02 | 18.035.390.000 | 1.505 | 10 | 24 |
-| 2025-03 | 13.142.945.600 | 1.216 | 9 | 31 |
-| 2025-04 | 14.095.335.000 | 1.174 | 9 | 28 |
-| 2025-05 | 17.235.272.000 | 1.447 | 9 | 30 |
-| 2025-06 | 16.778.365.001 | 1.490 | 9 | 30 |
-| 2025-07 | 19.281.441.000 | 1.709 | 11 | 31 |
-| 2025-08 | 24.560.420.000 | 1.869 | 11 | 31 |
-| 2025-09 | 15.775.529.000 | 1.286 | 11 | 28 |
-| 2025-10 | 20.323.640.000 | 1.651 | 9 | 31 |
-| 2025-11 | 23.615.003.000 | 1.871 | 12 | 30 |
-| 2025-12 | 23.279.631.000 | 1.668 | 10 | 31 |
-| 2026-01 | 25.485.686.000 | 1.864 | 11 | 31 |
-| 2026-02 | 23.798.651.000 | 1.881 | 11 | 19 |
-| 2026-03 | 15.585.862.240 | 1.351 | 10 | 31 |
-| 2026-04 | 13.479.338.000 | 1.210 | 9 | 28 |
-| 2026-05 | 14.668.728.000 | 1.182 | 9 | 30 |
-| 2026-06 | 14.474.146.000 | 1.226 | 11 | 30 |
-| 2026-07 | 14.527.576.000 | 1.205 | 10 | 31 |
-| 2026-08 | 15.824.320.000 | 1.150 | 8 | 28 |
-| **TỔNG** | **369.778.152.568** | **29.883** | | |
+| 2025-01 | 25.805.173.727 | 1.928 | 8 | 26 |
+| 2025-02 | 18.032.370.000 | 1.505 | 10 | 24 |
+| 2025-03 | 13.140.995.600 | 1.216 | 9 | 31 |
+| 2025-04 | 14.091.071.471 | 1.174 | 9 | 28 |
+| 2025-05 | 17.231.685.529 | 1.447 | 9 | 30 |
+| 2025-06 | 16.775.225.001 | 1.490 | 9 | 30 |
+| 2025-07 | 19.273.841.000 | 1.709 | 11 | 31 |
+| 2025-08 | 24.550.670.000 | 1.869 | 11 | 31 |
+| 2025-09 | 15.769.679.000 | 1.286 | 11 | 28 |
+| 2025-10 | 20.316.570.000 | 1.651 | 9 | 31 |
+| 2025-11 | 23.606.103.000 | 1.871 | 12 | 30 |
+| 2025-12 | 23.266.581.000 | 1.668 | 10 | 31 |
+| 2026-01 | 25.474.986.000 | 1.864 | 11 | 31 |
+| 2026-02 | 23.791.701.000 | 1.881 | 11 | 19 |
+| 2026-03 | 15.580.262.240 | 1.351 | 10 | 31 |
+| 2026-04 | 13.475.938.000 | 1.210 | 9 | 28 |
+| 2026-05 | 14.664.828.000 | 1.182 | 9 | 30 |
+| 2026-06 | 14.467.946.000 | 1.226 | 11 | 30 |
+| 2026-07 | 14.523.075.000 | 1.205 | 10 | 31 |
+| 2026-08 | 15.818.470.000 | 1.150 | 8 | 28 |
+| **TỔNG** | **369.657.171.568** | **29.883** | | |
 
 1. **Đối chiếu NỘI BỘ — đúng điều kiện ra khỏi phần (a).** Mỗi tháng được
    cộng bằng HAI đường độc lập: cộng `doanh_so` của mọi ô (nhân viên,
@@ -98,43 +98,52 @@ cáo khoá theo tên thô (`chuanHoaChu`, chưa qua thay ký tự), cây `bc/ky`
 vẫn dùng khoá đã thay `~` như cũ (bắt buộc, để ghi được vào Firebase).
 Có bài kiểm canh riêng test 18.
 
-**Một quyết định nghiệp vụ CHƯA CHỐT — `LUAT_DOANH_SO`.** Sổ cho hai cách
-đọc "doanh số của một dòng", lệch nhau **120.981.000 đ** trên cả 20 tháng
-(47.101.000 đ chỉ riêng 2026, cộng thêm 73.880.000 đ của 2025):
+**`LUAT_DOANH_SO` đã CHỐT (11/09/2026): `tru-chiet-khau`.** Chủ dự án nói
+rõ "doanh số sẽ phải trừ đi chiết khấu". Reports V1 cũng trừ chiết khấu
+(`DEC-114`) — hai lần xác nhận độc lập của cùng một người.
 
-- `cot-doanh-so-ban` (**đang bật**) — cột `Doanh số bán` nguyên văn →
-  369.778.152.568 đ. Tự nhất quán với dòng `Tổng cộng` của mỗi sổ.
-- `tru-chiet-khau` — `Số lượng × Đơn giá − Chiết khấu` → 369.657.171.568 đ.
-  Đây là luật V1 (`DEC-114`, ghi rõ "Owner xác nhận trực tiếp 2026-08-23").
+- `cot-doanh-so-ban` — cột `Doanh số bán` nguyên văn → 369.778.152.568 đ.
+  Bằng đúng dòng `Tổng cộng` của mỗi sổ. **Không dùng nữa.**
+- `tru-chiet-khau` (**đang bật**) — `Doanh số bán − Chiết khấu` →
+  **369.657.171.568 đ**. Lệch 120.981.000 đ, đúng bằng tổng chiết khấu.
 
-Đổi luật = sửa MỘT hằng số trong `gop-ban-hang.mjs` rồi chạy lại script —
-cả hai luật đều có bài kiểm canh. Chủ dự án không có số tổng tách riêng để
-so (điều kiện ra phase là đối chiếu nội bộ), nên đây là việc họ tự xem lại
-trên sản phẩm thật rồi nói nếu thấy sai.
+**Hệ quả phải nhớ:** con số trên màn hình KHÔNG còn bằng dòng `Tổng cộng`
+của sổ. Mở sổ so bằng mắt sẽ thấy lệch đúng phần chiết khấu — đó là ĐÚNG.
+
+**Gốc là cột `Doanh số bán`, KHÔNG phải `SL × ĐG` như V1.** Trên sổ thật
+hai cách gần trùng khít: 15.035/15.035 dòng sổ 2026 và 25.081/25.083 dòng
+sổ 2025 cho cùng một số. Đúng hai dòng lệch (hàng 1130–1131 sổ 2025, chứng
+từ BH43139 ngày 14/01/2025): đơn giá có phần lẻ (4.090.909,09 và
+1.681.818,18 — số tính ngược từ giá gồm VAT), MISA làm tròn cột `Doanh số
+bán` về đồng chẵn còn phép nhân giữ phần lẻ. Tổng chênh cả 20 tháng:
+**0,27 đ**. Lấy cột của sổ làm gốc vì đó là con số chính sổ khẳng định, và
+vì VND không có đơn vị nhỏ hơn đồng — báo cáo không nên đẻ ra "…568,27 đ".
+
+Đổi luật = sửa MỘT hằng số trong `gop-ban-hang.mjs` rồi CHẠY LẠI script
+nạp (`bc/ky` lưu số đã tính, đổi hằng số mà không nạp lại thì Firebase vẫn
+giữ số cũ). Cả hai luật đều có bài kiểm canh.
 
 **25 dòng không có tên nhân viên** trên cả hai sổ (65.300.000 đ, 4 dòng ở
 2025 + 21 dòng ở 2026, hầu hết 07–08/2026): KHÔNG bị bỏ, KHÔNG gán bừa
 cho ai — dồn vào khoá `_chua_xac_dinh` để tổng tháng vẫn khớp sổ, và
 script in ra danh sách số chứng từ. Đây đúng là việc P5 sẽ sửa tay.
 
-**16 tên nhân viên trên cả hai sổ, script CHỈ LIỆT KÊ — không tự ghép**
-(so với 14 tên chỉ thấy ở riêng sổ 2026). Đúng theo yêu cầu "dùng danh
-sách CÓ SẴN trong file kế toán, đừng tự đoán ghép vào ai": script in danh
-sách tên kèm số dòng và doanh số, sắp theo doanh số giảm dần. Ba chỗ đáng
-chú ý khi chủ dự án soi lại:
+**16 tên nhân viên trên cả hai sổ** (so với 14 tên chỉ thấy ở riêng sổ
+2026). Script CHỈ LIỆT KÊ, không tự ghép — đúng yêu cầu "dùng danh sách CÓ
+SẴN trong file kế toán, đừng tự đoán ghép vào ai".
 
-- **`Tống Khánh Linh 0865111033` và `Lê Văn Quân 0865111033` dùng CÙNG
-  một số hotline.** Đúng hiện tượng bàn giao hotline mà chủ dự án mô tả.
-  P2 gộp theo TÊN như sổ ghi, không theo hotline — chờ bảng ánh xạ.
-- `Thảo Linh` (3.059.270.000 đ, cả hai sổ) và `Tống Khánh Linh
-  0865111033` (129.850.000 đ) có thể là một người viết hai cách, hoặc
-  hai người khác nhau. **Không đoán** — cần chủ dự án nói.
-- Hai tên MỚI chỉ thấy ở sổ 2025: `Miền Bắc 0865.909.033` (3.341.556.000
-  đ — có thể là tên một khu vực/nhóm, không phải một cá nhân) và `Đinh
-  Thùy Dương` (13.200.000 đ).
+**Câu hỏi tên trùng đã ĐÓNG (chủ dự án chốt 11/09/2026) — đừng hỏi lại:**
 
-Bốn tên `Mr Quý`, `Mr Vinh`, `Đức Hiệp`, `Tín Phát 0869931931` không có
-họ tên đầy đủ, nên không tự khớp được vào danh sách kế toán.
+- `Thảo Linh` và `Tống Khánh Linh 0865111033` là **HAI NGƯỜI KHÁC NHAU**.
+- `Tống Khánh Linh 0865111033` **hiểu là kênh Fanpage** — đúng như bảng
+  line đang khai.
+
+Nên không còn tên nào cần ghép. Bảng line đã phủ đủ 16/16 tên, `chua_xep`
+rỗng.
+
+Một quan sát vẫn đáng nhớ: `Miền Bắc 0865.909.033` (3,3 tỷ trong đúng
+01–02/2025 rồi biến mất) nhiều khả năng là tên một KÊNH chứ không phải một
+cá nhân — và nó đã có line riêng nên cách hiểu đó không ảnh hưởng số liệu.
 
 ### LINE — tầng phân tích cố định, chốt 11/09/2026
 
@@ -198,17 +207,17 @@ công ty, đã canh bằng bất biến trong `gopTheoLine`):
 
 | Line | doanh số (đ) | số đơn | nguồn |
 |---|---|---|---|
-| Nội thành | 237.782.673.600 | 20.266 | 4 |
-| Tín Phát | 54.062.560.000 | 4.027 | 1 |
-| Tổng kho | 24.153.018.727 | 1.841 | 1 |
-| Quyết chiến | 18.275.399.001 | 1.182 | 1 |
-| Đông Á | 17.341.660.240 | 1.243 | 1 |
-| Tân Á | 11.504.115.000 | 870 | 1 |
-| Miền Bắc | 3.341.556.000 | 248 | 1 |
-| Khác | 3.187.320.000 | 196 | 5 |
+| Nội thành | 237.780.423.600 | 20.266 | 4 |
+| Tín Phát | 54.039.860.000 | 4.027 | 1 |
+| Tổng kho | 24.090.308.727 | 1.841 | 1 |
+| Quyết chiến | 18.260.579.001 | 1.182 | 1 |
+| Đông Á | 17.326.110.240 | 1.243 | 1 |
+| Tân Á | 11.501.664.000 | 870 | 1 |
+| Miền Bắc | 3.341.256.000 | 248 | 1 |
+| Khác | 3.187.120.000 | 196 | 5 |
 | Fanpage | 129.850.000 | 10 | 1 |
 | Shopee | 0 | 0 | 1 *(tên đã khai, chưa có dòng)* |
-| **TỔNG** | **369.778.152.568** | **29.883** | |
+| **TỔNG** | **369.657.171.568** | **29.883** | |
 
 **Năm tên ở "Khác" — chủ dự án chốt GIỮ NGUYÊN (11/09/2026):** `Thảo Linh`
 (3.059.270.000 đ), `_chua_xac_dinh` (65.300.000 đ),
@@ -228,9 +237,24 @@ Tên chưa khai vẫn KHÔNG được tan biến trong im lặng — `gopTheoLin
 trả `chua_xep` kèm số tiền, và script nạp in danh sách đó mỗi lượt chạy.
 Hiện danh sách đó RỖNG: cả 16 tên trên sổ đều đã có line.
 
-### P2 phần (a) ĐÃ XONG — dữ liệu đang nằm thật trên Firebase
+### P2 phần (a) — dữ liệu đã nằm trên Firebase, NHƯNG CẦN NẠP LẠI MỘT LƯỢT
 
-**Chủ dự án tự chạy lượt ghi ngày 11/09/2026, cả hai lệnh xanh:**
+> ⚠️ **Số trên Firebase đang là số CŨ.** Lượt ghi đầu chạy khi
+> `LUAT_DOANH_SO` còn là `cot-doanh-so-ban`. Sau đó chủ dự án chốt trừ
+> chiết khấu, nên `bc/ky` hiện giữ số CHƯA TRỪ. `bc/ky` lưu số ĐÃ TÍNH,
+> không tính lại lúc đọc — nên phải chạy lại đúng một lượt:
+>
+> ```
+> node bin/nap-so-legacy.mjs --ghi --doc-lai <sổ 2025> <sổ 2026>
+> ```
+>
+> Lượt này ĐÈ trọn từng kỳ nên chạy lại bao nhiêu lần cũng được, không
+> cộng dồn. Bảng line (`bc/quyetdinh/line`) KHÔNG bị ảnh hưởng — nó không
+> chứa số tiền nào, không cần nạp lại.
+>
+> Tổng đúng sau khi nạp lại: **369.657.171.568 đ · 29.883 đơn**.
+
+**Lượt ghi đầu, chủ dự án tự chạy ngày 11/09/2026, cả hai lệnh xanh:**
 
 ```
 node bin/nap-line.mjs --ghi --doc-lai
@@ -243,8 +267,10 @@ node bin/nap-so-legacy.mjs --ghi --doc-lai <sổ 2025> <sổ 2026>
 ```
 
 Nên `bc/ky/2025-01/…` tới `bc/ky/2026-08/…` và `bc/quyetdinh/line` đều có
-số thật. Đây KHÔNG phải "script tự nói là đã ghi": `--doc-lai` đọc ngược
-từng kỳ từ Firebase rồi so lại tổng doanh số và số đơn.
+số thật — đường ghi đã chứng minh chạy được đầu-cuối. Đây KHÔNG phải
+"script tự nói là đã ghi": `--doc-lai` đọc ngược từng kỳ từ Firebase rồi so
+lại tổng doanh số và số đơn. Chỉ còn phải chạy lại một lượt cho đúng luật
+doanh số mới (xem khung cảnh báo trên).
 
 Cách lấy khoá để chạy lại về sau (secret của Worker KHÔNG đọc lại được —
 Cloudflare cố ý làm một chiều, `wrangler secret list` chỉ trả tên): tạo
@@ -263,22 +289,14 @@ node bin/nap-line.mjs --doc-lai     # đọc thử, KHÔNG ghi gì — phép th�
 
 ### Việc còn lại của P2
 
-1. **Danh sách nhân viên chuẩn chưa có** *(không chặn gì — ghi chú để
-   nhớ)*. Chủ dự án chốt: chuẩn hoá tên dựa vào danh sách CÓ SẴN trong
-   **file kế toán** (`Báo cáo Kinh doanh
-   2025/2026.xlsx`) — file đó KHÔNG được gửi và không có trong repo nào
-   (`.gitignore: *.xlsx` bên Reports V1). Nên script làm đúng nửa việc
-   thuộc về nó: **liệt kê 16 tên như sổ ghi, kèm số dòng và doanh số,
-   không tự ghép tên nào với tên nào**. Cần chủ dự án nói tên nào là biến
-   thể của tên nào (ba chỗ nêu trên), hoặc gửi file kế toán để đọc danh
-   sách.
-
-   *Tầng LINE làm việc này BỚT GẤP:* biểu đồ vẽ theo line, và line đã bền
-   xuyên thời gian rồi. Hai cách viết của cùng một người, nếu cả hai đều
-   được xếp vào đúng một line, thì ra cùng một cột — tên trùng chỉ còn ảnh
-   hưởng tới phần tách `nguon` bên trong line.
-2. **Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Giờ đã hết vướng: dữ liệu và
-   bảng line đều đã nằm trên Firebase.
+1. **Nạp lại `bc/ky` một lượt** cho đúng `LUAT_DOANH_SO` mới — xem khung
+   cảnh báo ở mục trên. Đây là việc của chủ dự án (cần khoá).
+2. ~~Danh sách nhân viên chuẩn~~ — **ĐÓNG 11/09/2026.** Chủ dự án trả lời
+   thẳng thay vì gửi file kế toán: `Thảo Linh` ≠ `Tống Khánh Linh`, và
+   `Tống Khánh Linh` hiểu là Fanpage. Bảng line phủ đủ 16/16 tên, không
+   còn tên nào chờ ghép.
+3. **Phần (b) — biểu đồ — ĐANG LÀM ở nhánh riêng.** Xem mục "Hai nhánh
+   chạy song song" ngay dưới.
 
 **Phần (b) làm gì:** Gateway đọc `bc/ky` + `bc/quyetdinh/line`, gọi
 `gopTheoLine()` ở Engine, trả số đã tính sẵn cho trang tĩnh; trang tĩnh vẽ
@@ -289,6 +307,65 @@ tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trư�
 Engine ĐÃ có sẵn `gopSoBanHang()` và `gopTheoLine()` qua Service Binding
 (bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt merge sau), nên phần
 (b) chỉ còn phải thêm **endpoint ở Gateway + phần vẽ ở trang tĩnh**.
+
+### Hai nhánh chạy SONG SONG — P2(b) và P3
+
+Chủ dự án chốt 11/09/2026: **P2(b) (biểu đồ) và P3 (tải file) làm song
+song, ở hai nhánh và hai session khác nhau.**
+
+| | P2(b) — biểu đồ | P3 — tải file |
+|---|---|---|
+| Nhánh | `claude/p2b-bieu-do` | session mới tự đặt |
+| Làm gì | ĐỌC `bc/ky` + bảng line → vẽ | NHẬN .xlsx → GHI `bc/ky` |
+| Hướng dữ liệu | Firebase → màn hình | màn hình → Firebase |
+| Dữ liệu | 20 tháng legacy đã có | từ 09/2026 trở đi |
+| Method HTTP | GET | POST |
+
+Hai việc này ngược chiều nhau nên gần như không đụng logic của nhau —
+nhưng CÓ ba chỗ đụng file thật. Ai đọc file này trước khi code thì cả hai
+nhánh merge được mà không phải gỡ rối.
+
+#### Ba chỗ đụng, và ai sở hữu chỗ nào
+
+**1. `src/index.js` — cửa chặn method. P3 SỞ HỮU.**
+Gateway hiện từ chối MỌI method khác GET/HEAD bằng 405, ở cả hai nhánh
+`/api/` và file tĩnh. P3 phải nới đúng một đường cho POST; P2(b) KHÔNG
+đụng tới khối đó. `kiem/dinh-tuyen.js` đang canh "POST bị 405 ở khắp nơi"
+(bài 1) — P3 sửa bộ kiểm đó cho khớp, P2(b) để nguyên.
+
+**2. `src/index.js` — bảng `API_ROUTES`. Cả hai cùng thêm, mỗi bên MỘT dòng.**
+Đây là một `Map`, thêm route là thêm một dòng. Va chạm git nếu có thì là
+một dòng cạnh nhau, gỡ trong mười giây. Đừng sắp xếp lại bảng, đừng đổi
+thứ tự các dòng đang có — đó mới là thứ biến một dòng thành cả khối.
+
+**3. `public/index.html` — MỘT file, hai màn hình. Quy ước bắt buộc:**
+
+- Mỗi màn một file `.js` RIÊNG trong `public/`: `public/bieu-do.js`
+  (P2b), `public/tai-len.js` (P3).
+- `index.html` mỗi bên chỉ thêm **một thẻ `<script src>`** và **một thẻ
+  chứa màn hình** (`<section id="man-bieu-do" hidden>` /
+  `<section id="man-tai-len" hidden>`).
+- KHÔNG viết logic màn mới vào khối `<script>` inline đang có. Khối đó là
+  của phần đăng nhập, để yên.
+
+`kiem/luat-so-1.js` đã được mở rộng sẵn (11/09/2026) để soi cả file `.js`
+rời: mỗi file bị kiểm riêng "mọi `fetch()` vào `/api/`", "không chạm
+Firebase thẳng", "không mang khoá", và phải được `index.html` nạp thật —
+một file mồ côi cũng đỏ. Nên tách file KHÔNG làm hở lưới LUẬT SỐ 1.
+
+#### Luật vẫn áp cho cả hai
+
+- **Bẫy số 4 (hai Worker build song song).** Engine ĐÃ có sẵn
+  `gopSoBanHang()` và `gopTheoLine()`, nên cả hai nhánh gọi được ngay,
+  không nhánh nào phải chờ. Nhưng nếu một nhánh cần hàm Engine MỚI thì
+  hàm đó phải merge TRƯỚC, ở một lượt riêng, rồi lượt sau Gateway mới gọi.
+- **Nghiệp vụ ở Engine.** Không nhánh nào được tính tiền ở Gateway hay ở
+  trình duyệt. P3 gọi lại ĐÚNG `gopSoBanHang()` — không viết bản thứ hai.
+- **Merge thẳng, không chờ nhau.** Nhánh nào xong trước merge trước. Nhánh
+  sau `git pull origin main` rồi đi tiếp.
+
+Prompt mở session P3 đã viết sẵn: **`docs/prompt-P3.md`** — chép nguyên
+khối trong đó vào một session mới.
 
 ### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 

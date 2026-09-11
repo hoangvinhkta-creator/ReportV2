@@ -19,8 +19,22 @@ function soMau(dong) {
   return [['SỔ CHI TIẾT BÁN HÀNG'], ['Từ ngày 01/01/2026 đến ngày '], [], h4, h5, ...dong];
 }
 
-/** Một dòng bán: chỉ đặt những cột P2 thật sự đọc. */
-function dongBan({ ngay, so_ct, sl = 1, dg = 0, ds, ck = 0, nv }) {
+/** Một dòng bán: chỉ đặt những cột P2 thật sự đọc.
+ *
+ *  Đặt CẢ HAI nguồn tiền cho nhất quán — cột `Doanh số bán` (cột 10) và cặp
+ *  `Số lượng × Đơn giá` (cột 8, 9) — để phần lớn bài kiểm ra CÙNG một số dù
+ *  `LUAT_DOANH_SO` đang bật luật nào. Bài nào cố ý kiểm sự khác nhau giữa hai
+ *  luật thì tự truyền `sl`/`dg`/`ck` tường minh (xem bài 14).
+ *
+ *  Vì sao cần: trước đây helper chỉ đặt cột 10, nên lúc chủ dự án chốt đổi
+ *  sang `tru-chiet-khau` thì sáu bài đỏ vì đọc cột 9 ra 0 — đỏ vì HELPER, không
+ *  phải vì nghiệp vụ sai. Một bài kiểm đỏ nhầm chỗ làm người sửa mất niềm tin
+ *  vào cả bộ. */
+function dongBan({ ngay, so_ct, sl, dg, ds, ck = 0, nv }) {
+  // Chỉ cho `ds`: coi như 1 × ds, để hai luật gặp nhau ở cùng con số.
+  if (ds !== undefined && sl === undefined && dg === undefined) { sl = 1; dg = ds; }
+  if (sl === undefined) sl = 1;
+  if (dg === undefined) dg = 0;
   const h = [];
   h[0] = ngay; h[1] = so_ct; h[8] = sl; h[9] = dg;
   h[10] = ds === undefined ? sl * dg : ds;
