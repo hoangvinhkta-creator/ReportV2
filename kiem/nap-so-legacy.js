@@ -275,7 +275,22 @@ console.log('\n10) Mặc định KHÔNG ghi gì — phải nói --ghi mới ch�
   ok('có cờ --doc-lai để đọc ngược mà xác nhận', /"--doc-lai"/.test(SCRIPT_MA), true);
 }
 
-console.log('\n11) Engine đã có hàm TRƯỚC khi Gateway gọi (bẫy số 4 của ROADMAP)');
+console.log('\n11) Đối chiếu nội bộ CHẶN lượt ghi, và tên nhân viên được báo ra');
+{
+  /* Điều kiện ra khỏi P2 là đối chiếu nội bộ khớp 0 lệch. Nếu script in ra
+     "không khớp" rồi vẫn ghi tiếp thì điều kiện ấy chỉ là trang trí. */
+  ok('script đọc doi_chieu_noi_bo', /doi_chieu_noi_bo/.test(SCRIPT_MA), true);
+  ok('lệch thì THOÁT, không ghi gì', /lechNoiBo\)\s*\{[\s\S]{0,200}?process\.exit/.test(SCRIPT_MA), true);
+  /* Và phép chặn phải nằm TRƯỚC chỗ ghi, không phải sau. */
+  ok('chỗ chặn nằm trước lượt ghiDb đầu tiên',
+     SCRIPT_MA.indexOf('lechNoiBo') < SCRIPT_MA.indexOf('await ghiDb('), true);
+  ok('script in danh sách tên nhân viên để chủ dự án ghép',
+     /tom_tat\.nhan_vien/.test(SCRIPT_MA), true);
+  ok('script KHÔNG tự ghép tên gần giống (không so gần đúng, không bỏ dấu)',
+     /normalize\(|localeCompare|levenshtein|toLowerCase\(\)/.test(SCRIPT_MA), false);
+}
+
+console.log('\n12) Engine đã có hàm TRƯỚC khi Gateway gọi (bẫy số 4 của ROADMAP)');
 {
   const IDX = doc('engine/src/index.js');
   ok('Engine mở hàm gopSoBanHang qua Service Binding',

@@ -287,5 +287,67 @@ console.log('\n15) Sổ rỗng (chỉ tiêu đề) → cây rỗng, KHÔNG nổ'
   ok('không cảnh báo giả', r.canh_bao, []);
 }
 
+console.log('\n16) Đối chiếu NỘI BỘ — điều kiện ra khỏi P2: ngày cộng lên phải ra tháng');
+{
+  const r = G.gopSoBanHang(soMau([
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH1', dg: 1000, nv: 'An' }),
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH1', dg: 500, nv: 'An' }),   // cùng đơn
+    dongBan({ ngay: '2026-01-03', so_ct: 'BH2', dg: 700, nv: 'Bình' }),
+    dongBan({ ngay: '2026-02-01', so_ct: 'BH3', dg: 300, nv: 'An' }),
+  ]));
+  const dc = r.tom_tat.doi_chieu_noi_bo;
+  ok('khớp cho toàn bộ sổ', dc.khop, true);
+  ok('kể đủ mọi kỳ', Object.keys(dc.thang).sort(), ['2026-01', '2026-02']);
+  ok('tháng 01: hai đường cộng ra cùng một số',
+     [dc.thang['2026-01'].doanh_so_tu_o, dc.thang['2026-01'].doanh_so_tu_dong], [2200, 2200]);
+  ok('tháng 01: lệch doanh số = 0', dc.thang['2026-01'].lech_doanh_so, 0);
+  ok('tháng 01: hai đường đếm đơn ra cùng một số (2 dòng cùng chứng từ = 1 đơn)',
+     [dc.thang['2026-01'].so_don_tu_o, dc.thang['2026-01'].so_don_tu_dong], [2, 2]);
+  ok('tháng 01: đếm đủ số DÒNG (không phải số đơn)', dc.thang['2026-01'].so_dong, 3);
+  ok('không có cảnh báo doi-chieu-noi-bo-lech',
+     !!r.canh_bao.find(x => x.ma === 'doi-chieu-noi-bo-lech'), false);
+
+  /* Phép đối chiếu chỉ có nghĩa nếu nó BẮT ĐƯỢC lỗi. Một chứng từ trải hai
+     ngày làm cây ô đếm 2 đơn trong khi tháng chỉ có 1 chứng từ khác nhau —
+     đúng kiểu "đếm trùng" mà điều kiện ra phase muốn chặn. */
+  const xau = G.gopSoBanHang(soMau([
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH1', dg: 100, nv: 'An' }),
+    dongBan({ ngay: '2026-01-03', so_ct: 'BH1', dg: 200, nv: 'An' }),
+  ]));
+  ok('đếm trùng chứng từ → đối chiếu nội bộ KHÔNG khớp',
+     xau.tom_tat.doi_chieu_noi_bo.khop, false);
+  ok('và nói rõ lệch mấy đơn',
+     xau.tom_tat.doi_chieu_noi_bo.thang['2026-01'].lech_so_don, 1);
+  ok('doanh số thì vẫn khớp (không dòng nào rơi)',
+     xau.tom_tat.doi_chieu_noi_bo.thang['2026-01'].lech_doanh_so, 0);
+  const c = xau.canh_bao.find(x => x.ma === 'doi-chieu-noi-bo-lech');
+  ok('có cảnh báo doi-chieu-noi-bo-lech kèm tên kỳ', c && c.ky, '2026-01');
+}
+
+console.log('\n17) Danh sách tên nhân viên — BÁO ra để chủ dự án ghép, KHÔNG tự đoán');
+{
+  /* Chủ dự án chốt: chuẩn hoá tên phải dựa vào danh sách có sẵn trong file kế
+     toán, và tên không khớp rõ ràng thì báo lại trước khi ghi (ROADMAP.md P2).
+     Hàm này vì thế chỉ LIỆT KÊ đúng như sổ ghi — hai cách viết gần giống nhau
+     vẫn là hai tên, không được tự gộp. */
+  const r = G.gopSoBanHang(soMau([
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH1', dg: 5000, nv: 'Thu Hà' }),
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH2', dg: 3000, nv: 'thu ha' }),   // viết khác
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH3', dg: 100, nv: null }),
+  ]));
+  ok('KHÔNG tự gộp "Thu Hà" với "thu ha" — ba khoá, không phải hai',
+     Object.keys(r.tom_tat.nhan_vien).length, 3);
+  ok('sắp theo doanh số giảm dần (biến thể của người bán nhiều nổi lên trước)',
+     Object.keys(r.tom_tat.nhan_vien), ['Thu Hà', 'thu ha', G.NV_CHUA_GAN]);
+  ok('mỗi tên có số dòng và doanh số', r.tom_tat.nhan_vien['Thu Hà'],
+     { so_dong: 1, doanh_so: 5000 });
+  ok('dòng thiếu nhân viên nằm ở khoá riêng, không gán bừa cho ai',
+     r.tom_tat.nhan_vien[G.NV_CHUA_GAN], { so_dong: 1, doanh_so: 100 });
+
+  /* Khoá này do CHỦ DỰ ÁN chốt tên, và P3/P5 sẽ nhận ra đúng chuỗi đó —
+     ghim lại để không ai đổi cho "đẹp hơn". */
+  ok('khoá dòng thiếu nhân viên đúng tên chủ dự án chốt', G.NV_CHUA_GAN, '_chua_xac_dinh');
+}
+
 xong();
 })().catch(e => { console.error(e); process.exit(1); });
