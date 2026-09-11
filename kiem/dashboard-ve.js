@@ -314,9 +314,11 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('dải phụ rỗng', nutPhu().length === 0 && CAY.skDaiPhu.innerHTML === '', true);
     ok('trục ngang Q1…Q4', /">Q1</.test(veHtml()) && /">Q4</.test(veHtml()), true);
     /* 2026 mới có số tới tháng 9 → chỉ Q1..Q3; 2025 đủ Q1..Q4. Quý CHƯA TỚI
-       không được vẽ một chấm 0 đ — đó là bịa ra một quý không tồn tại. */
-    ok('3 quý (2026) + 4 quý (2025) = 7 chấm mỗi biểu đồ',
-       soCham(svgCua('Doanh số')) === 7 && soCham(svgCua('Số đơn')) === 7, true);
+       không được vẽ một chấm 0 đ — đó là bịa ra một quý không tồn tại.
+       +2 là hai chấm "TB" (trung bình) — cả hai kỳ đều có số nên cả hai
+       chấm đều vẽ. */
+    ok('3 quý (2026) + 4 quý (2025) + 2 chấm TB = 9 chấm mỗi biểu đồ',
+       soCham(svgCua('Doanh số')) === 9 && soCham(svgCua('Số đơn')) === 9, true);
     soiRac('tab Quý');
     kiemTruc('Doanh số', false);
   }
@@ -329,41 +331,99 @@ function kiemMoc(ten, gtThat, doiSo) {
        mau.test(svgCua('Doanh số')) && mau.test(svgCua('Số đơn')), true);
   }
 
-  console.log('\n11) Bảng xếp hạng Line — cùng kỳ với biểu đồ ngay trên nó');
+  console.log('\n10b) Chấm "TB" (trung bình) trên biểu đồ đường');
   {
-    const xh = () => CAY.skXepHang.innerHTML;
-    const tenTheoThuTuVe = () =>
-      [...xh().matchAll(/text-anchor="end">([^<]*)</g)].map((m) => m[1]);
+    nutTab()[0].click();
+    nutPhu()[8].click();                              // T9/2026 — cả hai kỳ đều có số
+    const tien = svgCua('Doanh số'), don = svgCua('Số đơn');
+    ok('có nhãn "TB" trên cả hai biểu đồ', tien.includes('>TB<') && don.includes('>TB<'), true);
+    ok('có 2 chấm TB (kỳ này + kỳ trước) — bán kính 4, viền trắng',
+       (tien.match(/r="4" fill="[^"]+" stroke="#fff"/g) || []).length === 2, true);
+    ok('title chấm TB ghi rõ "Trung bình mỗi ngày" kèm tên kỳ và tiền ĐÃ LÀM TRÒN về đồng',
+       /<title>Trung bình mỗi ngày · Tháng 9\/2026: [\d.]+ đ<\/title>/.test(tien), true);
+    ok('title chấm TB của Số đơn ghi số có phần lẻ (không làm tròn về nguyên)',
+       /<title>Trung bình mỗi ngày · Tháng 9\/2026: \d+[,.]?\d* đơn<\/title>/.test(don), true);
+  }
 
-    nutTab()[0].click();                              // tab Ngày
-    nutPhu()[8].click();                              // chọn lại T9/2026
-    ok('tiêu đề xếp hạng nói ĐÚNG kỳ biểu đồ đang vẽ',
-       /Xếp hạng theo Line · tháng 9\/2026 so với tháng 9\/2025/.test(xh()), true);
-    /* Sắp giảm dần theo kỳ đang xem, NHƯNG "Khác" (line cuối bảng) luôn ở
-       cuối dù doanh số cao nhất — chủ dự án chốt. Đây là ca bắt lỗi "sắp
-       thuần theo giá trị". */
-    ok('sắp giảm dần, line cuối bảng vẫn ở cuối dù số to nhất',
-       tenTheoThuTuVe(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
-    ok('line chưa có số vẫn có mặt (Shopee)', tenTheoThuTuVe().includes('Shopee'), true);
-    ok('mỗi line hai thanh: kỳ này + cùng kỳ năm trước',
-       (xh().match(/<rect/g) || []).length, 8);
-    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(xh()), false);
-    ok('rê chuột đọc được tiền đầy đủ và số đơn',
-       /<title>[^<]*Tín Phát[^<]*tháng 9\/2026[^<]*đ[^<]*đơn<\/title>/.test(xh()), true);
+  console.log('\n10c) Chấm TB biến mất đúng cách khi kỳ trước không có số (2024 không tồn tại)');
+  {
+    nutTab()[1].click();                              // tab Tháng
+    nutPhu()[1].click();                              // năm 2025 — diemNay đủ 12 tháng, diemTruoc (2024) rỗng
+    const svg = svgCua('Doanh số');
+    ok('kỳ trước (2024) không có số → chỉ 1 chấm TB, không ném lỗi',
+       (svg.match(/r="4" fill="[^"]+" stroke="#fff"/g) || []).length === 1
+       && !/NaN|undefined/.test(svg), true);
+    ok('chấm TB còn lại đúng là của kỳ này (năm 2025), không phải kỳ trước',
+       svg.includes('<title>Trung bình mỗi tháng · Năm 2025:'), true);
+    nutPhu()[0].click();                              // dọn về năm 2026 cho mục sau
+    nutTab()[0].click(); nutPhu()[8].click();
+  }
 
-    nutPhu()[1].click();                              // sang T2/2026 — tháng không có số
-    ok('đổi tháng → xếp hạng đổi kỳ theo',
-       /tháng 2\/2026 so với tháng 2\/2025/.test(xh()), true);
-    ok('tháng không có số → mọi thanh dài 0, không ném',
-       /width="0.0"/.test(xh()) && !/NaN/.test(xh()), true);
+  console.log('\n11) Cơ cấu theo Line — vòng tròn lồng nhau, cùng kỳ với biểu đồ ngay trên nó');
+  {
+    const cc = () => CAY.skCoCau.innerHTML;
+    /* Tên line theo đúng thứ tự đọc trong chú giải — trực tiếp từ chuỗi
+       HTML `<i style="background:MÀU"></i>TÊN<b>...`, không suy diễn. */
+    const tenChuGiai = () => [...cc().matchAll(/<\/i>([^<]+)<b>/g)].map((m) => m[1]);
+    const soLat = (vong) => (cc().match(new RegExp('<path d="[^"]+" fill="' + vong, 'g')) || []).length;
 
-    nutTab()[1].click();                              // tab Tháng → xếp hạng cả năm
-    ok('tab Tháng → xếp hạng theo NĂM', /Xếp hạng theo Line · năm 2026 so với năm 2025/.test(xh()), true);
-    ok('thứ hạng theo năm cũng giữ line cuối bảng ở cuối',
-       tenTheoThuTuVe(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
+    nutTab()[0].click();
+    nutPhu()[8].click();                              // T9/2026
+    ok('tiêu đề nói ĐÚNG kỳ biểu đồ đang vẽ',
+       /Cơ cấu theo Line · tháng 9\/2026 so với tháng 9\/2025/.test(cc()), true);
+    ok('đúng 4 dòng chú giải, kể cả Shopee (0đ) và Khác',
+       tenChuGiai(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
+    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(cc()), false);
+
+    /* Kỳ này: Nội thành 500, Tín Phát 900, Shopee 0, Khác 9999 → 3 lát vẽ
+       (Shopee=0 không vẽ). Kỳ trước: chỉ Nội thành 400 → 1 lát. */
+    ok('vòng ngoài (kỳ này) có 3 lát — Shopee=0đ không vẽ lát nào',
+       (cc().match(/<path/g) || []).length === 4, true);   // 3 ngoài + 1 trong
+
+    ok('rê chuột vào lát đọc được tên line, tiền đầy đủ, số đơn và %',
+       /<title>Tín Phát · tháng 9\/2026 · [\d.]+ đ · \d+ đơn · \d+%<\/title>/.test(cc()), true);
+
+    /* Cùng MỘT line phải cùng MỘT màu ở cả chú giải lẫn hai vòng — đây là
+       phép canh "màu theo entity, không theo rank": lấy màu swatch của
+       "Tín Phát" trong chú giải rồi tìm đúng màu đó trên lát Tín Phát. */
+    const mauTinPhat = (cc().match(/<i style="background:([^"]+)"><\/i>Tín Phát/) || [])[1];
+    ok('có tìm được màu của Tín Phát trong chú giải', !!mauTinPhat, true);
+    ok('lát Tín Phát trên vòng ngoài dùng ĐÚNG màu đó',
+       cc().includes('<title>Tín Phát · ') && new RegExp('fill="' + mauTinPhat + '"[^>]*><title>Tín Phát ·').test(cc()), true);
+
+    console.log('    (đổi tháng, đổi tab — cơ cấu phải đổi kỳ theo, giữ đúng luật xếp)');
+    nutPhu()[1].click();                              // sang T2/2026 — Nội thành/Tín Phát/Khác đều 0 ở tháng này
+    ok('đổi tháng → cơ cấu đổi kỳ theo', /tháng 2\/2026 so với tháng 2\/2025/.test(cc()), true);
+    ok('không tháng nào có số → cả hai vòng vẽ viền rỗng, không ném',
+       /stroke="#e5e7eb" stroke-width="3[0-9.]*"/.test(cc()) && !/NaN/.test(cc()), true);
+
+    nutTab()[1].click();                              // tab Tháng → cơ cấu cả năm
+    ok('tab Tháng → cơ cấu theo NĂM', /Cơ cấu theo Line · năm 2026 so với năm 2025/.test(cc()), true);
+    ok('thứ tự chú giải theo năm cũng giữ line cuối bảng ở cuối',
+       tenChuGiai(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
 
     nutTab()[2].click();                              // tab Quý → cũng cả năm
-    ok('tab Quý → vẫn xếp hạng theo năm', /năm 2026 so với năm 2025/.test(xh()), true);
+    ok('tab Quý → vẫn cơ cấu theo năm', /năm 2026 so với năm 2025/.test(cc()), true);
+  }
+
+  console.log('\n11b) Quá 8 line thật thì line thứ 9 trở đi (kể cả "Khác") dùng chung màu xám');
+  {
+    const cuThuTu = LINE_GIA.thu_tu, cuThoiThang = LINE_GIA.theo_thang, cuThoiNam = LINE_GIA.theo_nam;
+    const TEN_LINE_9 = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8', 'L9', 'Khác'];
+    LINE_GIA.thu_tu = TEN_LINE_9;
+    LINE_GIA.theo_nam = {};
+    for (const ten of TEN_LINE_9) LINE_GIA.theo_nam[ten] = { 2026: { doanh_so: 100, so_don: 1 } };
+    cbAuth(null); cbAuth(NGUOI);
+    await nghi(); await nghi(); await nghi();
+    nutTab()[1].click(); nutPhu()[0].click();
+    const cc = CAY.skCoCau.innerHTML;
+    const mauCua = (ten) => (cc.match(new RegExp('background:([^"]+)"></i>' + ten + '<b')) || [])[1];
+    ok('8 line đầu (L1..L8) có 8 màu KHÁC NHAU',
+       new Set(TEN_LINE_9.slice(0, 8).map(mauCua)).size, 8);
+    ok('L9 (thứ 9, ngoài 8 slot) dùng màu xám trung tính', mauCua('L9'), '#b6b4ab');
+    ok('"Khác" (thứ 10) cũng dùng CÙNG màu xám đó, không phải một màu riêng',
+       mauCua('Khác'), '#b6b4ab');
+    LINE_GIA.thu_tu = cuThuTu; LINE_GIA.theo_thang = cuThoiThang; LINE_GIA.theo_nam = cuThoiNam;
   }
 
   console.log('\n12) Engine chưa trả khối `line` (giữa hai lượt deploy) → bỏ khối, KHÔNG nổ');
@@ -375,7 +435,7 @@ function kiemMoc(ten, gtThat, doiSo) {
     cbAuth(null); cbAuth(NGUOI);
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được hai biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 2);
-    ok('khối xếp hạng để trống', CAY.skXepHang.innerHTML, '');
+    ok('khối cơ cấu để trống', CAY.skCoCau.innerHTML, '');
     LINE_GIA.thu_tu = cu;
   }
 
@@ -389,6 +449,7 @@ function kiemMoc(ten, gtThat, doiSo) {
        /Hệ thống tạm thời chưa phục vụ được/.test(CAY.skLoi.textContent), true);
     ok('không còn biểu đồ cũ nằm lại', /<svg/.test(veHtml()), false);
     ok('dải phụ cũng dọn sạch', CAY.skDaiPhu.innerHTML, '');
+    ok('khối cơ cấu cũng dọn sạch', CAY.skCoCau.innerHTML, '');
   }
 
   xong();

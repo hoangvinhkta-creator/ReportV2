@@ -84,12 +84,21 @@
   .tieuDeSk { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1f2430; }
   .tieuDeSk .donViCua { color: #9ca3af; font-weight: 400; }
   .khoiBieuDo + .khoiBieuDo { margin-top: 18px; }
-  .khoiXepHang:not(:empty) { border-top: 1px solid #e5e7eb; margin-top: 16px; padding-top: 14px; }
+  .khoiCoCauBoc:not(:empty) { border-top: 1px solid #e5e7eb; margin-top: 16px; padding-top: 14px; }
   .chuGiaiSk { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: #4b5563; }
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .chuGiaiSk i.netDut { height: 0; border-top: 3px dashed #9ca3af; background: none !important; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
+
+  /* ---- Cơ cấu theo Line (vòng tròn lồng nhau) ---- */
+  .khoiCoCau { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
+  .khoiCoCau svg { flex: 0 0 auto; }
+  .chuGiaiCoCau { flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; min-width: 180px; }
+  .chuGiaiCoCau span { display: flex; align-items: center; gap: 8px; color: #1f2430; }
+  .chuGiaiCoCau i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .chuGiaiCoCau b { margin-left: auto; font-weight: 600; }
+  .chuGiaiCoCau .ptTruocCc { color: #9ca3af; font-size: 11px; }
 
   /* ---- Màn nhập sổ + màn đơn hàng (P3) ---- */
   .hangChon { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }

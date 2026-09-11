@@ -363,20 +363,44 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
    trục tiền vì cả kỳ dưới 3.000 đ thì bốn mốc cùng ra "0" sau khi chia
    nghìn — ca có thật, sổ 09/2026 có đơn bị chiết khấu hết thành 0 đ.
 3. ~~Gộp theo từng Line + bảng xếp hạng~~ — **XONG 11/09/2026 (PR #35 +
-   #37).** `line.mjs::gopLineTheoThoiGian()` lọc `bc/ky` theo nhân viên của
-   từng line rồi gộp qua đúng `gop-theo-thoi-gian.mjs` mà Dashboard dùng cho
-   toàn công ty — một đường tính, không đẻ phép cộng thứ hai dễ lệch. KHÔNG
-   đụng `gopTheoLine()` cũ: hàm kia gộp theo kỳ và tách từng nhân viên, hình
-   dạng khác hẳn. Chỉ tháng + năm, không có ngày (xếp hạng theo ngày không ai
-   đọc, mà ×10 line là gấp mười dữ liệu mỗi lượt mở).
-   Giao diện: thanh ngang, một màu nhấn + một màu xám (KHÔNG 10 hue — xem
-   dataviz), sắp giảm dần nhưng giữ line cuối bảng ở cuối, cùng kỳ với hai
-   biểu đồ ngay trên nó.
-4. **Lưới nhỏ (small-multiples) từng Line** — mỗi line một biểu đồ đường
+   #37), ĐỔI DẠNG NGAY SAU ĐÓ (cùng ngày).** `line.mjs::gopLineTheoThoiGian()`
+   lọc `bc/ky` theo nhân viên của từng line rồi gộp qua đúng
+   `gop-theo-thoi-gian.mjs` mà Dashboard dùng cho toàn công ty — một đường
+   tính, không đẻ phép cộng thứ hai dễ lệch. KHÔNG đụng `gopTheoLine()` cũ:
+   hàm kia gộp theo kỳ và tách từng nhân viên, hình dạng khác hẳn. Chỉ
+   tháng + năm, không có ngày (xếp hạng theo ngày không ai đọc, mà ×10 line
+   là gấp mười dữ liệu mỗi lượt mở). Engine KHÔNG đổi khi đổi dạng vẽ dưới
+   đây — vẫn nguyên `gopLineTheoThoiGian()`.
+
+   **Giao diện đổi từ thanh ngang sang HAI VÒNG KHUYÊN LỒNG NHAU** (chủ dự
+   án chốt ngay sau khi thấy bảng xếp hạng, cùng 11/09/2026): vòng NGOÀI to
+   = kỳ này, vòng TRONG nhỏ = kỳ trước, xếp theo chiều kim đồng hồ từ 12 giờ
+   giảm dần, "Khác" luôn ở cuối dù % bao nhiêu. Cùng MỘT line phải cùng MỘT
+   màu ở cả hai vòng để so được cơ cấu kỳ này lệch cơ cấu kỳ trước ở đúng
+   line nào — tám hue categorical đã qua kiểm CVD của kỹ năng `dataviz`,
+   gán CỐ ĐỊNH theo vị trí khai trong `thu_tu` (không theo doanh số hiện
+   tại: đổi rank tháng này qua tháng khác không được đổi màu một line).
+   Bảng line có tới 10 line mà categorical chỉ an toàn tới 8 — line thứ 9
+   trở đi (kể cả "Khác", thường rơi đúng vào đây vì luôn khai cuối) dùng
+   chung một màu xám trung tính, đúng luật "quá ~8 lớp thì gộp phần đuôi".
+   Line = 0đ ở kỳ nào không vẽ lát ở vòng đó, nhưng vẫn có mặt trong chú
+   giải (Shopee trước 09/2026 — biến mất khỏi chú giải thì tưởng công ty
+   không còn kênh đó). Nhãn % ghi trực tiếp trên lát CHỌN LỌC (chỉ lát
+   ≥10%), lát nhỏ nhường chỗ cho chú giải + rê chuột — đúng "không ghi số
+   lên từng điểm" của kỹ năng dataviz.
+4. ~~Chấm trung bình trên biểu đồ đường~~ — **XONG 11/09/2026.** Mỗi biểu
+   đồ Doanh số/Số đơn có thêm hai chấm "TB" ở một lane riêng bên phải
+   (KHÔNG gắn vào trục thời gian — trung bình không phải số của một ngày
+   cụ thể): trung bình CHUỖI ĐANG VẼ của kỳ này (có thể chưa đủ ngày) so
+   với trung bình CẢ kỳ trước (đã đủ) — chủ dự án chốt "so tốc độ hiện tại
+   với mức đã chốt của kỳ trước". Số đơn giữ 1 số lẻ khi làm tròn hiển thị
+   ("trung bình 4,3 đơn/ngày" có nghĩa thật, không như số đơn MỘT ngày —
+   luôn nguyên); tiền làm tròn về đồng (VND không có đơn vị nhỏ hơn đồng).
+5. **Lưới nhỏ (small-multiples) từng Line** — mỗi line một biểu đồ đường
    nhỏ để đọc XU HƯỚNG riêng của nó, thứ bảng xếp hạng không nói được (xếp
    hạng chỉ cho biết ai to ai nhỏ ở MỘT kỳ). Số đã có sẵn trong khối `line`
    mà endpoint đang trả, không phải sửa Engine.
-5. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
+6. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
    `theo_ngay` (366 điểm), `theo_nam`, `hai_nam` mà giao diện mới không
    còn đọc. Giữ lại có chủ ý cho khoảng giữa hai lượt deploy (bẫy số 4).
    Sau khi chủ dự án xác nhận bản mới chạy thật thì bỏ cả ba — payload
