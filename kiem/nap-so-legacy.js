@@ -168,16 +168,21 @@ console.log('\n5) Bộ đọc + hàm gộp chạy liền nhau ra đúng số');
   const sst = ['<t>Ngày </t>', '<t>Số BH</t>', '<t>Doanh số bán</t>', '<t>NVBH</t>',
                '<t>Số chứng từ</t>', '<t>Tên nhân viên bán hàng</t>',
                '<t>BH1</t>', '<t>BH2</t>', '<t>An</t>'];
+  /* Mỗi dòng đặt CẢ cột I/J (Số lượng, Đơn giá) lẫn cột K (Doanh số bán), với
+     số nhất quán — để bài kiểm ra cùng kết quả dù `LUAT_DOANH_SO` đang bật
+     luật nào. Chỉ đặt K thì lúc chốt đổi sang `tru-chiet-khau` bài này đỏ vì
+     FIXTURE thiếu cột, chứ không phải vì nghiệp vụ sai. */
+  const dong = (r, ngay, ctIdx, tien) =>
+    `<row r="${r}"><c r="A${r}"><v>${ngay}</v></c><c r="B${r}" t="s"><v>${ctIdx}</v></c>`
+    + `<c r="I${r}"><v>1</v></c><c r="J${r}"><v>${tien}</v></c>`
+    + `<c r="K${r}"><v>${tien}</v></c><c r="M${r}" t="s"><v>8</v></c></row>`;
   const body =
     '<row r="4"><c r="A4" t="s"><v>0</v></c><c r="B4" t="s"><v>1</v></c>'
     + '<c r="K4" t="s"><v>2</v></c><c r="M4" t="s"><v>3</v></c></row>'
     + '<row r="5"><c r="B5" t="s"><v>4</v></c><c r="M5" t="s"><v>5</v></c></row>'
-    + '<row r="6"><c r="A6"><v>46023</v></c><c r="B6" t="s"><v>6</v></c>'
-    + '<c r="K6"><v>8000000</v></c><c r="M6" t="s"><v>8</v></c></row>'
-    + '<row r="7"><c r="A7"><v>46023</v></c><c r="B7" t="s"><v>6</v></c>'
-    + '<c r="K7"><v>250000</v></c><c r="M7" t="s"><v>8</v></c></row>'
-    + '<row r="8"><c r="A8"><v>46024</v></c><c r="B8" t="s"><v>7</v></c>'
-    + '<c r="K8"><v>1000000</v></c><c r="M8" t="s"><v>8</v></c></row>';
+    + dong(6, 46023, 6, 8000000)
+    + dong(7, 46023, 6, 250000)
+    + dong(8, 46024, 7, 1000000);
   const { bang } = docBangTuXlsx(xlsxMau(sst, body));
 
   ok('bố cục khớp sau khi đi qua bộ đọc', G.kiemBoCuc(bang), []);
