@@ -7,10 +7,13 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { gopSoBanHang } from "./gop-ban-hang.mjs";
 import { gopTheoLine } from "./line.mjs";
 import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
+import {
+  xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
+} from "./dong-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.3.0-p2b";
+const PHIEN_BAN = "0.4.0-p3";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -68,5 +71,51 @@ export default class extends WorkerEntrypoint {
    *  đúng lượt merge này. */
   async gopSucKhoeCongTy(cayKy) {
     return gopSucKhoeCongTy(cayKy);
+  }
+
+  /* ─────────── P3 — tải sổ qua trình duyệt, nối dài dữ liệu ───────────
+   *
+   * Sáu hàm dưới đây lên TRƯỚC lượt Gateway gọi chúng (bẫy số 4 —
+   * ROADMAP.md: hai Worker build SONG SONG khi merge, nên hàm Engine phải
+   * có mặt ở một lượt merge riêng trước đó). Lượt này là lượt "lên trước".
+   */
+
+  /** Một lượt tải sổ: ma trận ô thô → tổng theo (kỳ, nhân viên, ngày) VÀ
+   *  từng dòng hàng, khách, IMEI. Xem `dong-hang.mjs`.
+   *
+   *  Ném lỗi khi bố cục sổ sai — Gateway phải trả lỗi cho người tải file,
+   *  không trả một bảng rỗng (CLAUDE.md — "Nguồn hỏng thì BÁO LỖI"). */
+  async xuLySoBanHang(bang) {
+    return xuLySoBanHang(bang);
+  }
+
+  /** `bc/ky/<kỳ>` đang có → khoảng ngày nó phủ, để canh lượt đè. */
+  async phamViCayKy(cayKyMotKy) {
+    return phamViCayKy(cayKyMotKy);
+  }
+
+  /** File mới có phủ trọn dữ liệu cũ của từng kỳ không. Không phủ thì cả
+   *  lượt tải bị từ chối — nếu cho ghi, phần ngày thiếu biến mất lặng lẽ. */
+  async kiemPhuSong(phamViMoi, phamViCu) {
+    return kiemPhuSong(phamViMoi, phamViCu);
+  }
+
+  /** So dòng cũ ↔ dòng mới của một kỳ, và trả luôn cây dòng cuối cùng để
+   *  ghi. Dòng đã sửa tay thì KHÔNG bị đè — quyết định của người không bao
+   *  giờ thua một lượt tải file (CLAUDE.md — "Nhập sổ"). */
+  async doiChieuKy(dongCu, dongMoi, khoaDaSua) {
+    return doiChieuKy(dongCu, dongMoi, khoaDaSua);
+  }
+
+  /** Dòng hàng của một kỳ → bảng đơn hàng đã nhóm theo ngày và số chứng từ,
+   *  đã gộp chiết khấu thành một dòng, đã tính sẵn mọi con số. Trình duyệt
+   *  chỉ việc vẽ ra (LUẬT SỐ 1). */
+  async dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem) {
+    return dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem);
+  }
+
+  /** Kỳ này có những line nào, mỗi line bao nhiêu đơn — để dựng tab con. */
+  async tomTatLine(dongCuaKy, bangLine) {
+    return tomTatLine(dongCuaKy, bangLine);
   }
 }

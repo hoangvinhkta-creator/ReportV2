@@ -169,17 +169,23 @@ console.log('\n7) Bảng hạt giống thật — 10 line chủ dự án chốt 
   ok('kể cả người đã nghỉ', noiThanh.includes('Lê Văn Quân 0865111033'), true);
 
   /* Fanpage: người cũ đã nghỉ + tên người mới của 09/2026 khai SẴN, nên sổ
-     09/2026 nạp vào là rơi đúng line, không phải sửa gì. */
-  const fanpage = Object.entries(B.cua_ten).filter(([, l]) => l === 'Fanpage').map(([t]) => t);
-  ok('Fanpage có cả người cũ và tên người mới 09/2026', fanpage.sort(),
-     ['Fanpage 0327339229', 'Tống Khánh Linh 0865111033']);
+     09/2026 nạp vào là rơi đúng line, không phải sửa gì.
 
-  /* Shopee: tên nhân viên đã khai SẴN (chủ dự án chốt 'Shopee 0865111033'),
+     VIẾT HOA — ghim đúng cách sổ 09/2026 thật in ra. Bản chữ thường khai
+     lần đầu đã làm line Fanpage hiện 0 đ trong khi 15.700.000 đ rơi sang
+     "Khác", vì `cua_ten` tra khoá phân biệt hoa/thường (bài 3 dưới đây ghim
+     việc phân biệt đó, cố ý). Hai bài này canh nhau: ai hạ chữ thường lại
+     thì đỏ ngay. */
+  const fanpage = Object.entries(B.cua_ten).filter(([, l]) => l === 'Fanpage').map(([t]) => t);
+  ok('Fanpage có cả người cũ và tên người mới 09/2026 (viết HOA như sổ ghi)', fanpage.sort(),
+     ['FANPAGE 0327339229', 'Tống Khánh Linh 0865111033']);
+
+  /* Shopee: tên nhân viên đã khai SẴN, viết HOA đúng như sổ 09/2026 in ra,
      nhưng chưa có dòng nào trên sổ tới 08/2026. Line vẫn phải hiện ra — đó là
      việc của `thu_tu`, đã canh ở bài 4. */
-  ok('Shopee đã khai đúng một tên',
+  ok('Shopee đã khai đúng một tên (viết HOA như sổ ghi)',
      Object.entries(B.cua_ten).filter(([, l]) => l === 'Shopee').map(([t]) => t),
-     ['Shopee 0865111033']);
+     ['SHOPEE 0865111033']);
 
   /* Năm tên chủ dự án chốt để lại "Khác" — khai TƯỜNG MINH, không để mặc
      định. Khác biệt thật: khai rồi thì `chua_xep` sạch, nên một nhân viên mới

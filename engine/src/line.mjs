@@ -74,8 +74,8 @@ export const BANG_LINE_HAT_GIONG = {
      một line đứt quãng hay mới xuất hiện, không phải đi hỏi lại. */
   ghi_chu: {
     "Nội thành": "Kênh do 4 người phụ trách; Lê Văn Quân đã nghỉ.",
-    "Fanpage": "Tống Khánh Linh đã nghỉ; từ 09/2026 người mới ghi tên là 'Fanpage 0327339229'.",
-    "Shopee": "Tên trên sổ là 'Shopee 0865111033'; chỉ bắt đầu có dòng từ 09/2026.",
+    "Fanpage": "Tống Khánh Linh đã nghỉ; từ 09/2026 người mới ghi tên là 'FANPAGE 0327339229'.",
+    "Shopee": "Tên trên sổ là 'SHOPEE 0865111033'; chỉ bắt đầu có dòng từ 09/2026.",
     [LINE_KHAC]: "Năm tên nhỏ chủ dự án chốt để lại đây (kể cả dòng sổ trống ô nhân viên), cộng mọi tên mới chưa ai xếp line.",
   },
 
@@ -95,14 +95,23 @@ export const BANG_LINE_HAT_GIONG = {
 
     /* Fanpage: khai SẴN tên người mới của 09/2026. Khai trước là cách chứng
        minh cơ chế chạy — sổ 09/2026 nạp vào sẽ rơi đúng line, không cần sửa
-       gì thêm. */
+       gì thêm.
+
+       VIẾT HOA, và đó là một lần sửa đã trả giá: hai tên này được khai lần
+       đầu theo dạng "Fanpage 0327339229"/"Shopee 0865111033", nhưng sổ
+       09/2026 thật MISA in ra "FANPAGE 0327339229"/"SHOPEE 0865111033".
+       `cua_ten` tra khoá NGUYÊN CHUỖI, phân biệt hoa/thường (cố ý — xem
+       `xepLine`), nên bản chữ thường làm line Fanpage hiện 0 đ trong khi
+       15.700.000 đ rơi sang "Khác". Chủ dự án chốt 11/09/2026: hai cách
+       viết là MỘT, lấy đúng dạng sổ ghi. Cơ chế cảnh báo vẫn chạy đúng —
+       `chua_xep` đã kêu đủ cả hai tên, không có đồng nào tan biến im lặng. */
     "Tống Khánh Linh 0865111033": "Fanpage",
-    "Fanpage 0327339229": "Fanpage",
+    "FANPAGE 0327339229": "Fanpage",
 
     /* Shopee: khai sẵn tên sẽ xuất hiện trên sổ từ 09/2026. Chưa có dòng nào
        — line vẫn tồn tại và hiện ra với số 0, vì `thu_tu` là danh sách khai
        tường minh chứ không suy từ dữ liệu. */
-    "Shopee 0865111033": "Shopee",
+    "SHOPEE 0865111033": "Shopee",
 
     /* Khác — chủ dự án chốt 11/09/2026: năm tên này Ở LẠI "Khác", không tách
        line riêng. Khai TƯỜNG MINH thay vì để rơi vào Khác theo mặc định, và
