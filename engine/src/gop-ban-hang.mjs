@@ -131,8 +131,14 @@ const deSo = v => {
  * `bc/ky/<kỳ>/<nhân viên>/<ngày>`, nên một cái dấu chấm trong tên là đủ làm
  * lượt ghi thất bại — hoặc tệ hơn, ghi vào một nhánh khác. Sổ 2026 không có
  * tên nào chứa ký tự cấm (đã kiểm 13/13 nhân viên), nên đây là tấm lưới
- * phòng xa, không phải phép sửa dữ liệu đang có. */
-const FIREBASE_CAM = /[.#$/[\]]/g;
+ * phòng xa, không phải phép sửa dữ liệu đang có.
+ *
+ * Kèm `?&%` — thiếu chúng từng để lọt một IMEI thật của sổ 2025
+ * ("%F1518279574 ~ %E1330129573") qua khoá tương tự bên `dong-hang.mjs`
+ * rồi bị `kiemDuong()` chặn SAU, làm hỏng cả lượt ghi. Tên nhân viên chưa
+ * gặp ca này, nhưng khoá theo đúng danh sách `kiemDuong()` cấm — như
+ * chính chú thích dưới đây đã định — để phòng xa nhất quán. */
+const FIREBASE_CAM = /[.#$/[\]?&%]/g;
 
 /* Ký tự điều khiển — Firebase cũng từ chối (xem `kiemDuong` ở src/firebase.js).
  * Dựng bằng `new RegExp` với chuỗi escape thay vì nhúng byte thật vào mã

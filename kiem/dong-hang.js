@@ -47,6 +47,16 @@ const GOC = path.resolve(__dirname, '..');
     const k = D.khoaDong('BH1', 'Tủ lạnh RS57DG400EM9/S 1.5m', 1);
     ok('khoá không còn ký tự Firebase cấm', /[.#$/[\]]/.test(k), false);
 
+    /* Ca thật trên sổ 2025: một ô IMEI ghi "%F1518279574 ~ %E1330129573".
+       `%` lọt qua deKhoa() (thiếu trong danh sách cấm) rồi bị `kiemDuong()`
+       ở src/firebase.js chặn Ở VÒNG SAU — làm hỏng CẢ LƯỢT ghi bc/imei dù
+       chỉ một dòng sai. `deKhoa()` phải cấm ĐÚNG danh sách kiemDuong() cấm:
+       thêm `?&%`, không chỉ `.#$/[]`. */
+    const kImei = D.deKhoa('%F1518279574 ~ %E1330129573');
+    ok('IMEI có "%" không còn lọt qua deKhoa()', /[?&%]/.test(kImei), false);
+    ok('và vẫn phân biệt được với IMEI khác (không bỏ ký tự, thay bằng ~)',
+       D.deKhoa('%ABC') === D.deKhoa('%XYZ'), false);
+
     /* Thay bằng "~" chứ không BỎ ĐI: bỏ đi thì "A.B" và "AB" thành một khoá,
        tức gộp nhầm hai mặt hàng khác nhau thành một dòng. */
     ok('"A.B" và "AB" KHÔNG đụng khoá',
