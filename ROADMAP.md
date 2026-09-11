@@ -20,16 +20,26 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG. P2 phần (a) — trích + nạp — XONG THẬT (11/09/2026): dữ liệu 20
-tháng (01/2025–08/2026) ĐÃ NẰM TRÊN FIREBASE, đã đọc ngược xác nhận khớp
-từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp. P2 phần (b) —
-biểu đồ — bước 1 (Dashboard sức khoẻ kinh doanh) ĐÃ MERGE THẲNG
-(11/09/2026, PR #22 + #23, dựng lại bố cục ở PR #27 + #28). P3 LƯỢT 1 —
-đường tải sổ qua trình duyệt + danh sách đơn hàng theo line — ĐÃ MERGE
-THẲNG (11/09/2026, PR #24 + #25 + #26, cộng một lượt sửa `bc/khach` theo
-kỳ + nút xoá kỳ ở mục "P3" dưới). CHỦ DỰ ÁN ĐÃ TỰ MỞ BẰNG MÁY THẬT VÀ XÁC
-NHẬN Dashboard theo line hiển thị đúng (ảnh chụp màn hình thật, sau khi
-publish rules và chạy lại `nap-line.mjs`).**
+**P1 XONG. P2 ĐÃ ĐÓNG (11/09/2026) — chủ dự án đã tự mở Dashboard mới
+bằng máy thật và nghiệm thu.** Cả hai phần:
+
+- **Phần (a) — trích + nạp:** dữ liệu 20 tháng (01/2025–08/2026) ĐÃ NẰM
+  TRÊN FIREBASE, đã đọc ngược xác nhận khớp từng kỳ. Tầng LINE đã chốt,
+  đã code, bảng ánh xạ đã nạp.
+- **Phần (b) — biểu đồ:** Dashboard sức khoẻ kinh doanh — 2 biểu đồ
+  Doanh số/Số đơn kèm chấm trung bình, vòng cơ cấu theo Line lồng hai kỳ,
+  lưới nhỏ xu hướng theo Line + nút chuyển chỉ số. Toàn bộ merge qua PR
+  #22, #23, #27, #28, #31, #34, #35, #37, #41, #42; dọn ba field cũ của
+  Engine (`theo_ngay`, `theo_nam`, `hai_nam`) sau khi nghiệm thu ở PR #43.
+
+P3 LƯỢT 1 — đường tải sổ qua trình duyệt + danh sách đơn hàng theo line —
+ĐÃ MERGE THẲNG (11/09/2026, PR #24 + #25 + #26, cộng một lượt sửa
+`bc/khach` theo kỳ + nút xoá kỳ ở mục "P3" dưới). CHỦ DỰ ÁN ĐÃ TỰ MỞ BẰNG
+MÁY THẬT VÀ XÁC NHẬN Dashboard theo line hiển thị đúng (ảnh chụp màn hình
+thật, sau khi publish rules và chạy lại `nap-line.mjs`).
+
+**Việc tiếp theo:** P3 lượt 2 (sửa/xoá đơn + khoá chống đè + audit trail
+— xem "P3 — lượt 2 còn lại" dưới), rồi P4 (giá vốn).**
 
 **BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI LẦN 2 (11/09/2026, PR #28 rồi dựng lại ở
 lượt bố cục) — đọc trước khi sửa `public/index.html`:** không còn lưới
@@ -379,10 +389,10 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
 - **Dải nút phụ đổi theo tab**: Ngày → `[T1…T12]`, Tháng → `[2026][2025]`,
   Quý → không có (chờ giàu dữ liệu hơn rồi tính).
 
-**Việc còn lại của P2 phần (b):**
-1. Chủ dự án tự mở bằng máy thật, xác nhận số đúng — CHƯA làm, đây là
-   điều kiện ra khỏi bước 1 thật sự (xem "Nguyên tắc làm việc" đầu file:
-   deploy rồi tự xác nhận, không phải "code xong" là xong).
+**Việc của P2 phần (b) — TẤT CẢ ĐÃ XONG, P2 ĐÓNG 11/09/2026:**
+1. ~~Chủ dự án tự mở bằng máy thật, xác nhận số đúng~~ — **XONG.** Đây là
+   điều kiện ra khỏi P2 (xem "Nguyên tắc làm việc" đầu file: deploy rồi tự
+   xác nhận, không phải "code xong" là xong) — chủ dự án đã nghiệm thu.
 2. ~~Biểu đồ **số đơn hàng**~~ — **XONG 11/09/2026 (PR #31).** Hai biểu đồ
    riêng xếp dọc trong `#o-dashboard`, dùng chung một dải tab đơn vị, một
    dải nút phụ và một chú giải; KHÔNG gộp hai trục dọc vào một khung. Không
@@ -443,15 +453,21 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
    tắc "khoảng trống thật" với mọi biểu đồ khác trong file. Nhãn duy nhất
    là giá trị tháng CUỐI CÙNG có số ("Lines → value at the end", không ghi
    số lên từng tháng — dataviz).
-6. **Dọn ba field cũ của Engine** — `gopSucKhoeCongTy()` vẫn trả
-   `theo_ngay` (366 điểm), `theo_nam`, `hai_nam` mà giao diện mới không
-   còn đọc. Giữ lại có chủ ý cho khoảng giữa hai lượt deploy (bẫy số 4).
-   Sau khi chủ dự án xác nhận bản mới chạy thật thì bỏ cả ba — payload
-   `theo_ngay` gần như trùng lặp hoàn toàn với `theo_ngay_thang`.
+6. ~~Dọn ba field cũ của Engine~~ — **XONG 11/09/2026 (PR #43).**
+   `gopSucKhoeCongTy()` không còn trả `theo_ngay` (366 điểm), `theo_nam`,
+   `hai_nam` — ba field của bản Dashboard đầu tiên, giữ lại có chủ ý cho
+   khoảng giữa hai lượt deploy (bẫy số 4), bỏ đúng lúc đã hẹn: sau khi chủ
+   dự án xác nhận bản mới chạy thật. Bỏ luôn `haiNamGanNhat()` (chỉ còn
+   tồn tại để tính `hai_nam`, không còn ai gọi) — `cacNamCoSo()` vẫn giữ.
 
-Engine ĐÃ có sẵn `gopSoBanHang()`, `gopTheoLine()`, `gopSucKhoeCongTy()`
-qua Service Binding (bẫy số 4: hàm Engine lên trước, Gateway gọi ở lượt
-merge sau) — bước 3 phải theo đúng nếp này: hàm gộp-theo-Line mới lên
+**P2 xem như đóng tại đây.** Việc tiếp theo của Dashboard (nếu chủ dự án
+muốn) là P3/P4 dưới, không phải thêm việc mới vào P2 — một ý mới cho biểu
+đồ thì mở thành một mục riêng ở "Trạng thái hiện tại", không chèn vào
+danh sách đã đóng này.
+
+Engine ĐÃ có sẵn `gopSoBanHang()`, `gopTheoLine()`, `gopSucKhoeCongTy()`,
+`gopLineTheoThoiGian()` qua Service Binding (bẫy số 4: hàm Engine lên
+trước, Gateway gọi ở lượt merge sau) — bất cứ hàm gộp-theo-Line mới nào lên
 Engine ở MỘT lượt merge riêng, Gateway gọi nó ở lượt sau.
 
 ### P3 — tải sổ qua trình duyệt: LƯỢT 1 ĐÃ MERGE (11/09/2026)
@@ -867,7 +883,7 @@ phẩm/thương hiệu tuỳ chọn (P6), khai tử V1 (P7).
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
-| P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | 🟨 Đang làm — xem "Trạng thái hiện tại" |
+| P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | ✅ Xong — 11/09, chủ dự án đã nghiệm thu |
 | P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | 🟨 Lượt 1 đã merge — còn lượt 2 (sửa/xoá + audit) |
 | P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
 | P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
