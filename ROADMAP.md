@@ -8,8 +8,13 @@ chỉ trỏ tới.
 
 Nguyên tắc làm việc: **mỗi phase là một lát cắt dọc**, kết thúc bằng một
 thứ deploy được và mở bằng máy thật. Không mở phase kế tiếp khi phase hiện
-tại chưa có bằng chứng chạy thật — không phải "code xong", mà là "chủ dự
-án đã tự tay mở và xác nhận".
+tại chưa có bằng chứng chạy thật — không phải "code xong", mà là "tự
+deploy và tự xác nhận được đúng điều mô tả ở 'Bạn nhìn thấy gì'".
+
+Không cần chờ chủ dự án duyệt trước khi merge (xem `CLAUDE.md` → "Quy
+trình Git"): mỗi "Ra khỏi phase khi" dưới đây là điều kiện session TỰ xác
+nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án gật đầu. Chủ dự
+án xem sản phẩm thật ở thời điểm của họ và yêu cầu repair nếu cần.
 
 ---
 
@@ -114,7 +119,7 @@ màn hình.
 nhập bằng tài khoản công ty, thấy tên mình và sáu thẻ xám ghi "chưa có
 gì".
 
-**Ra khỏi phase khi:** chủ dự án tự đăng nhập được trên máy thật.
+**Ra khỏi phase khi:** tự đăng nhập được trên bản deploy thật, đã merge.
 
 ---
 
@@ -164,7 +169,8 @@ trail thật đầu tiên của V2 (F-05 của V1 không có).
 **Bạn nhìn thấy gì:** bảng nhân viên với doanh số, lợi nhuận, target, và
 lịch sử ai sửa gì lúc nào.
 
-**Ra khỏi phase khi:** chủ dự án dùng bảng này thay Excel cho một kỳ.
+**Ra khỏi phase khi:** bảng chạy thật, đủ số liệu để thay Excel cho một
+kỳ — đã merge, chờ chủ dự án dùng thử.
 
 ---
 
@@ -225,9 +231,13 @@ chiếu thật.
 
 ## Cách một session mới bắt đầu
 
-1. Đọc `CLAUDE.md` (luật gốc).
+1. Đọc `CLAUDE.md` (luật gốc, kể cả mục "Quy trình Git").
 2. Đọc file này, mục "Trạng thái hiện tại" — biết đang ở phase nào.
 3. Làm đúng phase đó, không nhảy cóc.
-4. Trước khi kết thúc phiên: cập nhật "Trạng thái hiện tại" + đổi ⬜ → ✅
-   trong bảng nếu phase đã xong (có bằng chứng chủ dự án tự mở và xác
-   nhận).
+4. Test xanh + tự deploy xác nhận được đúng điều "Bạn nhìn thấy gì" của
+   phase → tạo PR, merge NGAY vào nhánh mặc định, không hỏi lại (xem
+   `CLAUDE.md`).
+5. Trước khi kết thúc phiên: cập nhật "Trạng thái hiện tại" + đổi ⬜ → ✅
+   trong bảng. Chủ dự án review trên sản phẩm thật ở thời điểm của họ,
+   không phải điều kiện để merge — phát hiện lỗi thì mở session mới yêu
+   cầu repair đúng phase đó, không coi là mở lại từ đầu.

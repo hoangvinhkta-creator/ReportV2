@@ -108,3 +108,25 @@ hình — rồi deploy để chủ dự án mở bằng máy thật. Không xây
 rồi dựng giao diện sau; đó đúng là cách V1 hỏng.
 
 Không chắc một quy tắc nghiệp vụ thì HỎI, đừng đoán rồi viết tiếp.
+
+## Quy trình Git — merge thẳng, không hỏi lại, không review độc lập
+
+Dự án nội bộ một người dùng. KHÔNG áp bộ governance kiểu V1 (ready gate,
+completion gate, independent review, repair cycle) — chủ dự án đã từ chối
+việc đó có chủ đích (xem `ROADMAP.md`, Q6).
+
+Luật duy nhất: làm việc trên một nhánh, xong một lát cắt (theo đúng "Ra
+khỏi phase khi" / "Bạn nhìn thấy gì" của phase đang làm trong
+`ROADMAP.md`) và `npm test` xanh thì **tạo PR nhắm nhánh mặc định rồi
+merge NGAY** — không hỏi lại, không chờ duyệt, không có bước review nào
+chen giữa. Đây là thẩm quyền đã được trao trước, không phải việc cần xin
+phép mỗi lần.
+
+Chủ dự án review bằng cách **tự mở sản phẩm đã chạy thật** sau khi merge,
+không review qua PR/diff. Phát hiện lỗi sau merge là một REPAIR bình
+thường — sửa, `npm test` xanh, PR, merge tiếp. Không rollback nghi lễ,
+không mở lại một chu trình duyệt nào.
+
+Việc DUY NHẤT vẫn cần hỏi trước khi làm: bất cứ điều gì trong CLAUDE.md
+này ghi KHÔNG được, hoặc một quyết định nghiệp vụ chưa có câu trả lời rõ
+(xem "Làm từng bước" ở trên).
