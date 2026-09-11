@@ -77,6 +77,10 @@ dòng nào để áp, kèm danh sách. Không im lặng bỏ qua.
 
 ## Khớp mã hàng — dùng lại của Tracking, đừng viết mới
 
+Chỉ cần cho GIÁ VỐN/LỢI NHUẬN (P5 trong `ROADMAP.md`). Doanh số và số đơn
+theo nhân viên/ngày (P2, P3, P4, P7) lấy thẳng từ sổ thô, KHÔNG cần khớp
+mã hàng — đừng kéo cơ chế này vào sớm hơn P5.
+
 Tên hàng trên sổ bán không khớp mã bảng giá thì ĐƯA VÀO HÀNG CHỜ cho người
 gán tay. KHÔNG đoán, không so gần đúng, không rút mã từ tên.
 
