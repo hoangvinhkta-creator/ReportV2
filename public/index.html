@@ -63,33 +63,29 @@
     padding: 6px 10px; font-size: 13px; cursor: pointer; margin-left: 8px;
   }
 
-  .luoiThe {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
-  }
-  .the {
-    background: #e5e7eb; border-radius: 10px; padding: 20px; color: #6b7280;
-    min-height: 96px; display: flex; flex-direction: column; justify-content: space-between;
-  }
-  .the .tenThe { font-size: 14px; font-weight: 600; color: #4b5563; }
-  .the .trangThai { font-size: 12px; margin-top: 8px; }
-  .the.bam { background: #fff; color: #1f2430; cursor: pointer; border: 1px solid #d1d5db; }
-  .the.bam .trangThai { color: #6b7280; }
-  .the.bam:hover { border-color: #2563eb; }
-
   #hopLoi { color: #b91c1c; font-size: 13px; }
 
-  /* ---- Màn sức khoẻ kinh doanh (P2(b) bước 1) ---- */
-  .tabDonVi { display: flex; gap: 6px; margin-bottom: 16px; }
+  /* Trang chủ = màn báo cáo: bảng đơn hàng 16 cột cần rộng hơn 720px của
+     `.wrap`. Chỉ nới BỀ NGANG, không đụng `display` — `hidden` phải giữ
+     nguyên tác dụng (xem khối [hidden] ở đầu file). */
+  #manChu { max-width: none; }
+
+  /* ---- Tab + Dashboard ---- */
+  .tabDonVi { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
   .tabNut {
     border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
     padding: 6px 14px; font-size: 13px; cursor: pointer; color: #4b5563;
   }
   .tabNut.tabDang { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+  .tabNut:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
+  .tabNut.tabNho { padding: 4px 10px; font-size: 12px; }
+  .daiPhu { margin: 10px 0 0; }
   .dangTai { color: #6b7280; font-size: 13px; }
+  .tieuDeSk { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1f2430; }
   .chuGiaiSk { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: #4b5563; }
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+  .chuGiaiSk i.netDut { height: 0; border-top: 3px dashed #9ca3af; background: none !important; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
 
   /* ---- Màn nhập sổ + màn đơn hàng (P3) ---- */
@@ -119,7 +115,6 @@
   .bangNho th, .bangNho td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangNho th { background: #f9fafb; }
 
-  #manDonHang { max-width: none; }
   .bocBang { overflow-x: auto; }
   .bangDon { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
   .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
@@ -130,8 +125,8 @@
   .hangDauDon td { border-top: 2px solid #d1d5db; }
   .hangChietKhau td { color: #b45309; font-style: italic; }
   .hangTongDon td { background: #fafafa; font-weight: 600; }
-  #oDashboardBoc { background: #fff; border: 1px dashed #d1d5db; border-radius: 10px;
-    padding: 16px; margin-bottom: 12px; color: #6b7280; font-size: 13px; }
+  #oDashboardBoc { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 16px; margin-bottom: 16px; max-width: 900px; }
 </style>
 </head>
 <body>
@@ -149,38 +144,26 @@
 
 <div id="manChu" class="wrap" hidden>
   <header class="thanhTren">
-    <h1>Báo cáo Kinh doanh</h1>
+    <h1>Báo cáo bán hàng</h1>
     <div class="aiDangNhap">
       <b id="tenNguoiDung"></b>
+      <button class="dangXuat" id="theNhapSo" type="button">Nhập sổ</button>
       <button class="dangXuat" id="nutDangXuat" type="button">Đăng xuất</button>
     </div>
   </header>
   <p id="hopLoi"></p>
-  <div class="luoiThe">
-    <div class="the"><div class="tenThe">Doanh thu &amp; lợi nhuận</div><div class="trangThai">chưa có gì</div></div>
-    <div class="the"><div class="tenThe">Giá vốn</div><div class="trangThai">chưa có gì</div></div>
-    <div class="the"><div class="tenThe">Nhân viên</div><div class="trangThai">chưa có gì</div></div>
-    <div class="the bam" id="theBieuDoKy" role="button" tabindex="0"><div class="tenThe">Biểu đồ theo kỳ</div><div class="trangThai">sức khoẻ kinh doanh</div></div>
-    <div class="the"><div class="tenThe">Sản phẩm &amp; thương hiệu</div><div class="trangThai">chưa có gì</div></div>
-    <div class="the bam" id="theNhapSo" role="button" tabindex="0"><div class="tenThe">Nhập sổ bán hàng</div><div class="trangThai">tải sổ .xlsx lên</div></div>
-    <div class="the bam" id="theDonHang" role="button" tabindex="0"><div class="tenThe">Đơn hàng theo line</div><div class="trangThai">danh sách từng đơn</div></div>
-  </div>
-</div>
 
-<div id="manSucKhoe" class="wrap" hidden>
-  <header class="thanhTren">
-    <h1>Sức khoẻ kinh doanh</h1>
-    <button class="dangXuat" id="nutQuaySucKhoe" type="button">← Quay lại</button>
-  </header>
-  <div class="tabDonVi" id="tabDonViSk">
-    <button class="tabNut tabDang" data-dv="ngay" type="button">Ngày</button>
-    <button class="tabNut" data-dv="thang" type="button">Tháng</button>
-    <button class="tabNut" data-dv="nam" type="button">Năm</button>
-  </div>
-  <p class="canhBao" id="loiSucKhoe"></p>
-  <div id="veSucKhoe"></div>
+  <!-- Trang chủ ĐI THẲNG vào đây (chủ dự án chốt 11/09/2026): chỉ còn một
+       màn báo cáo nên không chia tab màn, không có lưới thẻ trung gian.
+       Khung tab do P3 dựng (tabNam / tabLine / tabThang + bảng đơn hàng);
+       ô `#o-dashboard` là phần của P2(b) — xem ROADMAP.md. -->
+  <div class="tabDonVi" id="tabNam"></div>
+  <div class="tabDonVi" id="tabLine"></div>
+  <div id="oDashboardBoc"><div id="o-dashboard"></div></div>
+  <div class="tabDonVi" id="tabThang"></div>
+  <p class="canhBao" id="loiDonHang"></p>
+  <div id="veDonHang"></div>
 </div>
-
 
 <section id="manTaiLen" class="wrap" hidden>
   <header class="thanhTren">
@@ -197,23 +180,6 @@
   <p class="canhBao" id="loiTaiLen"></p>
   <div id="kqTaiLen"></div>
   <div id="banLuu"></div>
-</section>
-
-<section id="manDonHang" class="wrap" hidden>
-  <header class="thanhTren">
-    <h1>Đơn hàng theo line</h1>
-    <button class="dangXuat" id="nutQuayDonHang" type="button">← Quay lại</button>
-  </header>
-  <div class="tabDonVi" id="tabNam"></div>
-  <div class="tabDonVi" id="tabLine"></div>
-  <div class="tabDonVi" id="tabThang"></div>
-  <!-- Ô CHỪA SẴN cho nhánh P2(b) lắp biểu đồ vào. Quy ước ở ROADMAP.md:
-       P3 sở hữu khung tab, P2(b) sở hữu nội dung #o-dashboard. -->
-  <div id="oDashboardBoc">
-    <div id="o-dashboard">Biểu đồ của màn này do nhánh P2(b) lắp vào (ô <code>#o-dashboard</code>).</div>
-  </div>
-  <p class="canhBao" id="loiDonHang"></p>
-  <div id="veDonHang"></div>
 </section>
 
 <script>

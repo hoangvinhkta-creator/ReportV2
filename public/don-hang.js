@@ -267,8 +267,6 @@
   }
 
   async function moMan() {
-    $("manChu").hidden = true;
-    $("manDonHang").hidden = false;
     const loi = $("loiDonHang"), ve = $("veDonHang");
     loi.textContent = "";
     ve.innerHTML = '<p class="dangTai">Đang tải…</p>';
@@ -300,20 +298,18 @@
     }
   }
 
-  function dongMan() {
-    $("manDonHang").hidden = true;
-    $("manChu").hidden = false;
-  }
-
+  /* Màn này GIỜ LÀ TRANG CHỦ (chủ dự án chốt 11/09/2026: bỏ lưới thẻ, đăng
+     nhập xong ra thẳng Dashboard), nên không còn thẻ để bấm mở và không còn
+     nút "Quay lại" để đóng. Nghe thẳng Firebase Auth thay vì chờ khối
+     <script> inline gọi sang — khối đó là của phần đăng nhập, quy ước là để
+     yên (ROADMAP.md). */
+  let daMo = false;
   document.addEventListener("DOMContentLoaded", function () {
-    const the = $("theDonHang");
-    if (the) {
-      the.addEventListener("click", moMan);
-      the.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); moMan(); }
-      });
-    }
-    const quay = $("nutQuayDonHang");
-    if (quay) quay.addEventListener("click", dongMan);
+    firebase.auth().onAuthStateChanged(function (user) {
+      if (!user) { daMo = false; return; }
+      if (daMo) return;          // token tự làm mới không được kéo thêm một lượt tải
+      daMo = true;
+      moMan();
+    });
   });
 })();

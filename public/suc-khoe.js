@@ -1,233 +1,309 @@
-/* "Màn mở" — sức khoẻ kinh doanh toàn công ty (P2(b) bước 1). File RIÊNG,
- * nạp bằng <script src> (CLAUDE.md — mỗi màn hình một file .js rời, không
- * gộp vào khối inline của index.html; xem kiem/luat-so-1.js phần "Chỗ 2").
+/* DASHBOARD — sức khoẻ kinh doanh toàn công ty, vẽ vào ô `#o-dashboard`.
  *
- * TOÀN BỘ những gì file này làm: gọi GET /api/bao-cao/suc-khoe kèm Firebase
- * ID token, rồi VẼ cây kết quả ĐÃ TÍNH SẴN mà Gateway/Engine trả về. Không
- * có công thức tiền nào ở đây — "ngày nào thuộc tháng/năm nào", "năm trước
- * là năm nào" đều do Engine tính (xem engine/src/gop-theo-thoi-gian.mjs),
- * file này chỉ đọc field có sẵn (LUẬT SỐ 1).
+ * Ô đó do nhánh P3 chừa sẵn trong khung tab của màn Báo cáo bán hàng (quy
+ * ước ở ROADMAP.md: P3 sở hữu KHUNG, P2(b) sở hữu NỘI DUNG ô này). File này
+ * không đụng gì bên ngoài ô — không bật/tắt màn hình, không vẽ tab năm hay
+ * tab line của P3.
+ *
+ * Bố cục chủ dự án chốt 11/09/2026:
+ *
+ *   [Ngày] [Tháng] [Quý]        ← tab đơn vị
+ *   [ biểu đồ ]
+ *   [T1][T2]…[T12]              ← dải phụ, ĐỔI THEO TAB:
+ *                                  Ngày  → 12 tháng
+ *                                  Tháng → các năm có số
+ *                                  Quý   → không có
+ *
+ * Vì sao tab Ngày xem mỗi lần một tháng: vẽ cả 366 ngày lên một trục thì
+ * "quá dày", không đọc được. Engine đã chia sẵn chuỗi ngày theo tháng
+ * (`theo_ngay_thang`), file này chỉ chọn đúng ngăn rồi vẽ.
+ *
+ * LUẬT SỐ 1: không một công thức tiền nào ở đây. "Ngày nào thuộc tháng/quý
+ * nào", "năm trước là năm nào" đều do Engine tính sẵn
+ * (`engine/src/gop-theo-thoi-gian.mjs`). Chỗ duy nhất file này động vào số
+ * là CHIA 1.000 để hiện cho gọn — đó là định dạng, không phải nghiệp vụ.
  */
 (function () {
   "use strict";
 
   const $ = (id) => document.getElementById(id);
 
-  /* ---- Số + nhãn: THUẦN, không đụng DOM — test được bằng Node độc lập ---- */
+  /* ─────────── Thuần: định dạng + dựng chuỗi SVG (không đụng DOM) ─────────── */
 
-  /* Trục dọc "làm gọn": 1.000.000.000đ hiển thị 1.000.000 (chia 1.000, bỏ
-   * ba số 0 cuối) — chủ dự án chốt lúc duyệt mockup, đơn vị hiểu ngầm là
-   * "nghìn đồng", ghi rõ ở chú giải dưới biểu đồ để không ai đọc nhầm là
-   * "đồng". */
-  function lamGon(soTien) {
-    return Math.round((Number(soTien) || 0) / 1000).toLocaleString("vi-VN");
-  }
+  /* Trục dọc "làm gọn": 1.000.000.000 đ hiện thành 1.000.000 (bỏ ba số 0
+   * cuối). Đơn vị hiểu ngầm là nghìn đồng, có ghi rõ ở chú giải để không ai
+   * đọc nhầm thành đồng. */
+  const lamGon = (v) => Math.round((Number(v) || 0) / 1000).toLocaleString("vi-VN");
+  const tienDay = (v) => (Number(v) || 0).toLocaleString("vi-VN") + " đ";
+  const soDon = (v) => (Number(v) || 0).toLocaleString("vi-VN");
 
-  /* "YYYY-MM-DD" -> "DD/MM" — trục ngày CHỈ hiện DD/MM, không hiện năm (hai
-   * đường chồng lên nhau đã tự nói năm nào qua màu/chú giải). */
-  function nhanNgay(khoa) {
-    const m = String(khoa).match(/^\d{4}-(\d{2})-(\d{2})$/);
-    return m ? m[2] + "/" + m[1] : "";
-  }
-
-  /* "YYYY-MM" -> "MM" — cùng tinh thần gọn của trục ngày. */
-  function nhanThang(khoa) {
-    const m = String(khoa).match(/^\d{4}-(\d{2})$/);
-    return m ? m[1] : "";
-  }
-
-  /* { [viTri]: {doanh_so,so_don,khoa} } của MỘT năm -> mảng đã sắp theo viTri. */
-  function layDiem(theoDonVi, nam) {
-    const o = theoDonVi && theoDonVi[nam];
-    if (!o) return [];
-    return Object.keys(o).map(Number).sort((a, b) => a - b)
-      .map((vt) => ({ vt, doanh_so: o[vt].doanh_so, khoa: o[vt].khoa }));
-  }
-
-  const KHONG_AN_TOAN = /[<>&"']/g;
-  const thoat = (s) => String(s).replace(KHONG_AN_TOAN, (c) => ({
+  const thoat = (s) => String(s).replace(/[<>&"']/g, (c) => ({
     "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;",
   }[c]));
 
-  const MAU_NAY = "#2563eb";   // năm nay — màu nhấn, trùng nút chính của trang
-  const MAU_TRUOC = "#9ca3af"; // năm trước — xám, không cạnh tranh với màu nhấn
+  /** Số ngày của một tháng — chỉ để biết trục ngang dài tới đâu (tháng 2 dừng
+   *  ở 28/29 chứ không chừa chỗ trống tới 31). Đây là hình học của biểu đồ,
+   *  không phải luật nghiệp vụ. */
+  const soNgayTrongThang = (nam, thang) => new Date(Date.UTC(nam, thang, 0)).getUTCDate();
 
-  /* Vẽ MỘT đường (mảng điểm {vt, doanh_so}) thành chuỗi "d" của path SVG,
-   * ngắt đoạn khi hai điểm liền nhau cách nhau hơn 1 vị trí — một khoảng
-   * trống thật trong dữ liệu không được vẽ liền thành một đường giả. */
-  function duongSvg(diem, vtMin, vtMax, x, yMax, caoVe) {
-    if (!diem.length) return "";
-    const px = (vt) => x(vt, vtMin, vtMax);
-    const py = (v) => caoVe - (yMax > 0 ? (v / yMax) * caoVe : 0);
-    let d = "", dangMo = false;
-    let vtTruoc = null;
-    for (const p of diem) {
-      const moDoan = vtTruoc === null || p.vt - vtTruoc > 1;
-      d += (moDoan ? "M" : "L") + px(p.vt).toFixed(1) + "," + py(p.doanh_so).toFixed(1) + " ";
-      vtTruoc = p.vt;
-    }
-    return d.trim();
+  /** `{ "<vị trí>": {doanh_so, so_don, khoa} }` → mảng đã sắp theo vị trí. */
+  function layDiem(bangViTri) {
+    if (!bangViTri) return [];
+    return Object.keys(bangViTri).map(Number).sort((a, b) => a - b).map((vt) => ({
+      vt,
+      doanh_so: Number(bangViTri[vt].doanh_so) || 0,
+      so_don: Number(bangViTri[vt].so_don) || 0,
+      khoa: bangViTri[vt].khoa,
+    }));
   }
 
-  /* Biểu đồ đường cho tab "ngày"/"tháng" — hai đường chồng theo vị trí
-   * trong chu kỳ năm (đúng ngày/đúng tháng của năm trước nằm cùng cột X). */
-  function veBieuDoDuong(theoDonVi, namNay, namTruoc, vtMax, nhanFn) {
-    const diemNay = layDiem(theoDonVi, namNay);
-    const diemTruoc = namTruoc != null ? layDiem(theoDonVi, namTruoc) : [];
+  const MAU_NAY = "#2563eb";    // kỳ đang xem — màu nhấn
+  const MAU_TRUOC = "#9ca3af";  // cùng kỳ năm trước — xám, không tranh màu nhấn
+
+  const RONG = 640, CAO = 230;
+  const LE_TRAI = 64, LE_PHAI = 14, LE_TREN = 12, LE_DUOI = 30;
+  const CAO_VE = CAO - LE_TREN - LE_DUOI;
+  const RONG_VE = RONG - LE_TRAI - LE_PHAI;
+
+  /** Vẽ MỘT chuỗi thành các đoạn path + chấm điểm.
+   *
+   *  Ngắt đoạn khi hai điểm liền nhau cách nhau hơn một vị trí: một khoảng
+   *  trống thật trong sổ (ngày nghỉ, kỳ chưa nhập) không được nối liền thành
+   *  một đường giả như thể hôm đó vẫn bán.
+   *
+   *  Có CHẤM ở từng điểm, không chỉ đường: chuỗi một điểm duy nhất (tab Quý
+   *  đầu năm, hoặc một tháng mới có một ngày) mà chỉ vẽ đường thì không hiện
+   *  ra gì cả — bản Dashboard đầu tiên đã vấp đúng lỗi đó. */
+  function veChuoi(diem, x, y, mau, netDut, nhanDiem) {
+    if (!diem.length) return "";
+    let d = "", vtTruoc = null, cham = "";
+    for (const p of diem) {
+      const px = x(p.vt), py = y(p.doanh_so);
+      d += (vtTruoc === null || p.vt - vtTruoc > 1 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      vtTruoc = p.vt;
+      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2.5" fill="' + mau + '">'
+        + "<title>" + thoat(nhanDiem(p)) + "</title></circle>";
+    }
+    return '<path d="' + d.trim() + '" fill="none" stroke="' + mau + '" stroke-width="'
+      + (netDut ? "2" : "2.5") + '"' + (netDut ? ' stroke-dasharray="5,4"' : "") + "/>" + cham;
+  }
+
+  /** Biểu đồ hai đường: kỳ đang xem chồng lên đúng kỳ đó của năm trước.
+   *  `nhanTruc(vt)` là nhãn trục ngang, `moTa(p, nam)` là câu hiện khi rê chuột. */
+  function veBieuDo(diemNay, diemTruoc, vtMin, vtMax, nhanTruc, moTa, namNay, namTruoc) {
     const yMax = Math.max(1, ...diemNay.map((p) => p.doanh_so), ...diemTruoc.map((p) => p.doanh_so));
+    const x = (vt) => LE_TRAI + (vtMax > vtMin ? ((vt - vtMin) / (vtMax - vtMin)) * RONG_VE : RONG_VE / 2);
+    const y = (v) => LE_TREN + CAO_VE - (v / yMax) * CAO_VE;
 
-    const RONG = 640, CAO = 220, LE_TRAI = 64, LE_DUOI = 28, LE_TREN = 10, LE_PHAI = 12;
-    const caoVe = CAO - LE_TREN - LE_DUOI, rongVe = RONG - LE_TRAI - LE_PHAI;
-    const x = (vt, min, max) => LE_TRAI + (max > min ? ((vt - min) / (max - min)) * rongVe : 0);
-
-    const dNay = duongSvg(diemNay, 1, vtMax, x, yMax, caoVe);
-    const dTruoc = duongSvg(diemTruoc, 1, vtMax, x, yMax, caoVe);
-
-    // 4 mốc lưới ngang, đều từ 0 tới yMax.
+    // Bốn mốc lưới ngang, đều từ 0 tới đỉnh.
     let luoi = "";
     for (let i = 0; i <= 3; i++) {
-      const gt = (yMax / 3) * i;
-      const y = LE_TREN + (caoVe - (gt / yMax) * caoVe);
-      luoi += '<line x1="' + LE_TRAI + '" x2="' + (RONG - LE_PHAI) + '" y1="' + y.toFixed(1)
-        + '" y2="' + y.toFixed(1) + '" stroke="#e5e7eb" stroke-width="1"/>'
-        + '<text x="' + (LE_TRAI - 8) + '" y="' + (y + 4).toFixed(1)
-        + '" font-size="10" fill="#6b7280" text-anchor="end">' + lamGon(gt) + '</text>';
+      const gt = (yMax / 3) * i, gy = y(gt);
+      luoi += '<line x1="' + LE_TRAI + '" x2="' + (RONG - LE_PHAI) + '" y1="' + gy.toFixed(1)
+        + '" y2="' + gy.toFixed(1) + '" stroke="#e5e7eb" stroke-width="1"/>'
+        + '<text x="' + (LE_TRAI - 8) + '" y="' + (gy + 4).toFixed(1)
+        + '" font-size="10" fill="#6b7280" text-anchor="end">' + lamGon(gt) + "</text>";
     }
 
-    // Nhãn trục ngang — nhiều nhất ~8 nhãn, chọn theo CHỈ SỐ trong danh sách
-    // điểm THẬT SỰ CÓ DỮ LIỆU (không theo vị trí tuyệt đối trên trục): sổ
-    // bán hàng có ngày trống (nghỉ, chưa nhập...), một mốc chia đều theo vị
-    // trí tuyệt đối dễ rơi đúng vào ngày trống và không nhãn nào hiện ra cả.
-    const timSanCoVt = (vt) => {
-      const a = diemNay.find((p) => p.vt === vt);
-      return a || diemTruoc.find((p) => p.vt === vt);
-    };
-    const tapVt = [...new Set([...diemNay, ...diemTruoc].map((p) => p.vt))].sort((a, b) => a - b);
-    let nhanTruc = "";
-    if (tapVt.length) {
-      const buocChiSo = Math.max(1, Math.ceil(tapVt.length / 8));
-      const chiSoHien = new Set();
-      for (let i = 0; i < tapVt.length; i += buocChiSo) chiSoHien.add(i);
-      chiSoHien.add(tapVt.length - 1); // luôn có nhãn ở mốc mới nhất
-      for (const i of chiSoHien) {
-        const p = timSanCoVt(tapVt[i]);
-        const nx = x(p.vt, 1, vtMax);
-        nhanTruc += '<text x="' + nx.toFixed(1) + '" y="' + (CAO - 6)
-          + '" font-size="10" fill="#6b7280" text-anchor="middle">' + thoat(nhanFn(p.khoa)) + '</text>';
-      }
+    /* Nhãn trục ngang: nhiều nhất ~10 nhãn, chia đều theo MIỀN TRỤC chứ không
+       theo điểm có dữ liệu — trục ngang giờ là 1..31 hoặc 1..12 nên vị trí
+       nào cũng có nhãn được, kể cả ngày không bán được đơn nào. */
+    const soViTri = vtMax - vtMin + 1;
+    const buoc = Math.max(1, Math.ceil(soViTri / 12));
+    const moc = [];
+    for (let vt = vtMin; vt <= vtMax; vt += buoc) moc.push(vt);
+    /* Mốc cuối luôn có nhãn: 12 tháng với bước 1 thì đã sẵn, nhưng một tháng
+       30 ngày với bước 3 dừng ở 28 — trục kết thúc ở một con số không ghi là
+       người xem không biết biểu đồ chạy tới đâu. */
+    if (moc[moc.length - 1] !== vtMax) moc.push(vtMax);
+    let nhan = "";
+    for (const vt of moc) {
+      nhan += '<text x="' + x(vt).toFixed(1) + '" y="' + (CAO - 8)
+        + '" font-size="10" fill="#6b7280" text-anchor="middle">' + thoat(nhanTruc(vt)) + "</text>";
     }
 
-    return (
-      '<svg viewBox="0 0 ' + RONG + ' ' + CAO + '" width="100%" role="img" aria-label="Biểu đồ doanh số theo thời gian">'
-      + luoi + nhanTruc
-      + (dTruoc ? '<path d="' + dTruoc + '" fill="none" stroke="' + MAU_TRUOC + '" stroke-width="2" stroke-dasharray="5,4"/>' : "")
-      + (dNay ? '<path d="' + dNay + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="2.5"/>' : "")
-      + "</svg>"
-    );
+    return '<svg viewBox="0 0 ' + RONG + " " + CAO + '" width="100%" role="img" aria-label="Biểu đồ doanh số">'
+      + luoi + nhan
+      + veChuoi(diemTruoc, x, y, MAU_TRUOC, true, (p) => moTa(p, namTruoc))
+      + veChuoi(diemNay, x, y, MAU_NAY, false, (p) => moTa(p, namNay))
+      + "</svg>";
   }
 
-  /* Tab "năm" — chỉ MỘT vị trí mỗi năm, đường kẻ không có nghĩa, chuyển
-   * sang hai cột so trực tiếp năm nay / năm trước. */
-  function veBieuDoNam(theoNam, namNay, namTruoc) {
-    const nay = (theoNam[namNay] && theoNam[namNay][1] && theoNam[namNay][1].doanh_so) || 0;
-    const truoc = namTruoc != null ? ((theoNam[namTruoc] && theoNam[namTruoc][1] && theoNam[namTruoc][1].doanh_so) || 0) : null;
-    const max = Math.max(1, nay, truoc || 0);
-    const RONG = 640, CAO = 220, LE_TREN = 20, LE_DUOI = 30, DAY_COT = 140;
-    const caoVe = CAO - LE_TREN - LE_DUOI;
-    const cot = (x, v, mau, nhan) => {
-      const h = (v / max) * caoVe;
-      return '<rect x="' + x + '" y="' + (LE_TREN + caoVe - h).toFixed(1) + '" width="' + DAY_COT
-        + '" height="' + h.toFixed(1) + '" rx="4" fill="' + mau + '"/>'
-        + '<text x="' + (x + DAY_COT / 2) + '" y="' + (LE_TREN + caoVe - h - 8).toFixed(1)
-        + '" font-size="13" fill="#1f2430" text-anchor="middle" font-weight="600">' + lamGon(v) + '</text>'
-        + '<text x="' + (x + DAY_COT / 2) + '" y="' + (CAO - 8)
-        + '" font-size="12" fill="#4b5563" text-anchor="middle">' + thoat(nhan) + '</text>';
+  function chuGiai(tenNay, tenTruoc, coTruoc) {
+    return '<div class="chuGiaiSk">'
+      + '<span><i style="background:' + MAU_NAY + '"></i>' + thoat(tenNay) + "</span>"
+      + (coTruoc ? '<span><i class="netDut" style="background:' + MAU_TRUOC + '"></i>' + thoat(tenTruoc) + "</span>" : "")
+      + '<span class="donViSk">Trục dọc: nghìn đồng</span></div>';
+  }
+
+  /* ─────────── Điều phối ─────────── */
+
+  const trangThai = { donVi: "ngay", nam: null, thang: null };
+  let duLieu = null;     // kết quả /api/bao-cao/suc-khoe, nhớ lại để đổi tab không gọi lại
+  let dangTai = false;
+
+  const TEN_DON_VI = { ngay: "Ngày", thang: "Tháng", quy: "Quý" };
+
+  /** Ngăn dữ liệu của một (đơn vị, năm) — trả `{ diem, vtMin, vtMax, nhanTruc, moTa, tieuDe }`. */
+  function dungKhung(nam) {
+    const dv = trangThai.donVi;
+    if (dv === "thang") {
+      return {
+        lay: (n) => layDiem((duLieu.theo_thang || {})[n]),
+        vtMin: 1, vtMax: 12,
+        nhanTruc: (vt) => "T" + vt,
+        moTa: (p, n) => "Tháng " + p.vt + "/" + n + " · " + tienDay(p.doanh_so) + " · " + soDon(p.so_don) + " đơn",
+        tieuDe: "Doanh số theo tháng · năm " + nam,
+      };
+    }
+    if (dv === "quy") {
+      return {
+        lay: (n) => layDiem((duLieu.theo_quy || {})[n]),
+        vtMin: 1, vtMax: 4,
+        nhanTruc: (vt) => "Q" + vt,
+        moTa: (p, n) => "Quý " + p.vt + "/" + n + " · " + tienDay(p.doanh_so) + " · " + soDon(p.so_don) + " đơn",
+        tieuDe: "Doanh số theo quý · năm " + nam,
+      };
+    }
+    const th = trangThai.thang;
+    return {
+      lay: (n) => layDiem(((duLieu.theo_ngay_thang || {})[n] || {})[th]),
+      vtMin: 1,
+      vtMax: Math.max(soNgayTrongThang(nam, th), soNgayTrongThang(nam - 1, th)),
+      nhanTruc: (vt) => String(vt),
+      moTa: (p, n) => p.vt + "/" + String(th).padStart(2, "0") + "/" + n + " · "
+        + tienDay(p.doanh_so) + " · " + soDon(p.so_don) + " đơn",
+      tieuDe: "Doanh số theo ngày · tháng " + th + "/" + nam,
     };
-    let svg = '<svg viewBox="0 0 ' + RONG + ' ' + CAO + '" width="100%" role="img" aria-label="So doanh số năm nay và năm trước">';
-    svg += cot(220, nay, MAU_NAY, String(namNay));
-    if (truoc != null) svg += cot(380, truoc, MAU_TRUOC, String(namTruoc));
-    svg += "</svg>";
-    return svg;
   }
 
-  function chuGiai(namNay, namTruoc) {
-    return (
-      '<div class="chuGiaiSk">'
-      + '<span><i style="background:' + MAU_NAY + '"></i>Năm ' + namNay + '</span>'
-      + (namTruoc != null ? '<span><i style="background:' + MAU_TRUOC + ';border-style:dashed"></i>Năm ' + namTruoc + '</span>' : "")
-      + '<span class="donViSk">Đơn vị trục dọc: nghìn đồng</span>'
-      + "</div>"
-    );
-  }
+  function veBieuDoHienTai() {
+    const oVe = $("skVe");
+    if (!oVe) return;
+    const nam = trangThai.nam, namTruoc = nam - 1;
+    const k = dungKhung(nam);
+    const diemNay = k.lay(nam), diemTruoc = k.lay(namTruoc);
 
-  /* ---- Điều phối màn hình — phần duy nhất đụng DOM/fetch ---- */
-
-  let duLieuSk = null;   // kết quả /api/bao-cao/suc-khoe, cache lại để đổi tab không gọi lại
-  let donViHienTai = "ngay";
-
-  function veTheoDonVi(donVi) {
-    const veSk = $("veSucKhoe");
-    if (!duLieuSk) return;
-    const [namNay, namTruoc] = duLieuSk.hai_nam;
-    if (donVi === "nam") {
-      veSk.innerHTML = veBieuDoNam(duLieuSk.theo_nam, namNay, namTruoc) + chuGiai(namNay, namTruoc);
+    if (!diemNay.length && !diemTruoc.length) {
+      oVe.innerHTML = '<p class="dangTai">' + thoat(k.tieuDe) + " — chưa có số nào cho kỳ này.</p>";
       return;
     }
-    const theoDonVi = donVi === "thang" ? duLieuSk.theo_thang : duLieuSk.theo_ngay;
-    const vtMax = donVi === "thang" ? 12 : 366;
-    const nhanFn = donVi === "thang" ? nhanThang : nhanNgay;
-    veSk.innerHTML = veBieuDoDuong(theoDonVi, namNay, namTruoc, vtMax, nhanFn) + chuGiai(namNay, namTruoc);
+    oVe.innerHTML = '<p class="tieuDeSk">' + thoat(k.tieuDe) + "</p>"
+      + veBieuDo(diemNay, diemTruoc, k.vtMin, k.vtMax, k.nhanTruc, k.moTa, nam, namTruoc)
+      + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
   }
 
-  function chuyenTab(donVi) {
-    donViHienTai = donVi;
-    for (const nut of document.querySelectorAll("#tabDonViSk .tabNut")) {
-      nut.classList.toggle("tabDang", nut.dataset.dv === donVi);
+  /** Dải nút phụ dưới biểu đồ — nội dung ĐỔI THEO TAB. */
+  function veDaiPhu() {
+    const hang = $("skDaiPhu");
+    if (!hang) return;
+    hang.innerHTML = "";
+    if (trangThai.donVi === "quy") return;   // quý chưa cần chọn gì
+
+    if (trangThai.donVi === "thang") {
+      for (const nam of duLieu.cac_nam) {
+        hang.appendChild(nutPhu(String(nam), nam === trangThai.nam, false, () => {
+          trangThai.nam = nam; veLai();
+        }));
+      }
+      return;
     }
-    veTheoDonVi(donVi);
+    const cuaNam = (duLieu.theo_ngay_thang || {})[trangThai.nam] || {};
+    for (let th = 1; th <= 12; th++) {
+      const coSo = !!cuaNam[th];
+      hang.appendChild(nutPhu("T" + th, th === trangThai.thang, !coSo, () => {
+        trangThai.thang = th; veLai();
+      }));
+    }
   }
 
-  async function taiSucKhoe() {
-    const loiSk = $("loiSucKhoe"), veSk = $("veSucKhoe");
-    loiSk.textContent = "";
-    veSk.innerHTML = '<p class="dangTai">Đang tải...</p>';
+  function nutPhu(chu, dangChon, tat, khiBam) {
+    const nut = document.createElement("button");
+    nut.type = "button";
+    nut.className = "tabNut tabNho" + (dangChon ? " tabDang" : "");
+    nut.textContent = chu;
+    /* Tháng không có số vẫn HIỆN nhưng bấm không được: ẩn hẳn thì người xem
+       tưởng báo cáo thiếu tháng, còn bấm vào một tháng rỗng thì chỉ tổ mở ra
+       một biểu đồ trắng. */
+    if (tat) nut.disabled = true;
+    else nut.addEventListener("click", khiBam);
+    return nut;
+  }
+
+  function veTabDonVi() {
+    const hang = $("skTabDonVi");
+    if (!hang) return;
+    hang.innerHTML = "";
+    for (const dv of ["ngay", "thang", "quy"]) {
+      const nut = document.createElement("button");
+      nut.type = "button";
+      nut.className = "tabNut" + (dv === trangThai.donVi ? " tabDang" : "");
+      nut.textContent = TEN_DON_VI[dv];
+      nut.addEventListener("click", () => { trangThai.donVi = dv; veLai(); });
+      hang.appendChild(nut);
+    }
+  }
+
+  function veLai() {
+    veTabDonVi();
+    veDaiPhu();
+    veBieuDoHienTai();
+  }
+
+  /** Khung cố định của Dashboard, dựng một lần vào ô P3 chừa sẵn. */
+  function dungKhungHtml() {
+    const o = $("o-dashboard");
+    if (!o) return false;
+    o.innerHTML = '<div class="tabDonVi" id="skTabDonVi"></div>'
+      + '<div id="skVe"></div>'
+      + '<div class="tabDonVi daiPhu" id="skDaiPhu"></div>'
+      + '<p class="canhBao" id="skLoi"></p>';
+    return true;
+  }
+
+  /** Mặc định: đúng NĂM và THÁNG của hôm nay (chủ dự án chốt 11/09/2026).
+   *  Năm hiện tại chưa có số thì mới lùi về năm mới nhất có số — không thì
+   *  màn hình mở ra trống trơn mà không có cách nào bấm sang năm có số. */
+  function datMacDinh() {
+    const homNay = new Date();
+    const namNay = homNay.getFullYear();
+    const cacNam = duLieu.cac_nam || [];
+    trangThai.nam = cacNam.includes(namNay) ? namNay : (cacNam[0] || namNay);
+    trangThai.thang = trangThai.nam === namNay ? homNay.getMonth() + 1 : 12;
+  }
+
+  async function tai(user) {
+    if (dangTai) return;
+    if (!dungKhungHtml()) return;      // màn hình chưa có ô — không phải trang này
+    dangTai = true;
+    const oVe = $("skVe"), oLoi = $("skLoi");
+    oLoi.textContent = "";
+    oVe.innerHTML = '<p class="dangTai">Đang tải biểu đồ…</p>';
     try {
-      const user = firebase.auth().currentUser;
-      if (!user) throw new Error("Chưa đăng nhập.");
       const token = await user.getIdToken();
       const r = await fetch("/api/bao-cao/suc-khoe", { headers: { Authorization: "Bearer " + token } });
       const than = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(than.loi || ("HTTP " + r.status));
-      duLieuSk = than;
-      chuyenTab(donViHienTai);
+      if (!r.ok) throw new Error(than.loi || "HTTP " + r.status);
+      duLieu = than;
+      datMacDinh();
+      veLai();
     } catch (e) {
-      veSk.innerHTML = "";
-      loiSk.textContent = "Không lấy được số liệu: " + e.message;
+      oVe.innerHTML = "";
+      $("skDaiPhu").innerHTML = "";
+      oLoi.textContent = "Không lấy được số liệu biểu đồ: " + e.message;
+    } finally {
+      dangTai = false;
     }
   }
 
-  function moManSucKhoe() {
-    $("manChu").hidden = true;
-    $("manSucKhoe").hidden = false;
-    taiSucKhoe();
-  }
-  function dongManSucKhoe() {
-    $("manSucKhoe").hidden = true;
-    $("manChu").hidden = false;
-  }
-
+  /* Tự chạy khi đăng nhập xong — Dashboard là thứ đầu tiên người dùng thấy,
+   * không còn phải bấm vào thẻ nào để mở. Nghe thẳng Firebase Auth thay vì
+   * chờ khối <script> inline gọi sang: khối đó là của phần đăng nhập, quy
+   * ước là để yên (ROADMAP.md). */
   document.addEventListener("DOMContentLoaded", function () {
-    const theBieuDo = $("theBieuDoKy");
-    if (theBieuDo) {
-      theBieuDo.addEventListener("click", moManSucKhoe);
-      theBieuDo.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); moManSucKhoe(); }
-      });
-    }
-    const nutQuay = $("nutQuaySucKhoe");
-    if (nutQuay) nutQuay.addEventListener("click", dongManSucKhoe);
-    for (const nut of document.querySelectorAll("#tabDonViSk .tabNut")) {
-      nut.addEventListener("click", () => chuyenTab(nut.dataset.dv));
-    }
+    firebase.auth().onAuthStateChanged(function (user) {
+      if (user) tai(user);
+      else duLieu = null;
+    });
   });
 })();
