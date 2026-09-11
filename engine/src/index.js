@@ -5,7 +5,7 @@
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { gopSoBanHang } from "./gop-ban-hang.mjs";
-import { gopTheoLine } from "./line.mjs";
+import { gopTheoLine, gopLineTheoThoiGian } from "./line.mjs";
 import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
 import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
@@ -13,7 +13,7 @@ import {
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.4.0-p3";
+const PHIEN_BAN = "0.5.0-p2b";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -71,6 +71,18 @@ export default class extends WorkerEntrypoint {
    *  đúng lượt merge này. */
   async gopSucKhoeCongTy(cayKy) {
     return gopSucKhoeCongTy(cayKy);
+  }
+
+  /** Cây `bc/ky` + bảng line → doanh số/số đơn của TỪNG LINE theo tháng và
+   *  theo năm, cho bảng xếp hạng Line trên Dashboard. Xem `line.mjs`.
+   *
+   *  Tách khỏi `gopSucKhoeCongTy()` chứ không nhét thêm tham số vào đó: hàm
+   *  kia không cần biết gì về line, và đổi chữ ký một hàm Gateway đang gọi
+   *  thật là tự chuốc đúng bẫy số 4 vào người.
+   *
+   *  Lên TRƯỚC lượt Gateway gọi nó — đúng lượt merge này. */
+  async gopLineTheoThoiGian(cayKy, bangLine) {
+    return gopLineTheoThoiGian(cayKy, bangLine);
   }
 
   /* ─────────── P3 — tải sổ qua trình duyệt, nối dài dữ liệu ───────────

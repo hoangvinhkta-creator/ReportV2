@@ -36,6 +36,8 @@
  * được CLAUDE.md kể tên tường minh trong danh sách CẤM ở frontend).
  */
 
+import { gopCayKyThanhChuoiNgay, gopMotChuoiNgay } from "./gop-theo-thoi-gian.mjs";
+
 /** Line hứng mọi tên chưa được xếp. Chủ dự án chốt: "line khác — dồn các
  *  nhân viên còn lại vào đây". */
 export const LINE_KHAC = "Khác";
@@ -289,5 +291,93 @@ export function gopTheoLine(cayKy, bang) {
     chua_xep: [...chua_xep]
       .sort((a, b) => b[1].doanh_so - a[1].doanh_so)
       .map(([ten, v]) => ({ ten, ...v })),
+  };
+}
+
+/* ─────────── Gộp theo line × đơn vị thời gian (bảng xếp hạng Dashboard) ─────────── */
+
+/** Cây `bc/ky` + bảng line → doanh số/số đơn của TỪNG LINE theo tháng và theo
+ *  năm, dùng cho bảng xếp hạng Line trên Dashboard.
+ *
+ *  Khác `gopTheoLine()` ở trên — hàm kia gộp theo KỲ (`"2026-08"`) và tách
+ *  thêm từng nhân viên trong line, phục vụ bảng số chi tiết. Hàm này gộp theo
+ *  (năm, vị trí trong năm) đúng cách `gop-theo-thoi-gian.mjs` làm cho toàn
+ *  công ty, để bảng xếp hạng so được kỳ đang xem với ĐÚNG kỳ đó của năm
+ *  trước. Hai hình dạng khác nhau nên không gộp làm một.
+ *
+ *  CHỈ tháng và năm, KHÔNG có ngày: xếp hạng theo ngày không ai đọc, mà chuỗi
+ *  ngày × 10 line là gấp mười lần dữ liệu phải kéo về cho mỗi lượt mở.
+ *
+ *  Line KHÔNG có nhân viên nào vẫn có mặt với cây rỗng — `thu_tu` là danh
+ *  sách khai tường minh, và một line mới mở (Shopee trước 09/2026) phải hiện
+ *  ra với số 0 chứ không được biến mất khỏi bảng xếp hạng.
+ *
+ *  Ném lỗi khi bảng line không dùng được, y như `gopTheoLine()`: bảng đó là
+ *  DỮ LIỆU người sửa được trên Console, sai thì phải nổ chứ không được trả
+ *  một bảng thiếu line (CLAUDE.md — "Nguồn hỏng thì BÁO LỖI"). */
+export function gopLineTheoThoiGian(cayKy, bang) {
+  const van_de = kiemBangLine(bang);
+  if (van_de.length) {
+    const e = new Error("line: bang anh xa khong dung duoc");
+    e.ma = "bang-line-khong-hop-le";
+    e.van_de = van_de;
+    throw e;
+  }
+  if (!cayKy || typeof cayKy !== "object") throw new Error("line: can cay bc/ky");
+
+  /* Tên nhân viên nào thuộc line nào — quét MỘT lượt, rồi lọc lại cây theo
+     từng danh sách. `xepLine` dồn tên chưa khai về "Khác" nên không tên nào
+     rơi ra ngoài mọi line, và đó là điều kiện để tổng các line bằng tổng
+     công ty. */
+  const nvCuaLine = new Map();
+  for (const ky of Object.keys(cayKy)) {
+    const theoNv = cayKy[ky];
+    if (!theoNv || typeof theoNv !== "object") continue;
+    for (const nv of Object.keys(theoNv)) {
+      const ten = xepLine(nv, bang);
+      if (!nvCuaLine.has(ten)) nvCuaLine.set(ten, new Set());
+      nvCuaLine.get(ten).add(nv);
+    }
+  }
+
+  const theo_thang = {}, theo_nam = {};
+  let ds_line = 0, don_line = 0;
+  for (const ten of bang.thu_tu) {
+    const ds = nvCuaLine.get(ten);
+    const chuoi = ds ? gopCayKyThanhChuoiNgay(cayKy, [...ds]) : {};
+    theo_thang[ten] = gopMotChuoiNgay(chuoi, "thang");
+
+    /* Theo năm chỉ có MỘT vị trí nên bỏ luôn tầng vị trí — bên vẽ đọc
+       `theo_nam[line][2026]` chứ không phải `[line][2026][1]`. */
+    const theoNam = gopMotChuoiNgay(chuoi, "nam");
+    const phang = {};
+    for (const nam of Object.keys(theoNam)) {
+      phang[nam] = { doanh_so: theoNam[nam][1].doanh_so, so_don: theoNam[nam][1].so_don };
+      ds_line = lamTron(ds_line + phang[nam].doanh_so);
+      don_line += phang[nam].so_don;
+    }
+    theo_nam[ten] = phang;
+  }
+
+  /* Bất biến: cộng mọi line phải bằng tổng công ty. Lệch nghĩa là có nhân
+     viên rơi ra ngoài mọi line — tức bảng xếp hạng đang kể thiếu tiền, mà
+     nhìn vào thì không có cách nào biết. */
+  const chuoiTong = gopCayKyThanhChuoiNgay(cayKy);
+  const namTong = gopMotChuoiNgay(chuoiTong, "nam");
+  let ds_tong = 0, don_tong = 0;
+  for (const nam of Object.keys(namTong)) {
+    ds_tong = lamTron(ds_tong + namTong[nam][1].doanh_so);
+    don_tong += namTong[nam][1].so_don;
+  }
+
+  return {
+    thu_tu: [...bang.thu_tu],
+    theo_thang,
+    theo_nam,
+    tom_tat: {
+      doanh_so_tong: ds_tong,
+      so_don_tong: don_tong,
+      khop_tong: lamTron(ds_line - ds_tong) === 0 && don_line === don_tong,
+    },
   };
 }
