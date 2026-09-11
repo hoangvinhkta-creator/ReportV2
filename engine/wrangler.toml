@@ -31,12 +31,24 @@ workers_dev = false
 #   · từ gốc repo:  wrangler deploy --config engine/wrangler.toml
 #   · từ trong đây: cd engine && wrangler deploy
 #
-# Nối git integration cho Worker này: KHÔNG cần ô "Root directory" (giao
-# diện Cloudflare không phải lúc nào cũng có ô đó). Để repo ở gốc và đặt
-# Deploy command thành:
-#   npx wrangler deploy --config engine/wrangler.toml
-# Đường dẫn bên trong file này (`main`) tính theo vị trí CHÍNH FILE NÀY,
-# không theo nơi gọi lệnh — đã thử bằng --dry-run từ gốc repo.
+# NỐI GIT INTEGRATION CHO WORKER NÀY — cách sạch nhất:
+#   Root directory:  engine
+#   Build command:   (để trống)
+#   Deploy command:  npx wrangler deploy          (mặc định)
+#   Version command: npx wrangler versions upload (mặc định)
+#
+# Ô "Root directory" nằm trong khối *Build configuration* ở Settings →
+# Builds của Worker — KHÔNG nằm ở wizard tạo Worker mới, nên dễ tưởng là
+# không có. Đặt nó = `engine` thì Cloudflare đọc thẳng file này, cả ba
+# lệnh mặc định đều trỏ đúng Worker, và hết cảnh báo "Update wrangler.toml
+# ... name = 'reportv2-engine'".
+#
+# Lối thay thế nếu vì lý do nào đó phải để Root directory = `/`: đặt Deploy
+# command `npx wrangler deploy --config engine/wrangler.toml` VÀ Version
+# command `npx wrangler versions upload --config engine/wrangler.toml`.
+# Thiếu `--config` ở Version command là nó deploy nhầm sang Gateway — đã
+# gặp thật 11/09/2026. Đường dẫn bên trong file này (`main`) tính theo vị
+# trí CHÍNH FILE NÀY, không theo nơi gọi lệnh — đã thử bằng --dry-run.
 [build]
 command = "npm test"
 
