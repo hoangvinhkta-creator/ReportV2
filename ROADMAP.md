@@ -246,36 +246,36 @@ liệu đang có (01–08/2026).** Ba việc còn lại:
 
 ---
 
-## Chín phase
+## Tám phase
 
-**Sắp xếp lại 11/09/2026, lần hai cùng ngày.** Lần một: chuyển trọng tâm
-sang doanh số + số đơn theo (nhân viên, ngày) — KHÔNG cần chi tiết dòng
-hàng hay khách hàng (xem lý do vẫn đúng ở dưới). Lần hai: chủ dự án xác
-nhận sẽ cung cấp **"Sổ chi tiết bán hàng"** năm 2025 và 2026 (tới hết
-08/2026) — ĐÚNG hai file Reports V1 đã từng dùng để đếm số đơn
-(`tools/chart_gapfill/extract_daily_orders.py`, đọc qua `raw_reader.
-read_raw_rows` — cùng hàm có cột `employee`). Hai file này cho CẢ doanh số
-lẫn số đơn, theo nhân viên, cho toàn bộ 01/2025–08/2026 — tốt hơn giả định
-ban đầu (không phải chỉ workbook kế toán revenue-only).
+**Sắp xếp lại 11/09/2026, lần ba cùng ngày** — sau khi P2 (bản cũ) đã
+chạy thật và có kết quả (xem "Trạng thái hiện tại"). Chủ dự án gộp lại
+theo đúng ba khối việc lớn, không tách nhỏ theo kỹ thuật nữa:
 
-Việc "nạp mốc legacy trước, không phải tải-lên-rồi-mới-tính" (yêu cầu
-tường minh của chủ dự án) không cần dựng UI tải file — đó là một lát cắt
-NHỎ HƠN và làm TRƯỚC được, nên được đôn lên P2. Phase "một kỳ thật, đi hết
-đường" (upload UI cho kỳ hiện tại/tương lai) lùi xuống P4, nối tiếp trên
-đúng hình dạng dữ liệu mà P2 đã chốt. "Giá vốn/lợi nhuận" và "sản phẩm/
-thương hiệu" giữ nguyên lý do đã nêu ở lần sắp xếp thứ nhất.
+- **P2 = dữ liệu gốc + biểu đồ** — gộp P2 (mốc legacy) và P3 (biểu đồ) cũ
+  làm MỘT: có dữ liệu nền rồi phải thấy được ngay bằng biểu đồ, không
+  tách hai bước.
+- **P3 = cơ chế tải file theo từng thời điểm, nối dài dữ liệu** — nội
+  dung P4 cũ (upload UI), đổi tên cho đúng vai trò: đây là cách P2 "sống
+  tiếp" theo thời gian, không phải một tính năng tách rời.
+- **P4 = phân tích giá vốn, dựa trên dữ liệu P3** — nội dung P6 cũ, buộc
+  tường minh vào dữ liệu SỐNG của P3 (không phải dữ liệu legacy của P2)
+  — khớp đúng giới hạn dữ liệu thật đã biết: Tracking chỉ có `min_ngay`
+  ổn định từ ~07/09/2026, đúng giai đoạn P3 mới bắt đầu tải sổ sống.
+
+Các phase còn lại giữ nguyên nội dung, đổi số: chỉnh sửa tay (P5), sản
+phẩm/thương hiệu tuỳ chọn (P6), khai tử V1 (P7).
 
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
-| P2 | Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025→08/2026 | 1 tuần | 🟨 Mã xong, đối chiếu nội bộ 2026 khớp 0 lệch — chờ sổ 2025, lượt ghi thật, danh sách nhân viên chuẩn |
-| P3 | Biểu đồ và so sánh kỳ | 1 tuần | ⬜ Chưa bắt đầu |
-| P4 | Một kỳ SỐNG thật, đi hết đường (upload UI, kỳ hiện tại/tương lai) | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | 🟨 Đang làm — xem "Trạng thái hiện tại" |
+| P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | ⬜ Chưa bắt đầu |
+| P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
 | P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
-| P6 | Giá vốn và lợi nhuận (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
-| P7 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
-| P8 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
+| P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
+| P7 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
 
 ---
 
@@ -319,13 +319,15 @@ giá: xem "Trạng thái hiện tại" ở đầu file.
 
 ---
 
-### P2 — Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025 → 08/2026
+### P2 — Dữ liệu gốc (2025 → 08/2026) + biểu đồ
 
-Trích trực tiếp từ **"Sổ chi tiết bán hàng"** 2025 và 2026 (tới hết
-08/2026) mà chủ dự án cung cấp — KHÔNG qua UI tải file, nạp thẳng vào
-Firebase trước khi P4 (upload sống) tồn tại. Đây là mốc để đối chiếu và
-vẽ biểu đồ ngay, đúng yêu cầu "có dữ liệu trước, không phải tải lên mới
-tính".
+Hai việc, một phase: (a) trích trực tiếp từ **"Sổ chi tiết bán hàng"**
+2025 và 2026 (tới hết 08/2026) mà chủ dự án cung cấp — KHÔNG qua UI tải
+file, nạp thẳng vào Firebase bằng script; (b) dựng biểu đồ đọc từ đúng dữ
+liệu vừa nạp. Không tách hai bước — có dữ liệu nền rồi phải thấy được
+ngay, đúng yêu cầu "có dữ liệu trước, không phải tải lên mới tính".
+
+**Phần (a) — trích + nạp:**
 
 **Bước 0 — xác minh nguồn trước khi trích, đừng giả định:** mở file, kiểm
 có đúng cột `employee`/nhân viên + số chứng từ + ngày bán + tiền theo
@@ -368,10 +370,13 @@ kiến trúc chung vẫn cho phép sau — Q1); PII đi qua bộ nhớ tiến tr
 bỏ, không log, không ghi ra file trung gian trong repo.
 
 Ghi vào `bc/ky/<YYYY-MM>/<nhân viên>/<ngày>`: `{doanh_so, so_don}` — MỘT
-THÁNG là một `<kỳ>`, đúng quy ước sẽ dùng cho P4 sau này, để P3 (biểu đồ)
-đọc được liền mạch bất kể dữ liệu tới từ đợt nạp này hay từ upload sống
-sau này. Viết logic gộp này thành MỘT hàm dùng chung ở Engine — P4 sau
-này gọi lại đúng hàm đó cho dữ liệu sống, không viết hai lần.
+THÁNG là một `<kỳ>`, đúng quy ước sẽ dùng cho P3 sau này (upload sống),
+để phần biểu đồ ngay dưới đây đọc được liền mạch bất kể dữ liệu tới từ
+đợt nạp này hay từ upload sống sau này. Viết logic gộp này thành MỘT hàm
+dùng chung ở Engine — P3 sau này gọi lại đúng hàm đó cho dữ liệu sống,
+không viết hai lần.
+
+**Phần (b) — biểu đồ, đọc từ đúng dữ liệu phần (a) vừa nạp:**
 
 **Kỹ thuật: chạy như script offline, không chạy trong runtime Worker.**
 20 tháng sổ chi tiết có thể tới hàng chục nghìn dòng — Cloudflare Worker
@@ -388,59 +393,80 @@ dòng của tháng đó (không rơi dòng, không đếm trùng số chứng t�
 án tự xem lại vài tháng trên sản phẩm thật sau khi merge, theo đúng quy
 trình đã chốt — không phải điều kiện chặn merge.
 
-**Bạn nhìn thấy gì:** một script chạy một lần, nạp xong đọc lại được
-`bc/ky/2025-01/...` tới `bc/ky/2026-08/...`, mỗi nhân viên mỗi ngày có
-số, cộng dồn ngày→tháng khớp đúng.
+**Bạn nhìn thấy gì:** biểu đồ doanh số + số đơn theo nhân viên, từ
+01/2025 tới hôm nay, đọc từ `bc/ky` đã nạp; bấm vào một cột thấy chi tiết
+ngày. Cuộn được lên tuần/tháng/quý/năm; so kỳ này với kỳ trước, cùng kỳ
+năm trước. Không tính lại lúc mở trang — biểu đồ đọc thẳng số đã tính sẵn
+ở bước trích.
 
 **Ra khỏi phase khi:** đối chiếu nội bộ (ngày cộng lên tháng) khớp 0 lệch
-cho toàn bộ 01/2025–08/2026, và danh sách tên không khớp được (nếu có) đã
-báo cáo rõ.
+cho toàn bộ 01/2025–08/2026, danh sách tên không khớp được (nếu có) đã
+báo cáo rõ, VÀ biểu đồ hiển thị đúng số đó — so sánh tháng này với tháng
+trước, quý này với quý trước ra đúng cho mọi nhân viên.
 
 ---
 
-### P3 — Biểu đồ và so sánh kỳ
-
-Vẽ từ `bc/ky` đã tính sẵn ở P2, không tính lại lúc mở trang. Theo nhân
-viên, cuộn lên tuần/tháng/quý/năm. So kỳ này với kỳ trước, cùng kỳ năm
-trước. Chạy được ngay trên dữ liệu legacy của P2 — không cần chờ P4.
-
-**Bạn nhìn thấy gì:** biểu đồ doanh số + số đơn theo nhân viên, từ
-01/2025 tới hôm nay; bấm vào một cột thấy chi tiết ngày.
-
-**Ra khỏi phase khi:** so sánh tháng này với tháng trước, quý này với quý
-trước, ra đúng số cho mọi nhân viên.
-
----
-
-### P4 — Một kỳ SỐNG thật, đi hết đường
+### P3 — Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu
 
 Tải lên sổ bán hàng thô của **một kỳ hiện tại/tương lai** (từ tháng bắt
-đầu dùng V2 hàng ngày trở đi). Trình duyệt đọc file và gửi lên; Gateway
-trích ĐÚNG hàm đã viết ở P2 — cùng grain, cùng nhánh `bc/ky/<YYYY-MM>/
-<nhân viên>/<ngày>`, nối liền vào chuỗi legacy mà không cần đổi gì ở P3.
+đầu dùng V2 hàng ngày trở đi) — qua UI thật trên trình duyệt, không phải
+script chạy tay như P2. Gateway trích ĐÚNG hàm đã viết ở P2
+(`gop-ban-hang.mjs` hoặc bản kế thừa) — cùng grain, cùng nhánh
+`bc/ky/<YYYY-MM>/<nhân viên>/<ngày>`, nối liền vào chuỗi legacy mà không
+cần đổi gì ở biểu đồ P2.
 
 Đây là phase chứng minh đường dây UPLOAD chạy đầu-cuối (trình duyệt →
 Gateway → Engine → Firebase → màn hình) — thứ P2 không cần vì P2 nạp
-thẳng, không qua UI.
+thẳng bằng script, không qua UI. Đây cũng là cách chính để dữ liệu "sống
+tiếp" theo thời gian — mỗi kỳ mới tải lên là một lần nối dài chuỗi P2 đã
+dựng, không phải một tính năng riêng.
 
-**Bạn nhìn thấy gì:** nhập sổ tháng hiện tại, biểu đồ P3 nối tiếp liền
+**Bạn nhìn thấy gì:** nhập sổ tháng hiện tại, biểu đồ P2 nối tiếp liền
 mạch từ tháng trước, không đứt gãy ở mốc chuyển từ legacy sang sống.
 
 **Ra khỏi phase khi:** một kỳ tải qua UI đối chiếu khớp Excel, nối đúng
-vào chuỗi thời gian đã có từ P2/P3.
+vào chuỗi thời gian đã có từ P2.
+
+---
+
+### P4 — Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026)
+
+Chủ dự án xác nhận vẫn cần giá vốn/lợi nhuận, nhưng xây dựa trên đúng dữ
+liệu SỐNG của P3 — không phải dữ liệu legacy của P2. Đây khớp đúng một
+giới hạn dữ liệu thật đã biết từ trước, không phải trùng hợp: hệ Min
+theo ngày bán của Tracking (`min_ngay`) chỉ có bản ghi ổn định từ cron
+chạy 20 phút/lượt bắt đầu khoảng 07/09/2026 (xem audit F-03/F-08 và ghi
+chú "bản ngày cron chỉ từ 07/09" trong `PROJECT_PROGRESS.md` của Reports
+V1) — đúng giai đoạn P3 mới bắt đầu có sổ sống để tải lên. Kỳ trong P2
+(2025 → 08/2026) KHÔNG có giá vốn theo ngày để đối chiếu — không phải
+lỗi, không phải việc chưa làm, là giới hạn của chính nguồn Tracking.
+
+Nối vào hệ Min theo ngày bán đang có sẵn bên Tracking (`POST
+/api/min-ngay`) — không viết lại. Mỗi dòng hàng có giá vốn theo đúng
+ngày bán, hoặc nói rõ vì sao chưa có. Đây là nơi bài toán khớp tên hàng
+(Q5 — gán thủ công kiểu Tracking) thật sự chạm vào lần đầu — và CHỈ ở
+phase này, không ở P2/P3.
+
+**Bạn nhìn thấy gì:** lợi nhuận của một kỳ đã tải qua P3 (≥ 07/09/2026),
+cộng danh sách rõ ràng "N dòng chưa có giá vốn, vì lý do gì". Kỳ thuộc
+P2 (legacy) ghi rõ "ngoài phạm vi dữ liệu Tracking", không hiện số 0 gây
+hiểu nhầm.
+
+**Ra khỏi phase khi:** lợi nhuận một kỳ thật đã tải qua P3 đối chiếu khớp
+tay.
 
 ---
 
 ### P5 — Chỉnh sửa tay + audit trail
 
 Sửa tay khi cột nhân viên trên sổ sai/thiếu (ghi nhầm người, để trống),
-áp dụng cho cả dữ liệu legacy (P2) lẫn dữ liệu sống (P4). Mọi lần sửa ghi
+áp dụng cho cả dữ liệu legacy (P2) lẫn dữ liệu sống (P3). Mọi lần sửa ghi
 kèm người sửa + thời điểm vào `bc/quyetdinh`, hợp nhất lúc đọc — đúng cơ
 chế đè-không-mất ở mục 8 của audit. Đây là audit trail thật đầu tiên của
 V2 (F-05 của V1 không có ai để ghi).
 
 **Bạn nhìn thấy gì:** sửa một dòng gán sai nhân viên (kể cả trong dữ liệu
-legacy), số liệu cập nhật ngay trên biểu đồ P3, và lịch sử ai sửa gì lúc
+legacy), số liệu cập nhật ngay trên biểu đồ P2, và lịch sử ai sửa gì lúc
 nào.
 
 **Ra khỏi phase khi:** có ít nhất một sửa tay thật, sống qua một lần nhập
@@ -448,32 +474,7 @@ lại kỳ đó (không bị đè mất).
 
 ---
 
-### P6 — Giá vốn và lợi nhuận (chỉ áp dụng từ ~07/09/2026)
-
-Chủ dự án xác nhận vẫn cần giá vốn/lợi nhuận, nhưng CHỈ từ khoảng
-07/09/2026 trở đi — đây không phải lựa chọn tuỳ ý mà là giới hạn DỮ LIỆU
-THẬT: hệ Min theo ngày bán của Tracking (`min_ngay`) chỉ có bản ghi ổn
-định từ cron chạy 20 phút/lượt bắt đầu khoảng mốc đó (xem audit F-03/F-08
-và ghi chú "bản ngày cron chỉ từ 07/09" trong `PROJECT_PROGRESS.md` của
-Reports V1). Kỳ trước mốc đó KHÔNG có giá vốn theo ngày để đối chiếu —
-không phải lỗi, không phải việc chưa làm.
-
-Nối vào hệ Min theo ngày bán đang có sẵn bên Tracking (`POST
-/api/min-ngay`) — không viết lại. Mỗi dòng hàng có giá vốn theo đúng
-ngày bán, hoặc nói rõ vì sao chưa có. Đây là nơi bài toán khớp tên hàng
-(Q5 — gán thủ công kiểu Tracking) thật sự chạm vào lần đầu — và CHỈ ở
-phase này, không ở P2/P3/P4.
-
-**Bạn nhìn thấy gì:** lợi nhuận của một kỳ ≥ 07/09/2026, cộng danh sách
-rõ ràng "N dòng chưa có giá vốn, vì lý do gì". Kỳ trước mốc đó ghi rõ
-"ngoài phạm vi dữ liệu Tracking", không hiện số 0 gây hiểu nhầm.
-
-**Ra khỏi phase khi:** lợi nhuận một kỳ thật ≥ 07/09/2026 đối chiếu khớp
-tay.
-
----
-
-### P7 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
+### P6 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
 
 Chủ dự án xác nhận KHÔNG cần chi tiết từng mặt hàng cho nhu cầu hiện tại.
 Phase này ở lại roadmap chỉ để không mất bối cảnh kỹ thuật (nhãn thương
@@ -486,7 +487,7 @@ nào tạo lợi nhuận.
 
 ---
 
-### P8 — Khai tử V1
+### P7 — Khai tử V1
 
 Phần "di trú số 2025 → nay" đã làm ở P2 (qua sổ chi tiết bán hàng thô,
 không qua PostgreSQL/JSONL của V1 — hai nguồn đó chỉ có tổng cả công ty,
