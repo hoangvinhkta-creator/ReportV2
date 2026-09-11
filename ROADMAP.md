@@ -67,14 +67,28 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
 4. **Merge vào `main` là deploy thật.** Hai Worker nối git integration
    (Cloudflare Workers Builds) — merge xong là Cloudflare tự build và đẩy
    lên production, không cần chạy tay. Cửa chặn nằm ở `[build] command =
-   "npm test"` trong `wrangler.toml`: bộ kiểm đỏ thì build dừng, deploy
-   không chạy, bản đang chạy được giữ nguyên. `kiem/cua-chan-build.js`
-   canh cửa ấy còn đó — đừng gỡ, và đừng chuyển nó lên ô "Build command"
-   của dashboard (ô đó chỉ áp cho nhánh production, nhánh phụ không kế
-   thừa — Tracking đã mất gần một giờ vì đúng chuyện này).
+   "npm test"` trong `wrangler.toml` — **cả hai file**, vì hai Worker build
+   độc lập nên cửa của Gateway không che cho Engine. Bộ kiểm đỏ thì build
+   dừng, deploy không chạy, bản đang chạy được giữ nguyên.
+   `kiem/cua-chan-build.js` canh cả hai cửa còn đó — đừng gỡ, và đừng
+   chuyển chúng lên ô "Build command" của dashboard (ô đó chỉ áp cho nhánh
+   production, nhánh phụ không kế thừa — Tracking đã mất gần một giờ vì
+   đúng chuyện này).
+
+   **Cách nối trên dashboard** (giao diện Cloudflare KHÔNG có ô "Root
+   directory" cho Worker có sẵn — đã tìm, không có): cả hai Worker nối vào
+   gốc repo, nhánh `main`, để TRỐNG ô Build command. Riêng Engine đổi
+   **Deploy command** thành:
+   ```
+   npx wrangler deploy --config engine/wrangler.toml
+   ```
+   Đường dẫn trong `engine/wrangler.toml` tính theo vị trí chính file đó,
+   không theo nơi gọi lệnh — đã thử bằng `--dry-run` từ gốc repo.
 
    Muốn deploy tay (ví dụ lúc gỡ lỗi) thì vẫn được: `git pull origin main
-   && wrangler deploy`, và `cd engine && wrangler deploy` nếu đụng Engine.
+   && wrangler deploy`, và `wrangler deploy --config engine/wrangler.toml`
+   nếu đụng Engine (`cd engine && wrangler deploy` cũng chạy đúng — `npm`
+   tự leo lên tìm `package.json`, đã thử cả hai lối).
 
    **Cạm bẫy của việc nối git: hai Worker build SONG SONG, không theo thứ
    tự.** Một lần merge đụng cả hai thì Gateway có thể lên trước Engine, và

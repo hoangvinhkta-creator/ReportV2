@@ -15,8 +15,16 @@
  */
 const { doc, docJson, ok, xong } = require('./khung');
 
-const CAU_HINH = doc('wrangler.toml');
 const PKG = docJson('package.json');
+
+/* Cả HAI Worker đều phải có cửa riêng. Chúng deploy ĐỘC LẬP với nhau (mỗi
+   cái một build của Cloudflare Workers Builds), nên cửa của Gateway không
+   che được cho Engine: bộ kiểm đỏ mà chỉ Gateway có cửa thì Engine vẫn lên
+   production như thường. */
+const WORKER = [
+  ['Gateway', 'wrangler.toml'],
+  ['Engine', 'engine/wrangler.toml'],
+];
 
 /** Bỏ dòng chú thích, chỉ giữ dòng cấu hình thật — không thì chính đoạn chú
  *  thích giải thích cửa chặn lại làm bài kiểm xanh khi cửa đã bị gỡ. */
@@ -24,10 +32,10 @@ const chiCauHinh = (s) => s.split('\n')
   .filter((d) => !d.trim().startsWith('#') && d.trim())
   .join('\n');
 
-console.log('\n1) wrangler.toml của Gateway phải khai [build] gọi bộ kiểm');
-{
-  const c = chiCauHinh(CAU_HINH);
-  ok('có khai [build]', /\[build\]/.test(c), true);
+console.log('\n1) Cả hai wrangler.toml phải khai [build] gọi bộ kiểm');
+for (const [ten, duong] of WORKER) {
+  const c = chiCauHinh(doc(duong));
+  ok(ten + ' (' + duong + ') có khai [build]', /\[build\]/.test(c), true);
 
   const lenh = (c.match(/\[build\][\s\S]*?command\s*=\s*"([^"]+)"/) || [])[1] || '';
   ok('  · có command', lenh.length > 0, true);

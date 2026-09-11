@@ -21,12 +21,25 @@ compatibility_date = "2026-09-11"
 # công khai theo mặc định — Engine hết riêng tư mà không ai nhận ra.
 workers_dev = false
 
-# KHÔNG có [build]: thư mục này không có package.json riêng, `npm test` chạy
-# từ gốc repo. Bộ kiểm của Engine (kiem/engine-rieng-tu.js) nằm trong `npm
-# test` ở gốc, tức nó đã là cửa chặn của build Gateway — và GitHub Actions
-# chạy nó mỗi lần push. Nối git integration cho Worker này thì đặt Root
-# directory = `engine`, để trống Build command.
+# Cửa chặn của bộ kiểm, giống Gateway — Engine deploy độc lập nên phải có
+# cửa riêng, không dựa vào build của Gateway.
 #
+# Thư mục này KHÔNG có package.json riêng, nhưng `npm test` vẫn chạy đúng:
+# npm tự leo lên thư mục cha tìm package.json rồi chạy script với thư mục
+# gốc repo làm nơi làm việc. Đã thử thật cả hai lối gọi và cả hai đều chạy
+# được bộ kiểm:
+#   · từ gốc repo:  wrangler deploy --config engine/wrangler.toml
+#   · từ trong đây: cd engine && wrangler deploy
+#
+# Nối git integration cho Worker này: KHÔNG cần ô "Root directory" (giao
+# diện Cloudflare không phải lúc nào cũng có ô đó). Để repo ở gốc và đặt
+# Deploy command thành:
+#   npx wrangler deploy --config engine/wrangler.toml
+# Đường dẫn bên trong file này (`main`) tính theo vị trí CHÍNH FILE NÀY,
+# không theo nơi gọi lệnh — đã thử bằng --dry-run từ gốc repo.
+[build]
+command = "npm test"
+
 # KHÔNG có [assets]: Engine không phục vụ file nào, nó chỉ tính toán.
 # KHÔNG có [vars]/Secret ở P1: chưa nghiệp vụ nào cần đọc gì. Từ P3 khi Engine
 # cần dữ liệu Tracking (POST /api/min-ngay), khoá đi ở Secret riêng của chính
