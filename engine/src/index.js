@@ -5,6 +5,7 @@
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { gopSoBanHang } from "./gop-ban-hang.mjs";
+import { gopTheoLine } from "./line.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
@@ -39,5 +40,21 @@ export default class extends WorkerEntrypoint {
    *  thì BÁO LỖI"). */
   async gopSoBanHang(bang) {
     return gopSoBanHang(bang);
+  }
+
+  /** Cây `bc/ky` + bảng line → doanh số theo LINE × tháng, kèm tách theo từng
+   *  nhân viên trong line. Xem `line.mjs` cho toàn bộ lý do.
+   *
+   *  Gateway gọi hàm này LÚC ĐỌC, mỗi lần màn hình xin số — KHÔNG ghi kết quả
+   *  vào `bc/ky`. Nhờ vậy chủ dự án sửa bảng line (thêm người, đổi tên, dời
+   *  một tên sang line khác) là số đổi ngay ở lượt đọc kế tiếp, không phải
+   *  nạp lại 20 tháng sổ.
+   *
+   *  Ném lỗi khi bảng line không hợp lệ — bảng đó là DỮ LIỆU người sửa được
+   *  trên Console, không đi qua bộ kiểm của repo, nên nó sai thì phải nổ chứ
+   *  không được trả một bảng thiếu line (CLAUDE.md — "Nguồn hỏng thì BÁO
+   *  LỖI"). */
+  async gopTheoLine(cayKy, bangLine) {
+    return gopTheoLine(cayKy, bangLine);
   }
 }

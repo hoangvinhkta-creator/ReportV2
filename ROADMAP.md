@@ -21,9 +21,10 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 ## Trạng thái hiện tại
 
 **P1 XONG (11/09/2026). P2 phần (a) — trích + nạp — CÓ ĐỦ DỮ LIỆU và đối
-chiếu khớp 0 lệch cho TOÀN BỘ 01/2025–08/2026. Còn CHỜ HAI THỨ mới ghi
-được vào Firebase (khoá service account + danh sách nhân viên chuẩn), và
-phần (b) — biểu đồ — CHƯA LÀM (xem "P2 — còn thiếu gì" ngay dưới).**
+chiếu khớp 0 lệch cho TOÀN BỘ 01/2025–08/2026. Tầng LINE (phân tích theo
+kênh, cố định xuyên thời gian) đã chốt và đã code — xem "LINE" ngay dưới.
+Còn CHỜ khoá service account để ghi, và phần (b) — biểu đồ — CHƯA LÀM
+(xem "P2 — còn thiếu gì").**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -136,10 +137,85 @@ chú ý khi chủ dự án soi lại:
 Bốn tên `Mr Quý`, `Mr Vinh`, `Đức Hiệp`, `Tín Phát 0869931931` không có
 họ tên đầy đủ, nên không tự khớp được vào danh sách kế toán.
 
+### LINE — tầng phân tích cố định, chốt 11/09/2026
+
+Chủ dự án chốt: **doanh số phân tích theo LINE, không theo tên nhân viên.**
+Line cố định xuyên suốt 2025 → 2026 → về sau; tên nhân viên trong mỗi line
+thì thêm/bớt/đổi được.
+
+Lý do nghiệp vụ, đã thấy thật trên sổ: `Lê Văn Quân 0865111033` bán từ
+03/2025 tới 08/2025 rồi nghỉ, `Tống Khánh Linh 0865111033` xuất hiện
+02/2026 với CÙNG hotline. Vẽ theo tên nhân viên thì một kênh bán liên tục
+hiện ra thành hai cột rời, đứt đúng chỗ đổi người.
+
+**Mười line và người phụ trách:**
+
+| # | Line | Nguồn (tên như sổ ghi) |
+|---|---|---|
+| 1 | Nội thành | Đức Hiệp, Mr Quý, Mr Vinh, Lê Văn Quân *(đã nghỉ)* |
+| 2 | Tín Phát | Tín Phát 0869931931 |
+| 3 | Miền Bắc | Miền Bắc 0865.909.033 |
+| 4 | Tổng kho | Vũ Hạnh Ly 0868345633 |
+| 5 | Quyết chiến | Phước Thắng 0865909022 |
+| 6 | Đông Á | Lê Mạnh Hoàng 0865111533 |
+| 7 | Tân Á | Đức Kiên - Tân Á 0867666533 |
+| 8 | Fanpage | Tống Khánh Linh *(đã nghỉ)*, Fanpage 0327339229 *(người mới, từ 09/2026)* |
+| 9 | Shopee | *(chưa có — chỉ bắt đầu từ 09/2026)* |
+| 10 | Khác | mọi tên chưa xếp, kể cả `_chua_xac_dinh` |
+
+**Nội thành vẫn tách được 4 nguồn** — yêu cầu tường minh của chủ dự án.
+`gopTheoLine()` luôn trả `nguon` (tách theo từng tên, theo từng tháng) bên
+cạnh tổng của line, nên "kênh này do 4 người phụ trách" đọc được cả ở mức
+line lẫn mức người.
+
+**Bảng ánh xạ là DỮ LIỆU trên Firebase, không phải code** —
+`bc/quyetdinh/line`. Nó đổi theo NHÂN SỰ, không theo phiên bản phần mềm;
+chôn vào code thì mỗi lần có người vào/nghỉ phải sửa repo và chờ deploy.
+Chọn `bc/quyetdinh/…` chứ không mở nhánh `bc/line` mới vì (a) đúng nghĩa
+"quyết định của người", và (b) nhánh đó đã có rules live — mở nhánh mới
+phải sửa rules rồi publish tay trên Console, thêm một bước có thể quên.
+Hạt giống nạp lần đầu: `BANG_LINE_HAT_GIONG` trong `engine/src/line.mjs`,
+ghi bằng `bin/nap-line.mjs --ghi --doc-lai`.
+
+**Gộp line xảy ra LÚC ĐỌC, không lúc ghi.** `bc/ky/<kỳ>/<nhân viên>/<ngày>`
+giữ nguyên hạt (nhân viên, ngày) — sự thật thô của sổ. Line là một CÁCH
+NHÌN lên nó. Nếu ghi sẵn tổng theo line vào `bc/ky` thì mỗi lần đổi ý về
+một cái tên là phải nạp lại 20 tháng sổ; gộp lúc đọc thì sửa bảng là số
+đổi ngay ở lượt đọc kế tiếp. Đúng cơ chế CLAUDE.md mục "Nhập sổ" đã chốt.
+
+**Hai việc này ĐỘC LẬP nhau:** lượt nạp sổ chỉ PUT `bc/ky/<kỳ>`, lượt nạp
+bảng line chỉ PUT `bc/quyetdinh/line`. Không lượt nào đè lượt nào, thứ tự
+chạy không quan trọng — nên bảng line KHÔNG chặn lượt ghi `bc/ky`.
+
+**Doanh số theo line, toàn bộ 01/2025–08/2026** (cộng mọi line == tổng
+công ty, đã canh bằng bất biến trong `gopTheoLine`):
+
+| Line | doanh số (đ) | số đơn | nguồn |
+|---|---|---|---|
+| Nội thành | 237.782.673.600 | 20.266 | 4 |
+| Tín Phát | 54.062.560.000 | 4.027 | 1 |
+| Tổng kho | 24.153.018.727 | 1.841 | 1 |
+| Quyết chiến | 18.275.399.001 | 1.182 | 1 |
+| Đông Á | 17.341.660.240 | 1.243 | 1 |
+| Tân Á | 11.504.115.000 | 870 | 1 |
+| Miền Bắc | 3.341.556.000 | 248 | 1 |
+| Khác | 3.187.320.000 | 196 | 5 |
+| Fanpage | 129.850.000 | 10 | 1 |
+| Shopee | 0 | 0 | — |
+| **TỔNG** | **369.778.152.568** | **29.883** | |
+
+**Năm tên đang nằm trong "Khác", chờ chủ dự án xếp:** `Thảo Linh`
+(3.059.270.000 đ — lớn nhất, hoạt động liên tục cả 20 tháng),
+`_chua_xac_dinh` (65.300.000 đ — dòng sổ để trống ô nhân viên, việc của
+P5), `Lê Quang Trường 0589691228` (34.800.000 đ), `Nguyễn Thị Minh Bảo`
+(14.750.000 đ), `Đinh Thùy Dương` (13.200.000 đ). Tên chưa khai KHÔNG
+được tan biến trong im lặng — `gopTheoLine` luôn trả `chua_xep` kèm số
+tiền, và script nạp in ra danh sách đó mỗi lượt chạy.
+
 ### P2 — còn thiếu gì để ra khỏi phase
 
 **Phần (a) — trích + nạp — đối chiếu nội bộ đã khớp 0 lệch cho TOÀN BỘ
-01/2025–08/2026.** Hai việc còn lại của phần (a):
+01/2025–08/2026.** Ba việc còn lại của phần (a):
 
 1. **Chưa ghi vào Firebase.** Không có phiên làm việc nào tới nay có
    `FB_SA_EMAIL`/`FB_SA_KEY` (đó là Secret của Worker, không nằm trong
@@ -164,11 +240,28 @@ họ tên đầy đủ, nên không tự khớp được vào danh sách kế to
    thể của tên nào (ba chỗ nêu trên), hoặc gửi file kế toán để đọc danh
    sách.
 
-**Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Đọc từ `bc/ky` sau khi đã ghi, dựng
-biểu đồ doanh số + số đơn theo nhân viên từ 01/2025 tới hôm nay, cuộn
-được lên tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước.
-Đây là việc TRƯỚC MẶT tiếp theo, và cần dữ liệu đã NẰM Ở FIREBASE trước
-(việc 1 ở trên) — không đọc thẳng từ script chạy tay.
+   *Tầng LINE làm việc này BỚT GẤP:* biểu đồ vẽ theo line, và line đã bền
+   xuyên thời gian rồi. Hai cách viết của cùng một người, nếu cả hai đều
+   được xếp vào đúng một line, thì ra cùng một cột — tên trùng chỉ còn ảnh
+   hưởng tới phần tách `nguon` bên trong line.
+3. **Năm tên chưa xếp line** — đang tạm dồn vào "Khác": `Thảo Linh`,
+   `_chua_xac_dinh`, `Lê Quang Trường 0589691228`, `Nguyễn Thị Minh Bảo`,
+   `Đinh Thùy Dương` (xem mục LINE ở trên cho số tiền từng tên). KHÔNG
+   chặn lượt ghi `bc/ky`: bảng line nằm nhánh riêng và gộp lúc đọc, nên
+   xếp sau cũng được, số đổi ngay không cần nạp lại sổ.
+
+**Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Đọc từ `bc/ky` + `bc/quyetdinh/line`
+sau khi đã ghi, gọi `gopTheoLine()` ở Engine, dựng biểu đồ doanh số + số
+đơn **theo LINE** từ 01/2025 tới hôm nay (bấm vào một line thì mở ra
+`nguon` — từng nhân viên trong line đó), cuộn được lên
+tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước. Đây là việc
+TRƯỚC MẶT tiếp theo, và cần dữ liệu đã NẰM Ở FIREBASE trước (việc 1 ở
+trên) — không đọc thẳng từ script chạy tay.
+
+Việc Gateway cần thêm ở phần (b): một endpoint đọc `bc/ky` + bảng line rồi
+gọi Engine. Engine ĐÃ có sẵn `gopSoBanHang()` và `gopTheoLine()` qua
+Service Binding — theo đúng bẫy số 4 (hàm Engine lên trước, Gateway gọi ở
+lượt merge sau), nên phần (b) chỉ còn phải thêm phía Gateway + trang tĩnh.
 
 ### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 
@@ -181,7 +274,7 @@ biểu đồ doanh số + số đơn theo nhân viên từ 01/2025 tới hôm na
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 9 bộ, 294 đạt, 0 hỏng.
+`npm test`: 10 bộ, 364 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 
@@ -379,6 +472,13 @@ thể cách viết trong cột `employee` vào danh sách đó. Tên nào KHÔNG
 được rõ ràng → liệt kê riêng, báo cáo lại cho chủ dự án TRƯỚC khi ghi,
 đừng tự đoán ghép vào ai. Dòng thiếu hẳn nhân viên (cột rỗng) → gộp vào
 một khoá riêng `_chua_xac_dinh`, không bỏ dòng, không gán bừa cho ai.
+
+**Tầng LINE (chốt 11/09/2026) — đơn vị phân tích chính thức.** Doanh số
+xem theo LINE, không theo tên nhân viên: line cố định xuyên thời gian, tên
+nhân viên trong line thì thêm/bớt/đổi được. Mười line, bảng ánh xạ nằm ở
+`bc/quyetdinh/line` (DỮ LIỆU, không phải code), gộp LÚC ĐỌC bằng
+`engine/src/line.mjs::gopTheoLine()`. Chi tiết đầy đủ + số thật: xem mục
+"LINE" trong "Trạng thái hiện tại" ở đầu file.
 
 **Gộp theo NHÂN VIÊN như file ghi tại thời điểm bán — KHÔNG theo hotline.**
 Chủ dự án xác nhận: hotline được bàn giao giữa các nhân viên khi có người

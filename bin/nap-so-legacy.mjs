@@ -39,6 +39,7 @@
 import { readFileSync } from "node:fs";
 import { docBangTuXlsx } from "./doc-xlsx.mjs";
 import { gopSoBanHang } from "../engine/src/gop-ban-hang.mjs";
+import { gopTheoLine, BANG_LINE_HAT_GIONG } from "../engine/src/line.mjs";
 import { docDb, ghiDb } from "../src/firebase.js";
 
 const dinhDang = n => (typeof n === "number" ? n.toLocaleString("vi-VN") : String(n));
@@ -181,6 +182,37 @@ async function main() {
   console.log("  → so danh sách này với danh sách nhân viên trong file kế toán.");
   console.log("    Có tên nào là biến thể của tên khác thì BÁO LẠI trước khi ghi —");
   console.log("    script không tự đoán ghép (ROADMAP.md P2).");
+
+  /* ── Doanh số theo LINE ──
+     In ở ĐÂY, trong cùng lượt chạy thử, có chủ ý: bảng line là một quyết định
+     của người, và chỗ dễ sai nhất của nó là một cái tên chưa được xếp. Thấy
+     ngay cạnh danh sách tên ở trên thì phát hiện được liền, thay vì đợi tới
+     lúc mở biểu đồ mới thấy một line thiếu tiền.
+
+     Đây là phép gộp LÚC ĐỌC — nó KHÔNG được ghi vào `bc/ky`. Xem
+     engine/src/line.mjs cho lý do đầy đủ. */
+  const L = gopTheoLine(cay, BANG_LINE_HAT_GIONG);
+  console.log(`\n── Doanh số theo LINE (gộp lúc đọc, KHÔNG ghi vào bc/ky) ──`);
+  console.log("line              doanh số (đ)      số đơn   nguồn");
+  for (const ten of L.thu_tu) {
+    const l = L.line[ten];
+    const nguon = Object.keys(l.nguon).length;
+    console.log(`${ten.padEnd(14)} ${dinhDang(l.doanh_so).padStart(18)}  ${String(l.so_don).padStart(8)}  ${nguon || "-"}`);
+  }
+  console.log(`${"TỔNG".padEnd(14)} ${dinhDang(L.tom_tat.doanh_so_tong).padStart(18)}  ${String(L.tom_tat.so_don_tong).padStart(8)}`);
+  console.log(`  ${L.tom_tat.khop_tong ? "✓" : "✗"} cộng mọi line == tổng công ty`);
+  if (!L.tom_tat.khop_tong) {
+    console.error("\nDỪNG: tổng theo line không bằng tổng công ty — báo cáo theo line đang kể thiếu tiền.");
+    process.exit(10);
+  }
+  if (L.chua_xep.length) {
+    console.log(`  ⚠ ${L.chua_xep.length} tên CHƯA XẾP line — đang tạm dồn vào "${L.thu_tu[L.thu_tu.length - 1]}":`);
+    for (const c of L.chua_xep) {
+      console.log(`      ${dinhDang(c.doanh_so).padStart(18)} đ · ${String(c.so_don).padStart(5)} đơn · ${c.ten}`);
+    }
+    console.log("    Xếp chúng vào line nào thì sửa BANG_LINE_HAT_GIONG (engine/src/line.mjs)");
+    console.log("    rồi chạy: node bin/nap-line.mjs --ghi --doc-lai");
+  }
 
   if (!ghi) {
     console.log("\n(chạy thử — chưa ghi gì. Thêm --ghi để đẩy lên Firebase.)");
