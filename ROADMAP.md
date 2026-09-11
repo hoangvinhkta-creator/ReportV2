@@ -20,8 +20,9 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG (11/09/2026). P2 ĐANG LÀM — mã xong và đã merge, còn CHỜ HAI
-THỨ mới ra khỏi phase được (xem "P2 — còn thiếu gì" ngay dưới).**
+**P1 XONG (11/09/2026). P2 ĐANG LÀM — mã xong, đã merge, đối chiếu nội bộ
+khớp 0 lệch trên phần dữ liệu đang có. Còn CHỜ BA THỨ mới ra khỏi phase
+được (xem "P2 — còn thiếu gì" ngay dưới).**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -45,7 +46,7 @@ của Reports V1. Nên KHÔNG phải đi đường `PROVENANCE.md` (workbook k�
 dạng sheet-mỗi-nhân viên). `kiemBoCuc()` nay canh đúng sáu ô tiêu đề đó
 mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗng.
 
-**Đối chiếu sổ 2026 (01–08/2026) — hai phép, cả hai khớp 0 lệch:**
+**Đối chiếu sổ 2026 (01–08/2026) — ba phép, cả ba khớp 0 lệch:**
 
 | kỳ | doanh số (đ) | số đơn | nhân viên | ngày có số |
 |---|---|---|---|---|
@@ -59,10 +60,17 @@ mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗn
 | 2026-08 | 15.824.320.000 | 1.150 | 8 | 28 |
 | **TỔNG** | **137.844.307.240** | **11.069** | | |
 
-1. **Doanh số** — tổng 137.844.307.240 đ bằng ĐÚNG dòng `Tổng cộng` mà
+1. **Đối chiếu NỘI BỘ — đúng điều kiện ra khỏi phase.** Mỗi tháng được
+   cộng bằng HAI đường độc lập: cộng `doanh_so` của mọi ô (nhân viên,
+   ngày), và cộng thẳng tiền từng dòng của tháng đó. **8/8 tháng lệch 0 đ
+   và lệch 0 đơn** — không rơi dòng, không đếm trùng chứng từ. Phép này
+   nằm trong `gopSoBanHang()` và **chặn lượt `--ghi`**: lệch thì script
+   thoát, không ghi gì. Có bài kiểm chứng minh nó thật sự bắt được lỗi
+   (dựng một sổ đếm trùng rồi xem nó đỏ), không chỉ luôn nói "khớp".
+2. **Doanh số** — tổng 137.844.307.240 đ bằng ĐÚNG dòng `Tổng cộng` mà
    chính sổ in ra ở hàng cuối. Dòng đó bị bỏ khỏi phép cộng (nó không có
    số chứng từ), nên đây là một phép đối chiếu thật, không phải vòng tròn.
-2. **Số đơn** — 11.069 đơn, và **cả 228 ngày khớp từng ngày** với
+3. **Số đơn** — 11.069 đơn, và **cả 228 ngày khớp từng ngày** với
    `data/chart_gapfill/daily_orders.jsonl` của Reports V1, một nguồn dựng
    độc lập từ cùng hai file sổ. Đây là bằng chứng mạnh nhất hiện có rằng
    luật đếm đơn ở đây trùng luật V1 đang dùng.
@@ -78,13 +86,34 @@ mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗn
 Đã kiểm: `Doanh số bán` == `Số lượng × Đơn giá` ở CẢ 15.035 dòng, nên hai
 luật chỉ khác đúng phần chiết khấu. Đổi luật = sửa MỘT hằng số trong
 `gop-ban-hang.mjs` rồi chạy lại script — không có chỗ thứ hai phải sửa
-theo. Chờ chủ dự án nói con số họ đang có là con số nào.
+theo, và cả hai luật đều có bài kiểm canh. Chủ dự án không có số tổng tách
+riêng để so (nên điều kiện ra phase đã đổi sang đối chiếu nội bộ), nên đây
+là việc họ tự xem lại trên sản phẩm thật rồi nói nếu thấy sai.
 
 **21 dòng không có tên nhân viên** (57.200.000 đ, tập trung ở 07–08/2026):
-KHÔNG bị bỏ — dồn vào khoá `(chưa gán)` để tổng tháng vẫn khớp sổ, và
-script in ra danh sách số chứng từ. Đây đúng là việc P5 sẽ sửa tay.
+KHÔNG bị bỏ, KHÔNG gán bừa cho ai — dồn vào khoá `_chua_xac_dinh` (tên
+khoá chủ dự án chốt) để tổng tháng vẫn khớp sổ, và script in ra danh sách
+số chứng từ. Đây đúng là việc P5 sẽ sửa tay.
+
+**14 tên nhân viên trên sổ 2026, script CHỈ LIỆT KÊ — không tự ghép.**
+Đúng theo yêu cầu "dùng danh sách CÓ SẴN trong file kế toán, đừng tự đoán
+ghép vào ai": script in danh sách tên kèm số dòng và doanh số, sắp theo
+doanh số giảm dần. Hai chỗ đáng chú ý khi chủ dự án soi lại:
+
+- **`Tống Khánh Linh 0865111033` và `Lê Văn Quân 0865111033` dùng CÙNG
+  một số hotline.** Đúng hiện tượng bàn giao hotline mà chủ dự án mô tả.
+  P2 gộp theo TÊN như sổ ghi, không theo hotline — chờ bảng ánh xạ.
+- `Thảo Linh` (796.430.000 đ) và `Tống Khánh Linh 0865111033`
+  (129.850.000 đ) có thể là một người viết hai cách, hoặc hai người khác
+  nhau. **Không đoán** — cần chủ dự án nói.
+
+Bốn tên `Mr Quý`, `Mr Vinh`, `Đức Hiệp`, `Tín Phát 0869931931` không có
+họ tên đầy đủ, nên không tự khớp được vào danh sách kế toán.
 
 ### P2 — còn thiếu gì để ra khỏi phase
+
+**Đối chiếu nội bộ — điều kiện ra khỏi phase — đã khớp 0 lệch cho phần dữ
+liệu đang có (01–08/2026).** Ba việc còn lại:
 
 1. **Sổ 2025 chưa có.** Hai file đính kèm ở phiên 11/09 là **cùng một
    file** (trùng MD5 `dfa41b86…`, cùng 2.056.416 byte), và cả hai là sổ
@@ -107,6 +136,14 @@ script in ra danh sách số chứng từ. Đây đúng là việc P5 sẽ sửa
 
    `--doc-lai` đọc ngược từng kỳ vừa ghi và so lại tổng — "đã ghi" không
    phải là một dòng chữ script tự in ra.
+3. **Danh sách nhân viên chuẩn chưa có.** Chủ dự án chốt: chuẩn hoá tên
+   dựa vào danh sách CÓ SẴN trong **file kế toán** (`Báo cáo Kinh doanh
+   2025/2026.xlsx`) — file đó KHÔNG được gửi trong phiên này, và không có
+   trong repo nào (`.gitignore: *.xlsx` bên Reports V1). Nên script làm
+   đúng nửa việc thuộc về nó: **liệt kê 14 tên như sổ ghi, kèm số dòng và
+   doanh số, và không tự ghép tên nào với tên nào** (có bài kiểm canh việc
+   không tự so gần đúng). Cần chủ dự án nói tên nào là biến thể của tên
+   nào, hoặc gửi file kế toán để đọc danh sách.
 
 ### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 
@@ -119,7 +156,7 @@ script in ra danh sách số chứng từ. Đây đúng là việc P5 sẽ sửa
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 9 bộ, 267 đạt, 0 hỏng.
+`npm test`: 9 bộ, 291 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 
@@ -232,7 +269,7 @@ thương hiệu" giữ nguyên lý do đã nêu ở lần sắp xếp thứ nh�
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
-| P2 | Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025→08/2026 | 1 tuần | 🟨 Mã xong, đã đối chiếu 2026 — chờ sổ 2025 + lượt ghi thật |
+| P2 | Mốc legacy: doanh số + số đơn theo nhân viên/ngày, 2025→08/2026 | 1 tuần | 🟨 Mã xong, đối chiếu nội bộ 2026 khớp 0 lệch — chờ sổ 2025, lượt ghi thật, danh sách nhân viên chuẩn |
 | P3 | Biểu đồ và so sánh kỳ | 1 tuần | ⬜ Chưa bắt đầu |
 | P4 | Một kỳ SỐNG thật, đi hết đường (upload UI, kỳ hiện tại/tương lai) | 1–2 tuần | ⬜ Chưa bắt đầu |
 | P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |

@@ -139,6 +139,49 @@ async function main() {
   }
   console.log(`TỔNG      ${dinhDang(Math.round(tongDs * 100) / 100).padStart(18)}  ${String(tongDon).padStart(8)}`);
 
+  /* ── Đối chiếu NỘI BỘ — điều kiện ra khỏi P2 (ROADMAP.md) ──
+     Cộng các ngày lên phải ra đúng tổng tháng cộng thẳng từ dòng. Lệch một
+     đồng ở đây là phép gộp đang rơi dòng hoặc đếm trùng chứng từ, và KHÔNG
+     được cho ghi tiếp — nên nó chặn cả lượt --ghi. */
+  console.log("\n── Đối chiếu nội bộ: ngày cộng lên tháng ──");
+  let lechNoiBo = 0;
+  for (const { r } of ketQua) {
+    const dc = r.tom_tat.doi_chieu_noi_bo;
+    for (const k of Object.keys(dc.thang).sort()) {
+      const m = dc.thang[k];
+      if (!m.khop) lechNoiBo++;
+      console.log(`  ${m.khop ? "✓" : "✗"} ${k} · ${String(m.so_dong).padStart(6)} dòng · `
+        + `doanh số ${dinhDang(m.doanh_so_tu_o)} (lệch ${dinhDang(m.lech_doanh_so)}) · `
+        + `${m.so_don_tu_o} đơn (lệch ${m.lech_so_don})`);
+    }
+  }
+  if (lechNoiBo) {
+    console.error(`\nDỪNG: ${lechNoiBo} tháng đối chiếu nội bộ KHÔNG khớp. Không ghi gì.`);
+    process.exit(9);
+  }
+  console.log("  → mọi tháng khớp 0 lệch.");
+
+  /* ── Danh sách tên nhân viên ĐÚNG NHƯ SỔ GHI ──
+     Chủ dự án đối chiếu danh sách này với danh sách nhân viên trong file kế
+     toán và nói tên nào là biến thể của tên nào. Script KHÔNG tự ghép
+     (ROADMAP.md P2: "đừng tự đoán ghép vào ai"). */
+  const nv = {};
+  for (const { r } of ketQua) {
+    for (const [ten, v] of Object.entries(r.tom_tat.nhan_vien)) {
+      const g = nv[ten] || (nv[ten] = { so_dong: 0, doanh_so: 0 });
+      g.so_dong += v.so_dong;
+      g.doanh_so = Math.round((g.doanh_so + v.doanh_so) * 100) / 100;
+    }
+  }
+  const dsNv = Object.entries(nv).sort((a, b) => b[1].doanh_so - a[1].doanh_so);
+  console.log(`\n── ${dsNv.length} tên nhân viên trên sổ (đúng như sổ ghi) ──`);
+  for (const [ten, v] of dsNv) {
+    console.log(`  ${dinhDang(v.doanh_so).padStart(18)} đ · ${String(v.so_dong).padStart(6)} dòng · ${ten}`);
+  }
+  console.log("  → so danh sách này với danh sách nhân viên trong file kế toán.");
+  console.log("    Có tên nào là biến thể của tên khác thì BÁO LẠI trước khi ghi —");
+  console.log("    script không tự đoán ghép (ROADMAP.md P2).");
+
   if (!ghi) {
     console.log("\n(chạy thử — chưa ghi gì. Thêm --ghi để đẩy lên Firebase.)");
     return;
