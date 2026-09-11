@@ -150,20 +150,12 @@ export function gopCayKyThanhChuoiNgay(cayKy, locNhanVien) {
 }
 
 /** MỌI năm có mặt trong một chuỗi ngày, giảm dần. Đây là nguồn cho dải nút
- *  chọn năm trên màn hình — phải là danh sách ĐẦY ĐỦ, không cắt hai năm như
- *  `haiNamGanNhat`, nếu không thì tới 2027 là năm 2025 lặng lẽ biến mất khỏi
- *  chỗ bấm dù số của nó vẫn nằm nguyên trong `bc/ky`. */
+ *  chọn năm trên màn hình — phải là danh sách ĐẦY ĐỦ, không cắt hai năm,
+ *  nếu không thì tới 2027 là năm 2025 lặng lẽ biến mất khỏi chỗ bấm dù số
+ *  của nó vẫn nằm nguyên trong `bc/ky`. */
 export function cacNamCoSo(seriesNgay) {
   const nams = new Set(Object.keys(seriesNgay || {}).map((k) => +k.slice(0, 4)));
   return [...nams].sort((a, b) => b - a);
-}
-
-/** Hai năm gần nhất có mặt trong một chuỗi ngày, giảm dần — `[namNay,
- *  namTruoc]`. Trả mảng rỗng nếu chuỗi rỗng, một phần tử nếu chỉ có một năm
- *  (khi đó không có "cùng kỳ năm trước" để so — bên gọi tự xử lý, hàm này
- *  không đoán). */
-export function haiNamGanNhat(seriesNgay) {
-  return cacNamCoSo(seriesNgay).slice(0, 2);
 }
 
 /** Chuỗi ngày → `{ [nam]: { [thang]: { [ngày trong tháng]: {doanh_so, so_don,
@@ -207,14 +199,13 @@ export function gopNgayTheoThang(seriesNgay) {
  *    theo_quy         — 4 quý mỗi năm (tab Quý)
  *    cac_nam          — MỌI năm có số, giảm dần — nguồn cho dải chọn năm
  *    vi_tri_moi_nhat  — mốc mới nhất CÓ SỐ ở từng đơn vị
- *    theo_ngay, theo_nam, hai_nam
- *                     — ba field của bản Dashboard ĐẦU TIÊN (tab Ngày vẽ cả
- *                       năm 366 điểm, tab Năm). Màn hình mới không còn đọc
- *                       chúng. GIỮ LẠI có chủ ý: hai Worker build song song
- *                       khi merge (ROADMAP.md, bẫy số 4), nên trong khoảng
- *                       giữa lượt Engine lên và lượt giao diện lên, bản
- *                       giao diện CŨ vẫn đang chạy và vẫn đọc chúng. Bỏ
- *                       được sau khi giao diện mới đã lên thật. */
+ *
+ *  ĐÃ BỎ (11/09/2026, sau khi chủ dự án nghiệm thu bản giao diện mới chạy
+ *  thật): `theo_ngay` (366 điểm/năm), `theo_nam`, `hai_nam` — ba field của
+ *  bản Dashboard ĐẦU TIÊN, giữ lại có chủ ý qua khoảng giữa hai lượt deploy
+ *  (bẫy số 4) để bản giao diện CŨ không vỡ giữa chừng. Giao diện mới không
+ *  còn nơi nào đọc chúng, và bản cũ không còn ai chạy — bỏ theo đúng lời
+ *  hẹn ghi lúc thêm. */
 export function gopSucKhoeCongTy(cayKy) {
   const chuoi = gopCayKyThanhChuoiNgay(cayKy);
   return {
@@ -228,8 +219,5 @@ export function gopSucKhoeCongTy(cayKy) {
       quy: viTriMoiNhat(chuoi, "quy"),
       nam: viTriMoiNhat(chuoi, "nam"),
     },
-    theo_ngay: gopMotChuoiNgay(chuoi, "ngay"),
-    theo_nam: gopMotChuoiNgay(chuoi, "nam"),
-    hai_nam: haiNamGanNhat(chuoi),
   };
 }

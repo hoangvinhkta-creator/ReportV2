@@ -99,14 +99,7 @@ console.log('\n5) Giá trị tại một vị trí — 0 khi không có, không 
   ok('cây rỗng/null cũng an toàn', G.giaTriTaiViTri(null, 2026, 3), { doanh_so: 0, so_don: 0 });
 }
 
-console.log('\n6) Hai năm gần nhất — giảm dần, không suy đoán khi thiếu dữ liệu');
-{
-  ok('hai năm', G.haiNamGanNhat({ '2025-01-01': {}, '2026-06-01': {}, '2024-01-01': {} }), [2026, 2025]);
-  ok('chỉ một năm → mảng một phần tử', G.haiNamGanNhat({ '2026-01-01': {} }), [2026]);
-  ok('rỗng → mảng rỗng', G.haiNamGanNhat({}), []);
-}
-
-console.log('\n7) Phẳng hoá cây bc/ky → một chuỗi ngày, có lọc nhân viên (dùng cho LINE)');
+console.log('\n6) Phẳng hoá cây bc/ky → một chuỗi ngày, có lọc nhân viên (dùng cho LINE)');
 {
   const cayKy = {
     '2026-01': {
@@ -144,7 +137,7 @@ console.log('\n7) Phẳng hoá cây bc/ky → một chuỗi ngày, có lọc nh�
      G.gopCayKyThanhChuoiNgay({ '2026-01': { An: null } }), {});
 }
 
-console.log('\n8) BẤT BIẾN: gopCayKyThanhChuoiNgay rồi gộp theo đơn vị == cộng thẳng cả cây');
+console.log('\n7) BẤT BIẾN: gopCayKyThanhChuoiNgay rồi gộp theo đơn vị == cộng thẳng cả cây');
 {
   const cayKy = {
     '2025-11': { A: { '2025-11-20': { doanh_so: 700, so_don: 4 } } },
@@ -162,24 +155,22 @@ console.log('\n8) BẤT BIẾN: gopCayKyThanhChuoiNgay rồi gộp theo đơn v�
   ok('tổng số đơn khớp cây gốc', donQuy, donCay);
 }
 
-console.log('\n9) gopSucKhoeCongTy — hàm tổng hợp cho Dashboard');
+console.log('\n8) gopSucKhoeCongTy — hàm tổng hợp cho Dashboard');
 {
   const cayKy = {
     '2025-08': { A: { '2025-08-10': { doanh_so: 1000, so_don: 5 } } },
     '2026-08': { A: { '2026-08-10': { doanh_so: 1200, so_don: 6 } }, B: { '2026-08-31': { doanh_so: 300, so_don: 1 } } },
   };
   const r = G.gopSucKhoeCongTy(cayKy);
-  ok('có đủ field cho màn hình mới VÀ ba field giữ lại cho bản cũ',
+  ok('đủ field cho màn hình mới, KHÔNG còn ba field cũ (theo_ngay/theo_nam/hai_nam)',
      Object.keys(r).sort(),
-     ['cac_nam', 'hai_nam', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
+     ['cac_nam', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
   ok('theo_thang cộng đúng cả A và B tháng 08/2026', r.theo_thang[2026][8], { doanh_so: 1500, so_don: 7, khoa: '2026-08' });
   ok('theo_thang năm 2025 riêng', r.theo_thang[2025][8], { doanh_so: 1000, so_don: 5, khoa: '2025-08' });
   ok('theo_quy: tháng 8 nằm ở quý 3', r.theo_quy[2026][3], { doanh_so: 1500, so_don: 7, khoa: '2026-Q3' });
-  ok('theo_nam gộp cả năm', r.theo_nam[2026][1], { doanh_so: 1500, so_don: 7, khoa: '2026' });
   ok('cac_nam đủ hai năm, giảm dần', r.cac_nam, [2026, 2025]);
   ok('vi_tri_moi_nhat.ngay đúng ngày cuối cùng có dữ liệu', r.vi_tri_moi_nhat.ngay.khoa, '2026-08-31');
   ok('vi_tri_moi_nhat.quy có mặt (tab Quý cần biết quý hiện tại)', r.vi_tri_moi_nhat.quy, { nam: 2026, viTri: 3, khoa: '2026-Q3' });
-  ok('hai_nam giảm dần', r.hai_nam, [2026, 2025]);
 
   /* Tab Ngày xem mỗi lần một tháng: cùng NGÀY TRONG THÁNG của hai năm phải
      rơi vào cùng một vị trí thì mới chồng được hai đường lên nhau. */
@@ -204,13 +195,12 @@ console.log('\n9) gopSucKhoeCongTy — hàm tổng hợp cho Dashboard');
     return t;
   };
   const tongThat = 1000 + 1200 + 300;
-  ok('theo_ngay/theo_thang/theo_quy/theo_nam/theo_ngay_thang đều ra cùng một tổng',
-     [tongCuaGop(r.theo_ngay), tongCuaGop(r.theo_thang), tongCuaGop(r.theo_quy),
-      tongCuaGop(r.theo_nam), tongNgayThang(r.theo_ngay_thang)],
-     [tongThat, tongThat, tongThat, tongThat, tongThat]);
+  ok('theo_thang/theo_quy/theo_ngay_thang đều ra cùng một tổng',
+     [tongCuaGop(r.theo_thang), tongCuaGop(r.theo_quy), tongNgayThang(r.theo_ngay_thang)],
+     [tongThat, tongThat, tongThat]);
 }
 
-console.log('\n9b) gopNgayTheoThang + cacNamCoSo — nền của tab Ngày và dải chọn năm');
+console.log('\n8b) gopNgayTheoThang + cacNamCoSo — nền của tab Ngày và dải chọn năm');
 {
   const chuoi = {
     '2025-01-31': { doanh_so: 10, so_don: 1 },
@@ -234,14 +224,13 @@ console.log('\n9b) gopNgayTheoThang + cacNamCoSo — nền của tab Ngày và d
   try { G.gopNgayTheoThang({ '2026-13-01': { doanh_so: 1 } }); } catch (e) { nem2 = true; }
   ok('tháng 13 → ném, KHÔNG lặng lẽ tạo ra tháng thứ 13', nem2, true);
 
-  /* `cac_nam` phải ĐỦ, khác `hai_nam` — đây đúng là chỗ dễ sai: dải nút chọn
-     năm mà cắt còn hai thì tới 2027 là 2025 biến mất khỏi màn hình. */
+  /* `cac_nam` phải ĐỦ — đây đúng là chỗ dễ sai: dải nút chọn năm mà cắt còn
+     hai thì tới 2027 là 2025 biến mất khỏi màn hình. */
   ok('cacNamCoSo trả ĐỦ ba năm, giảm dần', G.cacNamCoSo(chuoi), [2027, 2026, 2025]);
-  ok('haiNamGanNhat vẫn chỉ cắt hai năm', G.haiNamGanNhat(chuoi), [2027, 2026]);
   ok('cacNamCoSo với chuỗi rỗng → mảng rỗng', G.cacNamCoSo({}), []);
 }
 
-console.log('\n10) DON_VI_HOP_LE là danh sách tường minh, đúng bốn đơn vị đã chốt');
+console.log('\n9) DON_VI_HOP_LE là danh sách tường minh, đúng bốn đơn vị đã chốt');
 {
   ok('đúng 4 đơn vị, đúng thứ tự thường dùng', G.DON_VI_HOP_LE, ['ngay', 'thang', 'quy', 'nam']);
   ok('không có "tuan"', G.DON_VI_HOP_LE.includes('tuan'), false);

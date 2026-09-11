@@ -132,8 +132,9 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     const r = await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe');
     ok('quanly → 200', r.status, 200);
     const than = await r.json();
-    ok('có đủ nhóm kết quả Dashboard cần', Object.keys(than).sort(),
-       ['cac_nam', 'hai_nam', 'line', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
+    ok('có đủ nhóm kết quả Dashboard cần, KHÔNG còn ba field cũ (theo_ngay/theo_nam/hai_nam)',
+       Object.keys(than).sort(),
+       ['cac_nam', 'line', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
     ok('phần xếp hạng có đủ line theo thứ tự bảng', than.line.thu_tu, ['Nội thành', 'Shopee', 'Khác']);
     ok('Nội thành gộp cả An lẫn Bình, năm 2026', than.line.theo_nam['Nội thành'][2026],
        { doanh_so: 1500, so_don: 7 });
@@ -145,7 +146,6 @@ const b64u = (b) => Buffer.from(b).toString('base64')
        { doanh_so: 1500, so_don: 7, khoa: '2026-08' });
     ok('theo_thang năm 2025 riêng, không lẫn 2026', than.theo_thang[2025][8],
        { doanh_so: 1000, so_don: 5, khoa: '2025-08' });
-    ok('hai_nam giảm dần', than.hai_nam, [2026, 2025]);
   }
 
   console.log('\n4) quantri cũng dùng được (hai vai đều hợp lệ, không riêng quanly)');
@@ -173,11 +173,9 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     const r = await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe');
     ok('bc/ky null → vẫn 200', r.status, 200);
     const than = await r.json();
-    ok('theo_ngay rỗng', than.theo_ngay, {});
     ok('vi_tri_moi_nhat toàn null', than.vi_tri_moi_nhat, { ngay: null, thang: null, quy: null, nam: null });
     ok('theo_ngay_thang rỗng', than.theo_ngay_thang, {});
     ok('cac_nam rỗng', than.cac_nam, []);
-    ok('hai_nam rỗng', than.hai_nam, []);
     choBcKyRong = false;
   }
 

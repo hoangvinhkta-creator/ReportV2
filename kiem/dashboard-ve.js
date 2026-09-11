@@ -87,9 +87,6 @@ function duLieuGia() {
       quy: { nam: 2026, viTri: 3, khoa: '2026-Q3' },
       nam: { nam: 2026, viTri: 1, khoa: '2026' },
     },
-    /* Ba field Engine còn giữ cho bản giao diện cũ — bản mới KHÔNG đọc, để
-       rỗng ở đây chính là phép canh điều đó. */
-    theo_ngay: {}, theo_nam: {}, hai_nam: [2026, 2025],
     line: LINE_GIA,
   };
 }
