@@ -349,5 +349,24 @@ console.log('\n17) Danh sách tên nhân viên — BÁO ra để chủ dự án 
   ok('khoá dòng thiếu nhân viên đúng tên chủ dự án chốt', G.NV_CHUA_GAN, '_chua_xac_dinh');
 }
 
+console.log('\n18) Tên nhân viên có ký tự cấm Firebase: báo cáo giữ NGUYÊN VĂN, không mang khoá đã thay ~');
+{
+  /* Bắt được trên sổ 2025 thật: " Miền Bắc 0865.909.033" có dấu chấm — hợp lệ
+     trong tên người nhưng bị Firebase cấm trong khoá. `khoaNhanVien()` đúng
+     là phải thay dấu chấm bằng "~" để ghi được vào bc/ky, NHƯNG danh sách
+     tom_tat.nhan_vien mà chủ dự án dùng để so với file kế toán thì KHÔNG được
+     mang bản đã thay đó — "0865~909~033" không so khớp được với sổ sách. */
+  const ten_co_dau_cham = 'Miền Bắc 0865.909.033';
+  const r = G.gopSoBanHang(soMau([
+    dongBan({ ngay: '2026-01-02', so_ct: 'BH1', dg: 1000, nv: ten_co_dau_cham }),
+  ]));
+  ok('tên trong tom_tat.nhan_vien giữ nguyên dấu chấm (đúng như sổ ghi)',
+     Object.keys(r.tom_tat.nhan_vien), [ten_co_dau_cham]);
+  ok('KHÔNG phải bản đã qua khoaNhanVien (mà thì dấu chấm đã thành ~)',
+     Object.keys(r.tom_tat.nhan_vien).includes(G.khoaNhanVien(ten_co_dau_cham)), false);
+  ok('nhưng cây bc/ky vẫn dùng khoá đã thay ~ (để ghi được vào Firebase)',
+     Object.keys(r.ky['2026-01']), [G.khoaNhanVien(ten_co_dau_cham)]);
+}
+
 xong();
 })().catch(e => { console.error(e); process.exit(1); });

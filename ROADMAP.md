@@ -20,36 +20,50 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG (11/09/2026). P2 ĐANG LÀM — mã xong, đã merge, đối chiếu nội bộ
-khớp 0 lệch trên phần dữ liệu đang có. Còn CHỜ BA THỨ mới ra khỏi phase
-được (xem "P2 — còn thiếu gì" ngay dưới).**
+**P1 XONG (11/09/2026). P2 phần (a) — trích + nạp — CÓ ĐỦ DỮ LIỆU và đối
+chiếu khớp 0 lệch cho TOÀN BỘ 01/2025–08/2026. Còn CHỜ HAI THỨ mới ghi
+được vào Firebase (khoá service account + danh sách nhân viên chuẩn), và
+phần (b) — biểu đồ — CHƯA LÀM (xem "P2 — còn thiếu gì" ngay dưới).**
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
 qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xám.
 
-### P2 — đã làm được gì (11/09/2026)
+### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
 
-Đường trích ĐÃ CHẠY THẬT trên sổ 2026 và đã đối chiếu chéo với một nguồn
-độc lập. Ba file mới:
+Đường trích ĐÃ CHẠY THẬT trên CẢ HAI sổ (2025 và 2026) và đã đối chiếu
+chéo với một nguồn độc lập. Ba file:
 
 | File | Việc |
 |---|---|
-| `engine/src/gop-ban-hang.mjs` | **hàm dùng chung** — mọi luật nghiệp vụ. P4 gọi lại ĐÚNG hàm này |
-| `bin/doc-xlsx.mjs` | đọc .xlsx bằng Node thuần, 0 dependency (chỉ P2 cần — P4 đọc file ở trình duyệt) |
+| `engine/src/gop-ban-hang.mjs` | **hàm dùng chung** — mọi luật nghiệp vụ. P3 gọi lại ĐÚNG hàm này cho upload sống |
+| `bin/doc-xlsx.mjs` | đọc .xlsx bằng Node thuần, 0 dependency (chỉ P2 cần — P3 đọc file ở trình duyệt) |
 | `bin/nap-so-legacy.mjs` | script chạy tay: đọc sổ → gọi hàm chung → PUT `bc/ky/<kỳ>` |
 
-**Bước 0 đã xác minh, không đoán:** sổ ĐÚNG là dạng chi tiết từng dòng.
-Tiêu đề hàng 4, tiêu đề phụ hàng 5, dữ liệu từ hàng 6, **cột `employee` ở
-vị trí 12** — khớp từng vị trí với `app/modules/importing/raw_reader.py`
-của Reports V1. Nên KHÔNG phải đi đường `PROVENANCE.md` (workbook kế toán
-dạng sheet-mỗi-nhân viên). `kiemBoCuc()` nay canh đúng sáu ô tiêu đề đó
-mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗng.
+**Bước 0 đã xác minh, không đoán — cho CẢ HAI sổ.** Sổ 2025 (25.089
+hàng, `"Năm 2025"` ở hàng 2, ngày từ 01/01/2025 tới 31/12/2025) và sổ 2026
+(15.041 hàng) ĐỀU đúng dạng chi tiết từng dòng: tiêu đề hàng 4, tiêu đề
+phụ hàng 5, dữ liệu từ hàng 6, **cột `employee` ở vị trí 12** — khớp từng
+vị trí với `app/modules/importing/raw_reader.py` của Reports V1. Nên
+KHÔNG phải đi đường `PROVENANCE.md`. `kiemBoCuc()` canh đúng sáu ô tiêu
+đề đó mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗng.
 
-**Đối chiếu sổ 2026 (01–08/2026) — ba phép, cả ba khớp 0 lệch:**
+**Đối chiếu TOÀN BỘ 01/2025–08/2026 (20 tháng) — ba phép, cả ba khớp 0 lệch:**
 
 | kỳ | doanh số (đ) | số đơn | nhân viên | ngày có số |
 |---|---|---|---|---|
+| 2025-01 | 25.810.873.727 | 1.928 | 8 | 26 |
+| 2025-02 | 18.035.390.000 | 1.505 | 10 | 24 |
+| 2025-03 | 13.142.945.600 | 1.216 | 9 | 31 |
+| 2025-04 | 14.095.335.000 | 1.174 | 9 | 28 |
+| 2025-05 | 17.235.272.000 | 1.447 | 9 | 30 |
+| 2025-06 | 16.778.365.001 | 1.490 | 9 | 30 |
+| 2025-07 | 19.281.441.000 | 1.709 | 11 | 31 |
+| 2025-08 | 24.560.420.000 | 1.869 | 11 | 31 |
+| 2025-09 | 15.775.529.000 | 1.286 | 11 | 28 |
+| 2025-10 | 20.323.640.000 | 1.651 | 9 | 31 |
+| 2025-11 | 23.615.003.000 | 1.871 | 12 | 30 |
+| 2025-12 | 23.279.631.000 | 1.668 | 10 | 31 |
 | 2026-01 | 25.485.686.000 | 1.864 | 11 | 31 |
 | 2026-02 | 23.798.651.000 | 1.881 | 11 | 19 |
 | 2026-03 | 15.585.862.240 | 1.351 | 10 | 31 |
@@ -58,92 +72,103 @@ mỗi lần trích — sai bố cục thì NÉM LỖI, không trả bảng rỗn
 | 2026-06 | 14.474.146.000 | 1.226 | 11 | 30 |
 | 2026-07 | 14.527.576.000 | 1.205 | 10 | 31 |
 | 2026-08 | 15.824.320.000 | 1.150 | 8 | 28 |
-| **TỔNG** | **137.844.307.240** | **11.069** | | |
+| **TỔNG** | **369.778.152.568** | **29.883** | | |
 
-1. **Đối chiếu NỘI BỘ — đúng điều kiện ra khỏi phase.** Mỗi tháng được
+1. **Đối chiếu NỘI BỘ — đúng điều kiện ra khỏi phần (a).** Mỗi tháng được
    cộng bằng HAI đường độc lập: cộng `doanh_so` của mọi ô (nhân viên,
-   ngày), và cộng thẳng tiền từng dòng của tháng đó. **8/8 tháng lệch 0 đ
-   và lệch 0 đơn** — không rơi dòng, không đếm trùng chứng từ. Phép này
-   nằm trong `gopSoBanHang()` và **chặn lượt `--ghi`**: lệch thì script
-   thoát, không ghi gì. Có bài kiểm chứng minh nó thật sự bắt được lỗi
-   (dựng một sổ đếm trùng rồi xem nó đỏ), không chỉ luôn nói "khớp".
-2. **Doanh số** — tổng 137.844.307.240 đ bằng ĐÚNG dòng `Tổng cộng` mà
-   chính sổ in ra ở hàng cuối. Dòng đó bị bỏ khỏi phép cộng (nó không có
-   số chứng từ), nên đây là một phép đối chiếu thật, không phải vòng tròn.
-3. **Số đơn** — 11.069 đơn, và **cả 228 ngày khớp từng ngày** với
+   ngày), và cộng thẳng tiền từng dòng của tháng đó. **20/20 tháng lệch
+   0 đ và lệch 0 đơn** — không rơi dòng, không đếm trùng chứng từ. Phép
+   này nằm trong `gopSoBanHang()` và **chặn lượt `--ghi`**: lệch thì
+   script thoát, không ghi gì.
+2. **Doanh số** — mỗi sổ tự khớp đúng dòng `Tổng cộng` mà chính nó in ra:
+   231.933.845.328 đ (2025) và 137.844.307.240 đ (2026). Dòng đó bị bỏ
+   khỏi phép cộng (không có số chứng từ), nên đây là đối chiếu thật.
+3. **Số đơn** — 29.883 đơn, và **cả 579 ngày khớp từng ngày** (01/01/2025
+   → 31/08/2026, không nghỉ ngày nào) với
    `data/chart_gapfill/daily_orders.jsonl` của Reports V1, một nguồn dựng
-   độc lập từ cùng hai file sổ. Đây là bằng chứng mạnh nhất hiện có rằng
-   luật đếm đơn ở đây trùng luật V1 đang dùng.
+   độc lập từ cùng hai file sổ. V1 đã dự đoán trước 2025 sẽ ra đúng
+   18.814 đơn (01/2025: 1.928 … 12/2025: 1.668) — và ra đúng như vậy.
+
+**Sửa một lỗi thật, phát hiện nhờ dữ liệu 2025** (tên nhân viên
+` Miền Bắc 0865.909.033` — có dấu chấm): `tom_tat.nhan_vien` từng khoá
+theo bản đã qua `khoaNhanVien()` (khoá Firebase, dấu chấm bị thay bằng
+`~`), nên báo cáo hiện ra `"0865~909~033"` — sai đúng cái mục đích của
+báo cáo là "liệt kê tên NHƯ SỔ GHI" để so với file kế toán. Đã sửa: báo
+cáo khoá theo tên thô (`chuanHoaChu`, chưa qua thay ký tự), cây `bc/ky`
+vẫn dùng khoá đã thay `~` như cũ (bắt buộc, để ghi được vào Firebase).
+Có bài kiểm canh riêng test 18.
 
 **Một quyết định nghiệp vụ CHƯA CHỐT — `LUAT_DOANH_SO`.** Sổ cho hai cách
-đọc "doanh số của một dòng", lệch nhau **47.101.000 đ** trên 8 tháng:
+đọc "doanh số của một dòng", lệch nhau **120.981.000 đ** trên cả 20 tháng
+(47.101.000 đ chỉ riêng 2026, cộng thêm 73.880.000 đ của 2025):
 
 - `cot-doanh-so-ban` (**đang bật**) — cột `Doanh số bán` nguyên văn →
-  137.844.307.240 đ. Tự nhất quán với dòng `Tổng cộng` của chính sổ.
-- `tru-chiet-khau` — `Số lượng × Đơn giá − Chiết khấu` → 137.797.206.240 đ.
+  369.778.152.568 đ. Tự nhất quán với dòng `Tổng cộng` của mỗi sổ.
+- `tru-chiet-khau` — `Số lượng × Đơn giá − Chiết khấu` → 369.657.171.568 đ.
   Đây là luật V1 (`DEC-114`, ghi rõ "Owner xác nhận trực tiếp 2026-08-23").
 
-Đã kiểm: `Doanh số bán` == `Số lượng × Đơn giá` ở CẢ 15.035 dòng, nên hai
-luật chỉ khác đúng phần chiết khấu. Đổi luật = sửa MỘT hằng số trong
-`gop-ban-hang.mjs` rồi chạy lại script — không có chỗ thứ hai phải sửa
-theo, và cả hai luật đều có bài kiểm canh. Chủ dự án không có số tổng tách
-riêng để so (nên điều kiện ra phase đã đổi sang đối chiếu nội bộ), nên đây
-là việc họ tự xem lại trên sản phẩm thật rồi nói nếu thấy sai.
+Đổi luật = sửa MỘT hằng số trong `gop-ban-hang.mjs` rồi chạy lại script —
+cả hai luật đều có bài kiểm canh. Chủ dự án không có số tổng tách riêng để
+so (điều kiện ra phase là đối chiếu nội bộ), nên đây là việc họ tự xem lại
+trên sản phẩm thật rồi nói nếu thấy sai.
 
-**21 dòng không có tên nhân viên** (57.200.000 đ, tập trung ở 07–08/2026):
-KHÔNG bị bỏ, KHÔNG gán bừa cho ai — dồn vào khoá `_chua_xac_dinh` (tên
-khoá chủ dự án chốt) để tổng tháng vẫn khớp sổ, và script in ra danh sách
-số chứng từ. Đây đúng là việc P5 sẽ sửa tay.
+**25 dòng không có tên nhân viên** trên cả hai sổ (65.300.000 đ, 4 dòng ở
+2025 + 21 dòng ở 2026, hầu hết 07–08/2026): KHÔNG bị bỏ, KHÔNG gán bừa
+cho ai — dồn vào khoá `_chua_xac_dinh` để tổng tháng vẫn khớp sổ, và
+script in ra danh sách số chứng từ. Đây đúng là việc P5 sẽ sửa tay.
 
-**14 tên nhân viên trên sổ 2026, script CHỈ LIỆT KÊ — không tự ghép.**
-Đúng theo yêu cầu "dùng danh sách CÓ SẴN trong file kế toán, đừng tự đoán
-ghép vào ai": script in danh sách tên kèm số dòng và doanh số, sắp theo
-doanh số giảm dần. Hai chỗ đáng chú ý khi chủ dự án soi lại:
+**16 tên nhân viên trên cả hai sổ, script CHỈ LIỆT KÊ — không tự ghép**
+(so với 14 tên chỉ thấy ở riêng sổ 2026). Đúng theo yêu cầu "dùng danh
+sách CÓ SẴN trong file kế toán, đừng tự đoán ghép vào ai": script in danh
+sách tên kèm số dòng và doanh số, sắp theo doanh số giảm dần. Ba chỗ đáng
+chú ý khi chủ dự án soi lại:
 
 - **`Tống Khánh Linh 0865111033` và `Lê Văn Quân 0865111033` dùng CÙNG
   một số hotline.** Đúng hiện tượng bàn giao hotline mà chủ dự án mô tả.
   P2 gộp theo TÊN như sổ ghi, không theo hotline — chờ bảng ánh xạ.
-- `Thảo Linh` (796.430.000 đ) và `Tống Khánh Linh 0865111033`
-  (129.850.000 đ) có thể là một người viết hai cách, hoặc hai người khác
-  nhau. **Không đoán** — cần chủ dự án nói.
+- `Thảo Linh` (3.059.270.000 đ, cả hai sổ) và `Tống Khánh Linh
+  0865111033` (129.850.000 đ) có thể là một người viết hai cách, hoặc
+  hai người khác nhau. **Không đoán** — cần chủ dự án nói.
+- Hai tên MỚI chỉ thấy ở sổ 2025: `Miền Bắc 0865.909.033` (3.341.556.000
+  đ — có thể là tên một khu vực/nhóm, không phải một cá nhân) và `Đinh
+  Thùy Dương` (13.200.000 đ).
 
 Bốn tên `Mr Quý`, `Mr Vinh`, `Đức Hiệp`, `Tín Phát 0869931931` không có
 họ tên đầy đủ, nên không tự khớp được vào danh sách kế toán.
 
 ### P2 — còn thiếu gì để ra khỏi phase
 
-**Đối chiếu nội bộ — điều kiện ra khỏi phase — đã khớp 0 lệch cho phần dữ
-liệu đang có (01–08/2026).** Ba việc còn lại:
+**Phần (a) — trích + nạp — đối chiếu nội bộ đã khớp 0 lệch cho TOÀN BỘ
+01/2025–08/2026.** Hai việc còn lại của phần (a):
 
-1. **Sổ 2025 chưa có.** Hai file đính kèm ở phiên 11/09 là **cùng một
-   file** (trùng MD5 `dfa41b86…`, cùng 2.056.416 byte), và cả hai là sổ
-   **2026** (`Từ ngày 01/01/2026`, 01–08/2026). Đường trích không phụ
-   thuộc năm nào, nên gửi lại đúng file 2025 là chạy được ngay. Đã biết
-   trước con số phải ra: `daily_orders.jsonl` của V1 nói 2025 có **18.814
-   đơn** (01/2025: 1.928 … 12/2025: 1.668) — nạp xong so lại là biết ngay
-   đúng/sai.
-2. **Chưa ghi vào Firebase.** Phiên làm việc không có
+1. **Chưa ghi vào Firebase.** Không có phiên làm việc nào tới nay có
    `FB_SA_EMAIL`/`FB_SA_KEY` (đó là Secret của Worker, không nằm trong
    repo — đúng như phải vậy). Script đã chạy xong phần trích và in bảng
-   đối chiếu ở chế độ **chạy thử** (mặc định, không cần khoá). Lượt ghi
-   thật cần chủ dự án chạy trên máy có khoá:
+   đối chiếu ở chế độ **chạy thử** (mặc định, không cần khoá) cho cả hai
+   sổ cùng lúc. Lượt ghi thật cần chủ dự án chạy trên máy có khoá:
 
    ```
    export FB_SA_EMAIL='firebase-adminsdk-fbsvc@tinphattracking.iam.gserviceaccount.com'
    export FB_SA_KEY="$(cat khoa.pem)"
-   node bin/nap-so-legacy.mjs --ghi --doc-lai "so-2025.xlsx" "so-2026.xlsx"
+   node bin/nap-so-legacy.mjs --ghi --doc-lai "So chi tiet ban hang 2025.xlsx" "So chi tiet ban hang 2026.xlsx"
    ```
 
    `--doc-lai` đọc ngược từng kỳ vừa ghi và so lại tổng — "đã ghi" không
    phải là một dòng chữ script tự in ra.
-3. **Danh sách nhân viên chuẩn chưa có.** Chủ dự án chốt: chuẩn hoá tên
+2. **Danh sách nhân viên chuẩn chưa có.** Chủ dự án chốt: chuẩn hoá tên
    dựa vào danh sách CÓ SẴN trong **file kế toán** (`Báo cáo Kinh doanh
-   2025/2026.xlsx`) — file đó KHÔNG được gửi trong phiên này, và không có
-   trong repo nào (`.gitignore: *.xlsx` bên Reports V1). Nên script làm
-   đúng nửa việc thuộc về nó: **liệt kê 14 tên như sổ ghi, kèm số dòng và
-   doanh số, và không tự ghép tên nào với tên nào** (có bài kiểm canh việc
-   không tự so gần đúng). Cần chủ dự án nói tên nào là biến thể của tên
-   nào, hoặc gửi file kế toán để đọc danh sách.
+   2025/2026.xlsx`) — file đó KHÔNG được gửi và không có trong repo nào
+   (`.gitignore: *.xlsx` bên Reports V1). Nên script làm đúng nửa việc
+   thuộc về nó: **liệt kê 16 tên như sổ ghi, kèm số dòng và doanh số,
+   không tự ghép tên nào với tên nào**. Cần chủ dự án nói tên nào là biến
+   thể của tên nào (ba chỗ nêu trên), hoặc gửi file kế toán để đọc danh
+   sách.
+
+**Phần (b) — biểu đồ — CHƯA BẮT ĐẦU.** Đọc từ `bc/ky` sau khi đã ghi, dựng
+biểu đồ doanh số + số đơn theo nhân viên từ 01/2025 tới hôm nay, cuộn
+được lên tuần/tháng/quý/năm, so kỳ này với kỳ trước/cùng kỳ năm trước.
+Đây là việc TRƯỚC MẶT tiếp theo, và cần dữ liệu đã NẰM Ở FIREBASE trước
+(việc 1 ở trên) — không đọc thẳng từ script chạy tay.
 
 ### Hạ tầng đang sống — P2 nhận nguyên, không dựng lại
 
@@ -156,7 +181,7 @@ liệu đang có (01–08/2026).** Ba việc còn lại:
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 9 bộ, 291 đạt, 0 hỏng.
+`npm test`: 9 bộ, 294 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 

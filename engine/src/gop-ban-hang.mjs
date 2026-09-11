@@ -270,7 +270,7 @@ export function gopSoBanHang(bang) {
      Cộng cùng một con số bằng hai đường rồi so, chứ không đọc lại một con số
      đã cộng một lần (thế thì không kiểm được gì). */
   const thangTrucTiep = new Map();  // kỳ → { doanh_so, so_dong, don:Set }
-  const nhanVien = new Map();       // khoá nhân viên → { so_dong, doanh_so }
+  const nhanVien = new Map();       // TÊN NHƯ SỔ GHI (chưa qua khoaNhanVien) → { so_dong, doanh_so }
 
   let dong_tong = 0;
   let dong_bo_thieu_so_ct = 0;
@@ -339,8 +339,14 @@ export function gopSoBanHang(bang) {
     tt.so_dong++;
     tt.don.add(so_ct);
 
-    let nvt = nhanVien.get(nv);
-    if (!nvt) { nvt = { so_dong: 0, doanh_so: 0 }; nhanVien.set(nv, nvt); }
+    /* Báo cáo tên nhân viên (`tom_tat.nhan_vien`) phải là tên ĐÚNG NHƯ SỔ
+       GHI, để chủ dự án so được với file kế toán (ROADMAP.md P2). Khoá theo
+       `nv_tho ?? NV_CHUA_GAN`, KHÔNG theo `nv` (khoá Firebase đã bị thay dấu
+       chấm/gạch chéo bằng "~") — một tên như "0865.909.033" báo ra thành
+       "0865~909~033" thì không ai so khớp được với sổ sách nữa. */
+    const nvBaoCao = nv_tho ?? NV_CHUA_GAN;
+    let nvt = nhanVien.get(nvBaoCao);
+    if (!nvt) { nvt = { so_dong: 0, doanh_so: 0 }; nhanVien.set(nvBaoCao, nvt); }
     nvt.so_dong++;
     nvt.doanh_so = lamTron(nvt.doanh_so + tien);
 
