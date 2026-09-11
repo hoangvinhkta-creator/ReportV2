@@ -31,13 +31,21 @@ export const DON_VI_HOP_LE = ["ngay", "thang", "quy", "nam"];
  *  `viTri` là VỊ TRÍ TRONG MỘT CHU KỲ NĂM (ngày-trong-năm / tháng-trong-năm
  *  / quý-trong-năm; "nam" chỉ có một vị trí) — đây là trục dùng để chồng
  *  "năm nay" lên "năm ngoái" ĐÚNG VỊ TRÍ khi vẽ hai đường so sánh. */
-export function viTriTheoDonVi(ngayStr, donVi) {
+/** "YYYY-MM-DD" → `{ nam, thang, ngay }` dạng số. MỘT chỗ kiểm duy nhất cho
+ *  cả module: mọi hàm đọc ngày đều đi qua đây, để không có hàm nào lỡ nhận
+ *  một ngày mà hàm bên cạnh đã từ chối. */
+function tachNgay(ngayStr) {
   const m = String(ngayStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) throw new Error("gop-theo-thoi-gian: ngay khong dung dang YYYY-MM-DD: " + ngayStr);
-  const y = +m[1], mo = +m[2], d = +m[3];
-  if (mo < 1 || mo > 12 || d < 1 || d > 31) {
+  const nam = +m[1], thang = +m[2], ngay = +m[3];
+  if (thang < 1 || thang > 12 || ngay < 1 || ngay > 31) {
     throw new Error("gop-theo-thoi-gian: thang/ngay ngoai pham vi: " + ngayStr);
   }
+  return { nam, thang, ngay };
+}
+
+export function viTriTheoDonVi(ngayStr, donVi) {
+  const { nam: y, thang: mo, ngay: d } = tachNgay(ngayStr);
 
   if (donVi === "ngay") {
     const dau = Date.UTC(y, 0, 1);
@@ -141,38 +149,87 @@ export function gopCayKyThanhChuoiNgay(cayKy, locNhanVien) {
   return ra;
 }
 
+/** MỌI năm có mặt trong một chuỗi ngày, giảm dần. Đây là nguồn cho dải nút
+ *  chọn năm trên màn hình — phải là danh sách ĐẦY ĐỦ, không cắt hai năm như
+ *  `haiNamGanNhat`, nếu không thì tới 2027 là năm 2025 lặng lẽ biến mất khỏi
+ *  chỗ bấm dù số của nó vẫn nằm nguyên trong `bc/ky`. */
+export function cacNamCoSo(seriesNgay) {
+  const nams = new Set(Object.keys(seriesNgay || {}).map((k) => +k.slice(0, 4)));
+  return [...nams].sort((a, b) => b - a);
+}
+
 /** Hai năm gần nhất có mặt trong một chuỗi ngày, giảm dần — `[namNay,
  *  namTruoc]`. Trả mảng rỗng nếu chuỗi rỗng, một phần tử nếu chỉ có một năm
  *  (khi đó không có "cùng kỳ năm trước" để so — bên gọi tự xử lý, hàm này
  *  không đoán). */
 export function haiNamGanNhat(seriesNgay) {
-  const nams = new Set(Object.keys(seriesNgay || {}).map((k) => +k.slice(0, 4)));
-  return [...nams].sort((a, b) => b - a).slice(0, 2);
+  return cacNamCoSo(seriesNgay).slice(0, 2);
 }
 
-/** Hàm TỔNG HỢP cho "màn mở" (sức khoẻ kinh doanh toàn công ty, P2(b)
- *  bước 1) — nhận thẳng cây `bc/ky`, trả đủ dữ liệu để vẽ 3 tab (Ngày/
- *  Tháng/Năm) mà KHÔNG cần gọi lại lần nào nữa.
+/** Chuỗi ngày → `{ [nam]: { [thang]: { [ngày trong tháng]: {doanh_so, so_don,
+ *  khoa} } } }`.
+ *
+ *  VÌ SAO CÓ HÀM NÀY BÊN CẠNH `gopMotChuoiNgay(chuoi, "ngay")`: hàm kia đánh
+ *  số ngày theo VỊ TRÍ TRONG NĂM (1..366) — vẽ ra một đường 365 điểm, chủ dự
+ *  án xem thấy "quá dày" (chốt 11/09/2026). Màn hình giờ xem mỗi lần một
+ *  tháng, nên cần chuỗi đã CHIA SẴN theo tháng, và vị trí trong tháng phải là
+ *  NGÀY TRONG THÁNG (1..31) để ngày 10 tháng 8 năm nay chồng đúng lên ngày 10
+ *  tháng 8 năm ngoái.
+ *
+ *  Chia ở Engine chứ không để trình duyệt tự lọc: "ngày nào thuộc tháng nào"
+ *  là LUẬT PHÂN LOẠI — CLAUDE.md kể tên tường minh trong danh sách cấm ở
+ *  frontend. */
+export function gopNgayTheoThang(seriesNgay) {
+  if (!seriesNgay || typeof seriesNgay !== "object") {
+    throw new Error("gop-theo-thoi-gian: can mot chuoi ngay dang doi tuong");
+  }
+  const ra = {};
+  for (const ngayStr of Object.keys(seriesNgay)) {
+    const o = seriesNgay[ngayStr] || {};
+    const { nam, thang, ngay } = tachNgay(ngayStr);
+    const theoNam = (ra[nam] ||= {});
+    const theoThang = (theoNam[thang] ||= {});
+    const cell = (theoThang[ngay] ||= { doanh_so: 0, so_don: 0, khoa: ngayStr });
+    cell.doanh_so = lamTron(cell.doanh_so + (Number(o.doanh_so) || 0));
+    cell.so_don += Number(o.so_don) || 0;
+  }
+  return ra;
+}
+
+/** Hàm TỔNG HỢP cho Dashboard (sức khoẻ kinh doanh toàn công ty) — nhận
+ *  thẳng cây `bc/ky`, trả đủ dữ liệu để vẽ CẢ BA tab (Ngày/Tháng/Quý) và cả
+ *  dải chọn năm, chọn tháng, mà màn hình KHÔNG phải gọi lại lần nào nữa.
  *
  *  Trả:
- *    theo_ngay, theo_thang, theo_nam  — mỗi cái là kết quả `gopMotChuoiNgay`
- *                                       ở đúng đơn vị đó, cả hai năm
- *    vi_tri_moi_nhat                  — { ngay, thang, nam } — "hôm nay" ở
- *                                       từng đơn vị, để biết đường năm nay
- *                                       nên vẽ dừng ở đâu
- *    hai_nam                          — [namNay, namTruoc], hoặc mảng ngắn
- *                                       hơn nếu dữ liệu chưa đủ hai năm */
+ *    theo_ngay_thang  — chuỗi ngày ĐÃ CHIA THEO THÁNG (tab Ngày xem mỗi lần
+ *                       một tháng — xem `gopNgayTheoThang`)
+ *    theo_thang       — 12 tháng mỗi năm (tab Tháng)
+ *    theo_quy         — 4 quý mỗi năm (tab Quý)
+ *    cac_nam          — MỌI năm có số, giảm dần — nguồn cho dải chọn năm
+ *    vi_tri_moi_nhat  — mốc mới nhất CÓ SỐ ở từng đơn vị
+ *    theo_ngay, theo_nam, hai_nam
+ *                     — ba field của bản Dashboard ĐẦU TIÊN (tab Ngày vẽ cả
+ *                       năm 366 điểm, tab Năm). Màn hình mới không còn đọc
+ *                       chúng. GIỮ LẠI có chủ ý: hai Worker build song song
+ *                       khi merge (ROADMAP.md, bẫy số 4), nên trong khoảng
+ *                       giữa lượt Engine lên và lượt giao diện lên, bản
+ *                       giao diện CŨ vẫn đang chạy và vẫn đọc chúng. Bỏ
+ *                       được sau khi giao diện mới đã lên thật. */
 export function gopSucKhoeCongTy(cayKy) {
   const chuoi = gopCayKyThanhChuoiNgay(cayKy);
   return {
-    theo_ngay: gopMotChuoiNgay(chuoi, "ngay"),
+    theo_ngay_thang: gopNgayTheoThang(chuoi),
     theo_thang: gopMotChuoiNgay(chuoi, "thang"),
-    theo_nam: gopMotChuoiNgay(chuoi, "nam"),
+    theo_quy: gopMotChuoiNgay(chuoi, "quy"),
+    cac_nam: cacNamCoSo(chuoi),
     vi_tri_moi_nhat: {
       ngay: viTriMoiNhat(chuoi, "ngay"),
       thang: viTriMoiNhat(chuoi, "thang"),
+      quy: viTriMoiNhat(chuoi, "quy"),
       nam: viTriMoiNhat(chuoi, "nam"),
     },
+    theo_ngay: gopMotChuoiNgay(chuoi, "ngay"),
+    theo_nam: gopMotChuoiNgay(chuoi, "nam"),
     hai_nam: haiNamGanNhat(chuoi),
   };
 }

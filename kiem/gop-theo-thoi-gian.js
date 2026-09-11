@@ -162,29 +162,83 @@ console.log('\n8) BẤT BIẾN: gopCayKyThanhChuoiNgay rồi gộp theo đơn v�
   ok('tổng số đơn khớp cây gốc', donQuy, donCay);
 }
 
-console.log('\n9) gopSucKhoeCongTy — hàm tổng hợp cho màn mở (P2(b) bước 1)');
+console.log('\n9) gopSucKhoeCongTy — hàm tổng hợp cho Dashboard');
 {
   const cayKy = {
     '2025-08': { A: { '2025-08-10': { doanh_so: 1000, so_don: 5 } } },
     '2026-08': { A: { '2026-08-10': { doanh_so: 1200, so_don: 6 } }, B: { '2026-08-31': { doanh_so: 300, so_don: 1 } } },
   };
   const r = G.gopSucKhoeCongTy(cayKy);
-  ok('có đủ ba đơn vị', Object.keys(r).sort(), ['hai_nam', 'theo_nam', 'theo_ngay', 'theo_thang', 'vi_tri_moi_nhat']);
+  ok('có đủ field cho màn hình mới VÀ ba field giữ lại cho bản cũ',
+     Object.keys(r).sort(),
+     ['cac_nam', 'hai_nam', 'theo_nam', 'theo_ngay', 'theo_ngay_thang', 'theo_quy', 'theo_thang', 'vi_tri_moi_nhat']);
   ok('theo_thang cộng đúng cả A và B tháng 08/2026', r.theo_thang[2026][8], { doanh_so: 1500, so_don: 7, khoa: '2026-08' });
   ok('theo_thang năm 2025 riêng', r.theo_thang[2025][8], { doanh_so: 1000, so_don: 5, khoa: '2025-08' });
+  ok('theo_quy: tháng 8 nằm ở quý 3', r.theo_quy[2026][3], { doanh_so: 1500, so_don: 7, khoa: '2026-Q3' });
   ok('theo_nam gộp cả năm', r.theo_nam[2026][1], { doanh_so: 1500, so_don: 7, khoa: '2026' });
+  ok('cac_nam đủ hai năm, giảm dần', r.cac_nam, [2026, 2025]);
   ok('vi_tri_moi_nhat.ngay đúng ngày cuối cùng có dữ liệu', r.vi_tri_moi_nhat.ngay.khoa, '2026-08-31');
+  ok('vi_tri_moi_nhat.quy có mặt (tab Quý cần biết quý hiện tại)', r.vi_tri_moi_nhat.quy, { nam: 2026, viTri: 3, khoa: '2026-Q3' });
   ok('hai_nam giảm dần', r.hai_nam, [2026, 2025]);
 
-  // đối chiếu chéo: tổng theo_ngay phải bằng tổng theo_thang phải bằng tổng theo_nam
+  /* Tab Ngày xem mỗi lần một tháng: cùng NGÀY TRONG THÁNG của hai năm phải
+     rơi vào cùng một vị trí thì mới chồng được hai đường lên nhau. */
+  ok('theo_ngay_thang: 10/08/2026 nằm ở [2026][8][10]', r.theo_ngay_thang[2026][8][10],
+     { doanh_so: 1200, so_don: 6, khoa: '2026-08-10' });
+  ok('theo_ngay_thang: 10/08/2025 nằm ĐÚNG cùng vị trí [10] của năm trước',
+     r.theo_ngay_thang[2025][8][10], { doanh_so: 1000, so_don: 5, khoa: '2025-08-10' });
+  ok('theo_ngay_thang: 31/08/2026 ở đúng ngày 31', r.theo_ngay_thang[2026][8][31].doanh_so, 300);
+  ok('theo_ngay_thang: tháng không có số thì KHÔNG có khoá (để màn hình tắt nút)',
+     r.theo_ngay_thang[2026][7], undefined);
+
+  // đối chiếu chéo: mọi đơn vị gộp phải cộng ra CÙNG một tổng, không sót không trùng
   const tongCuaGop = (gop) => {
     let t = 0; for (const nam of Object.keys(gop)) for (const vt of Object.keys(gop[nam])) t += gop[nam][vt].doanh_so;
     return t;
   };
+  const tongNgayThang = (g) => {
+    let t = 0;
+    for (const nam of Object.keys(g)) for (const th of Object.keys(g[nam])) for (const ng of Object.keys(g[nam][th])) {
+      t += g[nam][th][ng].doanh_so;
+    }
+    return t;
+  };
   const tongThat = 1000 + 1200 + 300;
-  ok('theo_ngay/theo_thang/theo_nam đều cộng ra cùng một tổng',
-     [tongCuaGop(r.theo_ngay), tongCuaGop(r.theo_thang), tongCuaGop(r.theo_nam)],
-     [tongThat, tongThat, tongThat]);
+  ok('theo_ngay/theo_thang/theo_quy/theo_nam/theo_ngay_thang đều ra cùng một tổng',
+     [tongCuaGop(r.theo_ngay), tongCuaGop(r.theo_thang), tongCuaGop(r.theo_quy),
+      tongCuaGop(r.theo_nam), tongNgayThang(r.theo_ngay_thang)],
+     [tongThat, tongThat, tongThat, tongThat, tongThat]);
+}
+
+console.log('\n9b) gopNgayTheoThang + cacNamCoSo — nền của tab Ngày và dải chọn năm');
+{
+  const chuoi = {
+    '2025-01-31': { doanh_so: 10, so_don: 1 },
+    '2026-02-01': { doanh_so: 20, so_don: 2 },
+    '2026-02-28': { doanh_so: 30, so_don: 3 },
+    '2027-12-25': { doanh_so: 40, so_don: 4 },
+  };
+  const g = G.gopNgayTheoThang(chuoi);
+  ok('tháng 1 và tháng 2 KHÔNG lẫn vào nhau', Object.keys(g[2026]), ['2']);
+  ok('hai ngày cùng tháng nằm chung một tháng, tách đúng ngày',
+     [g[2026][2][1].doanh_so, g[2026][2][28].doanh_so], [20, 30]);
+  ok('ngày 31/01 ở đúng [2025][1][31]', g[2025][1][31], { doanh_so: 10, so_don: 1, khoa: '2025-01-31' });
+  ok('tháng 12 không bị đọc thành tháng 2', g[2027][12][25].doanh_so, 40);
+  ok('chuỗi rỗng → cây rỗng, không ném', G.gopNgayTheoThang({}), {});
+
+  let nem = false;
+  try { G.gopNgayTheoThang(null); } catch (e) { nem = true; }
+  ok('chuỗi không phải object → ném', nem, true);
+
+  let nem2 = false;
+  try { G.gopNgayTheoThang({ '2026-13-01': { doanh_so: 1 } }); } catch (e) { nem2 = true; }
+  ok('tháng 13 → ném, KHÔNG lặng lẽ tạo ra tháng thứ 13', nem2, true);
+
+  /* `cac_nam` phải ĐỦ, khác `hai_nam` — đây đúng là chỗ dễ sai: dải nút chọn
+     năm mà cắt còn hai thì tới 2027 là 2025 biến mất khỏi màn hình. */
+  ok('cacNamCoSo trả ĐỦ ba năm, giảm dần', G.cacNamCoSo(chuoi), [2027, 2026, 2025]);
+  ok('haiNamGanNhat vẫn chỉ cắt hai năm', G.haiNamGanNhat(chuoi), [2027, 2026]);
+  ok('cacNamCoSo với chuỗi rỗng → mảng rỗng', G.cacNamCoSo({}), []);
 }
 
 console.log('\n10) DON_VI_HOP_LE là danh sách tường minh, đúng bốn đơn vị đã chốt');
