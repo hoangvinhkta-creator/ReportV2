@@ -217,7 +217,8 @@ const b64u = (b) => Buffer.from(b).toString('base64')
        Object.keys(db.tra('bc/ky/2026-09/Đức Hiệp')).sort(), ['2026-09-02', '2026-09-05']);
     ok('doanh số đã trừ chiết khấu', db.tra('bc/ky/2026-09/Đức Hiệp/2026-09-02').doanh_so, 900);
     ok('bc/dong có đủ hai dòng hàng', Object.keys(db.tra('bc/dong/2026-09')).length, 2);
-    ok('bc/khach khoá theo số chứng từ', Object.keys(db.tra('bc/khach')).sort(), ['BH1', 'BH2']);
+    ok('bc/khach khoá theo KỲ rồi mới tới số chứng từ',
+       Object.keys(db.tra('bc/khach/2026-09')).sort(), ['BH1', 'BH2']);
     ok('bc/imei trỏ ngược về đơn', db.tra('bc/imei/IM1').so_ct, 'BH1');
 
     /* PII đi qua Gateway nhưng KHÔNG được đọng lại ở nhánh sai. */
@@ -262,9 +263,13 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('và giữ trọn trạng thái cũ để quay về được',
        JSON.stringify(b.dong).includes('Tủ lạnh'), true);
 
-    /* `bc/khach` ghi bằng PATCH chứ không PUT: nhánh này khoá theo số chứng
-       từ chứ không theo kỳ, PUT là xoá sạch khách của mọi kỳ khác. */
-    ok('khách của đơn cũ KHÔNG bị xoá theo', Object.keys(db.tra('bc/khach')).sort(), ['BH1', 'BH2']);
+    /* `bc/khach/<kỳ>` ĐÈ TRỌN theo kỳ — cùng động tác với bc/ky, bc/dong.
+       lan2 không ghi tên khách nào (BH1 đổi giá không kèm khách, BH3 mới
+       cũng không), nên khách của lan1 (Chị Nga @ BH1, Anh Long @ BH2)
+       KHÔNG còn sót lại — đè trọn kỳ không được để lại một khách mồ côi
+       của dòng đã biến mất (BH2) hay đã đổi mà không còn khai khách lại. */
+    ok('bc/khach/2026-09 đè trọn — không còn khách nào của lan1',
+       db.tra('bc/khach/2026-09'), null);
   }
 
   console.log('\n4) Hoàn tác — quay về bản lưu, và bản hiện tại cũng được lưu trước');
@@ -279,6 +284,9 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('sau lần 2 chỉ còn hai dòng của file mới', Object.keys(db.tra('bc/dong/2026-09')).length, 2);
     ok('và dòng của lần 1 đã biến mất',
        JSON.stringify(db.tra('bc/dong/2026-09')).includes('Tivi'), false);
+    /* lan2 không khai khách nào — bc/khach/2026-09 đè trọn về rỗng. */
+    ok('khách của lần 1 (Chị Nga, Anh Long) không còn sau khi đè',
+       db.tra('bc/khach/2026-09'), null);
 
     const ds = await doc(await goi(db, '/api/ban-luu?ky=2026-09'));
     ok('danh sách bản lưu có một bản', ds.than.ban.length, 1);
@@ -291,6 +299,12 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('hoàn tác xong', [r.ma, r.than.xong], [200, true]);
     ok('dữ liệu đã quay về lần 1',
        JSON.stringify(db.tra('bc/dong/2026-09')).includes('Tivi'), true);
+    /* Hoàn tác phải trả CẢ khách, không chỉ doanh số/dòng hàng — thiếu nó
+       thì bảng đơn hàng sau hoàn tác hiện tên khách của LƯỢT SAU (rỗng),
+       trông như đã hoàn tác xong nhưng thật ra chỉ xong một nửa. */
+    ok('khách cũng quay về đúng lần 1',
+       db.tra('bc/khach/2026-09'), { BH1: { ten: 'Chị Nga', dien_thoai: '0988456479', dia_chi: 'Ngõ 28' },
+                                      BH2: { ten: 'Anh Long', dien_thoai: '', dia_chi: '' } });
     ok('bản hiện tại được lưu trước khi quay, nên quay nhầm vẫn quay lại được',
        Object.keys(db.tra('bc/backup/2026-09')).length, 2);
 
@@ -360,18 +374,26 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   {
     const db = dungDb(HAT());
     await goi(db, '/api/tai-so', { than: { bang: so([
-      dg({ ngay: '2026-09-02', ct: 'BH1', ten: 'Tivi', ds: 1000, nv: 'Đức Hiệp' }),
-      dg({ ngay: '2026-09-30', ct: 'BH2', ten: 'Tủ lạnh', ds: 2000, nv: 'Đức Hiệp' })]) } });
+      dg({ ngay: '2026-09-02', ct: 'BH1', ten: 'Tivi', ds: 1000, nv: 'Đức Hiệp', khach: 'Chị Nga' }),
+      dg({ ngay: '2026-09-30', ct: 'BH2', ten: 'Tủ lạnh', ds: 2000, nv: 'Đức Hiệp', khach: 'Anh Long' })]) } });
 
     const r = await doc(await goi(db, '/api/tai-so', { than: { bang: so([
-      dg({ ngay: '2026-09-01', ct: 'BH1', ten: 'Tivi', ds: 1100, nv: 'Đức Hiệp' }),
-      dg({ ngay: '2026-09-30', ct: 'BH2', ten: 'Tủ lạnh', ds: 2000, nv: 'Đức Hiệp' }),
-      dg({ ngay: '2026-10-15', ct: 'BH8', ten: 'Điều hoà', ds: 8000, nv: 'Đức Hiệp' })]) } }));
+      dg({ ngay: '2026-09-01', ct: 'BH1', ten: 'Tivi', ds: 1100, nv: 'Đức Hiệp', khach: 'Chị Nga' }),
+      dg({ ngay: '2026-09-30', ct: 'BH2', ten: 'Tủ lạnh', ds: 2000, nv: 'Đức Hiệp', khach: 'Anh Long' }),
+      dg({ ngay: '2026-10-15', ct: 'BH8', ten: 'Điều hoà', ds: 8000, nv: 'Đức Hiệp', khach: 'Chị Hạnh' })]) } }));
 
     ok('ghi được cả hai kỳ', r.than.ky_da_ghi.map(k => k.ky), ['2026-09', '2026-10']);
     ok('kỳ cũ là "đè", kỳ mới là "mới"', r.than.ky_da_ghi.map(k => k.la_ky_moi), [false, true]);
     ok('chỉ kỳ bị đè mới có bản lưu',
        [!!db.tra('bc/backup/2026-09'), !!db.tra('bc/backup/2026-10')], [true, false]);
+
+    /* Cô lập THẬT: khách của kỳ này không đụng khách của kỳ kia — không
+       chỉ bc/ky/bc/dong mà cả bc/khach cũng phải tách bạch. */
+    ok('bc/khach/2026-09 chỉ có khách của tháng 9',
+       Object.keys(db.tra('bc/khach/2026-09')).sort(), ['BH1', 'BH2']);
+    ok('bc/khach/2026-10 chỉ có khách của tháng 10, KHÔNG lẫn khách tháng 9',
+       Object.keys(db.tra('bc/khach/2026-10')), ['BH8']);
+    ok('và đúng nội dung', db.tra('bc/khach/2026-10/BH8').ten, 'Chị Hạnh');
   }
 
   console.log('\n10) Sổ sai bố cục → báo lỗi cho người tải, KHÔNG trả bảng rỗng');
@@ -412,10 +434,45 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     ok('kỳ sai định dạng → 400', la.ma, 400);
   }
 
-  console.log('\n12) Thứ tự bảng API_ROUTES — nhánh P2(b) chạy song song vẫn đứng yên');
+  console.log('\n12) Xoá trọn một kỳ — cứu cho ca tải nhầm sổ, kỳ mới tinh không có bản lưu để hoàn tác');
+  {
+    const db = dungDb(HAT());
+
+    const rong = await doc(await goi(db, '/api/xoa-ky', { than: { ky: '2026-09' } }));
+    ok('kỳ chưa có dữ liệu → nói thẳng, không nổ, không ghi', [rong.ma, rong.than.xong], [200, false]);
+    ok('không lưu bản rỗng nào', db.tra('bc/backup/2026-09'), null);
+
+    await goi(db, '/api/tai-so', { than: { bang: SO_CHUAN } });
+    ok('trước khi xoá: đủ cả ba nhánh', [!!db.tra('bc/ky/2026-09'), !!db.tra('bc/dong/2026-09'), !!db.tra('bc/khach/2026-09')],
+       [true, true, true]);
+
+    const r = await doc(await goi(db, '/api/xoa-ky', { than: { ky: '2026-09' } }));
+    ok('xoá thành công', [r.ma, r.than.xong], [200, true]);
+    ok('cả ba nhánh đều sạch', [db.tra('bc/ky/2026-09'), db.tra('bc/dong/2026-09'), db.tra('bc/khach/2026-09')],
+       [null, null, null]);
+
+    /* An toàn như mọi thao tác đè khác: xoá vẫn LƯU BẢN CŨ trước — cứu
+       được qua chính /api/hoan-tac đã có, không cần đường cứu hộ riêng. */
+    const ds = await doc(await goi(db, '/api/ban-luu?ky=2026-09'));
+    ok('có đúng một bản lưu từ trước khi xoá', ds.than.ban.length, 1);
+    ok('nhãn nói rõ vì sao lưu', ds.than.ban[0].truoc_khi, '(trước khi xoá kỳ)');
+
+    const hoan = await doc(await goi(db, '/api/hoan-tac', { than: { ky: '2026-09', moc: ds.than.ban[0].moc } }));
+    ok('hoàn tác cứu lại được kỳ vừa xoá', hoan.than.xong, true);
+    ok('doanh số trở lại', db.tra('bc/ky/2026-09/Đức Hiệp/2026-09-02').doanh_so, 900);
+    ok('khách trở lại', db.tra('bc/khach/2026-09/BH1').ten, 'Chị Nga');
+
+    /* Kỳ sai định dạng, và người không đủ quyền — cùng luật với /api/tai-so. */
+    const saiKy = await doc(await goi(db, '/api/xoa-ky', { than: { ky: 'xx' } }));
+    ok('kỳ sai định dạng → nói thẳng, không nổ', [saiKy.ma, saiKy.than.xong], [200, false]);
+    const khongQuyen = await doc(await goi(db, '/api/xoa-ky', { than: { ky: '2026-09' }, ai: 'sale' }));
+    ok('vai "sale" không được xoá', khongQuyen.ma, 403);
+  }
+
+  console.log('\n13) Thứ tự bảng API_ROUTES — nhánh P2(b) chạy song song vẫn đứng yên');
   {
     const ma = require('fs').readFileSync(path.join(GOC, 'src/index.js'), 'utf8');
-    for (const d of ['POST /api/tai-so', 'POST /api/hoan-tac', 'GET /api/ban-luu',
+    for (const d of ['POST /api/tai-so', 'POST /api/hoan-tac', 'POST /api/xoa-ky', 'GET /api/ban-luu',
       'GET /api/ky-co-don', 'GET /api/don-hang']) {
       ok('bảng API_ROUTES có ' + d, ma.includes('["' + d + '"'), true);
     }

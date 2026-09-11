@@ -44,6 +44,7 @@ const GOC = path.resolve(__dirname, '..');
        "anh là ai", đúng thứ tự CLAUDE.md đòi. */
     ok('POST /api/tai-so KHÔNG còn 405', (await goi('/api/tai-so', 'POST')).status, 401);
     ok('POST /api/hoan-tac KHÔNG còn 405', (await goi('/api/hoan-tac', 'POST')).status, 401);
+    ok('POST /api/xoa-ky KHÔNG còn 405', (await goi('/api/xoa-ky', 'POST')).status, 401);
 
     /* Nhưng chỉ POST — không phải mở toang cho mọi method. */
     ok('PUT /api/tai-so vẫn bị chặn 405', (await goi('/api/tai-so', 'PUT')).status, 405);

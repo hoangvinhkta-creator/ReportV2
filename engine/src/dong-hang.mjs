@@ -94,8 +94,9 @@ export const TRUONG_SO_SANH = [
  *
  *  Trả về ba cây RỜI NHAU, có chủ ý theo bảng phân quyền của CLAUDE.md:
  *    · `dong`  — không một chữ nào của khách. Vào `bc/dong`.
- *    · `khach` — tên/SĐT/địa chỉ, khoá theo số chứng từ. Vào `bc/khach`,
- *                nhánh đóng với MỌI vai.
+ *    · `khach` — tên/SĐT/địa chỉ, khoá theo (KỲ, số chứng từ) — hai tầng,
+ *                không phẳng — để Gateway đọc được đúng một kỳ thay vì kéo
+ *                cả lịch sử. Vào `bc/khach`, nhánh đóng với MỌI vai.
  *    · `imei`  — IMEI → đơn nào, để tra bảo hành. Vào `bc/imei`, cũng đóng.
  *
  *  Dòng thiếu số chứng từ bị bỏ — CÙNG luật với `gopSoBanHang()`, và đó
@@ -107,7 +108,7 @@ export function trichDongHang(bang) {
   if (!Array.isArray(bang)) throw new Error("dong-hang: can mot ma tran o");
 
   const dong = {};     // kỳ → { khoá → bản ghi }
-  const khach = {};    // số chứng từ → { ten, dien_thoai, dia_chi }
+  const khach = {};    // kỳ → số chứng từ → { ten, dien_thoai, dia_chi }
   const imei = {};     // imei → { so_ct, ngay, ten_hang }
   const pham_vi = {};  // kỳ → { tu, den, so_ngay, so_dong, so_don }
 
@@ -166,9 +167,16 @@ export function trichDongHang(bang) {
     const dien_thoai = chuanHoaChu(h[COT.dien_thoai]);
     const dia_chi = chuanHoaChu(h[COT.dia_chi]);
     if (ten_khach || dien_thoai || dia_chi) {
+      /* Khoá theo (kỳ, số chứng từ) — KHÔNG khoá thẳng theo số chứng từ như
+         bản đầu. Lý do: `bc/khach` bị Gateway đọc TOÀN BỘ mỗi lần màn "Đơn
+         hàng" mở một kỳ (đo trên sổ thật: 151 KB/tháng, phẳng nghĩa là con
+         số đó CỘNG DỒN mãi mãi — 12 tháng đã 1,76 MB, 36 tháng 5,29 MB, đọc
+         hết cho một kỳ chỉ cần một tháng). Theo kỳ thì mỗi lượt đọc luôn
+         bằng đúng một tháng, không phình theo thời gian. */
+      const theoKy = (khach[t.ky] ||= {});
       const k = deKhoa(so_ct);
-      const cu = khach[k];
-      khach[k] = {
+      const cu = theoKy[k];
+      theoKy[k] = {
         ten: ten_khach ?? (cu ? cu.ten : null) ?? "",
         dien_thoai: dien_thoai ?? (cu ? cu.dien_thoai : null) ?? "",
         dia_chi: dia_chi ?? (cu ? cu.dia_chi : null) ?? "",

@@ -26,8 +26,10 @@ từng kỳ. Tầng LINE đã chốt, đã code, và bảng ánh xạ đã nạp
 biểu đồ — bước 1 (Dashboard sức khoẻ kinh doanh) ĐÃ MERGE THẲNG
 (11/09/2026, PR #22 + #23, dựng lại bố cục ở PR #27 + #28). P3 LƯỢT 1 —
 đường tải sổ qua trình duyệt + danh sách đơn hàng theo line — ĐÃ MERGE
-THẲNG (11/09/2026, PR #24 + #25 + #26).
-CẢ HAI CHƯA ĐƯỢC CHỦ DỰ ÁN TỰ MỞ BẰNG MÁY THẬT ĐỂ XÁC NHẬN.**
+THẲNG (11/09/2026, PR #24 + #25 + #26, cộng một lượt sửa `bc/khach` theo
+kỳ + nút xoá kỳ ở mục "P3" dưới). CHỦ DỰ ÁN ĐÃ TỰ MỞ BẰNG MÁY THẬT VÀ XÁC
+NHẬN Dashboard theo line hiển thị đúng (ảnh chụp màn hình thật, sau khi
+publish rules và chạy lại `nap-line.mjs`).**
 
 **BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI (11/09/2026, PR #28) — đọc trước khi sửa
 `public/index.html`:** không còn lưới thẻ, không còn màn con nào để bấm ra
@@ -47,13 +49,11 @@ Báo cáo bán hàng            [Nhập sổ] [Đăng xuất]   ← nút trên t
 ```
 
 Chọn line nào khác Dashboard thì P3 ẩn cả ô `#o-dashboard`. "Nhập sổ" vẫn
-mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm.
+mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm — màn đó nay có thêm
+mục "Các kỳ đã có" (chọn kỳ, xoá kỳ) — xem "P3" dưới.
 
-> ⚠️ **HAI VIỆC TAY PHẢI LÀM TRƯỚC KHI DÙNG P3** (chi tiết ở mục "P3" dưới):
-> 1. Thêm hai nhánh `bc/dong` và `bc/backup` vào rules đang chạy —
->    `firebase-rules/bc.rules.json` đã có sẵn nội dung.
-> 2. Nạp lại bảng line: `node bin/nap-line.mjs --ghi --doc-lai` — hai tên
->    `FANPAGE`/`SHOPEE` đã đổi sang chữ HOA cho khớp sổ 09/2026.
+**Hai việc tay đã xong** (rules đã publish, `nap-line.mjs` đã chạy lại) —
+xem lịch sử ở "P3 — lượt 1" nếu cần tra lại.
 
 **Việc TRƯỚC MẶT tiếp theo:** P3 lượt 2 (nút sửa/xoá đơn + audit trail) —
 xem "P3 — lượt 2 còn lại". Hoặc P2(b) bước 2, xem "Việc còn lại của P2
@@ -451,34 +451,55 @@ MINH và màn hình hiện `—`, không hiện 0 — P4 lấy từ Tracking. C�
 `Lợi nhuận` MISA có in ra nhưng vô nghĩa (bằng đúng doanh số, giá vốn
 chưa nhập vào MISA) nên không dùng.
 
-#### Hai nhánh dữ liệu MỚI — chủ dự án phải thêm vào rules đang chạy
+#### Hai nhánh dữ liệu MỚI — ĐÃ PUBLISH lên rules đang chạy (11/09/2026)
 
 | Nhánh | Chứa gì | `.read` / `.write` |
 |---|---|---|
 | `bc/dong/<kỳ>/<khoá dòng>` | từng dòng hàng — KHÔNG một chữ nào của khách | `false` / `false` |
 | `bc/backup/<kỳ>/<mốc>` | ba bản lưu gần nhất của mỗi kỳ | `false` / `false` |
 
-PII vẫn đi đúng chỗ cũ: tên/SĐT/địa chỉ → `bc/khach` (khoá theo số chứng
-từ), IMEI → `bc/imei`. Đã kiểm trên sổ thật: **0 SĐT khách, 0 địa chỉ, 0
-tên khách lọt vào `bc/dong`**.
+PII vẫn đi đúng chỗ cũ: tên/SĐT/địa chỉ → `bc/khach`, IMEI → `bc/imei`.
+Đã kiểm trên sổ thật: **0 SĐT khách, 0 địa chỉ, 0 tên khách lọt vào
+`bc/dong`**. Nội dung đã publish qua PR #33 bên repo Tracking (rules dùng
+chung một project Firebase).
 
-Nội dung cần thêm nằm sẵn ở `firebase-rules/bc.rules.json`; cách làm ở
-`firebase-rules/README.md`. Đường tải sổ vẫn chạy được khi chưa thêm
-(Gateway ghi bằng service account, đi vòng qua rules) — khai tường minh là
-để một lần nới `bc` về sau không vô tình mở luôn hai nhánh này.
+Dung lượng đo thật: một tháng ≈ 390 KB (`bc/dong`) + 45 KB (`bc/imei`).
 
-Dung lượng đo thật: một tháng ≈ 390 KB (`bc/dong`) + 140 KB (`bc/khach`)
-+ 45 KB (`bc/imei`).
+**`bc/khach` đổi khoá SAU khi merge lượt 1 — SỬA NGAY TRONG NGÀY (11/09/2026):
+`bc/khach/<số chứng từ>` (phẳng) → `bc/khach/<kỳ>/<số chứng từ>` (theo
+kỳ).** Lượt 1 đọc TOÀN BỘ nhánh mỗi lần màn "Đơn hàng" mở MỘT kỳ — đo trên
+sổ thật: 151 KB/tháng, phẳng thì con số đó cộng dồn mãi mãi (12 tháng đã
+1,76 MB, 36 tháng 5,29 MB cho một lượt xem, dù chỉ cần đúng một tháng).
+Ghi cũng đổi theo: PUT đè trọn `bc/khach/<kỳ>` cùng lúc với `bc/ky` và
+`bc/dong`, KHÔNG còn PATCH phẳng — nhờ vậy một tác dụng phụ tốt: khách của
+một dòng đã biến mất khỏi lượt tải mới không còn MỒ CÔI lại trong Firebase
+(bản đầu để sót, vì PATCH chỉ thêm/sửa chứ không bao giờ xoá). `luuBanCu()`
+và `/api/hoan-tac` cũng lưu/khôi phục theo — hoàn tác thiếu khách sẽ hiện
+tên khách của LƯỢT SAU, trông như xong nhưng chỉ xong một nửa.
 
-#### Năm đường mới ở Gateway, và khoá dòng
+**Kỳ đã tải qua UI trước 11/09 (trưa) cần TẢI LẠI để `bc/khach` được xếp
+đúng kỳ** — dữ liệu cũ vẫn nằm phẳng ở `bc/khach/<số chứng từ>` (mồ côi,
+không nhánh nào đọc tới, vô hại) cho tới khi tải lại đúng kỳ đó.
+
+#### Sáu đường ở Gateway, và khoá dòng
 
 ```
-POST /api/tai-so      nhận ma trận ô → Engine → PUT bc/ky + bc/dong
-POST /api/hoan-tac    quay một kỳ về một bản lưu
+POST /api/tai-so      nhận ma trận ô → Engine → PUT bc/ky + bc/dong + bc/khach
+POST /api/hoan-tac    quay một kỳ về một bản lưu (kể cả khách)
+POST /api/xoa-ky      xoá TRỌN một kỳ — lưu bản cũ trước, hoàn tác được
 GET  /api/ban-luu     ba bản lưu của một kỳ (chỉ NHÃN, không kèm cây dòng)
 GET  /api/ky-co-don   kỳ nào có dòng hàng, gom theo năm → dựng tab
 GET  /api/don-hang    bảng đơn hàng ĐÃ TÍNH SẴN của (kỳ, line)
 ```
+
+**`POST /api/xoa-ky`** — thêm 11/09/2026 cùng lượt sửa `bc/khach`, giải
+quyết một lỗ đã thấy trước: tải nhầm sổ (một dòng gõ sai ngày thành
+"2031-03" chẳng hạn) sinh ra một kỳ rác nằm lại VĨNH VIỄN — kỳ mới tinh
+không có bản lưu nên hoàn tác không giúp gì, và trước lượt này không có
+cách nào gỡ nó khỏi tab năm bằng giao diện. Xoá vẫn LƯU BẢN CŨ trước (như
+mọi thao tác đè khác), nên xoá một kỳ ĐÃ CÓ dữ liệu thật vẫn cứu được qua
+chính `/api/hoan-tac` — không cần một đường cứu hộ riêng. Màn "Nhập sổ
+bán hàng" có thêm mục "Các kỳ đã có" để chọn kỳ và bấm xoá.
 
 Khoá dòng đúng công thức CLAUDE.md chốt: **(số chứng từ, tên hàng chuẩn
 hoá, lần xuất hiện thứ mấy trong chứng từ)**. "Lần thứ mấy" là cần thật
