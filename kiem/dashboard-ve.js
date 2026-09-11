@@ -90,8 +90,31 @@ function duLieuGia() {
     /* Ba field Engine còn giữ cho bản giao diện cũ — bản mới KHÔNG đọc, để
        rỗng ở đây chính là phép canh điều đó. */
     theo_ngay: {}, theo_nam: {}, hai_nam: [2026, 2025],
+    line: LINE_GIA,
   };
 }
+
+/* Khối xếp hạng Line. Dựng tay với số CỐ ĐỊNH, không suy từ chuỗi ngày ở
+   trên — bài kiểm phải biết trước thứ hạng đúng là gì thì mới canh được
+   thứ tự sắp xếp. "Khác" cố tình để doanh số CAO NHẤT: chủ dự án chốt nó
+   luôn xếp cuối, nên đây là ca bắt lỗi "sắp thuần theo giá trị". */
+const LINE_GIA = {
+  thu_tu: ['Nội thành', 'Tín Phát', 'Shopee', 'Khác'],
+  theo_thang: {
+    'Nội thành': { 2026: { 9: { doanh_so: 500, so_don: 5, khoa: '2026-09' } },
+                   2025: { 9: { doanh_so: 400, so_don: 4, khoa: '2025-09' } } },
+    'Tín Phát': { 2026: { 9: { doanh_so: 900, so_don: 9, khoa: '2026-09' } } },
+    Shopee: {},
+    'Khác': { 2026: { 9: { doanh_so: 9999, so_don: 99, khoa: '2026-09' } } },
+  },
+  theo_nam: {
+    'Nội thành': { 2026: { doanh_so: 5000, so_don: 50 }, 2025: { doanh_so: 4000, so_don: 40 } },
+    'Tín Phát': { 2026: { doanh_so: 9000, so_don: 90 } },
+    Shopee: {},
+    'Khác': { 2026: { doanh_so: 99999, so_don: 999 } },
+  },
+  tom_tat: { doanh_so_tong: 0, so_don_tong: 0, khop_tong: true },
+};
 
 /* Giá trị lớn nhất THẬT của một (năm, tháng) trong dữ liệu giả — để biết
    đỉnh trục đang dư bao nhiêu. */
@@ -306,7 +329,57 @@ function kiemMoc(ten, gtThat, doiSo) {
        mau.test(svgCua('Doanh số')) && mau.test(svgCua('Số đơn')), true);
   }
 
-  console.log('\n11) API lỗi → báo lỗi, KHÔNG vẽ số giả');
+  console.log('\n11) Bảng xếp hạng Line — cùng kỳ với biểu đồ ngay trên nó');
+  {
+    const xh = () => CAY.skXepHang.innerHTML;
+    const tenTheoThuTuVe = () =>
+      [...xh().matchAll(/text-anchor="end">([^<]*)</g)].map((m) => m[1]);
+
+    nutTab()[0].click();                              // tab Ngày
+    nutPhu()[8].click();                              // chọn lại T9/2026
+    ok('tiêu đề xếp hạng nói ĐÚNG kỳ biểu đồ đang vẽ',
+       /Xếp hạng theo Line · tháng 9\/2026 so với tháng 9\/2025/.test(xh()), true);
+    /* Sắp giảm dần theo kỳ đang xem, NHƯNG "Khác" (line cuối bảng) luôn ở
+       cuối dù doanh số cao nhất — chủ dự án chốt. Đây là ca bắt lỗi "sắp
+       thuần theo giá trị". */
+    ok('sắp giảm dần, line cuối bảng vẫn ở cuối dù số to nhất',
+       tenTheoThuTuVe(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
+    ok('line chưa có số vẫn có mặt (Shopee)', tenTheoThuTuVe().includes('Shopee'), true);
+    ok('mỗi line hai thanh: kỳ này + cùng kỳ năm trước',
+       (xh().match(/<rect/g) || []).length, 8);
+    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(xh()), false);
+    ok('rê chuột đọc được tiền đầy đủ và số đơn',
+       /<title>[^<]*Tín Phát[^<]*tháng 9\/2026[^<]*đ[^<]*đơn<\/title>/.test(xh()), true);
+
+    nutPhu()[1].click();                              // sang T2/2026 — tháng không có số
+    ok('đổi tháng → xếp hạng đổi kỳ theo',
+       /tháng 2\/2026 so với tháng 2\/2025/.test(xh()), true);
+    ok('tháng không có số → mọi thanh dài 0, không ném',
+       /width="0.0"/.test(xh()) && !/NaN/.test(xh()), true);
+
+    nutTab()[1].click();                              // tab Tháng → xếp hạng cả năm
+    ok('tab Tháng → xếp hạng theo NĂM', /Xếp hạng theo Line · năm 2026 so với năm 2025/.test(xh()), true);
+    ok('thứ hạng theo năm cũng giữ line cuối bảng ở cuối',
+       tenTheoThuTuVe(), ['Tín Phát', 'Nội thành', 'Shopee', 'Khác']);
+
+    nutTab()[2].click();                              // tab Quý → cũng cả năm
+    ok('tab Quý → vẫn xếp hạng theo năm', /năm 2026 so với năm 2025/.test(xh()), true);
+  }
+
+  console.log('\n12) Engine chưa trả khối `line` (giữa hai lượt deploy) → bỏ khối, KHÔNG nổ');
+  {
+    /* Bẫy số 4: có lúc Gateway cũ còn đang chạy và chưa trả `line`. Dashboard
+       phải thiếu đúng một khối chứ không được vỡ cả màn hình. */
+    const cu = LINE_GIA.thu_tu;
+    delete LINE_GIA.thu_tu;
+    cbAuth(null); cbAuth(NGUOI);
+    await nghi(); await nghi(); await nghi();
+    ok('vẫn vẽ được hai biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 2);
+    ok('khối xếp hạng để trống', CAY.skXepHang.innerHTML, '');
+    LINE_GIA.thu_tu = cu;
+  }
+
+  console.log('\n13) API lỗi → báo lỗi, KHÔNG vẽ số giả');
   {
     tuChoi = true;
     cbAuth(null);                                    // đăng xuất

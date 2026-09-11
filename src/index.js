@@ -160,21 +160,31 @@ const layMe = boc(true, async ({ nguoi, vai, env }) => {
 });
 
 /* =================== /api/bao-cao/suc-khoe ===================
- * "Màn mở" (P2(b) bước 1) — sức khoẻ kinh doanh toàn công ty: doanh số +
- * số đơn theo ngày/tháng/năm, kèm cùng kỳ năm trước. Đọc thẳng `bc/ky`
- * (chưa lọc theo Line, chưa khớp mã hàng — những việc đó là các bước sau),
- * gộp qua Engine, trả cây kết quả ĐÃ TÍNH SẴN cho màn hình vẽ (LUẬT SỐ 1).
+ * Dashboard — sức khoẻ kinh doanh toàn công ty: doanh số + số đơn theo
+ * ngày/tháng/quý, kèm cùng kỳ năm trước, VÀ bảng xếp hạng theo LINE. Đọc
+ * `bc/ky` + bảng line ở `bc/quyetdinh/line`, gộp qua Engine, trả cây kết
+ * quả ĐÃ TÍNH SẴN cho màn hình vẽ (LUẬT SỐ 1).
  *
- * Nguồn hỏng (đọc `bc/ky` lỗi, hoặc Engine ném lỗi) → 503, KHÔNG bao giờ
- * trả cây rỗng giả làm "chưa có đơn nào" (CLAUDE.md — "Nguồn hỏng thì BÁO
- * LỖI").
+ * Trả MỘT lượt đủ cả hai phần, không tách hai endpoint: màn hình đổi tab
+ * là vẽ lại ngay từ dữ liệu đã nhớ, không phải chờ mạng lần nữa.
+ *
+ * Nguồn hỏng (đọc `bc/ky` lỗi, bảng line thiếu hay sai, Engine ném lỗi) →
+ * 503, KHÔNG bao giờ trả cây rỗng giả làm "chưa có đơn nào" (CLAUDE.md —
+ * "Nguồn hỏng thì BÁO LỖI"). Bảng line sai thì nổ CẢ endpoint chứ không
+ * lặng lẽ bỏ riêng phần xếp hạng: bảng đó là thứ người sửa tay trên
+ * Console, sai là phải thấy ngay.
  */
 const laySucKhoeCongTy = boc(true, async ({ env }) => {
   const cayKy = await docDb("bc/ky", env);
   if (!cayKy.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-ky:" + cayKy.ma);
+  const bangLine = await docDb("bc/quyetdinh/line", env);
+  if (!bangLine.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bang-line:" + bangLine.ma);
+  if (!bangLine.val) throw new LoiXacThuc(503, "thieu-bang-line");
   if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
   try {
-    return await env.REPORT_ENGINE.gopSucKhoeCongTy(cayKy.val || {});
+    const chung = await env.REPORT_ENGINE.gopSucKhoeCongTy(cayKy.val || {});
+    const line = await env.REPORT_ENGINE.gopLineTheoThoiGian(cayKy.val || {}, bangLine.val);
+    return { ...chung, line };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-suc-khoe:" + (e && e.message));
   }
