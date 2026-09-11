@@ -31,26 +31,55 @@ kỳ + nút xoá kỳ ở mục "P3" dưới). CHỦ DỰ ÁN ĐÃ TỰ MỞ B�
 NHẬN Dashboard theo line hiển thị đúng (ảnh chụp màn hình thật, sau khi
 publish rules và chạy lại `nap-line.mjs`).**
 
-**BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI (11/09/2026, PR #28) — đọc trước khi sửa
-`public/index.html`:** không còn lưới thẻ, không còn màn con nào để bấm ra
-bấm vào. Đăng nhập xong là ra THẲNG trang báo cáo:
+**BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI LẦN 2 (11/09/2026, PR #28 rồi dựng lại ở
+lượt bố cục) — đọc trước khi sửa `public/index.html`:** không còn lưới
+thẻ. Đăng nhập xong ra THẲNG tab [Báo cáo doanh số]; biểu đồ nay nằm sau
+tab [Biểu đồ] và **không tự hiện ra lúc đăng nhập nữa**.
 
 ```
-Báo cáo bán hàng            [Nhập sổ] [Đăng xuất]   ← nút trên thanh tiêu đề
-[2025] [2026]                                       ← tab năm      (P3)
-  [Dashboard] [Nội thành] [Tín Phát] …              ← tab con      (P3)
-    ┌─ #o-dashboard ────────────────────────┐
-    │ [Ngày] [Tháng] [Quý]                  │       ← tab đơn vị   (P2b)
-    │ biểu đồ                               │
-    │ [T1][T2]…[T12]  /  [2026][2025]  /  — │       ← dải phụ đổi theo tab
-    └───────────────────────────────────────┘
-    [T07] [T08] [T09]                               ← chọn tháng   (P3)
-    bảng đơn hàng của line đang chọn                (P3)
+Báo cáo bán hàng                    [Nhập sổ] [Đăng xuất]
+[Báo cáo doanh số] [Biểu đồ]                        ← tab CHÍNH   (P3)
+│
+├─ #manBaoCao                                                     (P3)
+│    [2025][2026]      [T1][T2]…[T12]               ← CÙNG một hàng
+│    [Tổng hợp][Tín Phát][Tổng kho]…[Ẩn/hiện line 0đ]
+│    bảng đơn hàng 19 cột của line đang chọn
+│
+└─ #manBieuDo (hidden sẵn)                                        (P2b)
+     ┌─ #o-dashboard ────────────────────────┐
+     │ [Ngày] [Tháng] [Quý]                  │      ← tab đơn vị  (P2b)
+     │ biểu đồ                               │
+     │ [T1][T2]…[T12]  /  [2026][2025]  /  — │
+     └───────────────────────────────────────┘
 ```
 
-Chọn line nào khác Dashboard thì P3 ẩn cả ô `#o-dashboard`. "Nhập sổ" vẫn
-mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm — màn đó nay có thêm
-mục "Các kỳ đã có" (chọn kỳ, xoá kỳ) — xem "P3" dưới.
+Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
+
+- Đủ 12 nút tháng; tháng chưa có dữ liệu thì `disabled`. Vẽ thiếu tháng
+  làm người dùng không phân biệt được "chưa tải lên" với "không có đơn".
+- Line bị giấu khi **không đơn nào VÀ không dòng nào** — cố ý KHÔNG lấy
+  `doanh_so === 0`: Shopee T09/2026 có 2 đơn mà 0 đ, đó là dữ liệu thật
+  cần soi. Nút cuối hàng bật/tắt các line bị giấu.
+- Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase. Muốn đổi thứ
+  tự hiển thị thì sửa `thu_tu` (là DỮ LIỆU), không sửa mã.
+
+Tab đầu là **[Tổng hợp]** — đích cuối là chép lại sheet "Summary" của file
+báo cáo tay (tổng đơn, tổng SP, doanh thu quy đổi, tỉ suất lợi nhuận,
+target, thưởng, ngày công, lương). Lượt này mới **xếp chỗ** cho tab, vẫn
+hiện bảng line như cũ: phần lớn cột ấy chưa có nguồn (giá vốn ở P5,
+target/lương chưa có nhánh nào lưu).
+
+Bảng đơn hàng nay **19 cột**: `[Doanh số quy đổi][Ghi chú]` chen giữa
+`[Tổng bán]`/`[Lợi nhuận]` và `[Tên khách hàng]` ("Ghi chú" DỜI từ cuối
+lên, không nhân đôi), hai cột icon `[Sửa dòng][Xoá dòng]` ở cuối cùng —
+còn `disabled` cho tới P3 lượt 2. Bốn cột `[Tên khách hàng][Số điện
+thoại][Địa chỉ][IMEI]` thu hẹp và **cắt** chữ thừa (`…`), không xuống
+dòng; chữ đầy đủ giữ ở `title`. Vì bố cục bảng tự động bỏ qua `max-width`
+đặt thẳng lên `<td>`, nội dung phải bọc trong một `<span>` khối — đó là
+hàm `oHep()` trong `don-hang.js`.
+
+"Nhập sổ" vẫn mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm — màn đó
+nay có thêm mục "Các kỳ đã có" (chọn kỳ, xoá kỳ) — xem "P3" dưới.
 
 **Hai việc tay đã xong** (rules đã publish, `nap-line.mjs` đã chạy lại) —
 xem lịch sử ở "P3 — lượt 1" nếu cần tra lại.
@@ -557,10 +586,21 @@ nên khoá thay ký tự Firebase cấm bằng `~` và cắt kèm dấu vân.
 
 #### Quy ước cho P2(b): ô `#o-dashboard`
 
-Màn "Đơn hàng theo line" có tab năm → tab con (Dashboard + từng line) →
-chọn tháng. Tab **Dashboard** chứa sẵn một ô trống `#o-dashboard` —
-**P2(b) sở hữu nội dung ô đó**, P3 sở hữu khung tab. P3 không vẽ biểu đồ
-nào ở đó, chỉ liệt kê line của tháng.
+Ô trống `#o-dashboard` — **P2(b) sở hữu nội dung ô đó**, P3 sở hữu khung
+tab. P3 không vẽ biểu đồ nào ở đó.
+
+**Ô đã DỜI (lượt bố cục 11/09/2026):** nó nằm trong `<section
+id="manBieuDo" hidden>`, sau tab chính [Biểu đồ], chứ không còn trong tab
+con "Dashboard" của bảng đơn hàng nữa. Với `suc-khoe.js` thì không đổi gì
+— nó tìm theo id và vẽ SVG có `viewBox` cố định nên nằm trong khối đang ẩn
+vẫn ra đúng kích thước. P3 chỉ bật/tắt `#manBieuDo`, không đụng vào bên
+trong.
+
+Giá phải trả, và **việc để lại cho P2(b)**: `suc-khoe.js` vẫn tự chạy lúc
+`onAuthStateChanged`, nên mỗi lần đăng nhập có **một lượt gọi
+`/api/bao-cao/suc-khoe` thừa** nếu người dùng không mở tab Biểu đồ. Sửa
+đúng chỗ là hoãn lượt vẽ tới lần đầu mở tab — nhưng đó là file của nhánh
+P2(b), P3 không đụng vào.
 
 Có thêm hàng CHỌN THÁNG mà file tay không có, vì dữ liệu lưu theo kỳ và
 một tháng nặng ~390 KB — mở thẳng cả năm là kéo về ~4,7 MB cho một lượt
@@ -572,7 +612,7 @@ xem.
 - `public/suc-khoe.js` chỉ đụng BÊN TRONG `#o-dashboard`, không bật/tắt màn
   nào, không đụng `#tabNam` / `#tabLine` / `#tabThang` / `#veDonHang`.
   Muốn dời ô đi đâu trong khung thì cứ dời — nó tìm theo id, không theo
-  chỗ đứng.
+  chỗ đứng. (Đã dời thật ở lượt bố cục: nay nằm trong `#manBieuDo`.)
 - Nó tự chạy bằng `firebase.auth().onAuthStateChanged`, không chờ ai gọi
   sang, và đọc `GET /api/bao-cao/suc-khoe` (nguồn là `bc/ky`, KHÁC nguồn
   `bc/dong` của bảng đơn hàng). Nên Dashboard có đủ 2025 + 2026 kể cả khi

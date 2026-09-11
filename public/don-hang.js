@@ -1,19 +1,31 @@
-/* Màn "Đơn hàng" (P3) — tab theo NĂM, tab con theo LINE, bảng chia theo NGÀY.
+/* Màn chủ (P3) — hai tab chính, rồi năm/tháng, rồi line, rồi bảng đơn.
  *
- * Bố cục chủ dự án chốt 11/09/2026, lấy theo đúng file báo cáo tay đang
- * dùng (`Báo cáo Kinh doanh 2026.xlsx`, 58 sheet kiểu "08.2026 Tín Phát"):
+ * Bố cục chủ dự án chốt lại 11/09/2026:
  *
- *   [2025] [2026]                      ← tab năm
- *     [Dashboard] [Nội thành] [...]    ← tab con: Dashboard + từng line
- *       [T07] [T08] [T09]              ← chọn tháng
+ *   [Báo cáo doanh số] [Biểu đồ]              ← tab CHÍNH
+ *     [2025][2026]   [T1][T2]…[T12]          ← cùng MỘT hàng, cách nhau
+ *     [Tổng hợp][Tín Phát][…][Ẩn/hiện line 0đ]
  *       bảng đơn hàng, nhóm theo ngày rồi theo số BH
  *
- * Vì sao có thêm hàng CHỌN THÁNG mà file tay không có: dữ liệu lưu theo kỳ
- * (`bc/dong/<YYYY-MM>`), một tháng nặng ~390 KB. Mở thẳng cả năm là kéo về
- * ~4,7 MB cho một lượt xem — hàng tháng giữ mỗi lượt mở ở đúng một lượt đọc.
+ * Ba điều đáng nói vì sau này dễ sửa nhầm:
+ *
+ * · Đủ 12 nút tháng, tháng không có dữ liệu thì `disabled`. Trước đây chỉ vẽ
+ *   tháng CÓ dữ liệu, nên một năm mới nạp được hai tháng trông như thể cả
+ *   năm chỉ có hai tháng — người dùng không phân biệt được "chưa tải" với
+ *   "không có đơn".
+ *
+ * · Line doanh số 0 bị GIẤU sau một nút bật/tắt, và điều kiện giấu là
+ *   "không đơn nào VÀ không dòng nào", chứ không phải "doanh số = 0". Shopee
+ *   tháng 09/2026 có 2 đơn nhưng 0 đ; đó là dữ liệu thật cần nhìn thấy, giấu
+ *   đi là giấu mất một sai lệch đáng ngờ.
+ *
+ * · Hàng CHỌN THÁNG không có trong file báo cáo tay, nhưng dữ liệu lưu theo
+ *   kỳ (`bc/dong/<YYYY-MM>`), một tháng nặng ~390 KB. Mở thẳng cả năm là kéo
+ *   về ~4,7 MB cho một lượt xem — chọn tháng giữ mỗi lượt mở ở đúng một lượt
+ *   đọc.
  *
  * Ô `#o-dashboard` để TRỐNG cho nhánh P2(b) lắp biểu đồ vào (quy ước ghi ở
- * ROADMAP.md). File này không vẽ biểu đồ nào.
+ * ROADMAP.md). File này không vẽ biểu đồ nào, chỉ bật/tắt cái hộp bọc nó.
  *
  * LUẬT SỐ 1: mọi con số trong bảng — tổng bán, lợi nhuận, dòng chiết khấu
  * gộp — đều do Engine tính sẵn và trả về (`engine/src/dong-hang.mjs`). File
@@ -58,7 +70,6 @@
     const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return m ? m[3] + "/" + m[2] + "/" + m[1] : String(d || "");
   }
-  const thangCuaKy = (ky) => "T" + String(ky).slice(5, 7);
 
   function el(the, lop, chu) {
     const e = document.createElement(the);
@@ -71,12 +82,29 @@
    *  đồng" với "chưa biết" là hai chuyện hoàn toàn khác nhau. */
   const o = (v, lop) => el("td", lop, v === null || v === undefined || v === "" ? "—" : v);
 
-  /* 16 cột chủ dự án chốt. Sáu cột cuối bảng dưới đây chờ P4/P5 điền. */
-  const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
-    "Tổng bán", "Lợi nhuận", "Tên khách hàng", "Số điện thoại", "Địa chỉ",
-    "Hãng", "Ngành hàng", "IMEI", "Ghi chú"];
+  /** Ô HẸP: chữ dài bị cắt bớt chứ không ngắt xuống dòng (chủ dự án chốt
+   *  11/09/2026). Phải bọc trong một <span> khối thì `max-width` mới có tác
+   *  dụng — bố cục bảng tự động bỏ qua `max-width` đặt thẳng lên <td>. Chữ
+   *  đầy đủ giữ ở `title` để rê chuột còn đọc được. */
+  function oHep(v, lop) {
+    const rong = v === null || v === undefined || v === "" ? "—" : String(v);
+    const td = el("td", "oHep " + lop);
+    const s = el("span", null, rong);
+    if (rong !== "—") s.title = rong;
+    td.appendChild(s);
+    return td;
+  }
 
-  const trangThai = { nam: null, line: null, ky: null, dsKy: null };
+  /* 19 cột chủ dự án chốt 11/09/2026. "Doanh số quy đổi" chờ P4/P5 (công
+     thức quy đổi là nghiệp vụ, nằm ở Engine — LUẬT SỐ 1), cùng với giá nhập,
+     lợi nhuận, nơi nhập, hãng, ngành hàng. Hai cột icon cuối là Sửa/Xoá
+     dòng, còn khoá cho tới P3 lượt 2. */
+  const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
+    "Tổng bán", "Lợi nhuận", "Doanh số quy đổi", "Ghi chú",
+    "Tên khách hàng", "Số điện thoại", "Địa chỉ",
+    "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
+
+  const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false };
 
   async function goi(duong) {
     const user = firebase.auth().currentUser;
@@ -88,6 +116,21 @@
        chú thích đầy đủ ở hàm cùng tên trong tai-len.js. */
     if (!r.ok) throw new Error((than.loi || ("HTTP " + r.status)) + (than.rid ? " (mã: " + than.rid + ")" : ""));
     return than;
+  }
+
+  /** Nút Sửa/Xoá của một dòng. Còn `disabled` ở lượt này: máy khoá đã có và
+   *  đã được kiểm (`doiChieuKy` giữ dòng đã sửa tay khỏi bị đè), nhưng đường
+   *  ghi `bc/quyetdinh/dong/<kỳ>` là việc của P3 lượt 2. Hiện ra mờ để thấy
+   *  trước chỗ chứ không giả vờ bấm được rồi im lặng không làm gì. */
+  function nutDong(bieuTuong, nhan) {
+    const td = el("td", "oIcon");
+    const b = el("button", "nutIcon", bieuTuong);
+    b.type = "button";
+    b.disabled = true;
+    b.title = nhan + " — mở ở lượt sau";
+    b.setAttribute("aria-label", nhan);
+    td.appendChild(b);
+    return td;
   }
 
   /* ---- Vẽ bảng đơn hàng của một (kỳ, line) ---- */
@@ -143,13 +186,19 @@
           tr.appendChild(o(nghin(d.gia_ban), "oSo"));
           tr.appendChild(o(nghin(d.tong_ban), "oSo"));
           tr.appendChild(o(d.loi_nhuan === null ? null : nghin(d.loi_nhuan), "oSo"));
-          tr.appendChild(o(dauDon ? don.ten_khach : ""));
-          tr.appendChild(o(dauDon ? don.dien_thoai : ""));
-          tr.appendChild(o(dauDon ? don.dia_chi : "", "oDiaChi"));
+          /* Quy đổi là một công thức nghiệp vụ — Engine tính, màn hình chỉ
+             đọc field. Chưa có nguồn thì để "—", không bao giờ tự nhân ở đây. */
+          tr.appendChild(o(d.doanh_so_quy_doi === null || d.doanh_so_quy_doi === undefined
+            ? null : nghin(d.doanh_so_quy_doi), "oSo"));
+          tr.appendChild(o(d.ghi_chu));
+          tr.appendChild(oHep(dauDon ? don.ten_khach : "", "oKhach"));
+          tr.appendChild(oHep(dauDon ? don.dien_thoai : "", "oDienThoai"));
+          tr.appendChild(oHep(dauDon ? don.dia_chi : "", "oDiaChi"));
           tr.appendChild(o(d.hang));
           tr.appendChild(o(d.nganh_hang));
-          tr.appendChild(o(d.imei));
-          tr.appendChild(o(d.ghi_chu));
+          tr.appendChild(oHep(d.imei, "oImei"));
+          tr.appendChild(nutDong("✏️", "Sửa dòng"));
+          tr.appendChild(nutDong("🗑", "Xoá dòng"));
           tbody.appendChild(tr);
           dauDon = false;
         }
@@ -169,38 +218,73 @@
     khung.appendChild(boc);
 
     khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
-      + "Giá nhập, lợi nhuận, nơi nhập, hãng, ngành hàng lấy từ Tracking ở P4 — nay còn trống. "
-      + "Chiết khấu của cả đơn gộp thành một dòng mang dấu âm."));
+      + "Giá nhập, lợi nhuận, doanh số quy đổi, nơi nhập, hãng, ngành hàng lấy từ Tracking ở P4/P5 "
+      + "— nay còn trống. Chiết khấu của cả đơn gộp thành một dòng mang dấu âm. "
+      + "Nút Sửa/Xoá dòng mở ở lượt sau."));
   }
 
-  /* ---- Tab con: Dashboard + từng line ---- */
+  /* ---- Tab con: Tổng hợp + từng line ---- */
+
+  /** Line "rỗng" = không đơn nào VÀ không dòng nào. Cố ý KHÔNG lấy
+   *  `doanh_so === 0`: Shopee tháng 09/2026 có 2 đơn mà doanh số 0 đ — giấu
+   *  nó đi là giấu mất đúng thứ cần soi. */
+  const lineRong = (l) => !l || ((l.so_don || 0) === 0 && (l.so_dong || 0) === 0);
 
   function veTabLine(tom_tat_line) {
     const hang = $("tabLine");
     hang.innerHTML = "";
 
-    const nutDash = el("button", "tabNut" + (trangThai.line === null ? " tabDang" : ""), "Dashboard");
-    nutDash.type = "button";
-    nutDash.addEventListener("click", () => { trangThai.line = null; taiKy(); });
-    hang.appendChild(nutDash);
+    /* Tab đầu tiên là [Tổng hợp] — chủ dự án chốt 11/09/2026. */
+    const nutTh = el("button", "tabNut" + (trangThai.line === null ? " tabDang" : ""), "Tổng hợp");
+    nutTh.type = "button";
+    nutTh.addEventListener("click", () => { trangThai.line = null; taiKy(); });
+    hang.appendChild(nutTh);
 
+    /* Thứ tự lấy theo `thu_tu` của bảng line trên Firebase, không theo thứ tự
+       gõ tay ở đâu đó trong file này: bảng line là DỮ LIỆU, đổi thứ tự hiển
+       thị chỉ cần sửa `thu_tu` chứ không cần đụng vào mã. */
+    let daGiau = 0;
     for (const ten of tom_tat_line.thu_tu) {
-      const l = tom_tat_line.line[ten] || { so_don: 0 };
+      const l = tom_tat_line.line[ten] || { so_don: 0, so_dong: 0 };
+      /* Line đang mở thì luôn hiện, kể cả khi rỗng — nếu không, bấm vào một
+         line rồi nó tự biến mất khỏi hàng tab là chuyện khó hiểu. */
+      if (lineRong(l) && !trangThai.hienLine0 && trangThai.line !== ten) { daGiau++; continue; }
       const nut = el("button", "tabNut" + (trangThai.line === ten ? " tabDang" : ""),
         ten + " (" + soNguyen(l.so_don) + ")");
       nut.type = "button";
       nut.addEventListener("click", () => { trangThai.line = ten; taiKy(); });
       hang.appendChild(nut);
     }
+
+    const soRong = tom_tat_line.thu_tu.filter((t) => lineRong(tom_tat_line.line[t])).length;
+    if (soRong) {
+      const nutAn = el("button", "tabNut tabNho",
+        trangThai.hienLine0
+          ? "Ẩn " + soNguyen(soRong) + " line chưa có đơn"
+          : "Hiện thêm " + soNguyen(daGiau || soRong) + " line chưa có đơn");
+      nutAn.type = "button";
+      nutAn.addEventListener("click", () => {
+        trangThai.hienLine0 = !trangThai.hienLine0;
+        veTabLine(tom_tat_line);
+      });
+      hang.appendChild(nutAn);
+    }
   }
 
+  /** Đủ 12 nút tháng, tháng chưa có dữ liệu thì `disabled`. Vẽ thiếu tháng
+   *  làm người dùng không phân biệt được "chưa tải lên" với "không có đơn". */
   function veThang() {
     const hang = $("tabThang");
     hang.innerHTML = "";
-    const ds = (trangThai.dsKy.nam[trangThai.nam] || []);
-    for (const ky of ds) {
-      const nut = el("button", "tabNut" + (trangThai.ky === ky ? " tabDang" : ""), thangCuaKy(ky));
+    if (!trangThai.nam) return;
+    const coDuLieu = new Set(trangThai.dsKy.nam[trangThai.nam] || []);
+    for (let t = 1; t <= 12; t++) {
+      const ky = trangThai.nam + "-" + String(t).padStart(2, "0");
+      const co = coDuLieu.has(ky);
+      const nut = el("button", "tabNut tabNho" + (trangThai.ky === ky ? " tabDang" : ""), "T" + t);
       nut.type = "button";
+      nut.disabled = !co;
+      if (!co) nut.title = "Tháng " + t + "/" + trangThai.nam + " chưa có dòng hàng nào được tải lên";
       nut.addEventListener("click", () => { trangThai.ky = ky; taiKy(); });
       hang.appendChild(nut);
     }
@@ -226,7 +310,6 @@
     loi.textContent = "";
     veTabNam();
     veThang();
-    $("oDashboardBoc").hidden = trangThai.line !== null;
 
     if (!trangThai.ky) {
       ve.innerHTML = "";
@@ -242,8 +325,12 @@
       const kq = await goi(duong);
       veTabLine(kq.tom_tat_line);
       if (trangThai.line === null) {
-        /* Tab Dashboard: chỉ liệt kê line của tháng. Biểu đồ là của P2(b),
-           lắp vào `#o-dashboard` — không vẽ chồng lên nhau. */
+        /* Tab [Tổng hợp]. Đích cuối là chép lại sheet "Summary" của file báo
+           cáo tay: Tổng đơn, Tổng SP, Doanh thu quy đổi, Tỉ suất lợi nhuận,
+           Target, Thưởng, Lương… Phần lớn cột ấy CHƯA có nguồn dữ liệu nào
+           (giá vốn ở P5, target/lương chưa có nhánh nào lưu), nên lượt này
+           chỉ dựng đúng chỗ đứng của tab và giữ bảng line sẵn có. Không bịa
+           cột rỗng cho đủ hình. */
         ve.innerHTML = "";
         const b = el("table", "bangNho");
         const tr = el("tr");
@@ -259,6 +346,10 @@
           b.appendChild(r);
         }
         ve.appendChild(b);
+        ve.appendChild(el("p", "viDu", "Tab Tổng hợp sẽ dựng theo sheet “Summary” của file báo cáo "
+          + "tay (tổng đơn, doanh thu quy đổi, tỉ suất lợi nhuận, target, thưởng, lương). "
+          + "Các cột đó cần giá vốn (P5) và một nhánh lưu target/lương chưa có — lượt này mới xếp "
+          + "chỗ cho tab."));
       } else {
         veBang(kq);
       }
@@ -277,6 +368,7 @@
       if (!trangThai.dsKy.thu_tu_nam.length) {
         ve.innerHTML = "";
         $("tabNam").innerHTML = "";
+        $("tabThang").innerHTML = "";
         /* Đây là trạng thái ĐÚNG cho 20 kỳ legacy (01/2025–08/2026): chúng
            được nạp bằng script ở P2 nên chỉ có tổng theo ngày, không có
            dòng hàng nào. Chủ dự án chốt 11/09/2026 KHÔNG bơm ngược — dòng
@@ -300,17 +392,35 @@
     }
   }
 
+  /* ---- Hai tab CHÍNH: [Báo cáo doanh số] | [Biểu đồ] ---- */
+
+  /* Chỉ BẬT/TẮT chứ không dựng lại: `#o-dashboard` do suc-khoe.js (nhánh
+     P2(b)) tự vẽ ngay lúc đăng nhập và vẽ bằng SVG có viewBox cố định, nên
+     nằm trong khối đang ẩn vẫn ra đúng kích thước. Đổi sang "chỉ vẽ khi mở
+     tab" là phải sửa suc-khoe.js — file của nhánh kia, quy ước là không
+     đụng vào (ROADMAP.md). Giá phải trả: một lượt gọi API thừa mỗi lần đăng
+     nhập nếu người dùng không mở tab Biểu đồ. */
+  function doiManChinh(hienBieuDo) {
+    $("manBaoCao").hidden = hienBieuDo;
+    $("manBieuDo").hidden = !hienBieuDo;
+    $("nutManBaoCao").classList.toggle("tabDang", !hienBieuDo);
+    $("nutManBieuDo").classList.toggle("tabDang", hienBieuDo);
+  }
+
   /* Màn này GIỜ LÀ TRANG CHỦ (chủ dự án chốt 11/09/2026: bỏ lưới thẻ, đăng
-     nhập xong ra thẳng Dashboard), nên không còn thẻ để bấm mở và không còn
-     nút "Quay lại" để đóng. Nghe thẳng Firebase Auth thay vì chờ khối
-     <script> inline gọi sang — khối đó là của phần đăng nhập, quy ước là để
-     yên (ROADMAP.md). */
+     nhập xong ra thẳng [Báo cáo doanh số]), nên không còn thẻ để bấm mở và
+     không còn nút "Quay lại" để đóng. Nghe thẳng Firebase Auth thay vì chờ
+     khối <script> inline gọi sang — khối đó là của phần đăng nhập, quy ước
+     là để yên (ROADMAP.md). */
   let daMo = false;
   document.addEventListener("DOMContentLoaded", function () {
+    $("nutManBaoCao").addEventListener("click", () => doiManChinh(false));
+    $("nutManBieuDo").addEventListener("click", () => doiManChinh(true));
     firebase.auth().onAuthStateChanged(function (user) {
       if (!user) { daMo = false; return; }
       if (daMo) return;          // token tự làm mới không được kéo thêm một lượt tải
       daMo = true;
+      doiManChinh(false);        // mỗi lần đăng nhập luôn quay về tab báo cáo
       moMan();
     });
   });
