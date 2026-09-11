@@ -354,10 +354,14 @@ Hai điều chốt thêm lúc dựng lại (11/09/2026):
 1. Chủ dự án tự mở bằng máy thật, xác nhận số đúng — CHƯA làm, đây là
    điều kiện ra khỏi bước 1 thật sự (xem "Nguyên tắc làm việc" đầu file:
    deploy rồi tự xác nhận, không phải "code xong" là xong).
-2. Thêm biểu đồ **số đơn hàng** — cùng cấu trúc 3 tab, cùng hai đường —
-   cạnh biểu đồ doanh số (KHÔNG gộp vào một biểu đồ dual-axis, hai thẻ
-   riêng — chủ dự án chốt lúc duyệt mockup). Số đã có sẵn: mỗi ô của
-   `theo_*` đều mang `so_don` bên cạnh `doanh_so`, không phải sửa Engine.
+2. ~~Biểu đồ **số đơn hàng**~~ — **XONG 11/09/2026 (PR #31).** Hai biểu đồ
+   riêng xếp dọc trong `#o-dashboard`, dùng chung một dải tab đơn vị, một
+   dải nút phụ và một chú giải; KHÔNG gộp hai trục dọc vào một khung. Không
+   phải sửa Engine — `so_don` đã nằm sẵn cạnh `doanh_so` ở mọi ô.
+   Kèm sửa trục dọc cho cả hai: bước chia làm tròn về 1/2/5 × 10ⁿ (trước ra
+   `6.667`, `13.333`), ép bước NGUYÊN cho số đơn, và có sàn 3.000 đ cho
+   trục tiền vì cả kỳ dưới 3.000 đ thì bốn mốc cùng ra "0" sau khi chia
+   nghìn — ca có thật, sổ 09/2026 có đơn bị chiết khấu hết thành 0 đ.
 3. Vá `gopTheoLine()` cũ (hoặc thay hẳn) bằng bản dùng
    `gop-theo-thoi-gian.mjs::gopCayKyThanhChuoiNgay(cayKy, locNhanVien)` —
    lọc nhân viên theo từng Line (`line.mjs::xepLine()`/`BANG_LINE_HAT_GIONG`)
