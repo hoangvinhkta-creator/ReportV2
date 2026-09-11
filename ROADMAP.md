@@ -38,7 +38,7 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
 | Rules `bc/` | đã publish live | `bc/ky`, `bc/quyetdinh` `.read` theo `vai`; `bc/khach`, `bc/imei` đóng hẳn |
 | CI | `.github/workflows/kiem.yml` | `npm test` mỗi lần push |
 
-`npm test`: 6 bộ, 122 đạt, 0 hỏng.
+`npm test`: 7 bộ, 127 đạt, 0 hỏng.
 
 ### Năm cái bẫy đã trả giá ở P1 — đọc trước khi chạm vào chúng
 
@@ -75,8 +75,14 @@ qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xá
 
    Muốn deploy tay (ví dụ lúc gỡ lỗi) thì vẫn được: `git pull origin main
    && wrangler deploy`, và `cd engine && wrangler deploy` nếu đụng Engine.
-   Deploy Engine TRƯỚC Gateway nếu cả hai cùng đổi — Gateway khai
-   `[[services]]` trỏ vào Engine.
+
+   **Cạm bẫy của việc nối git: hai Worker build SONG SONG, không theo thứ
+   tự.** Một lần merge đụng cả hai thì Gateway có thể lên trước Engine, và
+   trong vài chục giây đó Gateway mới gọi một hàm Engine chưa tồn tại →
+   lỗi thật cho người đang dùng. P1 không dính vì Engine chỉ có
+   `phienBan()`, nhưng từ P2 (Engine bắt đầu có hàm nghiệp vụ thật) thì
+   phải để ý: **thêm hàm mới vào Engine và merge TRƯỚC**, lượt merge sau
+   mới cho Gateway gọi nó. Đổi tên hoặc xoá hàm Engine thì làm ngược lại.
 
 5. **Thêm tên miền mới phải khai ở API key.** Browser key
    `AIzaSyD2W_zJSmFXVgtlnr3aGAbYbO07bhpWXds` (Google Cloud Console → APIs
