@@ -434,8 +434,11 @@ const GOC = path.resolve(__dirname, '..');
     ok('màn hình không chứa bộ số dạng máy đọc được',
        /\b(2700000|15000000|1300000)\b/.test(UI), false);
     ok('màn hình có nút nạp', /nutNapKpi/.test(UI), true);
+    /* Từ 12/09/2026 chuỗi vai chỉ được viết ra ĐÚNG MỘT LẦN trong cả file
+       (`laQuanTri()`), nên phép hỏi ở đây đi qua hàm ấy chứ không lặp lại
+       chuỗi — rải chuỗi mỗi nơi một bản là mời một chỗ gõ nhầm nằm im. */
     ok('  · chỉ hiện cho Quản trị',
-       /thieu_bang[\s\S]{0,900}?VAI_BAO_CAO === "quantri"/.test(UI), true);
+       /thieu_bang[\s\S]{0,900}?laQuanTri\(\)/.test(UI), true);
     ok('  · và nói rõ vì sao Quản lí không thấy nút',
        /Chỉ Quản trị nạp được/.test(UI), true);
     /* Nút khoá trong lúc gọi — bấm hai lần liên tiếp là hai lượt ghi chồng
@@ -584,11 +587,27 @@ const GOC = path.resolve(__dirname, '..');
     ok('chiết khấu/phụ phí vẫn hiện nguyên câu (không có ma_bang_gia)',
        /la_chiet_khau \|\| d\.la_phu_phi_co_dinh\) \{ td\.className = "oTen"/.test(UI), true);
 
-    /* Bảng vẫn 19 cột, bề rộng không đổi: cột này còn phải chứa câu tên dài
-       cho những dòng CHƯA khớp, nên không hẹp lại được. */
+    /* Bảng vẫn 19 cột. Cột Mã HẸP LẠI 240 → 200 (chủ dự án chốt 12/09/2026:
+       "cho cột mã sản phẩm nhỏ đi một chút để có chỗ cho các cột khác"), và
+       hẹp được là nhờ chính lượt chốt hiện MÃ NGẮN ở P5 — dòng đã khớp không
+       còn phải chứa câu tên kế toán dài nữa. Dòng CHƯA khớp vẫn hiện nguyên
+       câu và vẫn bị cắt đuôi như trước; đó là đánh đổi đã chọn, và ô Mã đỏ
+       cộng bộ lọc ngay trên đầu cột nay đưa thẳng tới đúng những dòng ấy.
+
+       Canh TỔNG bề rộng thay vì canh từng con số: chỗ cắt của cột này phải
+       đi đâu đó, không được bốc hơi — bốc hơi là bảng hẹp lại và
+       `table-layout: fixed` chia lại theo tỉ lệ, đúng lỗi P4 đã sửa. */
     const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
-    ok('bề rộng cột Mã sản phẩm không đổi (dòng chưa khớp vẫn cần 240px)',
-       /240/.test(mRong ? mRong[1] : ''), true);
+    const rong = JSON.parse('[' + (mRong ? mRong[1] : '') + ']');
+    ok('cột Mã sản phẩm hẹp lại còn 200px', rong[3], 200);
+    ok('  · và tổng bề rộng KHÔNG đổi (phần cắt đi chia sang cột khác)',
+       rong.reduce((a, b2) => a + b2, 0), 1822);
+    /* 1822 là tổng ĐANG CHẠY từ P4, ghim để lượt chỉnh cột nào cũng phải là
+       một phép CHIA LẠI, không phải một phép nới. Chính lượt 12/09/2026 này
+       suýt trượt: cắt 60px khỏi hai cột mà chỉ trả lại 50px, và 10px hụt ấy
+       không nhìn ra được bằng mắt — bảng chỉ hẹp đi một chút rồi
+       `table-layout: fixed` chia lại theo tỉ lệ, đúng lỗi P4 đã sửa. Thật sự
+       cần bảng rộng hơn thì sửa con số này, có chủ ý. */
   }
 
   /* ───── P. Sửa/xoá một dòng: máy chủ trả LUÔN bảng đã tính lại ───── */
