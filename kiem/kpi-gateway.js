@@ -591,5 +591,83 @@ const GOC = path.resolve(__dirname, '..');
        /240/.test(mRong ? mRong[1] : ''), true);
   }
 
+  /* ───── P. Sửa/xoá một dòng: máy chủ trả LUÔN bảng đã tính lại ───── */
+
+  console.log('\nP) POST /api/sua-dong trả kèm bảng mới — một lượt bấm, một vòng mạng');
+  {
+    /* Chủ dự án chốt 12/09/2026: "hiển thị kết quả ngay lập tức thay vì phải
+       đợi". Bản trước ghi xong rồi bảo trình duyệt gọi lại `GET
+       /api/don-hang`, tức trả tiền HAI vòng mạng cho cùng một phép tính —
+       trong khi máy chủ vừa ghi xong đang đứng cạnh mọi nguyên liệu. */
+    ok('có hàm dựng bảng dùng chung cho cả đường đọc lẫn đường ghi',
+       /async function dungBangDonHang\(env, ky, line, rid\)/.test(GW), true);
+    ok('  · GET /api/don-hang đi qua chính nó',
+       /return dungBangDonHang\(env, ky, line, rid\);/.test(GW), true);
+    ok('  · và lượt ghi cũng vậy',
+       /bang = await dungBangDonHang\(env, ky, than\.line, rid\);/.test(GW), true);
+    ok('  · trả về dưới tên `bang_moi`', /bang_moi: bang/.test(GW), true);
+
+    /* `line` từ THÂN request là dữ liệu người dùng gửi lên — phải kiểm hình
+       dạng như mọi tham số khác, đúng luật đang áp cho `line` của query. Bỏ
+       qua là để một chuỗi dài tuỳ ý đi thẳng vào khoá đọc. */
+    ok('line trong thân request cũng bị kiểm độ dài',
+       /than\.line\.length > 60[\s\S]{0,80}line-khong-hop-le/.test(GW), true);
+    /* Chỉ dựng lại khi màn hình NÓI nó đang xem chỗ nào. Không có `line` thì
+       không đoán — Gateway bản mới phục vụ trình duyệt bản cũ vẫn phải chạy. */
+    ok('  · không có `line` thì không dựng, không đoán',
+       /typeof than\.line === "string" \|\| than\.line === null/.test(GW), true);
+
+    /* Ca quan trọng nhất của cả khối: lượt GHI đã xong rồi. Dựng lại bảng
+       hỏng mà ném ra ngoài là biến một lượt ghi THÀNH CÔNG thành một thông
+       báo lỗi đỏ — nói dối về thứ vừa xảy ra, và người dùng sẽ bấm lại. */
+    ok('dựng lại hỏng thì lượt GHI vẫn báo thành công, chỉ khuyết bảng',
+       /return bang \? \{ ghi: true, ky, khoa, bang_moi: bang \} : \{ ghi: true, ky, khoa \};/.test(GW), true);
+    ok('  · và ghi một dòng cảnh báo để còn truy được',
+       /canh_bao: "dung-lai-bang-hong:"/.test(GW), true);
+  }
+
+  console.log('\nQ) /api/don-hang đọc SONG SONG — bỏ 11 vòng xếp hàng');
+  {
+    /* Bản trước `await` từng nguồn một: 11 lượt đi mạng nối đuôi nhau cho MỘT
+       lần bấm, và bấm sang tab line nào cũng trả lại đủ ngần ấy (chủ dự án đo
+       3–4 giây mỗi lượt đổi tab). Chúng gần như độc lập — thứ tự cũ chỉ là
+       thứ tự người viết nghĩ ra từng thứ. */
+    const than = GW.slice(GW.indexOf('async function dungBangDonHang'),
+                          GW.indexOf('const layDonHang = boc'));
+    ok('bảy lượt đọc Firebase + bảng giá + kỳ trước đi trong MỘT Promise.all',
+       (than.match(/await Promise\.all\(\[/g) || []).length >= 1, true);
+    for (const d of ['bc/dong/', 'bc/khach/', 'bc/quyetdinh/dong/',
+                     'DUONG_BANG_KPI', 'DUONG_GIA_DUNG', 'DUONG_NGAY_CONG']) {
+      const khoi = than.slice(than.indexOf('await Promise.all(['));
+      ok('  · ' + d + ' nằm trong đợt song song',
+         khoi.slice(0, khoi.indexOf('  ]);')).includes(d), true);
+    }
+
+    /* Bảng giá ~400 KB và Min theo ngày vài nghìn bản ghi: kỳ ngoài phạm vi
+       khớp mã thì KHÔNG được kéo về. Nhưng cũng không được bắt bảy lượt đọc
+       kia ngồi chờ câu trả lời "kỳ này có trong phạm vi không" — nên phạm vi
+       đi bằng một lời hứa, và bảng giá móc vào `.then()` của nó. */
+    ok('kỳ ngoài phạm vi vẫn KHÔNG kéo bảng giá về',
+       /huaPhamVi\.then\(\(trong\) => \(trong[\s\S]{0,60}docNguonTracking\(env\)/.test(than), true);
+    ok('  · và bảy lượt đọc kia không phải chờ câu trả lời ấy',
+       than.indexOf('const huaPhamVi') < than.indexOf('await Promise.all(['), true);
+
+    /* Tracking hỏng KHÔNG được làm hỏng cả bảng đơn (CLAUDE.md: doanh số, số
+       đơn, khách hàng đọc được mà không cần bảng giá). Một lỗi thoát ra khỏi
+       `Promise.all` sẽ huỷ cả đợt — nên nó phải bị bắt NGAY TẠI lời hứa. */
+    ok('lỗi Tracking bị bắt tại chỗ, không thoát ra huỷ cả đợt',
+       /docNguonTracking\(env\)\.then\([\s\S]{0,200}LoiTracking[\s\S]{0,80}return \{ nguon: null, ly: e\.ly \}/.test(than), true);
+
+    /* Ba con số thời gian vào nhật ký: lượt sau còn chậm thì `wrangler tail`
+       nói ngay chậm ở ĐÂU, không phải đoán lại từ đầu. */
+    ok('nhật ký tách thời gian theo từng đợt', /ms_doc, ms_gia, ms_engine/.test(than), true);
+
+    /* KHÔNG có bộ đệm nào được thêm: đệm là đổi tốc độ lấy nguy cơ đọc số cũ,
+       và số cũ đúng là lỗi đã phải sửa ở P5 (PR #73 — tổng quy đổi cũ do
+       cache). Lượt sửa này chỉ bỏ thời gian NGỒI CHỜ. */
+    ok('không lén thêm bộ đệm nào cho bảng đơn',
+       /caches\.default|new Cache|cacheTtl/.test(than), false);
+  }
+
   xong();
 })();

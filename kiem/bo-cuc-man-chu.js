@@ -237,32 +237,65 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
   ok('taiKy() nhận được tuỳ chọn gọi ÊM (không chớp "Đang tải…")',
      /async function taiKy\(tuyChon\)/.test(JS), true);
-  /* TÁM chỗ gọi. Ba của P4: sửa một dòng, xoá một dòng, gán mã xong (cái thứ
-     ba thêm 12/09/2026 — gán mã xong phải lấy GIÁ VỐN của mã vừa gán ngay,
+  /* TÁM chỗ gọi `taiKy({imLang:true})`, sau khi hai lượt của P4 (sửa một
+     dòng, xoá một dòng) chuyển sang đường NHANH ngày 12/09/2026 — xem khối
+     kế tiếp. Còn lại: gán mã xong (phải lấy GIÁ VỐN của mã vừa gán ngay,
      không bắt người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc
-     hỏi lại máy chủ). Bốn của P5: rời khỏi dải setup sau khi sửa KPI/hệ số,
-     bỏ bản ghi đè một kỳ, tick gia dụng, và bấm nút chuyển "mặc định ↔ riêng
-     tháng này". Một của P6: rời khỏi BẢNG [Tổng hợp] sau khi sửa ngày công —
-     cùng lý do "vẽ lại muộn" của cái thứ tư ngay dưới đây, vì cả cột ngày
-     công cũng là MỘT đơn vị sửa nhiều ô.
+     hỏi lại máy chủ), bốn của P5 (rời khỏi dải setup sau khi sửa KPI/hệ số,
+     bỏ bản ghi đè một kỳ, tick gia dụng, bấm nút "mặc định ↔ riêng tháng
+     này"), một của P6 (rời khỏi BẢNG [Tổng hợp] sau khi sửa ngày công), cộng
+     ĐÚNG MỘT lượt dự phòng bên trong `apBangMoi()`.
 
-     Chú ý cái thứ tư: lượt sửa KPI vẽ lại khi tiêu điểm rời KHỎI DẢI, không
-     vẽ ngay trong lượt ghi. Vẽ ngay thì ô người dùng vừa Tab sang bị xoá
-     khỏi DOM giữa lúc họ đang gõ — dải là MỘT đơn vị sửa nhiều ô, khác một
-     dòng sửa tay của P4 nơi lượt lưu cũng là lượt đóng ô.
+     Chú ý lượt rời dải KPI: nó vẽ lại khi tiêu điểm rời KHỎI DẢI, không vẽ
+     ngay trong lượt ghi. Vẽ ngay thì ô người dùng vừa Tab sang bị xoá khỏi
+     DOM giữa lúc họ đang gõ — dải là MỘT đơn vị sửa nhiều ô, khác một dòng
+     sửa tay của P4 nơi lượt lưu cũng là lượt đóng ô.
 
-     Cả bảy đều phải ÊM vì cả bảy là sửa TẠI CHỖ trên bảng đang mở: chớp
+     Tất cả đều phải ÊM vì tất cả là sửa TẠI CHỖ trên bảng đang mở: chớp
      "Đang tải…" rồi cuộn về gốc sau mỗi cú tick là đúng thứ chủ dự án chốt
-     phải hết (12/09/2026). Và cả bảy đều phải GỌI LẠI máy chủ, không tự vá số
-     ở trình duyệt — đổi một hệ số là đổi mọi con số quy đổi của bảng cộng tổng
-     line và phần trăm đạt, bốn con số do Engine tính (LUẬT SỐ 1).
+     phải hết (12/09/2026). Và tất cả đều phải LẤY SỐ TỪ MÁY CHỦ, không tự vá
+     số ở trình duyệt — đổi một hệ số là đổi mọi con số quy đổi của bảng cộng
+     tổng line và phần trăm đạt, bốn con số do Engine tính (LUẬT SỐ 1).
 
      Đếm bằng con số tuyệt đối chứ không "≥ 3": một lượt sửa tại chỗ mới mà
      quên `imLang` sẽ làm bài này đỏ, và đó đúng là lúc cần biết. */
-  ok('  · và cả CHÍN lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
-     + 'bỏ ghi đè/tick gia dụng/đổi chế độ/mở ô gia dụng · P6: rời bảng Tổng '
-     + 'hợp sau khi sửa ngày công) đều gọi nó với tuỳ chọn ấy',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 9);
+  ok('  · và TÁM lượt vẽ lại êm (gán mã · 4 lượt KPI của P5 · ngày công của '
+     + 'P6 · 1 lượt dự phòng trong apBangMoi) đều gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 8);
+
+  /* ── Đường NHANH của sửa/xoá một dòng (chủ dự án chốt 12/09/2026: "hiển
+     thị kết quả ngay lập tức thay vì phải đợi") ──
+
+     `POST /api/sua-dong` nay trả LUÔN bảng đã tính lại, nên một lượt bấm chỉ
+     còn MỘT vòng mạng thay vì hai. Máy chủ vừa ghi xong đang đứng cạnh mọi
+     nguyên liệu để dựng lại bảng ấy; bắt trình duyệt gọi thêm một GET nữa là
+     trả tiền hai lần cho cùng một phép tính.
+
+     Điều KHÔNG đổi, và là điều phải canh: con số vẫn do Engine tính. Trình
+     duyệt chỉ VẼ thứ máy chủ đưa. */
+  ok('sửa một dòng gửi kèm line đang xem, để máy chủ dựng lại đúng bảng ấy',
+     /gia_nhap: giaGui, noi_nhap: noiGui, line: trangThai\.line/.test(JS), true);
+  ok('  · xoá một dòng cũng vậy', /khoa, xoa: true,\s*\n?\s*line: trangThai\.line/.test(JS), true);
+  /* Đếm LỜI GỌI (`apBangMoi(kq);` có chấm phẩy), không đếm cả dòng khai hàm
+     (`function apBangMoi(kq) {`) — bỏ chấm phẩy là bài này đếm ra 3 và "đúng
+     hai chỗ gọi" thành một câu vô nghĩa. */
+  ok('  · cả hai đi qua apBangMoi, không tự gọi lại GET',
+     (JS.match(/apBangMoi\(kq\);/g) || []).length, 2);
+
+  /* Hai ca rơi về đường cũ, cả hai đều là ca thật. Thiếu ca thứ hai là lỗi
+     im lặng tệ nhất của cả lượt sửa này: người dùng bấm sửa rồi đổi sang tab
+     line khác trong lúc lượt ghi đang bay, và bảng của line CŨ được vẽ đè
+     lên — số của một người khác, dưới đúng cái tab mang tên mình. */
+  ok('  · máy chủ không kèm bảng thì gọi lại GET như cũ',
+     /if \(dungCho\) veKetQua\(b\);\s*\n\s*else taiKy\(\{ imLang: true \}\);/.test(JS), true);
+  ok('  · đổi tab/tháng giữa chừng thì KHÔNG vẽ bảng của chỗ cũ',
+     /kq\.ky === trangThai\.ky[\s\S]{0,120}=== trangThai\.line/.test(JS), true);
+
+  /* Hai đường vẽ (tải lại, và bảng do lượt ghi trả về) phải đi qua ĐÚNG một
+     hàm. Hai bản vẽ là hai bản trôi khỏi nhau, và chỗ trôi ở đây là con số
+     hiện sau khi sửa khác con số hiện sau khi tải lại. */
+  ok('cả hai đường vẽ dùng chung veKetQua()', /function veKetQua\(kq\)/.test(JS), true);
+  ok('  · và taiKy() cũng đi qua nó', /veKetQua\(await goi\(duong\)\)/.test(JS), true);
   ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }

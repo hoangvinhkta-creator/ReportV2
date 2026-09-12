@@ -357,8 +357,15 @@ const GOC = path.resolve(__dirname, '..');
     ok('2026-01 → 2025-12 (bắc qua mốc năm)', ky('2026-01'), '2025-12');
     ok('2026-11 → 2026-10 (giữ hai chữ số)', ky('2026-11'), '2026-10');
 
+    /* Không ghim chữ `await`: từ 12/09/2026 lượt đọc này chạy trong cùng
+       `Promise.all` với bảy lượt kia (bỏ 3–4 giây xếp hàng mỗi lần đổi tab),
+       nên nó KHÔNG còn được await tại chỗ. Điều phải canh vẫn y nguyên và
+       mới là điều đáng canh: ở tab của một line thì KHÔNG gọi nó chút nào —
+       cột "Vs. Tháng trước" không có mặt ở đó, và lấy nó ở mọi lượt là bắt
+       mỗi lần mở một tab line trả thêm mấy lượt đọc cho một con số không ai
+       nhìn. */
     ok('chỉ lấy khi ở tab [Tổng hợp], không lấy ở tab line',
-       /line\s*\n?\s*\? null\s*\n?\s*: await docDoanhSoLineKyTruoc/.test(GW), true);
+       /line\s*\n?\s*\? null\s*\n?\s*:\s*(await\s+)?docDoanhSoLineKyTruoc/.test(GW), true);
     /* Nguồn hỏng thì cột để trống, KHÔNG chặn cả bảng đơn — cùng kỷ luật với
        bảng KPI của P5. */
     ok('kỳ trước đọc hỏng thì trả null, không ném',
