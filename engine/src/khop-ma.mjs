@@ -377,16 +377,43 @@ export const NCC_UU_TIEN = [
 const chuanNcc = (s) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().toLowerCase();
 const HANG_UU_TIEN = new Map(NCC_UU_TIEN.map((t, i) => [chuanNcc(t), i]));
 
-/** Nơi nhập của một dòng: NCC giữ giá Min hôm đó, chọn theo thứ tự ưu tiên.
+/** `source_type` của nguồn TỒN KHO trong hợp đồng `daily-min-v1` — enum ĐÓNG
+ *  bên Tracking (`SUPPLIER | INVENTORY`, `min-ngay.js` từ chối ghi giá trị
+ *  khác). Nhận theo trường này chứ KHÔNG theo `source_id`: `source_id` của
+ *  tồn kho là một hằng máy đọc (`TON_KHO`) mà Tracking đặt tên và có thể đổi,
+ *  còn `source_type` là phần hợp đồng hai bên đã cam kết. */
+const NGUON_TON_KHO = "INVENTORY";
+
+/** Chữ hiện ở cột Nơi nhập cho hàng xuất từ kho. Hợp đồng trả `TON_KHO` —
+ *  một MÃ, không phải chữ cho người đọc; đẩy thẳng nó ra bảng là bắt người
+ *  dùng đọc tên biến của một app khác. */
+export const NHAN_TON_KHO = "Kho";
+
+/** Nơi nhập của một dòng: nơi hàng THẬT SỰ xuất đi hôm đó.
+ *
+ *  TỒN KHO THẮNG MỌI NHÀ CUNG CẤP — chủ dự án chốt 12/09/2026, và đây là một
+ *  luật NGHIỆP VỤ chứ không phải một thứ tự cho đẹp: hàng đã nằm trong kho thì
+ *  bắt buộc xuất từ kho, kể cả khi hôm ấy một NCC báo giá rẻ hơn. Giá thị
+ *  trường giảm không làm số hàng đang nằm trong kho biến mất.
+ *
+ *  Chú ý: luật này chỉ đổi NHÃN. `gia_nhap` vẫn là giá Min của ngày bán, kể
+ *  cả khi giá kho cao hơn — hai câu hỏi khác nhau ("lấy hàng ở đâu" và "giá
+ *  vốn bao nhiêu") và chủ dự án chốt tách bạch đúng như vậy.
  *
  *  `min_sources` của hợp đồng là `[{source_type, source_id}]`, và hợp đồng
  *  BẢO ĐẢM mọi giá Min dương đều có ít nhất một nguồn (Tracking từ chối ghi
  *  một bản ghi `thieu-nguon-cho-gia`). Nên rỗng ở đây nghĩa là dòng ấy không
- *  có giá Min — và khi ấy nơi nhập cũng không có, đúng như chủ dự án chốt. */
+ *  có giá Min — và khi ấy nơi nhập cũng không có, đúng như chủ dự án chốt.
+ *
+ *  CÒN THIẾU, cố ý và có ghi ở ROADMAP.md: `min_sources` chỉ kể tên tồn kho
+ *  khi giá kho ĐÚNG BẰNG giá Min hôm đó. Kho còn hàng mà giá kho CAO HƠN Min
+ *  thì hợp đồng hiện chưa nói ra, nên nhánh dưới đây chưa thấy để mà ưu tiên.
+ *  Lượt sau mở đường ấy bên Tracking. */
 function chonNoiNhap(nguon) {
   const ds = Array.isArray(nguon) ? nguon.filter((x) => laObj(x)
     && typeof x.source_id === "string" && x.source_id.trim()) : [];
   if (!ds.length) return null;
+  if (ds.some((x) => x.source_type === NGUON_TON_KHO)) return NHAN_TON_KHO;
   let tot = null, hang = Infinity;
   for (let i = 0; i < ds.length; i++) {
     const h = HANG_UU_TIEN.has(chuanNcc(ds[i].source_id))

@@ -735,6 +735,8 @@
        là gì. */
     khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
       + "Giá nhập và nơi nhập lấy từ Tracking theo ĐÚNG NGÀY BÁN của từng dòng. "
+      + "Nơi nhập ưu tiên Kho: hàng có sẵn trong kho thì xuất từ kho, dù hôm ấy "
+      + "có nhà cung cấp báo giá rẻ hơn — nhưng giá nhập vẫn lấy theo giá Min. "
       + "Ô vàng: chưa có mã bảng giá — bấm vào để gán, quyết định ghi sang Tracking "
       + "và áp cho mọi dòng cùng tên hàng ở mọi kỳ. "
       + "Dòng đỏ: bán 0 đồng (quà tặng kèm) — vẫn có giá vốn nên vẫn trừ vào lợi nhuận. "
