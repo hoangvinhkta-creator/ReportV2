@@ -162,3 +162,110 @@ export function cauLoiPhanLoai(ly) {
     return "Chưa cấu hình khoá đọc Tracking cho máy chủ Báo cáo. Báo người quản trị.";
   return "Chưa ghi được sang Tracking. Thử lại sau ít phút.";
 }
+
+/* ============ MIN THEO NGÀY BÁN ============
+ *
+ * `POST /api/min-ngay`, cùng khoá, cùng lối máy-với-máy. Hợp đồng
+ * `daily-min-v1` — đọc `Tracking/src/min-ngay.js` đầu file cho toàn bộ luật.
+ *
+ * Ba trần của hợp đồng mà lớp này phải tôn trọng, không lách:
+ *   · 100 mã một trang  → phân trang bằng `cursor`
+ *   · 62 ngày một lượt  → một kỳ là một tháng, luôn dưới trần
+ *   · 409 khi nguồn đang ghi hoặc trang đọc không nhất quán → THỬ LẠI
+ *
+ * 409 KHÔNG phải lỗi để báo người dùng: Tracking cố ý từ chối cả trang thay
+ * vì trả một ảnh ghép của hai trạng thái database. Đúng việc phải làm là chờ
+ * một nhịp rồi hỏi lại; báo lỗi ở đây là biến một cơ chế an toàn thành một sự
+ * cố trước mắt người dùng.
+ */
+
+const TRAN_MA_TRANG = 100;
+const LAN_THU_LAI = 3;
+
+const nghi = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Ngày đầu và ngày cuối của một kỳ `YYYY-MM`. Số học lịch, không phải nghiệp
+ *  vụ — nên nó ở đây chứ không phải ở Engine. `Date.UTC(y, m, 0)` là ngày cuối
+ *  của tháng `m` (tháng đếm từ 1 ở đây, từ 0 ở Date). */
+export function khoangNgayCuaKy(ky) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(ky || ""));
+  if (!m) throw new LoiTracking("ky-khong-hop-le");
+  const nam = Number(m[1]), thang = Number(m[2]);
+  const cuoi = new Date(Date.UTC(nam, thang, 0)).getUTCDate();
+  return { tu: ky + "-01", den: ky + "-" + String(cuoi).padStart(2, "0") };
+}
+
+/* Nhớ tạm Min theo KỲ. Đổi tháng hoặc đổi line là một lượt đọc mới, mà tập mã
+   của cùng một kỳ thì không đổi giữa hai lượt bấm ấy — kéo lại vài nghìn bản
+   ghi mỗi lần bấm là trả tiền băng thông cho đúng một dữ liệu vừa lấy xong.
+   Hạn ngắn để ngày đang chạy (còn PROVISIONAL, giá còn đổi) không bị giữ lâu. */
+let _demMin = new Map();       // kỳ → { luc, than }
+const DEM_MIN_HAN = 60_000;
+
+export function xoaDemMin() { _demMin = new Map(); }
+
+/** Min theo ngày cho một tập mã trong trọn một kỳ.
+ *
+ *  Gộp mọi trang thành MỘT `{ currency_unit, records, errors }`. Gộp ở đây chứ
+ *  không để Engine lo: phân trang là chi tiết của đường mạng, còn Engine thì
+ *  chỉ nên thấy "đây là toàn bộ câu trả lời cho tập mã đã hỏi".
+ *
+ *  KHÔNG cắt bớt `errors`. Mỗi cặp (mã, ngày) đã hỏi nằm ở `records` hoặc
+ *  `errors`; bỏ bớt một bên là làm hỏng đúng tính chất khiến bảng kê cuối cân
+ *  được, và một dòng thiếu giá vốn sẽ không còn nói được vì sao.
+ *
+ *  Tập mã rỗng thì KHÔNG gọi mạng — `product_codes` rỗng là 400 bên Tracking,
+ *  và "kỳ này chưa mã nào được khớp" là một trạng thái thật, không phải lỗi. */
+export async function docMinNgay(env, ky, dsMa) {
+  const ma = [...new Set((dsMa || []).filter((x) => typeof x === "string" && x))].sort();
+  if (!ma.length) return { currency_unit: null, records: [], errors: [] };
+
+  const con = _demMin.get(ky);
+  if (con && Date.now() - con.luc < DEM_MIN_HAN && con.soMa === ma.length) return con.than;
+
+  const { tu, den } = khoangNgayCuaKy(ky);
+  const records = [], errors = [];
+  let donVi = null, cursor = null, trang = 0;
+
+  /* Trần vòng lặp tính từ chính số mã — không để một `next_cursor` hỏng kéo
+     Worker chạy vô hạn tới lúc bị cắt. */
+  const tranTrang = Math.ceil(ma.length / TRAN_MA_TRANG) + 2;
+
+  do {
+    let than = null;
+    for (let lan = 0; lan < LAN_THU_LAI; lan++) {
+      try {
+        than = await goiTracking(env, "/api/min-ngay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ date_from: tu, date_to: den, product_codes: ma,
+            ...(cursor ? { cursor } : {}) }),
+        });
+        break;
+      } catch (e) {
+        /* 409 = nguồn đang ghi, hoặc trang vừa đọc là ảnh ghép. Chờ rồi hỏi
+           lại; các lỗi khác ném thẳng. Lượt cuối cũng ném — thử mãi là biến
+           một sự cố kéo dài thành một request treo. */
+        const laXungDot = e instanceof LoiTracking && /tracking-tra-409/.test(e.ly);
+        if (!laXungDot || lan === LAN_THU_LAI - 1) throw e;
+        await nghi(300 * (lan + 1));
+      }
+    }
+
+    if (!laObj(than)) throw new LoiTracking("min-ngay-tra-rac");
+    /* Đơn vị tiền phải NHẤT QUÁN giữa mọi trang. Lệch giữa chừng nghĩa là hai
+       trang đến từ hai bản hợp đồng khác nhau — gộp lại là trộn hai thang đo
+       tiền vào một mảng. */
+    if (donVi === null) donVi = than.currency_unit ?? null;
+    else if (than.currency_unit !== donVi) throw new LoiTracking("min-ngay-lech-don-vi");
+
+    if (Array.isArray(than.records)) records.push(...than.records);
+    if (Array.isArray(than.errors)) errors.push(...than.errors);
+    cursor = than.next_cursor || null;
+    trang++;
+  } while (cursor && trang < tranTrang);
+
+  const ra = { currency_unit: donVi, records, errors };
+  _demMin.set(ky, { luc: Date.now(), soMa: ma.length, than: ra });
+  return ra;
+}

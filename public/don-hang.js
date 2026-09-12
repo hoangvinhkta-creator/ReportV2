@@ -154,12 +154,18 @@
    *  Dòng đã có mã vẫn bấm được: một lượt khớp TỰ ĐỘNG có thể sai, và không
    *  cho sửa thì cái sai ấy nằm lại vĩnh viễn. Mã đang gán để ở `title`, chỗ
    *  duy nhất thêm được thông tin mà không đổi thứ đang hiện. */
-  function oMaSanPham(d) {
+  function oMaSanPham(d, trongPhamVi) {
     const td = el("td", "oTen oMa");
     const s = el("span", null, d.ma_san_pham);
     td.appendChild(s);
 
     if (d.la_chiet_khau) { td.className = "oTen"; return td; }
+
+    /* Kỳ ngoài phạm vi: ô hiện y như một ô chữ thường, không tô, không bấm
+       được. Chốt ở MỘT CỜ của cả lượt đọc chứ không suy từ hình dạng từng
+       dòng — lời hứa "tháng cũ không làm phiền" khi ấy không phụ thuộc vào
+       việc mọi dòng có sạch trường khớp mã hay không. */
+    if (trongPhamVi === false) { td.className = "oTen"; return td; }
 
     td.dataset.o = "ma";
     td.dataset.ten = d.ma_san_pham;
@@ -184,6 +190,36 @@
     }
     return td;
   }
+
+  /** Ô "Giá nhập". Chưa có giá thì hiện "—" và NÓI VÌ SAO ở `title` — ô trống
+   *  không giải thích để người đọc tự đoán, mà mọi phỏng đoán trên một cột
+   *  tiền đều tốn kém. Không bao giờ hiện 0: "giá vốn 0 đồng" và "chưa biết
+   *  giá vốn" là hai câu khác hẳn nhau. */
+  function oGiaNhap(d) {
+    if (d.gia_nhap !== null && d.gia_nhap !== undefined) {
+      const td = el("td", "oSo", nghin(d.gia_nhap));
+      /* Giá được MANG QUA từ một mốc trước là chuyện bình thường của hệ Min
+         (chỉ ghi khi đổi), nhưng người đối chiếu tay cần biết con số này quan
+         sát được ngày nào. */
+      if (d.ngay_gia) td.title = "Giá Min của Tracking, mốc quan sát " + nhanNgayDay(d.ngay_gia)
+        + (d.trang_thai_ngay_gia === "PROVISIONAL" ? " — ngày chưa chốt, giá còn có thể đổi" : "");
+      return td;
+    }
+    const td = el("td", "oSo oChuaGia", "—");
+    if (d.ly_do_chua_gia) td.title = "Chưa có giá vốn: " + (LY_DO_GIA[d.ly_do_chua_gia]
+      || d.ly_do_chua_gia);
+    return td;
+  }
+
+  /* Lý do kỹ thuật của hợp đồng `daily-min-v1` → câu người đọc hiểu. Giữ
+     nguyên mã lạ thay vì nuốt: Tracking thêm một lý do mới thì nó phải hiện
+     ra để còn biết mà bổ sung, chứ không biến thành một ô trống im lặng. */
+  const LY_DO_GIA = {
+    "chua-co-ma": "dòng này chưa được gán mã bảng giá.",
+    SOURCE_UNAVAILABLE: "Tracking không quan sát được bảng giá ngày hôm đó.",
+    NO_DATA: "chưa có mốc giá nào của mã này tính tới ngày bán.",
+    INVALID_PRODUCT_CODE: "mã hàng không hợp lệ với hệ giá của Tracking.",
+  };
 
   const LY_DO_MA = {
     "chua-khop": "Chưa có mã: không tìm thấy mã bảng giá nào trong tên hàng — bấm để phân loại.",
@@ -274,6 +310,19 @@
         + "bên dưới không bị ảnh hưởng. Thử tải lại trang sau ít phút."));
     }
 
+    /* Kỳ trước mốc dữ liệu giá của Tracking: KHÔNG cảnh báo gì cả (chủ dự án
+       chốt 12/09/2026 — ở đó gán mã xong cũng không ra được đồng giá vốn nào,
+       nên một băng "còn N dòng chưa có mã" chỉ mời làm một việc không dùng
+       được). Nhưng vẫn nói MỘT CÂU vì sao mấy cột kia trống: ô trống không
+       giải thích và "không có" là hai chuyện khác nhau. Câu này màu xám,
+       không phải cảnh báo. */
+    if (kq.trong_pham_vi_ma === false) {
+      khung.appendChild(el("p", "ghiChuPhamVi",
+        "Kỳ này nằm ngoài phạm vi dữ liệu giá của Tracking (chỉ có từ tháng "
+        + "09/2026), nên các cột Mã · Giá nhập · Lợi nhuận · Hãng · Ngành hàng "
+        + "để trống. Doanh số và số đơn không bị ảnh hưởng."));
+    }
+
     const boc = el("div", "bocBang");
     const bang = el("table", "bangDon");
 
@@ -324,9 +373,9 @@
           tr.appendChild(o(dauDon ? nhanNgayDay(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
           tr.appendChild(o(d.noi_nhap));
-          tr.appendChild(oMaSanPham(d));
+          tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma));
           tr.appendChild(o(soNguyen(d.so_luong), "oSo"));
-          tr.appendChild(o(d.gia_nhap === null ? null : nghin(d.gia_nhap), "oSo"));
+          tr.appendChild(oGiaNhap(d));
           tr.appendChild(o(nghin(d.gia_ban), "oSo"));
           tr.appendChild(o(nghin(d.tong_ban), "oSo"));
           tr.appendChild(o(d.loi_nhuan === null ? null : nghin(d.loi_nhuan), "oSo"));
@@ -376,7 +425,7 @@
     boc.appendChild(bang);
     khung.appendChild(boc);
 
-    demLaiConNo(!kq.loi_nguon_ma);
+    demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
 
     khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
       + "Bấm vào ô Mã sản phẩm để gán mã bảng giá — quyết định ghi sang Tracking và "

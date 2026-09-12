@@ -88,10 +88,28 @@ deploy xong TRƯỚC lượt Gateway gọi tới chúng.
 4. **Bề rộng cột chốt cố định** (`table-layout: fixed`) — điền dữ liệu
    P4 vào bảng cột co giãn sẽ làm bố cục nống ra.
 
-**Ba câu còn treo, CHƯA hỏi được, chặn lát cắt 2:** công thức "Doanh số
-quy đổi"; dòng 0đ (quà tặng/phụ kiện) và chứng từ `BTL` có giá vốn
-không; và "Nơi nhập" — bên Tracking nó là NCC đang giữ giá Min của một
-MÃ tại một thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô.
+**LÁT CẮT 2 — giá nhập theo đúng ngày bán — ĐÃ XONG 12/09/2026** (PR-D
+Engine, PR-E Gateway + màn hình):
+
+- Khớp mã và giá vốn chỉ áp dụng **từ kỳ 09/2026** (`MOC_KHOP_MA`). Kỳ
+  trước mốc: phép khớp KHÔNG chạy, không băng cảnh báo, chỉ một câu xám
+  nói rõ "ngoài phạm vi dữ liệu giá của Tracking".
+- Giá nhập đọc `POST /api/min-ngay` theo ĐÚNG ngày bán của từng dòng —
+  đơn ngày 01/09 lấy mốc 01/09, không lấy giá của ngày tải file.
+- **Bẫy đơn vị tiền:** `min_price` đếm bằng NGHÌN đồng
+  (`currency_unit: VND_THOUSAND`), Báo cáo đếm bằng ĐỒNG. Nhân 1.000, và
+  đơn vị được KIỂM chứ không tin — Tracking đổi đơn vị thì Engine ném
+  lỗi chứ không lặng lẽ nhân nhầm.
+- Lợi nhuận dòng = `tổng bán − giá nhập × SL`. Lợi nhuận ĐƠN chỉ tính
+  khi mọi dòng hàng của đơn đã có giá; thiếu một dòng thì để `null`.
+- Mỗi dòng thiếu giá mang theo LÝ DO (`chua-co-ma`, `SOURCE_UNAVAILABLE`,
+  `NO_DATA`, `INVALID_PRODUCT_CODE`), hiện ở tooltip ô Giá nhập.
+
+**Ba câu còn treo, CHƯA hỏi được:** công thức "Doanh số quy đổi"; dòng
+0đ (quà tặng/phụ kiện) và chứng từ `BTL` có giá vốn không; và "Nơi nhập"
+— bên Tracking nó là NCC đang giữ giá Min của một MÃ tại một thời điểm
+(`nccGiuMin()`), không phải thuộc tính của từng lô. Ba cột `Nơi nhập`,
+`Doanh số quy đổi`, `Ghi chú` vì vậy vẫn trống.
 
 **Việc của chủ dự án trước khi PR-C chạy thật:** đặt Secret
 `REPORT_API_KEY` trên Gateway V2 (`wrangler secret put REPORT_API_KEY`),
