@@ -196,7 +196,10 @@
     const s = el("span", null, d.ma_san_pham);
     td.appendChild(s);
 
-    if (d.la_chiet_khau) { td.className = "oTen"; return td; }
+    /* Phụ phí cố định (Chi phí vận chuyển / lắp đặt / Chênh VAT) cùng một
+       lối với chiết khấu: không phải mặt hàng, không cần phân loại, nên ô
+       hiện phẳng — không vàng, không bấm được. */
+    if (d.la_chiet_khau || d.la_phu_phi_co_dinh) { td.className = "oTen"; return td; }
 
     /* Kỳ ngoài phạm vi: ô hiện y như một ô chữ thường, không tô, không bấm
        được. Chốt ở MỘT CỜ của cả lượt đọc chứ không suy từ hình dạng từng
@@ -235,8 +238,12 @@
    *  vì ô trống thì người đọc biết là mình chưa biết. */
   function oNoiNhap(d) {
     if (d.noi_nhap) return el("td", null, d.noi_nhap);
-    const td = el("td", d.la_chiet_khau ? null : "oChuaRo", "—");
-    if (!d.la_chiet_khau && d.ly_do_chua_gia)
+    /* Phụ phí cố định không có khái niệm "nơi nhập" (không phải một NCC
+       giữ giá cho một mã hàng) — ô để trống, KHÔNG bôi đỏ như một dòng
+       chưa tra được giá. */
+    const khongCanNoiNhap = d.la_chiet_khau || d.la_phu_phi_co_dinh;
+    const td = el("td", khongCanNoiNhap ? null : "oChuaRo", "—");
+    if (!khongCanNoiNhap && d.ly_do_chua_gia)
       td.title = "Chưa tra được nơi nhập: " + (LY_DO_GIA[d.ly_do_chua_gia]
         || d.ly_do_chua_gia);
     return td;
@@ -736,11 +743,13 @@
       + "Dòng nền xanh: có giá nhập hoặc nơi nhập do bạn tự sửa — sửa tay luôn "
       + "thắng số máy tính, và sống qua mỗi lần nhập lại sổ. "
       + "Bấm ✏️ để mở hai ô Giá nhập và Nơi nhập (bình thường chúng khoá); "
-      + "Enter lưu, Esc huỷ. Bấm 🗑 để xoá dòng khỏi báo cáo — doanh số của nó "
-      + "bị trừ khỏi cả biểu đồ, sổ gốc không đổi. "
+      + "bấm ra chỗ khác hoặc Enter để lưu, Esc để huỷ. Bấm 🗑 để xoá dòng khỏi "
+      + "báo cáo — doanh số của nó bị trừ khỏi cả biểu đồ, sổ gốc không đổi. "
       + "Dòng nền xám: liên quan tới một lượt bán trả lại — rê chuột vào ô SL để "
       + "biết đơn gốc nằm trong kỳ này (cả hai dòng về 0) hay ở tháng khác (trừ −1). "
       + "Ghi chú lấy từ cột Diễn giải của sổ — tải lại sổ thì cột này mới có chữ. "
+      + "Chi phí vận chuyển / lắp đặt / Chênh VAT tự nhận ra từ tên hàng, không "
+      + "cần gán mã — giá nhập tự điền bằng đúng giá bán. "
       + "Doanh số quy đổi chờ chốt công thức."));
   }
 
