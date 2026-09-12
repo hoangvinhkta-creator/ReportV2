@@ -1,5 +1,8 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
 import { docDb, docDbNong, ghiDb, vaDb, xoaDb } from './firebase.js';
+import {
+  docNguonTracking, docMaBangGia, ghiPhanLoai, cauLoiPhanLoai, LoiTracking,
+} from './tracking.js';
 
 /**
  * Cloudflare Worker Gateway — Worker DUY NHẤT chạm Firebase (CLAUDE.md LUẬT
@@ -571,7 +574,7 @@ const layKyCoDon = boc(true, async ({ env }) => {
  * đóng với MỌI vai kể cả quantri (CLAUDE.md), chỉ tài khoản dịch vụ của
  * Worker đọc được.
  */
-const layDonHang = boc(true, async ({ request, env }) => {
+const layDonHang = boc(true, async ({ request, env, rid }) => {
   const q = new URL(request.url).searchParams;
   const ky = q.get("ky");
   const line = q.get("line");
@@ -593,14 +596,105 @@ const layDonHang = boc(true, async ({ request, env }) => {
   const khach = await docDb("bc/khach/" + ky, env);
   if (!khach.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-khach:" + chiTietLoi(khach));
 
+  /* Bảng giá Tracking — nguồn của cột mã, hãng, ngành hàng.
+   *
+   * Tracking hỏng thì KHÔNG làm hỏng cả bảng đơn: doanh số, số đơn, khách
+   * hàng đều đọc được mà không cần bảng giá, và chặn hẳn màn hình vì một
+   * nhánh phụ không trả lời là lấy đi nhiều hơn phần bị mất.
+   *
+   * Nhưng cũng KHÔNG im lặng trả một bảng "chưa dòng nào khớp" — đó đúng là
+   * thứ CLAUDE.md cấm: một sự cố mạng nói một kết luận nghiệp vụ thay người.
+   * Nên khi ấy phép khớp KHÔNG chạy chút nào, và `loi_nguon_ma` đi kèm phản
+   * hồi để màn hình treo băng cảnh báo nói thẳng vì sao ba cột kia trống.
+   * Ba trạng thái tách bạch: có mã / chưa có mã / CHƯA BIẾT vì nguồn hỏng. */
+  let nguon = null, loi_nguon_ma = null;
+  try {
+    nguon = await docNguonTracking(env);
+  } catch (e) {
+    if (!(e instanceof LoiTracking)) throw e;
+    loi_nguon_ma = e.ly;
+    nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + e.ly });
+  }
+
   try {
     const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
-    const bang = await env.REPORT_ENGINE.dungBangDon(
-      dong.val || {}, khach.val || {}, bangLine.val, line || null);
-    return { ky, tom_tat_line, bang };
+    const bang = nguon
+      ? await env.REPORT_ENGINE.dungBangDonKemMa(
+        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon)
+      : await env.REPORT_ENGINE.dungBangDon(
+        dong.val || {}, khach.val || {}, bangLine.val, line || null);
+    return { ky, tom_tat_line, bang, loi_nguon_ma };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
+});
+
+/* =================== GET /api/ma-bang-gia ===================
+ * Danh sách mã trên bảng giá Tracking, cho ô chọn của màn gán tay.
+ *
+ * Trình duyệt KHÔNG bao giờ gọi thẳng Tracking: khoá `X-Report-Key` là bí
+ * mật của Worker, và CSP của trang cũng chỉ mở `connect-src 'self'`. Đường
+ * này là cách duy nhất danh sách ấy tới được màn hình.
+ *
+ * Chỉ ba trường (`ma`, `ten`, `nhom`) — xem `docMaBangGia()` cho lý do dựng
+ * từ danh sách trắng thay vì chuyển tiếp nguyên văn.
+ */
+const layMaBangGia = boc(true, async ({ env }) => {
+  try {
+    return { ds: await docMaBangGia(env) };
+  } catch (e) {
+    if (e instanceof LoiTracking) throw new LoiXacThuc(503, "tracking-hong:" + e.ly);
+    throw e;
+  }
+});
+
+/* =================== POST /api/gan-ma ===================
+ * Gán một câu tên hàng vào một mã bảng giá, hoặc "bỏ qua" ("-").
+ *
+ * Quyết định được ghi SANG TRACKING (`POST /api/inv-map`), không ghi vào một
+ * nhánh riêng của Báo cáo. Đó là điểm mấu chốt: `inv/map` là bản đồ nhận
+ * dạng DÙNG CHUNG — màn Tồn kho, PHB-01 và Báo cáo cùng đọc một chỗ. Ghi
+ * riêng một bản là hai app có hai câu trả lời khác nhau cho cùng một mặt
+ * hàng, và không ai biết cho tới lúc giá vốn lệch.
+ *
+ * Ba chốt an toàn nằm ở PHÍA TRACKING (mã có thật, mã còn dùng, NB-2 dòng
+ * tồn đang hoạt động). Bên này KHÔNG chép lại chúng — chép là dựng bản luật
+ * thứ hai, và chỗ hai bản trôi khỏi nhau là chỗ một quyết định sai nằm im.
+ */
+const ganMa = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const ten = than && typeof than.ten === "string" ? than.ten : "";
+  const ma = than && typeof than.ma === "string" ? than.ma.trim() : "";
+  if (!ten.trim()) throw new LoiXacThuc(400, "thieu-ten");
+  if (!ma) throw new LoiXacThuc(400, "thieu-ma");
+  if (ten.length > 300 || ma.length > 120) throw new LoiXacThuc(400, "qua-dai");
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  /* Khoá do ENGINE tính — công thức khoá là một luật khớp mã, và luật thì ở
+     Engine (LUẬT SỐ 1). Gateway chỉ cầm nó đi đối chiếu. */
+  const khoaMongDoi = await env.REPORT_ENGINE.khoaTenHang(ten);
+
+  let kq;
+  try {
+    kq = await ghiPhanLoai(env, ten, ma);
+  } catch (e) {
+    if (!(e instanceof LoiTracking)) throw e;
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/gan-ma", tu_choi: e.ly });
+    return { ghi: false, ly_do: e.ly, cau: cauLoiPhanLoai(e.ly) };
+  }
+
+  /* HAI REPO, MỘT CÔNG THỨC KHOÁ. Tracking dội lại khoá do chính nó tính;
+     lệch với khoá Engine tính nghĩa là hai bản công thức đã trôi khỏi nhau.
+     Nổ NGAY tại đây — nếu không, quyết định vừa ghi nằm ở một ô mà Báo cáo
+     sẽ không bao giờ đọc tới, và triệu chứng duy nhất là "gán rồi mà vẫn
+     hiện chưa gán", một thứ rất khó lần ra. */
+  if (kq.khoa !== khoaMongDoi) {
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/gan-ma",
+             khoa_lech: { engine: khoaMongDoi, tracking: kq.khoa } });
+    throw new LoiXacThuc(503, "khoa-lech-hai-repo");
+  }
+
+  return { ghi: true, khoa: kq.khoa, ma: kq.ma };
 });
 
 const API_ROUTES = new Map([
@@ -612,6 +706,8 @@ const API_ROUTES = new Map([
   ["GET /api/ban-luu", layBanLuu],
   ["GET /api/ky-co-don", layKyCoDon],
   ["GET /api/don-hang", layDonHang],
+  ["GET /api/ma-bang-gia", layMaBangGia],
+  ["POST /api/gan-ma", ganMa],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn

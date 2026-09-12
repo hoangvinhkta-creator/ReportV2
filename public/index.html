@@ -148,7 +148,18 @@
   .bangNho th { background: #f9fafb; }
 
   .bocBang { overflow-x: auto; }
-  .bangDon { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  /* `table-layout: fixed` + <colgroup> (RONG_COT bên don-hang.js) — bề rộng
+     cột CHỐT CỐ ĐỊNH, chủ dự án chốt 12/09/2026. Trước đây bề rộng do nội
+     dung quyết định, nên đúng lúc P4 điền chữ vào những ô đang là "—" thì cả
+     bảng nống ra và dịch chỗ. Gán mã là việc làm liên tục trên cùng một màn
+     hình; mỗi lần gán mà bố cục giật một cái là không dùng được.
+
+     Đi kèm bắt buộc: `overflow: hidden` trên ô. Với bố cục cố định, nội dung
+     rộng hơn cột KHÔNG tự co — nó tràn đè sang ô bên cạnh, và đó cũng là
+     "biến dạng", chỉ khác kiểu. */
+  .bangDon { border-collapse: collapse; font-size: 12px; white-space: nowrap;
+    table-layout: fixed; }
+  .bangDon th, .bangDon td { overflow: hidden; text-overflow: ellipsis; }
   .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangDon th { background: #f9fafb; position: sticky; top: 0; }
   .bangDon .oSo { text-align: right; }
@@ -172,6 +183,58 @@
 
   /* Hai cột icon cuối bảng. Ở lượt này nút còn `disabled` — Sửa/Xoá là việc
      của P3 lượt 2; hiện ra mờ để thấy trước chỗ, bấm vào không làm gì. */
+  /* ---- Gán mã sản phẩm (P4) ----
+     Dòng ĐÃ phân loại hiện y như trước (chủ dự án chốt): không tô, không
+     thêm chữ. Chỉ dòng CHƯA phân loại mới khác đi — đủ để lướt mắt là thấy
+     phần còn nợ, không đủ để làm ồn cả bảng. */
+  .bangDon td.oMa { cursor: pointer; }
+  .bangDon td.maChuaCo {
+    color: #b45309; background: #fffbeb;
+    text-decoration: underline dotted #d97706; text-underline-offset: 2px;
+  }
+  .bangDon td.maChuaCo:hover, .bangDon td.maBoQua:hover { background: #fef3c7; }
+  .bangDon td.maBoQua { color: #9ca3af; font-style: italic; }
+
+  .bangConNo { font-size: 13px; color: #92400e; margin: 6px 0; }
+  .bangConNo.xong { color: #15803d; }
+  .bangNguonHong {
+    font-size: 13px; color: #991b1b; background: #fef2f2;
+    border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px; margin: 6px 0;
+  }
+
+  .phuGanMa {
+    position: fixed; inset: 0; background: rgba(17, 24, 39, .45);
+    display: flex; align-items: center; justify-content: center; z-index: 60;
+  }
+  .hopGanMa {
+    background: #fff; border-radius: 10px; padding: 16px;
+    width: min(560px, 94vw); max-height: 86vh; overflow: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .2);
+  }
+  .ganMaTieuDe { font-weight: 600; margin-bottom: 6px; }
+  .ganMaTen {
+    font-size: 13px; background: #f9fafb; border: 1px solid #e5e7eb;
+    border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; word-break: break-word;
+  }
+  .ganMaNhac { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+  .ganMaTim {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+  }
+  .ganMaTinh { font-size: 12px; color: #6b7280; margin: 8px 0; }
+  .ganMaTinh.ganMaLoi { color: #991b1b; }
+  .ganMaDs { display: flex; flex-direction: column; gap: 2px; max-height: 44vh; overflow: auto; }
+  .ganMaMuc {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    width: 100%; text-align: left; background: none; border: 1px solid transparent;
+    border-radius: 6px; padding: 6px 8px; cursor: pointer; font-size: 13px;
+  }
+  .ganMaMuc:hover { background: #f3f4f6; border-color: #e5e7eb; }
+  .ganMaMuc.dangChon { background: #eff6ff; border-color: #bfdbfe; }
+  .ganMaMa { font-weight: 500; }
+  .ganMaNhom { color: #6b7280; font-size: 12px; white-space: nowrap; }
+  .ganMaNut { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+
   .bangDon .oIcon { text-align: center; padding: 2px 4px; }
   .nutIcon {
     border: 1px solid transparent; background: none; border-radius: 5px;
@@ -227,6 +290,10 @@
     </div>
     <div class="tabDonVi" id="tabLine"></div>
     <p class="canhBao" id="loiDonHang"></p>
+    <!-- Băng "còn N dòng chưa có mã" (P4). Đặt NGOÀI #veDonHang có chủ đích:
+         `veBang()` xoá sạch ruột #veDonHang mỗi lượt vẽ, nên một thẻ dựng
+         bên trong sẽ biến mất đúng lúc phép vá tại chỗ cần tới nó. -->
+    <p class="bangConNo" id="bangConNo" hidden></p>
     <div id="veDonHang"></div>
   </section>
 
@@ -327,6 +394,9 @@ firebase.auth().onAuthStateChanged(async (user) => {
 <script src="/suc-khoe.js"></script>
 <script src="/doc-xlsx.js"></script>
 <script src="/tai-len.js"></script>
+<!-- gan-ma.js phải nạp TRƯỚC don-hang.js: don-hang gọi window.GanMa lúc
+     người dùng bấm, nhưng khai báo trước cho khỏi phụ thuộc thời điểm. -->
+<script src="/gan-ma.js"></script>
 <script src="/don-hang.js"></script>
 </body>
 </html>
