@@ -65,6 +65,11 @@
     return Math.round(n / 1000).toLocaleString("vi-VN");
   }
   const soNguyen = (v) => (Number(v) || 0).toLocaleString("vi-VN");
+  /** Phần trăm, một chữ số thập phân — cho "đạt bao nhiêu % KPI". Engine đã
+   *  làm tròn tới hai số; một số thập phân là đủ để đọc và đủ để thấy chuyển
+   *  động giữa hai lượt xem. */
+  const so1 = (v) => (Number(v) || 0).toLocaleString("vi-VN", {
+    minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   function nhanNgayDay(d) {
     const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -79,8 +84,8 @@
   }
   /** Ô của bảng: `null` hiện "—" chứ không hiện 0. "0 đồng" và "chưa biết" là
    *  hai chuyện hoàn toàn khác nhau, và nhầm hai thứ đó trên một cột tiền là
-   *  nhầm tiền. (Cột Ghi chú đã có nguồn từ 12/09/2026 — cột `Diễn giải` của
-   *  sổ; còn lại "Doanh số quy đổi" chờ chốt công thức.) */
+   *  nhầm tiền. (Từ P5 mọi cột đều có nguồn; "—" ở cột Doanh số quy đổi nghĩa
+   *  là dòng đó chưa có lợi nhuận để chia, không phải quy đổi bằng 0.) */
   const o = (v, lop) => el("td", lop, v === null || v === undefined || v === "" ? "—" : v);
 
   /** Ô HẸP: chữ dài bị cắt bớt chứ không ngắt xuống dòng (chủ dự án chốt
@@ -96,10 +101,15 @@
     return td;
   }
 
-  /* 19 cột chủ dự án chốt 11/09/2026. "Doanh số quy đổi" chờ P4/P5 (công
-     thức quy đổi là nghiệp vụ, nằm ở Engine — LUẬT SỐ 1), cùng với giá nhập,
-     lợi nhuận, nơi nhập, hãng, ngành hàng. Hai cột icon cuối là Sửa/Xoá
-     dòng, còn khoá cho tới P3 lượt 2. */
+  /* 19 cột chủ dự án chốt 11/09/2026. Từ P5 không còn cột nào chờ nguồn:
+     "Doanh số quy đổi" nay có số thật (lợi nhuận ÷ hệ số của line, Engine
+     tính — LUẬT SỐ 1).
+
+     VẪN ĐÚNG 19 CỘT sau P5, và đó là một quyết định: ô tick "gia dụng" của
+     tab Nội thành nằm TRONG ô Mã sản phẩm chứ không thành cột thứ 20 (chủ dự
+     án chốt 12/09/2026). Một cột chỉ có mặt ở một tab sẽ làm `RONG_COT` và
+     `COT` phải đổi theo tab đang xem — tức bề rộng cố định hết cố định, đúng
+     thứ đã phải sửa ở P4. */
   const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
     "Tổng bán", "Lợi nhuận", "Doanh số quy đổi",
     "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ghi chú",
@@ -116,7 +126,13 @@
   const RONG_COT = [78, 78, 92, 240, 44, 82, 82, 90, 86, 96,
     132, 94, 152, 92, 92, 112, 112, 34, 34];
 
-  const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false };
+  /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
+     định cho mọi kỳ. Chỉ là trạng thái của màn hình — KHÔNG lưu ở đâu cả, và
+     không được lưu: nó nói "tôi đang định đổi cái nào", không nói dữ liệu là
+     gì. Về mặc định mỗi lần nạp trang, vì đặt mặc định là lượt sửa thường
+     gặp, còn ghi đè một tháng là việc cố ý làm. */
+  const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false,
+    kpiRiengKy: false };
 
   /** Ghim đầu cột: đổi cách khung `.bocBang` cuộn, không đổi một dòng CSS
    *  `position: sticky` nào cả (chủ dự án chốt 12/09/2026 — "khi kéo có
@@ -191,8 +207,46 @@
    *  Dòng đã có mã vẫn bấm được: một lượt khớp TỰ ĐỘNG có thể sai, và không
    *  cho sửa thì cái sai ấy nằm lại vĩnh viễn. Mã đang gán để ở `title`, chỗ
    *  duy nhất thêm được thông tin mà không đổi thứ đang hiện. */
-  function oMaSanPham(d, trongPhamVi) {
+  /** Ô tick "gia dụng" của MỘT MẶT HÀNG, chèn vào đầu ô Mã sản phẩm.
+   *
+   *  Chỉ dựng khi line đang xem CÓ hệ số gia dụng — và điều đó do Engine nói
+   *  (`hanh.he_so_gia_dung_pt`), KHÔNG phải màn hình tự biết "Nội thành là
+   *  line đặc biệt". Chủ dự án đổi ý cho một line khác cũng có hệ số gia dụng
+   *  thì ô tick tự hiện ra ở đó, không phải sửa một dòng nào ở đây. Đó đúng
+   *  tinh thần bảng line là DỮ LIỆU, không phải code.
+   *
+   *  KHÔNG có tiêu đề cột — chủ dự án chốt 12/09/2026 ("không cần ghi tiêu đề
+   *  cột quá rõ, chỉ cần ô tick là tôi tự hiểu, vì chỉ có 2 người xem công cụ
+   *  này"). Đổi lại bảng vẫn đúng 19 cột: không sinh một cột chỉ có mặt ở một
+   *  tab, nên `kiem/bo-cuc-man-chu.js` không phải nới ra. */
+  function tickGiaDung(d) {
+    const h = el("input", "tickGd");
+    h.type = "checkbox";
+    h.checked = !!d.la_gia_dung;
+    h.dataset.o = "gd";
+    h.dataset.khoa = d.khoa_ten;
+    const duoc = window.VAI_BAO_CAO === "quantri";
+    h.disabled = !duoc;
+    h.title = duoc
+      ? "Mặt hàng này là GIA DỤNG — ăn hệ số quy đổi gia dụng thay vì hệ số "
+        + "thường. Quyết định áp cho MỌI kỳ, kể cả kỳ chưa nhập: tick một lần, "
+        + "tháng sau không phải tick lại."
+      : "Chỉ Quản trị đánh dấu được mặt hàng gia dụng.";
+    return h;
+  }
+
+  function oMaSanPham(d, trongPhamVi, hanh) {
     const td = el("td", "oTen oMa");
+    /* Ô tick đứng TRƯỚC tên hàng, và chỉ khi line này có hệ số gia dụng. Đặt
+       trước vì nó là thứ mắt cần quét dọc theo cột; đặt sau tên hàng thì nó
+       rơi vào một vị trí khác nhau trên từng dòng (tên hàng dài ngắn khác
+       nhau) và không còn quét dọc được. */
+    if (hanh && hanh.he_so_gia_dung_pt !== null && hanh.he_so_gia_dung_pt !== undefined
+        && d.khoa_ten && !d.la_chiet_khau && !d.la_phu_phi_co_dinh
+        && trongPhamVi !== false) {
+      td.appendChild(tickGiaDung(d));
+      if (d.la_gia_dung) td.classList.add("laGiaDung");
+    }
     const s = el("span", null, d.ma_san_pham);
     td.appendChild(s);
 
@@ -572,6 +626,35 @@
     taiKy({ imLang: true });
   }
 
+  /** Đánh dấu (hay rút lại) MỘT MẶT HÀNG là gia dụng.
+   *
+   *  Khoá là `khoa_ten` do Engine gắn vào dòng — màn hình KHÔNG tự dựng khoá,
+   *  vì công thức khoá là một luật khớp mã (LUẬT SỐ 1).
+   *
+   *  Đây là quyết định về MỘT MẶT HÀNG nên nó áp cho MỌI dòng cùng tên hàng,
+   *  ở MỌI kỳ — kể cả những dòng người dùng chưa kéo xuống xem. Vì vậy lượt
+   *  tải lại sau đó KHÔNG phải để "cho chắc": nó là cách duy nhất người vừa
+   *  tick thấy được đủ phần mình vừa đổi, thay vì chỉ thấy đúng ô mình bấm.
+   */
+  async function guiGiaDung(tick) {
+    const khoa = tick.dataset.khoa;
+    if (!khoa) return;
+    const bat = tick.checked;
+    const tr = tick.closest("tr");
+    if (tr) tr.classList.add("hangDangGui");
+    try {
+      await goiGhi("/api/gia-dung", { khoa, gia_dung: bat });
+    } catch (e) {
+      /* Trả ô tick về trạng thái THẬT khi ghi không được — để nó hiện trạng
+         thái mình vừa bấm là nói một quyết định chưa hề được lưu. */
+      tick.checked = !bat;
+      if (tr) tr.classList.remove("hangDangGui");
+      $("loiDonHang").textContent = "Không lưu được dấu gia dụng: " + e.message;
+      return;
+    }
+    taiKy({ imLang: true });
+  }
+
   /** Gửi một lượt GHI. Tách khỏi `goi()` vì nó cần POST kèm thân. */
   async function goiGhi(duong, than) {
     const user = firebase.auth().currentUser;
@@ -588,11 +671,390 @@
     return kq;
   }
 
+  /* ================= Dải setup KPI / hệ số quy đổi (P5) =================
+   *
+   * Chủ dự án chốt 12/09/2026: "tạo cho tôi 1 trình setup ở mỗi tab nhân
+   * viên bao gồm: KPI và Hệ số quy đổi. Riêng Tab Nội thành thì có thêm hệ số
+   * Quy đổi gia dụng."
+   *
+   * LUẬT SỐ 1: ba ô này chỉ HIỆN số Engine trả về và GỬI số người gõ. Không
+   * một phép tính tiền nào ở đây — kể cả phép chia ra doanh số quy đổi, kể cả
+   * phép nhân 1.000 đổi nghìn-đồng sang đồng (Gateway làm, tại biên).
+   */
+
+  /** Ba ô của dải, khai một chỗ để vẽ và đọc không lệch nhau.
+   *  `đv` là đơn vị GÕ VÀO, không phải đơn vị lưu: KPI gõ bằng nghìn đồng
+   *  (chủ dự án gõ "2.700.000" cho 2 tỷ 7), nhánh Firebase lưu bằng đồng. */
+  const O_KPI = [
+    { khoa: "kpi", nhan: "KPI", dv: "nghìn đ", buoc: "1",
+      gt: "Mục tiêu doanh số QUY ĐỔI của line trong tháng, tính bằng nghìn đồng." },
+    { khoa: "he_so_pt", nhan: "Hệ số quy đổi", dv: "%", buoc: "0.1",
+      gt: "Tỉ suất lợi nhuận mục tiêu của line. Doanh số quy đổi của mỗi dòng "
+        + "= lợi nhuận dòng ÷ hệ số này. Bán đúng tỉ suất mục tiêu thì quy đổi "
+        + "ra bằng đúng doanh số thuần." },
+    { khoa: "he_so_gia_dung_pt", nhan: "Hệ số gia dụng", dv: "%", buoc: "0.1",
+      gt: "Hệ số riêng cho những mặt hàng đã tick là gia dụng trong ô Mã sản phẩm." },
+  ];
+
+  /** Số cho ô nhập. KPI lưu bằng ĐỒNG, ô gõ bằng NGHÌN — chia 1.000 để HIỆN.
+   *  Đây là phép đổi ĐƠN VỊ để đọc, không phải một công thức nghiệp vụ: nó
+   *  không quyết định con số nào cả, chỉ quyết định dấu phẩy đứng ở đâu. */
+  const soVaoO = (khoa, gt) =>
+    gt === null || gt === undefined ? "" : String(khoa === "kpi" ? gt / 1000 : gt);
+
+  function veDaiKpi(khung, kq) {
+    /* Tab [Tổng hợp] không có dải setup: ở đó không có MỘT line nào để đặt hệ
+       số cho. Mỗi line đặt ở tab của chính nó. */
+    if (trangThai.line === null) return;
+
+    const tkpi = kq.bang.tom_tat_kpi || null;
+    const hanh = tkpi ? tkpi.hanh : null;
+    const dai = el("div", "daiKpi");
+
+    /* Nguồn KPI hỏng hoặc chưa nạp: nói THẲNG, và nói ở ĐÂY chứ không chỉ
+       dưới bảng — người đang nhìn một ô KPI trống cần biết ngay vì sao nó
+       trống. Ba trạng thái tách bạch (CLAUDE.md): chưa nạp / sai / đọc không
+       được, ba câu khác nhau. */
+    if (kq.loi_nguon_kpi) {
+      dai.appendChild(el("span", "datKpi thieu",
+        "Chưa đọc được bảng KPI lượt này, nên cột Doanh số quy đổi CHƯA BIẾT — "
+        + "khác với \"bằng 0\". Thử tải lại trang sau ít phút."));
+      khung.appendChild(dai);
+      return;
+    }
+    if (tkpi && tkpi.van_de && tkpi.van_de.length) {
+      dai.appendChild(el("span", "datKpi thieu",
+        "Bảng KPI trên Firebase đang có " + soNguyen(tkpi.van_de.length)
+        + " chỗ không dùng được, nên cột Doanh số quy đổi để trống. Chỗ sai: "
+        + tkpi.van_de.map((v) => (v.vi || "?") + " (" + v.ma + ")").join(" · ")));
+      khung.appendChild(dai);
+      return;
+    }
+
+    const duoc = window.VAI_BAO_CAO === "quantri";
+    for (const o of O_KPI) {
+      const gt = hanh ? hanh[o.khoa] : null;
+      /* Ô hệ số gia dụng CHỈ hiện ở line có nó — và "có nó" là việc của dữ
+         liệu, không phải của mã này: line nào khai `he_so_gia_dung_pt` thì ô
+         hiện ra. Chủ dự án hiện chỉ khai cho Nội thành. Nhờ vậy đổi ý về một
+         line khác không phải sửa một dòng nào ở đây. */
+      if (o.khoa === "he_so_gia_dung_pt" && (gt === null || gt === undefined)) continue;
+
+      const nhan = el("label");
+      nhan.appendChild(document.createTextNode(o.nhan));
+      const oN = el("input", "oKpi");
+      oN.type = "number";
+      oN.step = o.buoc;
+      oN.min = "0";
+      oN.dataset.o = o.khoa;
+      oN.value = soVaoO(o.khoa, gt);
+      oN.disabled = !duoc;
+      /* Viền xanh = con số này là RIÊNG của kỳ đang xem, không phải mặc định.
+         Không có dấu này thì người sửa không biết mình vừa đổi cho MỘT tháng
+         hay cho MỌI tháng — chỗ bộ "mặc định + ghi đè" dễ hiểu nhầm nhất. */
+      if (hanh && hanh.tu && hanh.tu[o.khoa] === "ky") oN.classList.add("rieng");
+      oN.title = o.gt + (duoc ? "" : "\n\nChỉ Quản trị đặt được.")
+        + (hanh && hanh.tu && hanh.tu[o.khoa] === "ky"
+          ? "\n\nĐang là con số RIÊNG của tháng này." : "");
+      nhan.appendChild(oN);
+      nhan.appendChild(el("span", "ghiChuKpi", o.dv));
+      dai.appendChild(nhan);
+    }
+
+    /* Phần trăm đạt — con số Engine tính, màn hình chỉ đọc. Đây là "KPI tính
+       theo doanh số quy đổi" (chủ dự án chốt điểm 3) hiện thành chữ. */
+    const cua = tkpi && tkpi.line ? tkpi.line[trangThai.line] : null;
+    if (cua && cua.dat_pt !== null && cua.dat_pt !== undefined) {
+      const nhan = el("span", "datKpi",
+        "Đạt " + so1(cua.dat_pt) + "%  ·  quy đổi " + nghinTron(cua.doanh_so_quy_doi)
+        + " nghìn đ");
+      nhan.title = "Doanh số quy đổi của line chia cho KPI của line, trong tháng "
+        + "đang xem. Engine tính, màn hình chỉ hiện.";
+      dai.appendChild(nhan);
+      /* Còn đơn chưa quy đổi được thì NÓI RA: con số "đạt" ở trên đang thiếu
+         phần ấy, và một phần trăm thiếu mà không dán nhãn thiếu là đúng thứ
+         CLAUDE.md cấm. */
+      if (cua.don_thieu_quy_doi) {
+        dai.appendChild(el("span", "ghiChuKpi",
+          "(còn " + soNguyen(cua.don_thieu_quy_doi)
+          + " đơn chưa đủ giá vốn nên chưa vào con số này)"));
+      }
+    } else if (cua) {
+      dai.appendChild(el("span", "datKpi thieu",
+        hanh && hanh.kpi === null ? "Chưa đặt KPI cho line này"
+          : "Chưa tính được phần trăm đạt"));
+    }
+
+    /* Nút chuyển giữa "đặt mặc định" và "đặt riêng tháng này". Mặc định là
+       chế độ thường — chủ dự án chốt "mặc định chung + ghi đè từng kỳ", và
+       phần lớn lượt sửa là đổi mục tiêu chung. */
+    if (duoc) {
+      const rieng = !!(hanh && hanh.co_rieng_ky);
+      const nut = el("button", "nutNhoKpi",
+        trangThai.kpiRiengKy ? "⟵ đang đặt cho RIÊNG tháng này" : "Đặt riêng tháng này");
+      nut.type = "button";
+      nut.title = trangThai.kpiRiengKy
+        ? "Con số gõ vào sẽ chỉ áp cho tháng " + trangThai.ky
+          + ". Bấm để quay về đặt mặc định cho MỌI tháng."
+        : "Bấm rồi gõ: con số sẽ chỉ áp cho tháng " + trangThai.ky
+          + ", các tháng khác giữ mặc định.";
+      nut.addEventListener("click", () => {
+        trangThai.kpiRiengKy = !trangThai.kpiRiengKy;
+        taiKy({ imLang: true });
+      });
+      dai.appendChild(nut);
+
+      if (rieng) {
+        const xoa = el("button", "nutNhoKpi", "✕ bỏ riêng tháng này");
+        xoa.type = "button";
+        xoa.title = "Xoá bản ghi đè của tháng " + trangThai.ky
+          + " — line này quay về dùng mặc định.";
+        xoa.addEventListener("click", () => boRiengKy(dai));
+        dai.appendChild(xoa);
+      }
+    }
+
+    /* MỘT listener cho cả dải, uỷ quyền — cùng lý do bảng đơn làm vậy, và nó
+       sống sót qua mỗi lượt vẽ lại mà không phải dọn gì.
+       `change` chứ không `input`: gõ "15000" sẽ bắn `input` năm lần, tức năm
+       lượt ghi Firebase cho một con số. `change` bắn khi người dùng rời ô —
+       đúng nhịp "rời khỏi dòng thì tự lưu" mà P4 đã chốt cho ô sửa tay. */
+    dai.addEventListener("change", (e) => {
+      const o = e.target.closest("input[data-o]");
+      if (o && dai.contains(o)) guiKpi(dai, o);
+    });
+
+    /* GHI NGAY, nhưng VẼ LẠI MUỘN — và đây là một lỗi đã phải sửa trước khi
+       đẩy, không phải một tối ưu.
+       Vẽ lại ngay trong `guiKpi()` thì: gõ KPI xong nhấn Tab sang ô Hệ số,
+       `change` bắn, lượt ghi xong gọi `taiKy()` dựng lại cả dải — và ô Hệ số
+       người dùng VỪA nhảy vào bị xoá khỏi DOM giữa lúc họ đang gõ, nên mấy
+       ký tự sau rơi vào hư không. Dải này là MỘT đơn vị sửa (hai, ba ô đi
+       liền nhau), khác hẳn một dòng sửa tay của P4 nơi lượt lưu cũng là lượt
+       đóng ô.
+       Nên: mỗi ô vẫn lưu ngay khi rời nó (không mất dữ liệu), còn bảng chỉ
+       dựng lại khi tiêu điểm rời hẳn KHỎI DẢI. `setTimeout(0)` vì lúc
+       `focusout` bắn thì `activeElement` còn là <body>, chưa phải ô kế tiếp —
+       đọc sớm một nhịp thì lần nào cũng tưởng người dùng đã đi ra. */
+    /* Enter trong một ô số: trình duyệt KHÔNG tự nhả tiêu điểm, nên `change`
+       bắn mà `focusout` thì không — người dùng thấy số đã lưu mà bảng bên dưới
+       vẫn là số cũ, và không hiểu vì sao. Nhả tiêu điểm bằng tay để chuỗi
+       "ghi xong thì vẽ lại" chạy đúng nhịp đã thiết kế.
+       Cũng chặn `submit` mặc định — dải này không nằm trong <form> nào hôm
+       nay, nhưng một lượt bọc lại sau này sẽ làm Enter nạp lại cả trang. */
+    dai.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const o = e.target.closest("input[data-o]");
+      if (!o || !dai.contains(o)) return;
+      e.preventDefault();
+      o.blur();
+    });
+
+    dai.addEventListener("focusout", () => {
+      setTimeout(() => {
+        if (!dai.isConnected || dai.contains(document.activeElement)) return;
+        if (!dai.dataset.canVeLai) return;
+        delete dai.dataset.canVeLai;
+        taiKy({ imLang: true });
+      }, 0);
+    });
+
+    khung.appendChild(dai);
+  }
+
+  /** Gửi một con số của dải setup.
+   *
+   *  Ô trống = RÚT LẠI con số (`null`), không phải "gõ số 0". Hai thứ khác
+   *  nhau, và Gateway đọc theo kiểu đúng như vậy: `null` rút lại, vắng mặt là
+   *  không nhắc tới. */
+  async function guiKpi(dai, o) {
+    const tho = o.value.trim();
+    const than = { line: trangThai.line };
+    /* Có `ky` = ghi đè riêng kỳ ấy; vắng `ky` = đặt mặc định cho MỌI kỳ. Đúng
+       hai chế độ của nút trên dải, không có chế độ thứ ba. */
+    if (trangThai.kpiRiengKy) than.ky = trangThai.ky;
+    than[o.dataset.o] = tho === "" ? null : Number(tho);
+
+    dai.classList.add("dangGui");
+    try {
+      await goiGhi("/api/dat-kpi", than);
+    } catch (e) {
+      dai.classList.remove("dangGui");
+      $("loiDonHang").textContent = "Không lưu được KPI: " + e.message;
+      return;
+    }
+    dai.classList.remove("dangGui");
+    /* Đổi hệ số là đổi MỌI con số quy đổi của bảng đang xem, cộng tổng line và
+       phần trăm đạt — bốn con số do Engine tính, nên phải tải lại chứ không
+       tự nhân ở trình duyệt (LUẬT SỐ 1). Nhưng KHÔNG tải ngay tại đây: xem
+       `focusout` ở `veDaiKpi()` cho lý do đầy đủ (vẽ lại giữa lúc người dùng
+       vừa nhảy sang ô kế tiếp sẽ ăn mất mấy ký tự họ gõ). Đặt cờ, để lượt rời
+       dải lo việc vẽ.
+       Cờ nằm trên `dataset` của chính dải chứ không ở một biến ngoài: dải bị
+       dựng lại mỗi lượt vẽ, nên cờ phải chết cùng nó — một biến ngoài sống
+       sót sẽ làm lượt vẽ sau tự gọi thêm một lượt vẽ nữa. */
+    dai.dataset.canVeLai = "1";
+  }
+
+  /** Xoá bản ghi đè của kỳ đang xem — line quay về dùng mặc định. */
+  async function boRiengKy(dai) {
+    dai.classList.add("dangGui");
+    try {
+      /* Gửi cả ba trường về `null` trong MỘT lượt: `vaDb` là PATCH nên ba
+         `null` xoá đúng ba khoá và để lại một nhánh rỗng, tức "không có bản
+         ghi đè". Gửi ba lượt riêng thì có một khoảng mà kỳ này đang mang một
+         bộ số nửa mặc định nửa riêng, và bảng đọc được đúng khoảng đó. */
+      await goiGhi("/api/dat-kpi", {
+        line: trangThai.line, ky: trangThai.ky,
+        kpi: null, he_so_pt: null, he_so_gia_dung_pt: null,
+      });
+    } catch (e) {
+      dai.classList.remove("dangGui");
+      $("loiDonHang").textContent = "Không bỏ được bản ghi đè: " + e.message;
+      return;
+    }
+    trangThai.kpiRiengKy = false;
+    taiKy({ imLang: true });
+  }
+
+  /* ================= Tab [Tổng hợp] (P5) =================
+   *
+   * Đích cuối là sheet "Summary" của file báo cáo tay. P5 lấp được hai cột
+   * cuối cùng còn thiếu nguồn: doanh thu QUY ĐỔI và KPI. Target/thưởng/ngày
+   * công/lương vẫn CHƯA có nhánh nào lưu — không bịa cột rỗng cho đủ hình.
+   *
+   * Mọi con số ở đây do Engine tính (`tom_tat_kpi`); màn hình không cộng lại
+   * một phép nào, kể cả hàng TỔNG (LUẬT SỐ 1).
+   */
+  function veTongHop(ve, kq) {
+    ve.innerHTML = "";
+    /* Băng "còn N dòng chưa có mã" đếm những ô `td.maChuaCo` trong bảng đơn —
+       mà tab này KHÔNG có bảng đơn. Không ẩn nó thì nó đứng lại với con số của
+       tab line vừa xem, tức một câu nói về một bảng không còn trên màn hình.
+       (Lỗi có sẵn từ P4, sửa ở đây vì đây đúng là nhánh đang viết lại.) */
+    demLaiConNo(false);
+    const tkpi = kq.bang.tom_tat_kpi || null;
+    const cua = (tkpi && tkpi.line) || {};
+
+    /* Ba lý do cột quy đổi trống, ba câu khác nhau — không bao giờ để một ô
+       trống tự nói thay. Thứ tự: nguồn hỏng trước (người dùng không làm gì
+       được), rồi bảng sai, rồi ngoài phạm vi (chuyện bình thường). */
+    if (kq.loi_nguon_kpi) {
+      ve.appendChild(el("p", "bangNguonHong",
+        "Chưa đọc được bảng KPI lượt này, nên hai cột Doanh số quy đổi và "
+        + "Đạt KPI CHƯA BIẾT — khác với \"bằng 0\". Doanh số thuần và số đơn "
+        + "bên dưới không bị ảnh hưởng."));
+    } else if (tkpi && tkpi.thieu_bang) {
+      ve.appendChild(el("p", "bangConNo",
+        "Chưa nạp bảng KPI lên Firebase, nên chưa có hệ số nào để quy đổi. "
+        + "Nạp lượt đầu bằng `node bin/nap-kpi.mjs --ghi --doc-lai`, sau đó "
+        + "sửa thẳng trên dải setup của từng tab line."));
+    } else if (tkpi && tkpi.van_de && tkpi.van_de.length) {
+      ve.appendChild(el("p", "bangNguonHong",
+        "Bảng KPI trên Firebase có " + soNguyen(tkpi.van_de.length)
+        + " chỗ không dùng được nên quy đổi để trống. Chỗ sai: "
+        + tkpi.van_de.map((v) => (v.vi || "?") + " (" + v.ma + ")").join(" · ")));
+    } else if (kq.trong_pham_vi_ma === false) {
+      ve.appendChild(el("p", "ghiChuPhamVi",
+        "Kỳ này nằm ngoài phạm vi dữ liệu giá của Tracking (chỉ có từ tháng "
+        + "09/2026). Quy đổi cần lợi nhuận, lợi nhuận cần giá vốn — nên hai "
+        + "cột Doanh số quy đổi và Đạt KPI để trống. Doanh số thuần và số đơn "
+        + "không bị ảnh hưởng."));
+    }
+
+    const b = el("table", "bangNho");
+    const tr = el("tr");
+    for (const c of ["Line", "Doanh số (nghìn đ)", "Số đơn", "Dòng hàng",
+                     "Hệ số", "Doanh số quy đổi (nghìn đ)", "KPI (nghìn đ)", "Đạt"]) {
+      tr.appendChild(el("th", null, c));
+    }
+    b.appendChild(tr);
+
+    /* Thứ tự theo `thu_tu` của bảng line — danh sách line CHÍNH THỨC. Suy từ
+       những line có đơn thì một line chưa chạy tháng này biến khỏi bảng thay
+       vì hiện ra với số 0 và mức KPI của nó. */
+    for (const ten of kq.tom_tat_line.thu_tu) {
+      const l = kq.tom_tat_line.line[ten];
+      const k = cua[ten] || null;
+      const r = el("tr");
+      r.appendChild(el("td", null, ten));
+      r.appendChild(el("td", "oSo", nghinTron(l.doanh_so)));
+      r.appendChild(el("td", "oSo", soNguyen(l.so_don)));
+      r.appendChild(el("td", "oSo", soNguyen(l.so_dong)));
+      /* Hệ số lấy từ bản kê Engine trả. Line không có đơn nào trong kỳ thì
+         không có mục trong `tom_tat_kpi.line` — ô để "—", đúng nghĩa "chưa có
+         dòng nào để quy đổi", không phải "chưa đặt hệ số". */
+      const oHs = el("td", "oSo", k && k.he_so_pt !== null && k.he_so_pt !== undefined
+        ? so1(k.he_so_pt) + "%" : "—");
+      if (k && k.he_so_gia_dung_pt !== null && k.he_so_gia_dung_pt !== undefined) {
+        oHs.textContent += " / " + so1(k.he_so_gia_dung_pt) + "%";
+        oHs.title = "Hệ số thường / hệ số gia dụng. Dòng nào được tick là gia "
+          + "dụng trong ô Mã sản phẩm thì ăn hệ số thứ hai.";
+      }
+      r.appendChild(oHs);
+      const oQd = el("td", "oSo", k ? nghinTron(k.doanh_so_quy_doi) : "—");
+      if (k && k.don_thieu_quy_doi) {
+        /* Con số đang THIẾU phần của mấy đơn chưa đủ giá vốn — phải dán nhãn
+           thiếu, không được để nó đọc như một con số đủ. */
+        oQd.textContent += " *";
+        oQd.title = "Còn " + soNguyen(k.don_thieu_quy_doi)
+          + " đơn chưa đủ giá vốn nên chưa vào con số này.";
+      }
+      r.appendChild(oQd);
+      r.appendChild(el("td", "oSo", k && k.kpi !== null && k.kpi !== undefined
+        ? nghinTron(k.kpi) : "—"));
+      /* "Chưa đặt KPI" và "đạt 0%" là hai câu khác nhau. */
+      r.appendChild(el("td", "oSo", k && k.dat_pt !== null && k.dat_pt !== undefined
+        ? so1(k.dat_pt) + "%" : "—"));
+      b.appendChild(r);
+    }
+
+    /* Hàng TỔNG do Engine cộng (`tom_tat_kpi.tong`), không phải màn hình cộng
+       lại — ngay cả một phép cộng cũng là một phép tính, và hai chỗ cộng là
+       hai chỗ có thể lệch nhau mà không ai biết bên nào đúng. */
+    const t = tkpi ? tkpi.tong : null;
+    if (t) {
+      const r = el("tr", "hangTongDon");
+      r.appendChild(el("th", null, "TỔNG"));
+      r.appendChild(el("td", "oSo", nghinTron(t.doanh_so)));
+      r.appendChild(el("td", "oSo", soNguyen(t.so_don)));
+      r.appendChild(el("td", "oSo", ""));
+      r.appendChild(el("td", "oSo", ""));
+      r.appendChild(el("td", "oSo", nghinTron(t.doanh_so_quy_doi)));
+      r.appendChild(el("td", "oSo", t.kpi !== null && t.kpi !== undefined
+        ? nghinTron(t.kpi) : "—"));
+      const oDat = el("td", "oSo", t.dat_pt !== null && t.dat_pt !== undefined
+        ? so1(t.dat_pt) + "%" : "—");
+      /* Tổng KPI chỉ cộng line CÓ MẶT trong kỳ — so tổng quy đổi của 3 line
+         với KPI của cả 10 line là một tỉ lệ vô nghĩa. Nói ra ở `title` để
+         người đối chiếu tay không phải tự đoán. */
+      oDat.title = "Tổng KPI chỉ cộng những line có đơn trong tháng này, "
+        + "không cộng cả 10 line.";
+      r.appendChild(oDat);
+      b.appendChild(r);
+    }
+
+    ve.appendChild(b);
+    ve.appendChild(el("p", "viDu",
+      "Hệ số quy đổi và KPI của từng line đặt ở dải setup trên tab của chính "
+      + "line đó. Doanh số quy đổi = lợi nhuận từng dòng ÷ hệ số của line, "
+      + "Engine tính. Bốn cột còn lại của sheet “Summary” (target thưởng, "
+      + "ngày công, lương) chưa có nhánh dữ liệu nào lưu."));
+  }
+
   function veBang(kq) {
     const khung = $("veDonHang");
     khung.innerHTML = "";
 
     const b = kq.bang;
+    const tkpi = b.tom_tat_kpi || null;
+    const hanhKpi = tkpi ? tkpi.hanh : null;
+
+    /* Dải setup dựng TRƯỚC phép kiểm "có đơn nào không": một line chưa có đơn
+       trong tháng vẫn phải đặt được KPI cho nó — nếu không thì line mới (hoặc
+       tháng đầu của một line) là chỗ duy nhất không đặt được mục tiêu. */
+    veDaiKpi(khung, kq);
+
     if (!b.ngay.length) {
       demLaiConNo(false);
       khung.appendChild(el("p", "dangTai", "Line này chưa có đơn nào trong tháng đã chọn."));
@@ -696,7 +1158,7 @@
           const tdNoi = oNoiNhap(d);
           tdNoi.dataset.o = "noi";
           tr.appendChild(tdNoi);
-          tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma));
+          tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma, hanhKpi));
           tr.appendChild(oSoLuong(d));
           const tdGia = oGiaNhap(d);
           tdGia.dataset.o = "gia";
@@ -750,6 +1212,17 @@
         if (!tr) return;
         if (nut.dataset.viec === "sua") moSua(tr);
         else xoaDongHang(tr);
+        return;
+      }
+      /* Ô TICK GIA DỤNG phải chặn TRƯỚC phép dò ô Mã — nó nằm BÊN TRONG ô
+         ấy, nên một cú bấm vào ô tick cũng khớp `td[data-o="ma"]` và sẽ mở
+         màn gán mã đè lên. Người dùng tick một cái rồi phải đóng một hộp
+         thoại không ai gọi: đúng kiểu hỏng nhỏ làm tính năng không dùng
+         được. */
+      const tick = e.target.closest('input[data-o="gd"]');
+      if (tick && tbody.contains(tick)) {
+        e.stopPropagation();
+        guiGiaDung(tick);
         return;
       }
       const td = e.target.closest('td[data-o="ma"]');
@@ -843,6 +1316,23 @@
        màu ấy, tức đọc được ngay tại chỗ đang thắc mắc. */
   }
 
+  /** Đổi chỗ đang xem (năm / tháng / line) rồi tải lại.
+   *
+   *  Đi qua MỘT cửa thay vì mỗi nút tự gán `trangThai` rồi gọi `taiKy()`: chế
+   *  độ "đang đặt RIÊNG tháng này" của dải setup KPI phải tắt mỗi lần đổi
+   *  chỗ, và để mỗi nút tự nhớ tắt nó là để một nút nào đó quên.
+   *
+   *  Vì sao phải tắt: bật chế độ ấy ở tab Tín Phát rồi bấm sang Nội thành,
+   *  con số gõ tiếp sẽ thành bản ghi đè RIÊNG tháng này của Nội thành — trong
+   *  khi người dùng tưởng mình đang đặt mặc định. Một mục tiêu kinh doanh đặt
+   *  sai tầng là con số sai lặng lẽ ở đúng một tháng, loại sai khó thấy nhất.
+   *  Mặc định là chế độ thường; ghi đè một tháng là việc phải cố ý làm lại. */
+  function doiCho(moi) {
+    Object.assign(trangThai, moi);
+    trangThai.kpiRiengKy = false;
+    taiKy();
+  }
+
   /* ---- Tab con: Tổng hợp + từng line ---- */
 
   /** Line "rỗng" = không đơn nào VÀ không dòng nào. Cố ý KHÔNG lấy
@@ -857,7 +1347,7 @@
     /* Tab đầu tiên là [Tổng hợp] — chủ dự án chốt 11/09/2026. */
     const nutTh = el("button", "tabNut" + (trangThai.line === null ? " tabDang" : ""), "Tổng hợp");
     nutTh.type = "button";
-    nutTh.addEventListener("click", () => { trangThai.line = null; taiKy(); });
+    nutTh.addEventListener("click", () => { doiCho({ line: null }); });
     hang.appendChild(nutTh);
 
     /* Thứ tự lấy theo `thu_tu` của bảng line trên Firebase, không theo thứ tự
@@ -872,7 +1362,7 @@
       const nut = el("button", "tabNut" + (trangThai.line === ten ? " tabDang" : ""),
         ten + " (" + soNguyen(l.so_don) + ")");
       nut.type = "button";
-      nut.addEventListener("click", () => { trangThai.line = ten; taiKy(); });
+      nut.addEventListener("click", () => { doiCho({ line: ten }); });
       hang.appendChild(nut);
     }
 
@@ -905,7 +1395,7 @@
       nut.type = "button";
       nut.disabled = !co;
       if (!co) nut.title = "Tháng " + t + "/" + trangThai.nam + " chưa có dòng hàng nào được tải lên";
-      nut.addEventListener("click", () => { trangThai.ky = ky; taiKy(); });
+      nut.addEventListener("click", () => { doiCho({ ky }); });
       hang.appendChild(nut);
     }
   }
@@ -917,9 +1407,7 @@
       const nut = el("button", "tabNut" + (trangThai.nam === nam ? " tabDang" : ""), nam);
       nut.type = "button";
       nut.addEventListener("click", () => {
-        trangThai.nam = nam;
-        trangThai.ky = (trangThai.dsKy.nam[nam] || [])[0] || null;
-        taiKy();
+        doiCho({ nam, ky: (trangThai.dsKy.nam[nam] || [])[0] || null });
       });
       hang.appendChild(nut);
     }
@@ -955,31 +1443,7 @@
       const kq = await goi(duong);
       veTabLine(kq.tom_tat_line);
       if (trangThai.line === null) {
-        /* Tab [Tổng hợp]. Đích cuối là chép lại sheet "Summary" của file báo
-           cáo tay: Tổng đơn, Tổng SP, Doanh thu quy đổi, Tỉ suất lợi nhuận,
-           Target, Thưởng, Lương… Phần lớn cột ấy CHƯA có nguồn dữ liệu nào
-           (giá vốn ở P5, target/lương chưa có nhánh nào lưu), nên lượt này
-           chỉ dựng đúng chỗ đứng của tab và giữ bảng line sẵn có. Không bịa
-           cột rỗng cho đủ hình. */
-        ve.innerHTML = "";
-        const b = el("table", "bangNho");
-        const tr = el("tr");
-        for (const c of ["Line", "Doanh số (nghìn đ)", "Số đơn", "Dòng hàng"]) tr.appendChild(el("th", null, c));
-        b.appendChild(tr);
-        for (const ten of kq.tom_tat_line.thu_tu) {
-          const l = kq.tom_tat_line.line[ten];
-          const r = el("tr");
-          r.appendChild(el("td", null, ten));
-          r.appendChild(el("td", "oSo", nghinTron(l.doanh_so)));
-          r.appendChild(el("td", "oSo", soNguyen(l.so_don)));
-          r.appendChild(el("td", "oSo", soNguyen(l.so_dong)));
-          b.appendChild(r);
-        }
-        ve.appendChild(b);
-        ve.appendChild(el("p", "viDu", "Tab Tổng hợp sẽ dựng theo sheet “Summary” của file báo cáo "
-          + "tay (tổng đơn, doanh thu quy đổi, tỉ suất lợi nhuận, target, thưởng, lương). "
-          + "Các cột đó cần giá vốn (P5) và một nhánh lưu target/lương chưa có — lượt này mới xếp "
-          + "chỗ cho tab."));
+        veTongHop(ve, kq);
       } else {
         veBang(kq);
         if (imLang) {

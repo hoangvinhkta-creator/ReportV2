@@ -268,6 +268,53 @@
     border: 1px solid #fecaca; border-radius: 6px; padding: 8px 10px; margin: 6px 0;
   }
 
+  /* ---- Dải setup KPI / hệ số quy đổi (P5) ----
+     Đứng NGAY TRÊN bảng đơn của từng tab line. Chủ dự án chốt 12/09/2026:
+     "tạo cho tôi 1 trình setup ở mỗi tab nhân viên". Khung nhạt, không viền
+     đậm: nó là chỗ đặt mục tiêu, không phải một cảnh báo. */
+  .daiKpi {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 8px 10px; margin: 8px 0; font-size: 13px;
+  }
+  .daiKpi label { display: flex; align-items: center; gap: 5px; }
+  .daiKpi .oKpi {
+    font: inherit; text-align: right; padding: 2px 5px;
+    border: 1px solid #cbd5e1; border-radius: 4px; background: #fff;
+  }
+  .daiKpi .oKpi[data-o="kpi"] { width: 96px; }
+  .daiKpi .oKpi[data-o="he_so_pt"], .daiKpi .oKpi[data-o="he_so_gia_dung_pt"] { width: 56px; }
+  /* Ô đang mang một con số RIÊNG của kỳ này (không phải mặc định): viền xanh
+     dương để phân biệt, cùng sắc với ô đang sửa của bảng đơn. Không có dấu
+     này thì người sửa không biết mình vừa đổi cho MỘT tháng hay cho MỌI
+     tháng — đúng chỗ bộ "mặc định + ghi đè" dễ gây hiểu nhầm nhất. */
+  .daiKpi .oKpi.rieng { border-color: #2563eb; background: #eff6ff; }
+  .daiKpi .datKpi { font-weight: 600; }
+  .daiKpi .datKpi.thieu { color: #92400e; font-weight: 400; }
+  .daiKpi .ghiChuKpi { color: #6b7280; font-size: 12px; }
+  .daiKpi .nutNhoKpi {
+    font: inherit; font-size: 12px; padding: 1px 7px; cursor: pointer;
+    border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #374151;
+  }
+  .daiKpi .nutNhoKpi:hover { background: #f1f5f9; }
+  .daiKpi.dangGui { opacity: .55; }
+  /* Quản lí ĐỌC được dải này (rules của bc/quyetdinh mở cho cả hai vai) nhưng
+     không đặt được — Gateway chặn. Khoá ô sẵn và nói lý do ở `title` thay vì
+     để họ gõ rồi ăn 403: một ô gõ được mà lưu không được là lời hứa hỏng. */
+  .daiKpi .oKpi:disabled { background: #f1f5f9; color: #6b7280; cursor: not-allowed; }
+
+  /* Ô tick "gia dụng" — nằm TRONG ô Mã sản phẩm, chỉ ở line có hệ số gia
+     dụng. Chủ dự án chốt 12/09/2026: "ngay trong ô mã sản phẩm, không cần
+     ghi tiêu đề cột quá rõ, chỉ cần ô tick là tôi tự hiểu". Nhờ vậy bảng vẫn
+     đúng 19 cột — không sinh một cột chỉ có mặt ở một tab. */
+  .bangDon td.oMa .tickGd {
+    margin: 0 5px 0 0; vertical-align: baseline; cursor: pointer;
+  }
+  .bangDon td.oMa .tickGd:disabled { cursor: not-allowed; }
+  /* Mặt hàng ĐÃ tick: ô mã hơi đậm lên để lướt mắt thấy được phần đang ăn hệ
+     số khác, mà không tô nền (nền của ô này đã dành cho "chưa gán mã"). */
+  .bangDon td.oMa.laGiaDung > span { font-weight: 600; }
+
   .phuGanMa {
     position: fixed; inset: 0; background: rgba(17, 24, 39, .45);
     display: flex; align-items: center; justify-content: center; z-index: 60;
@@ -451,6 +498,12 @@ firebase.auth().onAuthStateChanged(async (user) => {
   try {
     const me = await goiMe(user);
     $('tenNguoiDung').textContent = me.name || me.email;
+    /* Vai để don-hang.js biết có khoá dải setup KPI lại hay không. Đây là
+       phép kiểm TRANG TRÍ, không phải phân quyền: Gateway mới là chỗ chặn
+       (`boc("quantri", …)`). Để ô gõ được mà lưu không được là lời hứa hỏng,
+       nên khoá sẵn và nói lý do — nhưng sửa biến này trong Console cũng
+       không mở được gì cả. */
+    window.VAI_BAO_CAO = me.vai || null;
   } catch (e) {
     hopLoi.textContent = 'Không lấy được hồ sơ: ' + e.message
       + ' — liên hệ quản trị nếu tài khoản chưa được cấp quyền.';
