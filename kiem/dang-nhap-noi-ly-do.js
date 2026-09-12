@@ -84,6 +84,25 @@ console.log('\n2) Ca 403 của Google — nhận ra dù SDK gói thành auth/int
   }
 }
 
+console.log('\n2b) Ca 403 — dạng CÓ mã riêng, gặp thật 12/09/2026 trên production');
+{
+  /* Ghim đúng cặp (code, message) mà Firebase trả về khi
+     `reports.tinphatcrm.com` chưa có trong Website restrictions. Ca này
+     KHÔNG có chữ nào đáng nhận diện trong `message` ở một số bản SDK — toàn
+     bộ lý do nằm ở `code`. Đây là bằng chứng từ production, không phải một ca
+     tự nghĩ ra. */
+  const that = {
+    code: 'auth/requests-from-referer-https://reports.tinphatcrm.com-are-blocked',
+    message: 'Requests from referer https://reports.tinphatcrm.com are blocked.',
+  };
+  ok('nhận ra qua code', /Google chặn/.test(cau(that)), true);
+  ok('KHÔNG đổ lỗi sai mật khẩu', cau(that) === CAU_DO_LOI, false);
+
+  /* Và ca chỉ có code, message rỗng — bám một đầu là hở đầu kia. */
+  const chiMa = { code: 'auth/requests-from-referer-https://a.b-are-blocked', message: '' };
+  ok('nhận ra dù message rỗng', /Google chặn/.test(cau(chiMa)), true);
+}
+
 console.log('\n3) auth/unauthorized-domain — chỉ đúng sang Firebase, không sang Google Cloud');
 {
   /* Hai ca này rất dễ lẫn và cách sửa nằm ở HAI trang khác nhau. Nói nhầm

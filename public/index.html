@@ -630,6 +630,8 @@ const LOI_DANG_NHAP = {
   'auth/too-many-requests': 'Google tạm khoá vì thử sai quá nhiều lần. Chờ ít phút rồi thử lại.',
   'auth/network-request-failed': 'Không nối được tới Google. Kiểm tra mạng rồi thử lại.',
   'auth/operation-not-allowed': 'Firebase chưa bật đăng nhập bằng email/mật khẩu cho project này.',
+  'auth/invalid-api-key': 'Khoá API Firebase trong trang này không đúng — kiểm tra FB_CONFIG.',
+  'auth/api-key-not-valid': 'Khoá API Firebase trong trang này không đúng — kiểm tra FB_CONFIG.',
   'auth/unauthorized-domain': 'Tên miền này chưa được phép đăng nhập. Firebase Console → '
     + 'Authentication → Settings → Authorized domains → thêm ' + location.hostname + '.',
 };
@@ -639,14 +641,19 @@ function cauLoiDangNhap(e) {
   const ma = (e && e.code) || 'khong-ro';
   const tho = String((e && e.message) || '');
 
-  /* Ca KHÔNG có mã riêng, và cũng là ca dễ mất nhiều giờ nhất: khoá API của
-     Firebase bị giới hạn theo tên miền gọi (Google Cloud Console → APIs &
-     Services → Credentials → khoá Browser → Website restrictions). Tên miền
-     mới không nằm trong danh sách thì Google trả 403 ngay ở
-     `identitytoolkit.googleapis.com`, và SDK gói nó thành
-     `auth/internal-error` — một cái tên không nói được gì cho ai. Nhận ra nó
-     bằng chính câu Google viết trong thân lỗi. */
-  if (/referer|referrer|API key|API_KEY|PERMISSION_DENIED|blocked/i.test(tho)) {
+  /* Ca dễ mất nhiều giờ nhất: khoá API của Firebase bị giới hạn theo tên miền
+     gọi (Google Cloud Console → APIs & Services → Credentials → khoá Browser →
+     Website restrictions). Tên miền mới không nằm trong danh sách thì Google
+     trả 403 ngay ở `identitytoolkit.googleapis.com`.
+
+     Soi CẢ `code` LẪN `message`, vì SDK trả về hai dạng khác nhau tuỳ lúc và
+     ta đã gặp cả hai: gặp thật 12/09/2026 trên `reports.tinphatcrm.com` thì
+     `code` mang nguyên lý do
+     (`auth/requests-from-referer-https://reports.tinphatcrm.com-are-blocked`),
+     còn dạng kia gói thành `auth/internal-error` và nhét câu Google viết vào
+     `message`. Bám một đầu là hở đầu kia — mà lúc hở thì màn hình lại quay về
+     đổ lỗi mật khẩu, đúng thứ bộ kiểm này sinh ra để chặn. */
+  if (/requests-from-referer|referer|referrer|API key|API_KEY|PERMISSION_DENIED|blocked/i.test(ma + ' ' + tho)) {
     return ['Google chặn lượt đăng nhập từ tên miền ' + location.hostname
       + '. Khoá API Firebase đang giới hạn theo tên miền: Google Cloud Console → '
       + 'APIs & Services → Credentials → khoá Browser của project tinphattracking → '
