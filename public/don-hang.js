@@ -87,6 +87,20 @@
     return m ? m[3] + "/" + m[2] + "/" + m[1] : String(d || "");
   }
 
+  /** Ngày cho CỘT "Ngày" của bảng đơn: chỉ `DD/MM` (chủ dự án chốt
+   *  12/09/2026). Năm là chữ lặp lại ở mọi dòng của một bảng mà cả bảng
+   *  vốn đã là một tháng — nút tháng ngay trên đầu nói rõ tháng nào, năm
+   *  nào. Bỏ nó đi là bỏ đúng phần không mang tin.
+   *
+   *  Hàng BĂNG NGÀY (`hangNgay`) vẫn giữ `nhanNgayDay` đủ năm: nó xuất hiện
+   *  MỘT lần cho mỗi ngày chứ không lặp theo dòng, nên chỗ ấy năm không tốn
+   *  gì; và nó là chỗ duy nhất còn neo được bảng vào một mốc thời gian thật
+   *  khi ai đó chụp màn hình gửi đi. */
+  function nhanNgayCot(d) {
+    const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? m[3] + "/" + m[2] : String(d || "");
+  }
+
   function el(the, lop, chu) {
     const e = document.createElement(the);
     if (lop) e.className = lop;
@@ -122,7 +136,7 @@
      `COT` phải đổi theo tab đang xem — tức bề rộng cố định hết cố định, đúng
      thứ đã phải sửa ở P4. */
   const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
-    "Tổng bán", "Lợi nhuận", "Doanh số quy đổi",
+    "Tổng bán", "Lợi nhuận", "Quy đổi",
     "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ghi chú",
     "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
 
@@ -747,7 +761,7 @@
    *  `đv` là đơn vị GÕ VÀO, không phải đơn vị lưu: KPI gõ bằng nghìn đồng
    *  (chủ dự án gõ "2.700.000" cho 2 tỷ 7), nhánh Firebase lưu bằng đồng. */
   const O_KPI = [
-    { khoa: "kpi", nhan: "KPI", dv: "nghìn đ", buoc: "1",
+    { khoa: "kpi", nhan: "KPI", dv: null, buoc: "1",
       gt: "Mục tiêu doanh số QUY ĐỔI của line trong tháng, tính bằng nghìn đồng." },
     { khoa: "he_so_pt", nhan: "Hệ số quy đổi", dv: "%", buoc: "0.1",
       gt: "Tỉ suất lợi nhuận mục tiêu của line. Doanh số quy đổi của mỗi dòng "
@@ -826,7 +840,7 @@
         + (hanh && hanh.tu && hanh.tu[o.khoa] === "ky"
           ? "\n\nĐang là con số RIÊNG của tháng này." : "");
       nhan.appendChild(oN);
-      nhan.appendChild(el("span", "ghiChuKpi", o.dv));
+      if (o.dv) nhan.appendChild(el("span", "ghiChuKpi", o.dv));
       dai.appendChild(nhan);
     }
 
@@ -835,8 +849,7 @@
     const cua = tkpi && tkpi.line ? tkpi.line[trangThai.line] : null;
     if (cua && cua.dat_pt !== null && cua.dat_pt !== undefined) {
       const nhan = el("span", "datKpi",
-        "Đạt " + so1(cua.dat_pt) + "%  ·  quy đổi " + nghinTron(cua.doanh_so_quy_doi)
-        + " nghìn đ");
+        "Đạt " + so1(cua.dat_pt) + "%  ·  quy đổi " + nghinTron(cua.doanh_so_quy_doi));
       nhan.title = "Doanh số quy đổi của line chia cho KPI của line, trong tháng "
         + "đang xem. Engine tính, màn hình chỉ hiện.";
       dai.appendChild(nhan);
@@ -1157,7 +1170,7 @@
       { ten: "Lợi nhuận",
         gt: "Nghìn đồng. Cộng lợi nhuận của mọi dòng đã biết giá vốn, kể cả dòng âm "
           + "(trả lại, quà tặng, chiết khấu)." },
-      { ten: "Doanh số quy đổi", lop: "oQuyDoi",
+      { ten: "Quy đổi", lop: "oQuyDoi",
         gt: "Nghìn đồng. Lợi nhuận từng dòng ÷ hệ số quy đổi của line. Đặt hệ số ở dải "
           + "setup trên tab của chính line đó." },
       { ten: "Tỉ lệ tồn kho",
@@ -1529,7 +1542,7 @@
     }
 
     const tt = el("p", "tomTatDon");
-    tt.appendChild(el("b", null, nghinTron(b.tom_tat.doanh_so) + " nghìn đ"));
+    tt.appendChild(el("b", null, nghinTron(b.tom_tat.doanh_so)));
     tt.appendChild(document.createTextNode(" · " + soNguyen(b.tom_tat.so_don) + " đơn · "
       + soNguyen(b.tom_tat.so_dong) + " dòng"));
     khung.appendChild(tt);
@@ -1593,7 +1606,7 @@
          tổng của ngày để đọc dọc không phải tự cộng. */
       const trNgay = el("tr", "hangNgay");
       const tdNgay = el("td", null, nhanNgayDay(ng.ngay) + "  ·  " + soNguyen(ng.so_don)
-        + " đơn  ·  " + nghinTron(ng.doanh_so) + " nghìn đ");
+        + " đơn  ·  " + nghinTron(ng.doanh_so));
       tdNgay.colSpan = COT.length;
       trNgay.appendChild(tdNgay);
       tbody.appendChild(trNgay);
@@ -1620,7 +1633,7 @@
           const tr = el("tr", lop || null);
           /* Ngày và số BH chỉ ghi ở DÒNG ĐẦU của đơn — cùng cách file tay
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
-          tr.appendChild(o(dauDon ? nhanNgayDay(ng.ngay) : "", "oNgay"));
+          tr.appendChild(o(dauDon ? nhanNgayCot(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
           const tdNoi = oNoiNhap(d);
           tdNoi.dataset.o = "noi";
@@ -1742,26 +1755,19 @@
       }
     }
 
-    /* Băng QUYẾT ĐỊNH MỒ CÔI — quyết định sửa tay còn đó mà không dòng nào
-       mang khoá ấy nữa (dòng đã biến mất khỏi sổ ở một lượt nhập sau).
+    /* Băng QUYẾT ĐỊNH MỒ CÔI ĐÃ BỎ — chủ dự án chốt 12/09/2026 ("bỏ các ghi
+       chú về sửa tay ở dưới cùng"), sau khi nhìn nó ngoài đời: 22 khoá dòng
+       in liền một mạch thành sáu dòng chữ dày đặc dưới mỗi bảng, ngày nào
+       cũng thế, và không ai đọc tới lần thứ hai.
 
-       CLAUDE.md đòi thẳng: "màn hình phải nói rõ có bao nhiêu quyết định cũ
-       không còn dòng nào để áp, KÈM DANH SÁCH. Không im lặng bỏ qua." Engine
-       tính sẵn `tom_tat_sua_tay.mo_coi` từ P5 và chú thích của nó cũng chép
-       lại đúng câu ấy — nhưng tới 12/09/2026 vẫn chưa màn nào hiện ra.
+       Đây là một chốt ĐÈ LÊN câu trong CLAUDE.md ("màn hình phải nói rõ có
+       bao nhiêu quyết định cũ không còn dòng nào để áp, kèm danh sách") —
+       chốt ấy đã được ghi lại vào chính CLAUDE.md cùng ngày, không im lặng
+       bỏ qua một luật đang viết ngược lại.
 
-       KHÔNG cắt bớt danh sách: đây là việc của người dùng (hoặc sổ thiếu
-       dòng, hoặc quyết định gõ nhầm chứng từ), và một danh sách bị cắt lặng
-       lẽ là một phần việc không ai thấy — cùng kỷ luật với hàng chờ gán mã. */
-    const tst = b.tom_tat_sua_tay;
-    if (tst && tst.mo_coi && tst.mo_coi.length) {
-      const p = el("p", "bangConNo", soNguyen(tst.mo_coi.length)
-        + " quyết định sửa tay không còn dòng nào để áp — dòng đã biến mất khỏi "
-        + "sổ. Quyết định vẫn được GIỮ: lúc nào dòng xuất hiện lại thì nó tự áp "
-        + "trở lại. Khoá: " + tst.mo_coi.map((x) => x.khoa).join(" · ") + ".");
-      khung.appendChild(p);
-    }
-
+       Dữ liệu KHÔNG mất: Engine vẫn tính `tom_tat_sua_tay.mo_coi` đầy đủ
+       (`kiem/sua-tay.js` vẫn canh), quyết định vẫn được giữ và vẫn tự áp
+       trở lại lúc dòng xuất hiện lại. Thứ bỏ đi chỉ là chỗ in nó ra. */
     /* Băng BÁN TRẢ LẠI. Chỉ hiện khi kỳ này thật sự có chứng từ BTL — một
        dòng "0 lượt trả hàng" ở mọi tháng là nhiễu. Đếm do Engine trả về;
        màn hình không tự cộng lại (LUẬT SỐ 1). */

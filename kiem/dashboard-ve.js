@@ -327,9 +327,16 @@ function kiemMoc(ten, gtThat, doiSo) {
     /* Tiêu đề nay ở DẢI ĐIỀU KHIỂN, ngang hàng với [Ngày][Tháng][Quý] (chủ
        dự án chốt 12/09/2026) — nó vốn chiếm riêng một dòng ngay trên hình. */
     ok('tiêu đề KHÔNG còn nằm trong ô vẽ', /tieuDeSk/.test(veHtml()), false);
-    ok('  · mà ở dải điều khiển, ghi rõ đơn vị',
-       /Doanh số theo ngày[^<]*<span class="donViCua">\(nghìn đồng\)/.test(
-         CAY.skTieuDe.innerHTML), true);
+    /* Chú giải "(nghìn đồng)" ĐÃ BỎ khỏi biểu đồ Doanh số (chủ dự án chốt
+       12/09/2026, bỏ trên toàn hệ thống). Canh cả hai vế để chỗ này không
+       lặng lẽ in ra một cặp ngoặc rỗng: tiêu đề vẫn nói đúng khung thời
+       gian, và KHÔNG còn ô đơn vị nào cạnh nó. */
+    ok('  · mà ở dải điều khiển, nói đúng khung thời gian',
+       /Doanh số theo ngày/.test(CAY.skTieuDe.innerHTML), true);
+    ok('  · không còn chú giải "(nghìn đồng)"',
+       /nghìn đồng/.test(CAY.skTieuDe.innerHTML), false);
+    ok('  · và không in một cặp ngoặc rỗng thay chỗ',
+       /donViCua/.test(CAY.skTieuDe.innerHTML), false);
     /* Chú giải nay nằm ở dải điều khiển (mép phải), không còn là một hàng
        riêng dưới biểu đồ — chủ dự án chốt 12/09/2026 để lấy lại một dòng
        chiều cao. Nên nó KHÔNG còn trong `#skVe`. */
@@ -485,7 +492,8 @@ function kiemMoc(ten, gtThat, doiSo) {
        bộ với biểu đồ trên". */
     ok('tiêu đề nói đúng khung thời gian của biểu đồ trái (theo ngày · tháng 9/2026)',
        /Xu hướng theo Line · theo ngày · tháng 9\/2026/.test(tieuDe()), true);
-    ok('  · và đúng đơn vị đang xem', /<span class="donViCua">\(nghìn đồng\)/.test(tieuDe()), true);
+    ok('  · không còn chú giải đơn vị "(nghìn đồng)"', /nghìn đồng/.test(tieuDe()), false);
+    ok('  · và không in một cặp ngoặc rỗng thay chỗ', /donViCua/.test(tieuDe()), false);
     /* Từ 12/09/2026 cụm bỏ hai nhóm: line KHÔNG có số nào trong kỳ (một ô
        ghi "chưa có số" không phải một xu hướng, nó chỉ chiếm chỗ của ô có số
        thật) và line GOM đứng cuối bảng ("Khác" — một rổ nhiều tên rời rạc

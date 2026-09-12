@@ -80,13 +80,20 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
     .replace(/^const COT = /, '').replace(/;$/, '').replace(/,(\s*\])/, '$1'));
 
   ok('đủ 19 cột', COT.length, 19);
-  /* Chủ dự án chốt LẠI 12/09/2026: [Doanh số quy đổi] vẫn chen giữa [Tổng
-     bán] và [Tên khách hàng], nhưng [Ghi chú] DỜI ra SAU [Địa chỉ] — ghi chú
-     là chữ đọc kèm thông tin khách, không phải một cột tiền, để nó chen vào
-     giữa khối tiền là cắt đôi mạch đọc. Hai cột icon vẫn ở CUỐI cùng. */
-  ok('“Doanh số quy đổi” nằm sau “Tổng bán”, trước “Tên khách hàng”',
-     COT.indexOf('Tổng bán') < COT.indexOf('Doanh số quy đổi')
-     && COT.indexOf('Doanh số quy đổi') < COT.indexOf('Tên khách hàng'), true);
+  /* Chủ dự án chốt LẠI 12/09/2026: cột quy đổi vẫn chen giữa [Tổng bán] và
+     [Tên khách hàng], nhưng [Ghi chú] DỜI ra SAU [Địa chỉ] — ghi chú là chữ
+     đọc kèm thông tin khách, không phải một cột tiền, để nó chen vào giữa
+     khối tiền là cắt đôi mạch đọc. Hai cột icon vẫn ở CUỐI cùng.
+
+     Tên cột rút còn [Quy đổi] (chủ dự án chốt 12/09/2026): tiêu đề dài hơn
+     bề rộng cột thì phần thừa chỉ làm hàng tiêu đề cao lên, không thêm chữ
+     nào đọc được. Ghim luôn tên CŨ đã biến mất, để một lượt sửa nửa vời
+     (đổi ở bảng này mà quên bảng [Tổng hợp]) không lọt qua. */
+  ok('cột quy đổi mang tên ngắn “Quy đổi”', COT.includes('Quy đổi'), true);
+  ok('  · tên dài cũ đã bỏ hẳn', COT.includes('Doanh số quy đổi'), false);
+  ok('“Quy đổi” nằm sau “Tổng bán”, trước “Tên khách hàng”',
+     COT.indexOf('Tổng bán') < COT.indexOf('Quy đổi')
+     && COT.indexOf('Quy đổi') < COT.indexOf('Tên khách hàng'), true);
   ok('“Ghi chú” nằm ngay SAU “Địa chỉ”',
      COT.indexOf('Ghi chú'), COT.indexOf('Địa chỉ') + 1);
   ok('  · và KHÔNG còn nằm trong khối tiền',
@@ -305,16 +312,29 @@ console.log('\n10) Băng "còn N dòng chưa có giá vốn" — câu ROADMAP đ
   ok('Engine KHÔNG giữ một bản bảng dịch thứ ba', /export const LY_DO_GIA/.test(ENG), false);
 }
 
-console.log('\n11) Quyết định mồ côi — CLAUDE.md đòi "kèm danh sách, không im lặng bỏ qua"');
+console.log('\n11) Băng quyết định mồ côi ĐÃ BỎ — chốt 12/09/2026, có ghi vào CLAUDE.md');
 {
-  ok('băng dựng từ bản kê Engine trả', /const tst = b\.tom_tat_sua_tay;/.test(JS), true);
-  ok('  · nói rõ quyết định vẫn được GIỮ, không phải đã mất',
-     /tự áp[\s\S]{0,20}trở lại/.test(JS), true);
-  /* "Kèm danh sách" là chữ của CLAUDE.md, không phải gợi ý: chỉ một con số
-     thì người dùng không biết quyết định nào đang treo để mà đi tìm. */
-  ok('  · và liệt kê ĐỦ khoá, không cắt bớt',
-     /tst\.mo_coi\.map\(\(x\) => x\.khoa\)\.join/.test(JS), true);
-  ok('  · không có phép cắt danh sách nào lén vào', /mo_coi\.slice\(/.test(JS), false);
+  /* Bản trước canh điều NGƯỢC LẠI: băng phải có mặt và phải liệt kê đủ khoá,
+     theo đúng câu trong CLAUDE.md. Chủ dự án nhìn nó ngoài đời (22 khoá in
+     liền một mạch dưới mỗi bảng, ngày nào cũng thế) và chốt bỏ.
+
+     Bài kiểm không im lặng đổi chiều: nó canh CẢ HAI vế của chốt ấy — băng
+     biến mất khỏi màn hình, VÀ số liệu không mất theo (Engine vẫn tính, xem
+     `kiem/sua-tay.js`), VÀ CLAUDE.md đã được sửa cho khỏi còn một luật viết
+     ngược lại code. Bỏ một luật mà quên sửa file luật là để lại một cái bẫy
+     cho phiên sau: người đọc CLAUDE.md sẽ tưởng code đang hỏng. */
+  ok('không còn băng mồ côi trên màn hình',
+     /tst\.mo_coi\.map\(\(x\) => x\.khoa\)\.join/.test(JS), false);
+  ok('  · không còn đọc `tom_tat_sua_tay` để vẽ băng nào',
+     /const tst = b\.tom_tat_sua_tay;/.test(JS), false);
+  ok('  · nhưng chú thích nói rõ vì sao bỏ, không xoá trắng',
+     /Băng QUYẾT ĐỊNH MỒ CÔI ĐÃ BỎ/.test(JS), true);
+
+  const LUAT = doc('CLAUDE.md');
+  ok('CLAUDE.md KHÔNG còn đòi màn hình in danh sách ấy',
+     /màn hình phải nói rõ có bao nhiêu quyết định cũ/.test(LUAT), false);
+  ok('  · và có ghi lại chốt bỏ, kèm nơi số liệu vẫn còn',
+     /tom_tat_sua_tay\.mo_coi/.test(LUAT), true);
 }
 
 console.log('\n12) Ba luật hiển thị chốt 12/09/2026');

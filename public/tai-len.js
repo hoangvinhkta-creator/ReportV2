@@ -100,7 +100,7 @@
         li.appendChild(el("span", "viDu", " — ví dụ: " + c.vi_du.slice(0, 8).join(", ")));
       }
       if (c.doanh_so_khong_xep_duoc) {
-        li.appendChild(el("span", "viDu", " — " + nghinTron(c.doanh_so_khong_xep_duoc) + " nghìn đ không xếp được kỳ"));
+        li.appendChild(el("span", "viDu", " — " + nghinTron(c.doanh_so_khong_xep_duoc) + " không xếp được kỳ"));
       }
       ul.appendChild(li);
     }
@@ -142,7 +142,7 @@
 
     const dl = el("dl", "soLieu");
     const them = (nhan, giaTri) => { dl.appendChild(el("dt", null, nhan)); dl.appendChild(el("dd", null, giaTri)); };
-    them("Doanh số", nghinTron(k.thang.doanh_so) + " nghìn đ");
+    them("Doanh số", nghinTron(k.thang.doanh_so));
     them("Số đơn", soNguyen(k.thang.so_don));
     them("Dòng hàng", soNguyen(k.pham_vi.so_dong));
     them("Khoảng ngày", nhanNgay(k.pham_vi.tu) + " → " + nhanNgay(k.pham_vi.den)
@@ -202,7 +202,7 @@
     dau.appendChild(el("p", null,
       soNguyen(kq.tom_tat.dong_tong) + " dòng đọc được · "
       + soNguyen(kq.tom_tat.dong_bo_thieu_so_ct) + " dòng bỏ (không có số chứng từ) · tổng "
-      + nghinTron(kq.tom_tat.doanh_so_tong) + " nghìn đ · " + soNguyen(kq.tom_tat.so_don_tong) + " đơn"));
+      + nghinTron(kq.tom_tat.doanh_so_tong) + " · " + soNguyen(kq.tom_tat.so_don_tong) + " đơn"));
     if (kq.dong_khong_co_ky) {
       dau.appendChild(el("p", "canhBaoDam",
         "⚠ " + soNguyen(kq.dong_khong_co_ky) + " dòng không đọc được ngày nên không vào kỳ nào."));
