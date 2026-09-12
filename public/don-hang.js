@@ -132,7 +132,7 @@
      gì. Về mặc định mỗi lần nạp trang, vì đặt mặc định là lượt sửa thường
      gặp, còn ghi đè một tháng là việc cố ý làm. */
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false,
-    kpiRiengKy: false };
+    kpiRiengKy: false, moGiaDung: null };
 
   /** Ghim đầu cột: đổi cách khung `.bocBang` cuộn, không đổi một dòng CSS
    *  `position: sticky` nào cả (chủ dự án chốt 12/09/2026 — "khi kéo có
@@ -737,8 +737,16 @@
       /* Ô hệ số gia dụng CHỈ hiện ở line có nó — và "có nó" là việc của dữ
          liệu, không phải của mã này: line nào khai `he_so_gia_dung_pt` thì ô
          hiện ra. Chủ dự án hiện chỉ khai cho Nội thành. Nhờ vậy đổi ý về một
-         line khác không phải sửa một dòng nào ở đây. */
-      if (o.khoa === "he_so_gia_dung_pt" && (gt === null || gt === undefined)) continue;
+         line khác không phải sửa một dòng nào ở đây.
+
+         NHƯNG chưa khai thì phải khai ĐƯỢC, và đây là một lỗi đã phải sửa:
+         bản đầu ẩn ô này khi giá trị còn trống, nên một line chưa có hệ số
+         gia dụng thì KHÔNG CÓ ĐƯỜNG NÀO đặt nó từ màn hình — con gà và quả
+         trứng. Nay `trangThai.moGiaDung` mở ô trống ra cho đúng line đang
+         xem, qua nút "+ thêm hệ số gia dụng" bên dưới. Xoá trắng ô là bỏ hệ
+         số ấy đi, nên không cần nút xoá riêng. */
+      if (o.khoa === "he_so_gia_dung_pt" && (gt === null || gt === undefined)
+          && trangThai.moGiaDung !== trangThai.line) continue;
 
       const nhan = el("label");
       nhan.appendChild(document.createTextNode(o.nhan));
@@ -783,6 +791,22 @@
       dai.appendChild(el("span", "datKpi thieu",
         hanh && hanh.kpi === null ? "Chưa đặt KPI cho line này"
           : "Chưa tính được phần trăm đạt"));
+    }
+
+    /* Nút mở ô hệ số gia dụng cho line CHƯA có nó. Chỉ hiện khi chưa có và
+       chưa mở — line đã có hệ số thì ô đã nằm sẵn ở trên, không cần nút. */
+    if (duoc && (!hanh || hanh.he_so_gia_dung_pt === null
+                 || hanh.he_so_gia_dung_pt === undefined)
+        && trangThai.moGiaDung !== trangThai.line) {
+      const nutGd = el("button", "nutNhoKpi", "+ thêm hệ số gia dụng");
+      nutGd.type = "button";
+      nutGd.title = "Mở ô hệ số quy đổi riêng cho những mặt hàng được tick là "
+        + "gia dụng ở line này. Hiện chỉ Nội thành dùng tới.";
+      nutGd.addEventListener("click", () => {
+        trangThai.moGiaDung = trangThai.line;
+        taiKy({ imLang: true });
+      });
+      dai.appendChild(nutGd);
     }
 
     /* Nút chuyển giữa "đặt mặc định" và "đặt riêng tháng này". Mặc định là
@@ -917,6 +941,46 @@
     taiKy({ imLang: true });
   }
 
+  /** Nạp bộ số KPI mặc định — lượt khởi tạo đầu tiên.
+   *
+   *  Bộ số nằm ở ENGINE, không ở đây (LUẬT SỐ 1: mục tiêu kinh doanh của từng
+   *  line là một quyết định nghiệp vụ). Màn hình chỉ bấm và đọc kết quả — nó
+   *  không biết một con số nào trong bộ ấy, và `kiem/kpi-gateway.js` canh
+   *  đúng việc đó.
+   *
+   *  Gateway từ chối nếu nhánh đã có bộ số: đây là nút KHỞI TẠO, không phải
+   *  nút đặt lại. Nên bấm nhầm hai lần cũng không xoá mất gì. */
+  async function napBoSoKpi(nut) {
+    nut.disabled = true;
+    const truoc = nut.textContent;
+    nut.textContent = "Đang nạp…";
+    let kq;
+    try {
+      kq = await goiGhi("/api/nap-kpi", {});
+    } catch (e) {
+      nut.disabled = false;
+      nut.textContent = truoc;
+      $("loiDonHang").textContent = "Không nạp được bộ số: " + e.message;
+      return;
+    }
+    if (!kq.ghi) {
+      /* Từ chối CÓ LÝ DO, không phải lỗi — nói đúng câu thay vì một câu lỗi
+         chung làm người dùng đi tìm sai chỗ. */
+      nut.disabled = false;
+      nut.textContent = truoc;
+      $("loiDonHang").textContent = kq.ly_do === "da-co-bo-so"
+        ? "Nhánh KPI đã có bộ số rồi — sửa thẳng trên dải setup của từng tab "
+          + "line, không nạp lại."
+        : "Không nạp được bộ số: " + (kq.ly_do || "không rõ");
+      return;
+    }
+    /* Nạp xong là mọi con số quy đổi của bảng đổi theo — Engine tính, nên
+       tải lại chứ không tự vá ở trình duyệt (LUẬT SỐ 1). Lượt này KHÔNG
+       `imLang`: nó là một thay đổi lớn và cố ý, thấy băng "Đang tải…" ở đây
+       là đúng chứ không phải nhiễu. */
+    taiKy();
+  }
+
   /* ================= Tab [Tổng hợp] (P5) =================
    *
    * Đích cuối là sheet "Summary" của file báo cáo tay. P5 lấp được hai cột
@@ -945,10 +1009,28 @@
         + "Đạt KPI CHƯA BIẾT — khác với \"bằng 0\". Doanh số thuần và số đơn "
         + "bên dưới không bị ảnh hưởng."));
     } else if (tkpi && tkpi.thieu_bang) {
-      ve.appendChild(el("p", "bangConNo",
-        "Chưa nạp bảng KPI lên Firebase, nên chưa có hệ số nào để quy đổi. "
-        + "Nạp lượt đầu bằng `node bin/nap-kpi.mjs --ghi --doc-lai`, sau đó "
-        + "sửa thẳng trên dải setup của từng tab line."));
+      /* Nút KHỞI TẠO ngay cạnh câu giải thích, không bắt ai đi tìm ở đâu khác.
+         Trước đây chỗ này chỉ bảo "chạy `node bin/nap-kpi.mjs`" — một lời
+         hướng dẫn vô dụng với người không clone repo trên máy, và nó còn đòi
+         tải khoá admin Firebase về chỉ để đặt 10 con số. Gateway đã giữ khoá
+         làm Secret, nên nút này là đủ. */
+      const hop = el("div", "napKpi");
+      hop.appendChild(el("p", null,
+        "Chưa có bộ số KPI nào, nên cột Doanh số quy đổi và Đạt KPI còn trống. "
+        + "Bấm nút dưới để nạp bộ số mặc định chủ dự án đã chốt "
+        + "(Nội thành 15 tỷ/2%/8% · Tín Phát 2,7 tỷ/7,5% · tám line còn lại "
+        + "1,3 tỷ/5,5%). Sau đó sửa thẳng trên dải setup của từng tab line."));
+      if (window.VAI_BAO_CAO === "quantri") {
+        const nut = el("button", "nutNapKpi", "Nạp bộ số mặc định");
+        nut.type = "button";
+        nut.title = "Chỉ chạy được khi nhánh KPI còn rỗng — nó là nút khởi tạo, "
+          + "không phải nút đặt lại, nên không thể xoá mất con số nào anh đã sửa.";
+        nut.addEventListener("click", () => napBoSoKpi(nut));
+        hop.appendChild(nut);
+      } else {
+        hop.appendChild(el("p", "viDu", "Chỉ Quản trị nạp được bộ số này."));
+      }
+      ve.appendChild(hop);
     } else if (tkpi && tkpi.van_de && tkpi.van_de.length) {
       ve.appendChild(el("p", "bangNguonHong",
         "Bảng KPI trên Firebase có " + soNguyen(tkpi.van_de.length)
@@ -1330,6 +1412,11 @@
   function doiCho(moi) {
     Object.assign(trangThai, moi);
     trangThai.kpiRiengKy = false;
+    /* Ô hệ số gia dụng vừa mở cho một line thì đóng lại khi đi sang chỗ khác —
+       nó là "tôi đang định khai thêm cho line NÀY", không phải một trạng thái
+       của dữ liệu. Giữ lại thì sang line khác lại thấy một ô trống mời gõ một
+       hệ số line ấy không cần. */
+    trangThai.moGiaDung = null;
     taiKy();
   }
 

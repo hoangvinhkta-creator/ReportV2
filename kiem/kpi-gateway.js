@@ -31,6 +31,23 @@ const GOC = path.resolve(__dirname, '..');
 
 (async () => {
   const GW = doc('src/index.js');
+  /** Cắt đúng thân một handler của Gateway, từ `const <tên> = boc(` tới lượt
+   *  khai kế tiếp.
+   *
+   *  Vì sao cần: đo bằng regex trên CẢ file canh được "có/không có ở đâu đó",
+   *  nhưng phần lớn điều đáng canh ở đây là "handler NÀY không làm việc ấy" —
+   *  và hai thứ khác nhau hẳn. Bốn bài của bộ này từng đỏ oan đúng vì lẫn hai
+   *  thứ: `napKpi` dùng PUT và ném `khong-doc-duoc-kpi` một cách hoàn toàn
+   *  đúng, mà phép đo trên cả file lại đọc thành "`dat-kpi` dùng PUT" và
+   *  "`don-hang` ném 503". Một bài kiểm đo sai chỗ thì đỏ oan, và đỏ oan lâu
+   *  ngày là bài kiểm bị tháo. */
+  const thanHandler = (ten) => {
+    const i = GW.indexOf('const ' + ten + ' = boc(');
+    if (i < 0) throw new Error('không thấy handler ' + ten);
+    const sau = GW.slice(i + 10);
+    const j = sau.search(/\n(?:const|function|\/\* ={3,})/);
+    return j < 0 ? sau : sau.slice(0, j);
+  };
   const UI = doc('public/don-hang.js');
   const HTML = doc('public/index.html');
   const P = await import('file://' + path.join(GOC, 'engine/src/kpi.mjs'));
@@ -145,7 +162,16 @@ const GOC = path.resolve(__dirname, '..');
        riêng KPI một tháng sẽ xoá luôn hệ số riêng của tháng đó. */
     ok('dat-kpi dùng vaDb (PATCH), không ghiDb (PUT)',
        /vaDb\(duong, o, env\)/.test(GW), true);
-    ok('  · và không PUT vào nhánh KPI', /ghiDb\(DUONG_BANG_KPI/.test(GW), false);
+    /* Đo trong THÂN `datKpi`, không trên cả file: `napKpi` dùng PUT và dùng
+       đúng — nó dựng cả cây từ rỗng, không hợp nhất vào gì cả, và nó đã chặn
+       "chỉ khi rỗng" nên PUT không đè được của ai. */
+    ok('  · và không PUT trong chính handler dat-kpi',
+       /ghiDb\(/.test(thanHandler('datKpi')), false);
+    /* Ngược lại: `napKpi` PHẢI dùng PUT. PATCH vào một nhánh rỗng cũng ra kết
+       quả đúng hôm nay, nhưng nó nói sai ý định ("hợp nhất vào cái đang có")
+       ở đúng chỗ ý định là "dựng từ rỗng". */
+    ok('nap-kpi dùng ghiDb (PUT) — dựng cả cây từ rỗng',
+       /ghiDb\(DUONG_BANG_KPI, hat, env\)/.test(thanHandler('napKpi')), true);
   }
 
   /* ─────────── E. Nguồn hỏng không chặn cả bảng, nhưng phải NÓI ─────────── */
@@ -154,8 +180,12 @@ const GOC = path.resolve(__dirname, '..');
   {
     /* KHÔNG ném: quy đổi là MỘT cột; doanh số, số đơn, khách, giá vốn đọc
        được mà không cần nó. Khác hẳn bảng line (thiếu là 503). */
-    ok('đọc bảng KPI lỗi thì KHÔNG ném 503',
-       /khong-doc-duoc-(kpi|bang-kpi)/.test(GW), false);
+    /* Đo trong THÂN `layDonHang`. `napKpi` ném `khong-doc-duoc-kpi` và ném
+       đúng: ở đó không đọc được nhánh nghĩa là không biết nó rỗng hay không,
+       và ghi mù vào một nhánh có thể đang có dữ liệu là điều duy nhất tuyệt
+       đối không được làm. Hai handler, hai cách xử đúng — nên phải đo riêng. */
+    ok('đọc bảng KPI lỗi thì layDonHang KHÔNG ném 503',
+       /khong-doc-duoc-(kpi|bang-kpi)/.test(thanHandler('layDonHang')), false);
     ok('  · mà trả cờ lỗi về màn hình', /loi_nguon_kpi/.test(GW), true);
     ok('  · và ghi nhật ký cảnh báo', /canh_bao: loi_nguon_kpi/.test(GW), true);
     ok('màn hình nói ra khi nguồn KPI hỏng', /kq\.loi_nguon_kpi/.test(UI), true);
@@ -298,11 +328,15 @@ const GOC = path.resolve(__dirname, '..');
        hai bên trôi khỏi nhau mà triệu chứng chỉ là "số hiện không đúng số vừa
        gõ" — rất khó lần ra.
 
-       Cách canh: không bên nào được ĐỌC tầng `mac_dinh` để so với tầng `ky`.
-       Gateway có nhắc `mac_dinh` nhưng chỉ để DỰNG ĐƯỜNG GHI, nên canh bằng
-       phép đọc hai tầng cạnh nhau. */
-    ok('Gateway không tự hợp nhất hai tầng',
-       /mac_dinh[^\n]*\|\||\bky\b[^\n]*\?\?[^\n]*mac_dinh/.test(GW), false);
+       Cách canh — bất biến thật là: Gateway không bao giờ TRA GIÁ TRỊ CỦA MỘT
+       LINE ra khỏi tầng `mac_dinh`. Nó được nhắc `mac_dinh` để dựng đường ghi
+       (`datKpi`) và để đếm số line (`napKpi`), cả hai đều không phải hợp nhất.
+       Phép hợp nhất thì buộc phải chỉ vào một line cụ thể trong tầng ấy —
+       `mac_dinh[line]` — nên đó chính là thứ phải vắng mặt. */
+    ok('Gateway không tra giá trị của một line ra khỏi tầng mac_dinh',
+       /mac_dinh[^\n]{0,30}\[\s*(line|ten)\s*\]/.test(GW), false);
+    ok('  · và không có bản hanhKpi() thứ hai ở Gateway',
+       /(function|const)\s+hanhKpi\b/.test(GW), false);
     ok('  · và màn hình không đọc tầng mac_dinh chút nào',
        /mac_dinh/.test(UI), false);
     /* Màn hình lấy con số đang áp từ `hanh` Engine trả kèm bảng đơn — đúng
@@ -350,6 +384,88 @@ const GOC = path.resolve(__dirname, '..');
        (405 cho đường lạ là tự khai đường nào có thật). */
     ok('/api/dat-kpi-abc là đường lạ → 404', (await goi('/api/dat-kpi-abc', 'POST')).status, 404);
     ok('/api/kpi (chưa bao giờ có) → 404', (await goi('/api/kpi', 'POST')).status, 404);
+  }
+
+  /* ─────────── K. Nút nạp bộ số lượt đầu ─────────── */
+
+  console.log('\nK) POST /api/nap-kpi — khởi tạo, KHÔNG phải đặt lại');
+  {
+    const than = thanHandler('napKpi');
+
+    /* Điều quan trọng nhất của đường này: nó CHỈ chạy khi nhánh còn rỗng. Nhờ
+       vậy nó không thể nào xoá mất một con số chủ dự án đã sửa trên màn hình,
+       kể cả khi bấm nhầm hai lần, kể cả sau này. Bỏ chốt ấy là biến một nút
+       khởi tạo thành một nút đặt-lại không ai xin phép. */
+    ok('từ chối khi nhánh đã có bộ số', /da-co-bo-so/.test(than), true);
+    ok('  · và đọc NÔNG để kiểm, không kéo cả cây về',
+       /docDbNong\(DUONG_BANG_KPI/.test(than), true);
+    /* Từ chối CÓ LÝ DO thì trả 200 kèm `ghi: false`, không trả 4xx: 4xx hiện
+       thành "Dữ liệu gửi lên không hợp lệ" — một câu SAI, và nó làm người
+       dùng đi tìm sai chỗ. */
+    ok('  · từ chối bằng ghi:false, không bằng mã lỗi 4xx',
+       /return \{ ghi: false, ly_do: "da-co-bo-so" \}/.test(than), true);
+    ok('  · và màn hình nói đúng câu đó',
+       /da-co-bo-so[\s\S]{0,200}?dải setup/.test(UI), true);
+
+    /* Bộ số lấy từ ENGINE, không chép sang Gateway: nó là quyết định nghiệp vụ
+       (mục tiêu kinh doanh từng line), và `kiemBangKpi()` cùng `kiem/kpi.js`
+       canh đúng bản Engine. Hai bản là hai bản trôi khỏi nhau. */
+    ok('bộ số hỏi Engine, không đóng cứng ở Gateway',
+       /REPORT_ENGINE\.bangKpiHatGiong\(\)/.test(than), true);
+    for (const so of ['2700000000', '15000000000', '1300000000', '7.5', '5.5']) {
+      ok('  · Gateway KHÔNG chứa con số ' + so, GW.includes(so), false);
+    }
+    /* Kiểm lại bằng phép kiểm của Engine TRƯỚC khi ghi. Dư trên giấy (hằng số
+       đã có bài ghim) nhưng rẻ, và nó canh đúng ca một lượt sửa hằng số lọt
+       qua: bộ kiểm chạy ở lượt BUILD, cái này chạy ở lượt GHI. */
+    ok('kiểm hạt giống trước khi ghi',
+       /REPORT_ENGINE\.kiemBangKpi\(hat\)/.test(than), true);
+    /* Đọc ngược để xác nhận — cùng kỷ luật `--doc-lai` của mọi script nạp
+       trong repo. Ghi xong mà đọc lại rỗng là lượt ghi thất bại LẶNG LẼ, và nó
+       phải lộ ra bây giờ chứ không phải lúc chủ dự án mở màn hình thấy trống. */
+    ok('đọc ngược xác nhận sau khi ghi', /ghi-roi-doc-lai-rong/.test(than), true);
+
+    ok('chỉ Quản trị nạp được', /const napKpi = boc\("quantri"/.test(GW), true);
+    ok('có trong bảng route', /\["POST \/api\/nap-kpi", napKpi\]/.test(GW), true);
+
+    /* Màn hình KHÔNG biết một con số nào trong bộ ấy — nó chỉ bấm và đọc kết
+       quả. Con số trong câu giải thích của nút là chữ cho người đọc, nên canh
+       bằng dạng MÁY đọc được (đủ chữ số) chứ không bằng dạng người đọc. */
+    ok('màn hình không chứa bộ số dạng máy đọc được',
+       /\b(2700000|15000000|1300000)\b/.test(UI), false);
+    ok('màn hình có nút nạp', /nutNapKpi/.test(UI), true);
+    ok('  · chỉ hiện cho Quản trị',
+       /thieu_bang[\s\S]{0,900}?VAI_BAO_CAO === "quantri"/.test(UI), true);
+    ok('  · và nói rõ vì sao Quản lí không thấy nút',
+       /Chỉ Quản trị nạp được/.test(UI), true);
+    /* Nút khoá trong lúc gọi — bấm hai lần liên tiếp là hai lượt ghi chồng
+       nhau, và lượt thứ hai sẽ ăn câu "đã có bộ số rồi" do chính lượt đầu
+       vừa tạo ra. Đúng kỹ thuật thì vô hại, nhưng nó hiện ra thành một câu
+       lỗi ngay sau một lượt vừa thành công — đọc không hiểu gì. */
+    ok('  · nút khoá trong lúc đang nạp', /nut\.disabled = true/.test(UI), true);
+  }
+
+  /* ─────────── L. Ô hệ số gia dụng — khai được khi chưa có ─────────── */
+
+  console.log('\nL) Hệ số gia dụng — con gà và quả trứng');
+  {
+    /* LỖI ĐÃ SỬA: bản đầu ẩn ô này khi giá trị còn trống, nên một line chưa có
+       hệ số gia dụng thì KHÔNG CÓ ĐƯỜNG NÀO đặt nó từ màn hình. Với nhánh KPI
+       rỗng (trước lượt nạp đầu) thì kể cả Nội thành cũng không đặt được 8%. */
+    ok('ô hiện khi đã có giá trị, HOẶC khi vừa bấm mở cho line này',
+       /trangThai\.moGiaDung !== trangThai\.line\) continue/.test(UI), true);
+    ok('có nút mở ô cho line chưa khai', /\+ thêm hệ số gia dụng/.test(UI), true);
+    /* Nút chỉ hiện khi CHƯA có — line đã có hệ số thì ô đã nằm sẵn ở trên. */
+    ok('  · và chỉ hiện khi line chưa có hệ số ấy',
+       /he_so_gia_dung_pt === null[\s\S]{0,160}?moGiaDung !== trangThai\.line/.test(UI), true);
+    /* Trạng thái mở phải chết khi đi sang chỗ khác: nó là "tôi đang định khai
+       thêm cho line NÀY", không phải một trạng thái của dữ liệu. Giữ lại thì
+       sang line khác lại thấy một ô trống mời gõ một hệ số line ấy không cần. */
+    ok('  · và đóng lại khi đổi năm/tháng/line',
+       /doiCho[\s\S]{0,400}?trangThai\.moGiaDung = null/.test(UI), true);
+    /* Màn hình vẫn KHÔNG đóng cứng tên line nào — ai có hệ số gia dụng là việc
+       của dữ liệu, kể cả sau lượt sửa này. */
+    ok('  · và vẫn không đóng cứng tên "Nội thành"', /"Nội thành"/.test(UI), false);
   }
 
   xong();

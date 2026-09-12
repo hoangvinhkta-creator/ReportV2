@@ -213,7 +213,7 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
   ok('taiKy() nhận được tuỳ chọn gọi ÊM (không chớp "Đang tải…")',
      /async function taiKy\(tuyChon\)/.test(JS), true);
-  /* BẢY chỗ gọi. Ba của P4: sửa một dòng, xoá một dòng, gán mã xong (cái thứ
+  /* TÁM chỗ gọi. Ba của P4: sửa một dòng, xoá một dòng, gán mã xong (cái thứ
      ba thêm 12/09/2026 — gán mã xong phải lấy GIÁ VỐN của mã vừa gán ngay,
      không bắt người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc
      hỏi lại máy chủ). Bốn của P5: rời khỏi dải setup sau khi sửa KPI/hệ số,
@@ -233,9 +233,9 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
      Đếm bằng con số tuyệt đối chứ không "≥ 3": một lượt sửa tại chỗ mới mà
      quên `imLang` sẽ làm bài này đỏ, và đó đúng là lúc cần biết. */
-  ok('  · và cả BẢY lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
-     + 'bỏ ghi đè/tick gia dụng/đổi chế độ) đều gọi nó với tuỳ chọn ấy',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 7);
+  ok('  · và cả TÁM lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
+     + 'bỏ ghi đè/tick gia dụng/đổi chế độ/mở ô gia dụng) đều gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 8);
   ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }
