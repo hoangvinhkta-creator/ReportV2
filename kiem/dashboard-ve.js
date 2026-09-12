@@ -167,6 +167,10 @@ vm.runInContext(ma, ctx, { filename: 'public/suc-khoe.js' });
 
 const nghi = () => new Promise((r) => setTimeout(r, 0));
 const NGUOI = { getIdToken: async () => 'tok-gia' };
+/* "Nạp lại từ đầu": đăng xuất rồi đăng nhập lại. Phải gọi `moTab()` kèm
+   theo, vì đăng xuất quên cả việc tab [Biểu đồ] từng mở — người sau đăng
+   nhập vào cùng trình duyệt không được tự động kéo về số của người trước. */
+const napLai = () => { cbAuth(null); cbAuth(NGUOI); ctx.SucKhoe.moTab(); };
 const veHtml = () => CAY.skVe.innerHTML;
 const nutPhu = () => CAY.skDaiPhu.con;
 const nutTab = () => CAY.skTabDonVi.con;
@@ -224,15 +228,42 @@ function kiemMoc(ten, gtThat, doiSo) {
   documentGia._dcl();
   ok('script đăng ký onAuthStateChanged', typeof cbAuth === 'function', true);
 
-  console.log('\n1) Đăng nhập → dựng khung vào đúng ô #o-dashboard, gọi đúng endpoint');
+  console.log('\n1) Đăng nhập KHÔNG tự tải — chỉ mở tab [Biểu đồ] mới gọi API');
   {
+    /* Từ lúc bố cục đổi (11/09/2026) biểu đồ nằm sau tab [Biểu đồ] và ẩn
+       sẵn. Gọi API ngay lúc đăng nhập là kéo `bc/ky` của cả hai năm cho một
+       màn phần lớn lần đăng nhập không ai mở. Bài này canh ĐÚNG chỗ đó —
+       chỉ đọc mã thì không thấy được, vì nhìn vẫn như một lượt gọi bình
+       thường. */
     cbAuth(NGUOI);
     await nghi(); await nghi(); await nghi();
+    ok('đăng nhập xong CHƯA gọi API nào', fetchGoi, null);
+    ok('  · và chưa ghi gì vào ô #o-dashboard',
+       CAY['o-dashboard'] ? CAY['o-dashboard'].innerHTML : '', '');
+
+    /* Cửa vào DUY NHẤT giữa khung tab (don-hang.js) và file này. */
+    ok('có cửa vào window.SucKhoe.moTab()',
+       typeof (ctx.SucKhoe || {}).moTab, 'function');
+    ctx.SucKhoe.moTab();
+    await nghi(); await nghi(); await nghi();
+
     const khung = CAY['o-dashboard'].innerHTML;
-    ok('khung được ghi vào ô P3 chừa sẵn',
+    ok('mở tab → khung được ghi vào ô P3 chừa sẵn',
        /skTabDonVi/.test(khung) && /skVe/.test(khung) && /skDaiPhu/.test(khung), true);
     ok('gọi đúng /api/bao-cao/suc-khoe', fetchGoi && fetchGoi.url, '/api/bao-cao/suc-khoe');
     ok('có kèm Bearer token', (fetchGoi.opts.headers || {}).Authorization, 'Bearer tok-gia');
+
+    /* Bấm qua bấm lại giữa hai tab chính là chuyện thường xuyên — mỗi lần
+       bấm thêm một lượt gọi thì hoãn tải chẳng giải quyết được gì. */
+    fetchGoi = null;
+    ctx.SucKhoe.moTab();
+    await nghi(); await nghi();
+    ok('mở lại tab KHÔNG gọi API lần nữa', fetchGoi, null);
+
+    /* `onAuthStateChanged` còn nổ lại mỗi lần token tự làm mới. */
+    cbAuth(NGUOI);
+    await nghi(); await nghi();
+    ok('token tự làm mới KHÔNG kéo thêm lượt gọi', fetchGoi, null);
   }
 
   console.log('\n2) HAI biểu đồ riêng, KHÔNG gộp hai trục dọc vào một khung');
@@ -428,7 +459,7 @@ function kiemMoc(ten, gtThat, doiSo) {
     LINE_GIA.thu_tu = TEN_LINE_9;
     LINE_GIA.theo_nam = {};
     for (const ten of TEN_LINE_9) LINE_GIA.theo_nam[ten] = { 2026: { doanh_so: 100, so_don: 1 } };
-    cbAuth(null); cbAuth(NGUOI);
+    napLai();
     await nghi(); await nghi(); await nghi();
     nutTab()[1].click(); nutPhu()[0].click();
     const cc = CAY.skCoCau.innerHTML;
@@ -444,7 +475,7 @@ function kiemMoc(ten, gtThat, doiSo) {
   console.log('\n11c) Lưới nhỏ — xu hướng theo Line, năm đang xem, trục dọc RIÊNG từng ô');
   {
     // Đưa trạng thái về đúng năm 2026, chỉ số Doanh số (mặc định) trước khi kiểm.
-    cbAuth(null); cbAuth(NGUOI);
+    napLai();
     await nghi(); await nghi(); await nghi();
 
     /* CÙNG kiểu stub với `nutTab()`/`nutPhu()` ở các mục trên: nút bấm được
@@ -519,7 +550,7 @@ function kiemMoc(ten, gtThat, doiSo) {
        phải thiếu đúng một khối chứ không được vỡ cả màn hình. */
     const cu = LINE_GIA.thu_tu;
     delete LINE_GIA.thu_tu;
-    cbAuth(null); cbAuth(NGUOI);
+    napLai();
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được hai biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 2);
     ok('khối cơ cấu để trống', CAY.skCoCau.innerHTML, '');
@@ -530,8 +561,7 @@ function kiemMoc(ten, gtThat, doiSo) {
   console.log('\n13) API lỗi → báo lỗi, KHÔNG vẽ số giả');
   {
     tuChoi = true;
-    cbAuth(null);                                    // đăng xuất
-    cbAuth(NGUOI);                                   // đăng nhập lại
+    napLai();                                        // đăng xuất, đăng nhập lại, mở tab
     await nghi(); await nghi(); await nghi();
     ok('hiện câu lỗi của máy chủ',
        /Hệ thống tạm thời chưa phục vụ được/.test(CAY.skLoi.textContent), true);
