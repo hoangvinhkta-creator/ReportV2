@@ -15,12 +15,12 @@ import {
 } from "./khop-ma.mjs";
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
-import { apDungKpi, hanhKpi, kiemBangKpi } from "./kpi.mjs";
+import { apDungKpi, hanhKpi, kiemBangKpi, BANG_KPI_HAT_GIONG } from "./kpi.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.10.0-kpi-quy-doi";
+const PHIEN_BAN = "0.11.0-hat-giong-kpi";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -283,5 +283,26 @@ export default class extends WorkerEntrypoint {
    *  bỏ qua. Luật "thế nào là hợp lệ" chỉ có MỘT bản, ở đây. */
   async kiemBangKpi(bang) {
     return kiemBangKpi(bang);
+  }
+
+  /** Bộ số KPI / hệ số quy đổi MẶC ĐỊNH chủ dự án chốt 12/09/2026.
+   *
+   *  Có hàm này để nạp lượt đầu KHÔNG cần khoá service account trên máy ai
+   *  cả: Gateway đã giữ `FB_SA_EMAIL`/`FB_SA_KEY` làm Secret, nên nó hỏi
+   *  Engine bộ số rồi tự ghi. Trước đó việc nạp bắt buộc phải chạy
+   *  `bin/nap-kpi.mjs` dưới máy, tức phải tải khoá riêng về — và chủ dự án
+   *  không clone repo trên máy.
+   *
+   *  Bộ số ở ĐÂY chứ không chép sang Gateway: nó là một quyết định nghiệp vụ
+   *  (mục tiêu kinh doanh của từng line), và `kiemBangKpi()` cùng `kiem/kpi.js`
+   *  đang canh đúng bản này. Hai bản là hai bản trôi khỏi nhau, mà chỗ trôi ở
+   *  đây là mục tiêu của cả công ty lệch đi một cách không ai thấy.
+   *
+   *  Trả BẢN SAO, không trả chính hằng số: RPC qua Service Binding tuần tự
+   *  hoá rồi mới gửi nên bên kia không chạm được vào nó, nhưng một lượt gọi
+   *  trong cùng tiến trình (bộ kiểm) thì chạm được — và một bài kiểm sửa
+   *  nhầm hằng số sẽ làm bài kế tiếp hỏng theo cách rất khó lần. */
+  async bangKpiHatGiong() {
+    return JSON.parse(JSON.stringify(BANG_KPI_HAT_GIONG));
   }
 }

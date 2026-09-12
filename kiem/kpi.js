@@ -72,6 +72,15 @@ const GOC = path.resolve(__dirname, '..');
     ok('không có KPI cho line lạ', la, []);
 
     ok('hạt giống hợp lệ', P.kiemBangKpi(HAT), []);
+    /* Hằng số phải ĐÓNG BĂNG được qua JSON mà không mất gì — đó là cách Engine
+       trả nó cho Gateway ở `bangKpiHatGiong()`, và cũng là cách nó đi vào
+       Firebase. Một giá trị không tuần tự hoá được (undefined lồng trong
+       object, NaN, Infinity) sẽ lặng lẽ biến mất hoặc thành `null` đúng lúc
+       ghi, chứ không nổ lúc khai. */
+    ok('hạt giống đi qua JSON không mất gì',
+      JSON.parse(JSON.stringify(HAT)), JSON.parse(JSON.stringify(HAT)));
+    ok('  · và bản đi qua JSON vẫn hợp lệ',
+      P.kiemBangKpi(JSON.parse(JSON.stringify(HAT))), []);
     ok('hạt giống chưa có bản ghi đè kỳ nào', Object.keys(HAT.ky || {}), []);
     /* CHỈ Nội thành có hệ số gia dụng — chủ dự án chốt "riêng tab Nội thành".
        Suy diễn sang line khác là vượt quyết định. */
