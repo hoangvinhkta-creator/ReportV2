@@ -196,14 +196,63 @@ const laySucKhoeCongTy = boc(true, async ({ env }) => {
   if (!bangLine.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bang-line:" + chiTietLoi(bangLine));
   if (!bangLine.val) throw new LoiXacThuc(503, "thieu-bang-line");
   if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+  /* Trừ phần đã XOÁ TAY ra khỏi `bc/ky` trước khi gộp — chủ dự án chốt xoá
+     một dòng thì trừ ở CẢ HAI. Không trừ ở đây thì bảng đơn và biểu đồ nói
+     hai con số khác nhau cho cùng một tháng.
+
+     Đọc `bc/quyetdinh/dong` NÔNG trước (chỉ tên kỳ), rồi mới đọc `bc/dong`
+     của ĐÚNG những kỳ có quyết định. Kỳ chưa ai sửa — tức gần như mọi kỳ —
+     không tốn một lượt đọc nào, và trường hợp thường gặp nhất (chưa sửa gì)
+     không đọc thêm gì cả. */
+  let truTheoKy = null;
   try {
-    const chung = await env.REPORT_ENGINE.gopSucKhoeCongTy(cayKy.val || {});
-    const line = await env.REPORT_ENGINE.gopLineTheoThoiGian(cayKy.val || {}, bangLine.val);
+    truTheoKy = await tinhTruXoaTay(env, cayKy.val || {});
+  } catch (e) {
+    if (e instanceof LoiXacThuc) throw e;
+    throw new LoiXacThuc(503, "khong-tinh-duoc-tru-xoa:" + (e && e.message));
+  }
+
+  try {
+    const cay = truTheoKy
+      ? await env.REPORT_ENGINE.truVaoCayKy(cayKy.val || {}, truTheoKy)
+      : (cayKy.val || {});
+    const chung = await env.REPORT_ENGINE.gopSucKhoeCongTy(cay);
+    const line = await env.REPORT_ENGINE.gopLineTheoThoiGian(cay, bangLine.val);
     return { ...chung, line };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-suc-khoe:" + (e && e.message));
   }
 });
+
+/** Phần phải trừ khỏi `bc/ky` vì đã xoá tay, gom theo kỳ — hoặc `null` khi
+ *  chưa ai xoá dòng nào.
+ *
+ *  Trả `null` chứ không `{}` để chỗ gọi bỏ hẳn được lượt gọi Engine: đường
+ *  Dashboard chạy mỗi lần mở tab biểu đồ, và trường hợp thường gặp nhất là
+ *  chưa ai sửa gì. */
+async function tinhTruXoaTay(env, cayKy) {
+  const nong = await docDbNong("bc/quyetdinh/dong", env);
+  if (!nong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(nong));
+  const cacKy = Object.keys(nong.val || {}).filter(laKy).filter((k) => cayKy[k]);
+  if (!cacKy.length) return null;
+
+  const ra = {};
+  for (const ky of cacKy) {
+    const qd = await docDb("bc/quyetdinh/dong/" + ky, env);
+    if (!qd.ok) throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(qd));
+    /* Chỉ kỳ nào thật sự có lệnh XOÁ mới phải đọc `bc/dong` (≈390 KB/kỳ).
+       Sửa giá nhập hay nơi nhập không đụng doanh số, nên chúng không kéo
+       theo lượt đọc nào ở đây. */
+    const coXoa = Object.values(qd.val || {})
+      .some((q) => q && typeof q === "object" && q.xoa === true);
+    if (!coXoa) continue;
+    const dong = await docDb("bc/dong/" + ky, env);
+    if (!dong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + chiTietLoi(dong));
+    const tru = await env.REPORT_ENGINE.tinhTruDaXoa(dong.val || {}, qd.val || {});
+    if (Object.keys(tru).length) ra[ky] = tru;
+  }
+  return Object.keys(ra).length ? ra : null;
+}
 
 /* =================== P3 — tải sổ bán hàng, nối dài dữ liệu ===================
  *
@@ -643,17 +692,87 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
     }
   }
 
+  /* Quyết định sửa tay của kỳ này. Nhánh RIÊNG, không bị lượt nhập sổ đè,
+     và được hợp nhất ở đây — lúc ĐỌC (CLAUDE.md, mục "Nhập sổ"). */
+  const quyetDinh = await docDb("bc/quyetdinh/dong/" + ky, env);
+  if (!quyetDinh.ok)
+    throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(quyetDinh));
+
   try {
     const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
+    /* Kỳ ngoài phạm vi hoặc Tracking hỏng thì vẫn phải áp sửa tay: một dòng
+       đã XOÁ TAY phải biến khỏi bảng và khỏi mọi tổng dù có giá vốn hay
+       không. Nên đường không-Tracking đi qua `dungBangDonSuaTay`, không phải
+       `dungBangDon` trần. */
     const bang = nguon
       ? await env.REPORT_ENGINE.dungBangDonKemMa(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky, minNgay)
-      : await env.REPORT_ENGINE.dungBangDon(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null);
+        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
+        minNgay, quyetDinh.val || {})
+      : await env.REPORT_ENGINE.dungBangDonSuaTay(
+        dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {});
     return { ky, tom_tat_line, bang, loi_nguon_ma, trong_pham_vi_ma: trongPhamVi };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
+});
+
+/* =================== POST /api/sua-dong ===================
+ * Sửa tay giá nhập / nơi nhập của một dòng, hoặc xoá dòng.
+ *
+ * Ghi vào `bc/quyetdinh/dong/<kỳ>/<khoá dòng>` — nhánh RIÊNG, cố ý không
+ * chạm `bc/dong`. Đó là điều giữ cho quyết định sống qua mỗi lượt nhập lại:
+ * lượt nhập đè trọn `bc/dong`, còn nhánh này không ai đè.
+ *
+ * Khoá dòng do Engine dựng theo công thức CLAUDE.md (số chứng từ, tên hàng
+ * chuẩn hoá, lần xuất hiện thứ mấy) và đi kèm mỗi dòng trong bảng đơn. Màn
+ * hình gửi lại đúng chuỗi ấy — KHÔNG tự dựng khoá, vì công thức khoá là một
+ * luật nghiệp vụ (LUẬT SỐ 1).
+ *
+ * Mọi lượt ghi mang `boi` + `luc` — audit trail thật đầu tiên của V2.
+ */
+const suaDong = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const ky = than && than.ky;
+  const khoa = than && typeof than.khoa === "string" ? than.khoa : "";
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (!khoa || khoa.length > 400) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+
+  /* Khoá dòng đi thẳng vào một đường Firebase. `khoaDong()` đã thay mọi ký
+     tự Firebase cấm bằng `~`, nên một khoá mang chúng là khoá KHÔNG do Engine
+     dựng ra — từ chối thay vì sửa hộ. */
+  if (/[.#$[\]/]/.test(khoa)) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+
+  /* `xoa: true` là một quyết định; `xoa: false` là RÚT LẠI quyết định đó.
+     Hai thứ khác nhau, nên đọc theo kiểu chứ không theo tính đúng/sai. */
+  const o = {};
+  if (than.gia_nhap === null) o.gia_nhap = null;
+  else if (than.gia_nhap !== undefined) {
+    const n = Number(than.gia_nhap);
+    if (!Number.isFinite(n) || n < 0) throw new LoiXacThuc(400, "gia-nhap-khong-hop-le");
+    o.gia_nhap = Math.round(n);
+  }
+  if (than.noi_nhap === null) o.noi_nhap = null;
+  else if (than.noi_nhap !== undefined) {
+    const t = String(than.noi_nhap).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+    if (t.length > 80) throw new LoiXacThuc(400, "noi-nhap-qua-dai");
+    o.noi_nhap = t || null;
+  }
+  if (than.xoa === true) o.xoa = true;
+  else if (than.xoa === false) o.xoa = null;
+
+  if (!Object.keys(o).length) throw new LoiXacThuc(400, "khong-co-gi-de-ghi");
+
+  /* Dấu vết người sửa đi CÙNG lượt ghi, không phải một lượt ghi thứ hai:
+     hai lượt ghi thì có một khoảng mà quyết định đã có mà chưa biết của ai. */
+  o.boi = nguoi.email || nguoi.uid;
+  o.luc = { ".sv": "timestamp" };
+
+  const r = await vaDb("bc/quyetdinh/dong/" + ky + "/" + khoa, o, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-quyet-dinh:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/sua-dong", ky, khoa,
+           viec: Object.keys(o).filter((k) => k !== "boi" && k !== "luc") });
+  return { ghi: true, ky, khoa };
 });
 
 /* =================== GET /api/ma-bang-gia ===================
@@ -735,6 +854,7 @@ const API_ROUTES = new Map([
   ["GET /api/don-hang", layDonHang],
   ["GET /api/ma-bang-gia", layMaBangGia],
   ["POST /api/gan-ma", ganMa],
+  ["POST /api/sua-dong", suaDong],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn

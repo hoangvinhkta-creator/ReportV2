@@ -214,6 +214,21 @@
      nhuận xuống đúng như một dòng chiết khấu. Nền nhạt thôi, vì một tháng có
      thể có vài chục dòng như vậy và tô đậm cả dòng thì bảng thành đỏ rực.
      Chứng từ BTL cũng 0 đồng nhưng KHÔNG mang lớp này (xem `khop-ma.mjs`). */
+  /* ---- Sửa tay một dòng (P5) ----
+     XANH = dòng đang mang một quyết định của người. Chủ dự án chốt: dòng đã
+     sửa tay mà sống qua lần nhập lại thì hiện xanh — nó là dấu hiệu "con số
+     này không phải máy tính ra", và nó phải thấy được mà không cần rê chuột. */
+  .bangDon tr.hangSuaTay > td { background: #f0fdf4; }
+  .bangDon tr.hangSuaTay > td:first-child { box-shadow: inset 3px 0 0 #16a34a; }
+  /* Dòng đang mở ô nhập — viền xanh dương để phân biệt hẳn với "đã sửa". */
+  .bangDon tr.hangDangSua > td { background: #eff6ff; }
+  .bangDon tr.hangDangGui > td { opacity: .55; }
+  .oSuaGia, .oSuaNoi {
+    width: 100%; box-sizing: border-box; font: inherit; padding: 1px 4px;
+    border: 1px solid #2563eb; border-radius: 4px; background: #fff;
+  }
+  .oSuaGia { text-align: right; }
+
   .bangDon tr.hang0d > td { background: #fef2f2; color: #b91c1c; }
   .bangDon tr.hang0d > td.oChuaRo { color: #dc2626; font-weight: 600; }
   .bangConNo.xong { color: #15803d; }

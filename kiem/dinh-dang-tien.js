@@ -76,7 +76,7 @@ console.log('\n2) Đúng hàm được gọi ở đúng chỗ');
 {
   /* Cắt lấy phần vẽ MỘT DÒNG HÀNG (các ô `tr.appendChild(o(...))`) và phần
      vẽ DÒNG TỔNG, rồi soi từng phần dùng hàm nào. */
-  const dongHang = DON.match(/tr\.appendChild\(oGiaNhap\(d\)\)[\s\S]*?tr\.appendChild\(o\(d\.loi_nhuan[^\n]*\n/);
+  const dongHang = DON.match(/const tdGia = oGiaNhap\(d\);[\s\S]*?tr\.appendChild\(o\(d\.loi_nhuan[^\n]*\n/);
   ok('tìm thấy đoạn vẽ dòng hàng', !!dongHang, true);
   ok('dòng hàng dùng nghin(), KHÔNG dùng nghinTron()',
      /nghinTron\(/.test(dongHang ? dongHang[0] : 'nghinTron('), false);
@@ -122,7 +122,23 @@ console.log('\n4) Làm tròn chỉ đổi cách VIẾT — không đổi số n�
     ok(ten + ': không JSON.stringify một giá trị đã chia 1000',
        goiGhi.some(g => /nghin/.test(g)), false);
   }
-  ok('don-hang.js không gửi POST nào (chỉ đọc)', /method:\s*["']POST["']/.test(DON), false);
+  /* Từ P5 màn đơn hàng CÓ gửi POST (sửa tay giá nhập / nơi nhập, xoá dòng),
+     nên phép canh cũ "không POST nào" không còn dùng được. Thứ nó thật sự
+     bảo vệ vẫn nguyên giá trị và được canh chặt hơn ở đây: một phép làm tròn
+     ĐỂ ĐỌC không bao giờ được chảy ngược vào đường ghi.
+
+     Ô sửa giá phải seed từ giá trị THÔ (`dataset.dong`), KHÔNG từ chữ đang
+     hiện — chữ ấy đã qua `nghin()`. Seed từ chữ thì chỉ cần mở ô sửa rồi bấm
+     lưu là tiền đã khác, và không có gì đỏ lên. */
+  ok('ô sửa giá seed từ giá trị THÔ, không từ chữ đang hiện',
+     /oGia\.value = tdGia\.dataset\.dong/.test(DON), true);
+  ok('  · và ô giá mang theo giá trị thô để seed',
+     /td\.dataset\.dong = String\(d\.gia_nhap\)/.test(DON), true);
+  ok('  · không seed từ textContent của ô',
+     /oGia\.value = cuGia/.test(DON), false);
+  /* Thân request chỉ mang số ĐỒNG: ô nhập đếm bằng nghìn nên phép ×1000 phải
+     có mặt đúng một chỗ, lúc gửi. */
+  ok('giá gửi lên đã đổi về ĐỒNG', /Math\.round\(n \* 1000\)/.test(DON), true);
 }
 
 xong();
