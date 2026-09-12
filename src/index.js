@@ -125,10 +125,21 @@ const chiTietLoi = (r) => r.ma + (r.vi ? ":" + r.vi : "");
  * bài toán (một Gateway, nhiều endpoint sau này), một cách giải.
  *
  * @param canVai  true nếu endpoint đòi có vai báo cáo (quantri/quanly),
- *                false nếu chỉ cần đăng nhập + có hồ sơ
+ *                false nếu chỉ cần đăng nhập + có hồ sơ,
+ *                hoặc MỘT TÊN VAI ("quantri") nếu chỉ vai ấy được đi đường này.
  * @param chay    async ({ nguoi, vai, request, env, rid }) => object trả về
  */
 function boc(canVai, chay) {
+  /* Dạng chuỗi thêm ở P5 cho `dat-kpi`/`gia-dung`. Khai ở ĐÂY, tại chỗ phân
+     quyền, chứ không kiểm vai bên trong từng handler: một phép kiểm nằm lẫn
+     trong thân handler là phép kiểm dễ bị quên ở handler kế tiếp, còn ở đây
+     nó đứng ngay cạnh tên đường trong `API_ROUTES` nên đọc bảng route là
+     thấy ai đi được đường nào.
+
+     `typeof` chứ không ép boolean: `boc("quantri", …)` viết nhầm thành
+     `boc(true, …)` sẽ mở đường cho CẢ Quản lí mà không báo gì — đúng lớp lỗi
+     im lặng tệ nhất, nên phải tách hẳn hai kiểu. */
+  const vaiDuyNhat = typeof canVai === "string" ? canVai : null;
   return async (request, env) => {
     const rid = crypto.randomUUID();
     const batDau = Date.now();
@@ -137,6 +148,8 @@ function boc(canVai, chay) {
       // Anh là ai — lấy từ chữ ký token, KHÔNG lấy từ query hay body.
       nguoi = await xacThuc(request, env);
       if (canVai) vai = doiVaiBaoCao(nguoi);
+      if (vaiDuyNhat && vai !== vaiDuyNhat)
+        throw new LoiXacThuc(403, "can-vai:" + vaiDuyNhat);
 
       const ra = await chay({ nguoi, vai, request, env, rid });
 
@@ -272,6 +285,19 @@ const GIOI_HAN_THAN = 24 * 1024 * 1024;
 const SO_BAN_LUU = 3;
 
 const laKy = k => typeof k === "string" && /^\d{4}-\d{2}$/.test(k);
+
+/** Hai nhánh của P5. Khai LẠI ở đây dưới dạng chuỗi, không import từ
+ *  `engine/src/kpi.mjs` — hai Worker cố ý KHÔNG dùng chung đồ thị module
+ *  (đó chính là điểm của Service Binding), và mọi đường `bc/…` khác trong
+ *  file này cũng là chuỗi khai tại chỗ.
+ *
+ *  Chỗ trôi là chỗ nguy hiểm: lệch một ký tự thì Gateway ghi vào một ô mà
+ *  Engine không bao giờ đọc tới, và triệu chứng duy nhất là "đặt KPI rồi mà
+ *  vẫn hiện chưa đặt". `kiem/kpi-gateway.js` (mục A) vì vậy canh hai bản bằng nhau
+ *  trên cả hai file — cùng cách `kiem/khop-ma.js` canh công thức khoá chéo
+ *  hai repo. */
+const DUONG_BANG_KPI = "bc/quyetdinh/kpi";
+const DUONG_GIA_DUNG = "bc/quyetdinh/gia-dung";
 
 /** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
  *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
@@ -698,6 +724,27 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
   if (!quyetDinh.ok)
     throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(quyetDinh));
 
+  /* KPI / hệ số quy đổi, và tick "gia dụng" theo mặt hàng (P5).
+   *
+   * KHÔNG ném khi đọc không được — khác hẳn bảng line ở trên. Quy đổi là MỘT
+   * cột; doanh số, số đơn, khách hàng và giá vốn đều đọc được mà không cần
+   * nó, nên chặn cả bảng đơn vì một nhánh phụ không trả lời là lấy đi nhiều
+   * hơn phần bị mất. Engine nhận `null` thì để quy đổi trống và bật
+   * `thieu_bang` — màn hình nói thẳng vì sao cột ấy trống, không im lặng.
+   *
+   * `bc/quyetdinh/gia-dung` đọc TRỌN nhánh, không theo kỳ — cố ý. Đó là
+   * quyết định về MỘT MẶT HÀNG nên nó áp cho mọi kỳ (CLAUDE.md), tức không
+   * có cách nào chia nó theo kỳ. Nhánh này nhỏ: mỗi mặt hàng gia dụng đúng
+   * một khoá ngắn, không phải mỗi DÒNG một khoá như `bc/quyetdinh/dong`. */
+  const bangKpi = await docDb(DUONG_BANG_KPI, env);
+  const giaDung = await docDb(DUONG_GIA_DUNG, env);
+  let loi_nguon_kpi = null;
+  if (!bangKpi.ok) loi_nguon_kpi = "kpi:" + chiTietLoi(bangKpi);
+  else if (!giaDung.ok) loi_nguon_kpi = "gia-dung:" + chiTietLoi(giaDung);
+  if (loi_nguon_kpi) nhatKy({ rid, duong: "/api/don-hang", canh_bao: loi_nguon_kpi });
+  const kpiVal = bangKpi.ok ? (bangKpi.val || null) : null;
+  const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
+
   try {
     const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
     /* Kỳ ngoài phạm vi hoặc Tracking hỏng thì vẫn phải áp sửa tay: một dòng
@@ -707,10 +754,12 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
     const bang = nguon
       ? await env.REPORT_ENGINE.dungBangDonKemMa(
         dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-        minNgay, quyetDinh.val || {})
+        minNgay, quyetDinh.val || {}, kpiVal, gdVal)
       : await env.REPORT_ENGINE.dungBangDonSuaTay(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {});
-    return { ky, tom_tat_line, bang, loi_nguon_ma, trong_pham_vi_ma: trongPhamVi };
+        dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
+        kpiVal, gdVal, ky);
+    return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
+             trong_pham_vi_ma: trongPhamVi };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
@@ -773,6 +822,130 @@ const suaDong = boc(true, async ({ nguoi, request, env, rid }) => {
   nhatKy({ rid, uid: nguoi.uid, duong: "/api/sua-dong", ky, khoa,
            viec: Object.keys(o).filter((k) => k !== "boi" && k !== "luc") });
   return { ghi: true, ky, khoa };
+});
+
+/* =================== POST /api/dat-kpi ===================
+ * Đặt KPI / hệ số quy đổi cho MỘT line — mặc định, hoặc riêng một kỳ.
+ *
+ * `ky` vắng  → ghi `bc/quyetdinh/kpi/mac_dinh/<line>`, áp cho MỌI kỳ.
+ * `ky` có    → ghi `bc/quyetdinh/kpi/ky/<kỳ>/<line>`, chỉ kỳ đó.
+ *
+ * Chủ dự án chốt 12/09/2026: "mặc định chung + ghi đè từng kỳ". Hai tầng này
+ * hợp nhất LÚC ĐỌC và hợp nhất THEO TỪNG TRƯỜNG (`hanhKpi()` của Engine) —
+ * đặt riêng KPI tháng 9 thì hệ số vẫn là mặc định chứ không biến mất. Đường
+ * này vì vậy chỉ ghi đúng những trường người dùng vừa gõ, không bao giờ ghi
+ * cả bản: `vaDb` (PATCH) chứ không `ghiDb` (PUT).
+ *
+ * ĐƠN VỊ, chỗ dễ sai 1.000 lần: màn hình gửi KPI bằng NGHÌN đồng (ô nhập nói
+ * "nghìn đ", và chủ dự án gõ "2.700.000" cho 2 tỷ 7). Nhân 1.000 Ở ĐÂY, tại
+ * BIÊN — nhánh Firebase luôn là ĐỒNG. Cùng kỷ luật `min_price` của P4: đơn
+ * vị được quy đổi ở biên, không bao giờ để hai đơn vị cùng sống một nhánh.
+ *
+ * CHỈ QUẢN TRỊ. Đây là mục tiêu kinh doanh và là vế chia của mọi con số quy
+ * đổi — đổi một hệ số là đổi mọi báo cáo của mọi tháng. Quản lí vẫn ĐỌC được
+ * (rules của `bc/quyetdinh` mở cho cả hai vai) nhưng không đặt được.
+ */
+const datKpi = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const line = than && typeof than.line === "string" ? than.line.trim() : "";
+  if (!line || line.length > 60) throw new LoiXacThuc(400, "line-khong-hop-le");
+  /* Tên line đi thẳng vào một đường Firebase. Bảng line là DỮ LIỆU người sửa
+     được, nên một tên mang ký tự Firebase cấm là chuyện có thể xảy ra thật —
+     từ chối thay vì sửa hộ, cùng cách `suaDong` xử khoá dòng. */
+  if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
+
+  const ky = than && than.ky !== undefined && than.ky !== null ? than.ky : null;
+  if (ky !== null && !laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+
+  const o = {};
+  /* `null` là RÚT LẠI một con số (về mặc định, hoặc về "chưa đặt"); vắng mặt
+     là "không nhắc tới". Hai thứ khác nhau, nên đọc theo KIỂU chứ không theo
+     tính đúng/sai — cùng cách `suaDong` đọc `xoa`. */
+  if (than.kpi === null) o.kpi = null;
+  else if (than.kpi !== undefined) {
+    const n = Number(than.kpi);
+    if (!Number.isFinite(n) || n <= 0) throw new LoiXacThuc(400, "kpi-khong-hop-le");
+    /* NGHÌN đồng → ĐỒNG. Làm tròn vì ô nhập cho gõ số lẻ. */
+    o.kpi = Math.round(n * 1000);
+  }
+  for (const t of ["he_so_pt", "he_so_gia_dung_pt"]) {
+    if (than[t] === null) { o[t] = null; continue; }
+    if (than[t] === undefined) continue;
+    const n = Number(than[t]);
+    /* Trần 100%: chốt ĐƠN VỊ, không chốt nghiệp vụ. Một hệ số gõ lẫn dạng
+       phân số (0,075 thay vì 7,5) vẫn là số dương hợp lệ, nên trần này không
+       bắt được ca ấy — nhưng nó bắt ca ngược (gõ 750) và nó nói thẳng nhánh
+       này đo bằng phần trăm. Engine canh lại lần nữa lúc đọc. */
+    if (!Number.isFinite(n) || n <= 0 || n > 100)
+      throw new LoiXacThuc(400, "he-so-khong-hop-le:" + t);
+    o[t] = n;
+  }
+  if (!Object.keys(o).length) throw new LoiXacThuc(400, "khong-co-gi-de-ghi");
+
+  /* Dấu vết người sửa đi CÙNG lượt ghi, không phải một lượt ghi thứ hai: hai
+     lượt thì có một khoảng mà con số đã đổi mà chưa biết của ai. */
+  o.boi = nguoi.email || nguoi.uid;
+  o.luc = { ".sv": "timestamp" };
+
+  const duong = ky === null
+    ? DUONG_BANG_KPI + "/mac_dinh/" + line
+    : DUONG_BANG_KPI + "/ky/" + ky + "/" + line;
+  const r = await vaDb(duong, o, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-kpi:" + chiTietLoi(r));
+
+  /* KHÔNG dội lại con số đang áp ở đây, dù Engine có sẵn `hanhKpi()` cho
+     việc đó. Màn hình tải lại cả bảng ngay sau lượt ghi — nó BUỘC phải tải,
+     vì đổi một hệ số là đổi mọi con số quy đổi cộng tổng line và phần trăm
+     đạt (LUẬT SỐ 1, Engine tính) — và lượt tải ấy đã mang về đúng con số
+     đang áp sau hợp nhất. Dội thêm ở đây là một lượt đọc Firebase cộng một
+     lượt gọi Engine cho mỗi ô người dùng gõ, lấy về một con số không ai đọc.
+
+     Điều đáng lo thật — "đặt mặc định trong khi kỳ đang xem CÓ bản ghi đè thì
+     con số đang áp KHÔNG đổi" — vẫn hiện đúng, vì lượt tải lại đọc qua đúng
+     phép hợp nhất của Engine và ô sẽ mang viền xanh "riêng tháng này". */
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/dat-kpi", line, ky,
+           viec: Object.keys(o).filter((k) => k !== "boi" && k !== "luc") });
+  return { ghi: true, line, ky };
+});
+
+/* =================== POST /api/gia-dung ===================
+ * Đánh dấu MỘT MẶT HÀNG là gia dụng, hoặc rút lại dấu ấy.
+ *
+ * Chủ dự án chốt 12/09/2026: ô tick nằm trong ô Mã sản phẩm của tab Nội
+ * thành, và nó là quyết định về MỘT MẶT HÀNG — nên khoá là `khoa_ten` (công
+ * thức CLAUDE.md quy định cho loại quyết định này) và nó áp cho MỌI kỳ, kể
+ * cả kỳ chưa nhập. Tick một lần, tháng sau không phải tick lại.
+ *
+ * Khoá do ENGINE dựng và đi kèm mỗi dòng trong bảng đơn (`khoa_ten`). Màn
+ * hình gửi lại đúng chuỗi ấy — KHÔNG tự dựng khoá, vì công thức khoá là một
+ * luật khớp mã (LUẬT SỐ 1). Cùng lối `suaDong` xử khoá dòng.
+ *
+ * Vì sao chỉ Quản trị: dấu này là vế chia của doanh số quy đổi trên tab Nội
+ * thành (8% thay vì 2%, tức lệch 4 lần), và nó áp cho MỌI kỳ — tick sai một
+ * mặt hàng là đổi số của cả quá khứ. Cùng mức với `dat-kpi`.
+ */
+const datGiaDung = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const khoa = than && typeof than.khoa === "string" ? than.khoa.trim() : "";
+  if (!khoa || khoa.length > 120) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+  /* `khoaTenHang()` trả `N_` + chỉ A-Z0-9, nên một khoá ngoài khuôn ấy là
+     khoá KHÔNG do Engine dựng — từ chối thay vì sửa hộ. Chặt hơn hẳn phép
+     lọc ký tự cấm của `suaDong`, và chặt được vì khuôn ở đây rất hẹp. */
+  if (!/^N_[A-Z0-9]*$/.test(khoa)) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+  if (typeof than.gia_dung !== "boolean") throw new LoiXacThuc(400, "thieu-gia-dung");
+
+  /* Rút lại thì XOÁ hẳn bản ghi, không ghi `gia_dung: false`. Nhánh này chỉ
+     nên chứa những mặt hàng ĐANG là gia dụng — giữ lại một bản ghi "không
+     phải gia dụng" là để nhánh phình theo số lần người ta bấm thử, và làm
+     "có mặt trong nhánh" hết còn nghĩa. */
+  const r = than.gia_dung
+    ? await vaDb(DUONG_GIA_DUNG + "/" + khoa,
+        { gia_dung: true, boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } }, env)
+    : await xoaDb(DUONG_GIA_DUNG + "/" + khoa, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-gia-dung:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/gia-dung", khoa, gia_dung: than.gia_dung });
+  return { ghi: true, khoa, gia_dung: than.gia_dung };
 });
 
 /* =================== GET /api/ma-bang-gia ===================
@@ -855,6 +1028,8 @@ const API_ROUTES = new Map([
   ["GET /api/ma-bang-gia", layMaBangGia],
   ["POST /api/gan-ma", ganMa],
   ["POST /api/sua-dong", suaDong],
+  ["POST /api/dat-kpi", datKpi],
+  ["POST /api/gia-dung", datGiaDung],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn

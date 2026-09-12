@@ -213,12 +213,29 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
   ok('taiKy() nhận được tuỳ chọn gọi ÊM (không chớp "Đang tải…")',
      /async function taiKy\(tuyChon\)/.test(JS), true);
-  /* BA chỗ gọi: sửa một dòng, xoá một dòng, và gán mã xong. Cái thứ ba thêm
-     12/09/2026 — gán mã xong phải lấy GIÁ VỐN của mã vừa gán ngay, không bắt
-     người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc hỏi lại
-     máy chủ (LUẬT SỐ 1 — trình duyệt không tự tra giá). */
-  ok('  · và cả ba lượt (sửa, xoá, gán mã) đều gọi nó với tuỳ chọn ấy',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 3);
+  /* BẢY chỗ gọi. Ba của P4: sửa một dòng, xoá một dòng, gán mã xong (cái thứ
+     ba thêm 12/09/2026 — gán mã xong phải lấy GIÁ VỐN của mã vừa gán ngay,
+     không bắt người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc
+     hỏi lại máy chủ). Bốn của P5: rời khỏi dải setup sau khi sửa KPI/hệ số,
+     bỏ bản ghi đè một kỳ, tick gia dụng, và bấm nút chuyển "mặc định ↔ riêng
+     tháng này".
+
+     Chú ý cái thứ tư: lượt sửa KPI vẽ lại khi tiêu điểm rời KHỎI DẢI, không
+     vẽ ngay trong lượt ghi. Vẽ ngay thì ô người dùng vừa Tab sang bị xoá
+     khỏi DOM giữa lúc họ đang gõ — dải là MỘT đơn vị sửa nhiều ô, khác một
+     dòng sửa tay của P4 nơi lượt lưu cũng là lượt đóng ô.
+
+     Cả bảy đều phải ÊM vì cả bảy là sửa TẠI CHỖ trên bảng đang mở: chớp
+     "Đang tải…" rồi cuộn về gốc sau mỗi cú tick là đúng thứ chủ dự án chốt
+     phải hết (12/09/2026). Và cả bảy đều phải GỌI LẠI máy chủ, không tự vá số
+     ở trình duyệt — đổi một hệ số là đổi mọi con số quy đổi của bảng cộng tổng
+     line và phần trăm đạt, bốn con số do Engine tính (LUẬT SỐ 1).
+
+     Đếm bằng con số tuyệt đối chứ không "≥ 3": một lượt sửa tại chỗ mới mà
+     quên `imLang` sẽ làm bài này đỏ, và đó đúng là lúc cần biết. */
+  ok('  · và cả BẢY lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
+     + 'bỏ ghi đè/tick gia dụng/đổi chế độ) đều gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 7);
   ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }
