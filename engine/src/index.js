@@ -13,10 +13,12 @@ import {
 import {
   khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon,
 } from "./khop-ma.mjs";
+import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
+import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.7.0-p4-gia-von";
+const PHIEN_BAN = "0.8.0-p5-sua-tay";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -156,14 +158,47 @@ export default class extends WorkerEntrypoint {
    *  Ném lỗi khi bảng giá Tracking rỗng hay sai kiểu — Gateway phải trả lỗi
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
-  async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking, ky, minNgay) {
+  async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
+                         ky, minNgay, quyetDinh) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* Giá vốn chỉ có nghĩa sau khi đã khớp mã, nên hai việc đi liền trong một
        lượt. `minNgay` vắng mặt (Gateway chưa lấy được, hoặc kỳ ngoài phạm vi)
        thì bỏ qua — cột Giá nhập ở lại "—", KHÔNG thành 0. */
     if (minNgay) dienGiaNhap(bang, minNgay);
+    /* SỬA TAY LÀ LỚP CUỐI. Nó phải thắng mọi con số máy vừa tính ra — chủ dự
+       án chốt "sửa tay luôn thắng". Chạy trước `dienGiaNhap` thì lượt điền tự
+       động sẽ đè ngược lại chính quyết định của người. */
+    apDungSuaTay(bang, quyetDinh);
     return bang;
+  }
+
+  /** Bảng đơn cho kỳ NGOÀI phạm vi khớp mã — vẫn phải áp sửa tay.
+   *
+   *  Kỳ trước 09/2026 không có giá vốn theo ngày, nhưng một dòng bị XOÁ TAY
+   *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
+   *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
+  async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh) {
+    return apDungSuaTay(
+      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), quyetDinh);
+  }
+
+  /** Phần doanh số / số đơn phải trừ khỏi `bc/ky/<kỳ>` vì đã xoá tay.
+   *
+   *  Tách khỏi `truVaoCayKy` vì hai việc ở hai chỗ: cái này cần `bc/dong` của
+   *  ĐÚNG kỳ có quyết định (Gateway chỉ đọc những kỳ ấy, không đọc cả 20 kỳ),
+   *  còn cái kia chạy trên cây `bc/ky` nhiều kỳ mà Dashboard đã có sẵn. */
+  async tinhTruDaXoa(dongCuaKy, quyetDinh) {
+    return tinhTruDaXoa(dongCuaKy, quyetDinh, khoaNhanVien);
+  }
+
+  /** Cây `bc/ky` nhiều kỳ đã TRỪ phần xoá tay — cho biểu đồ và bảng line.
+   *
+   *  Chủ dự án chốt 12/09/2026: xoá một dòng thì trừ ở CẢ HAI. Không trừ ở
+   *  đây thì bảng đơn và biểu đồ nói hai con số khác nhau cho cùng một tháng,
+   *  và không ai biết bên nào đúng. */
+  async truVaoCayKy(cayKy, truTheoKy) {
+    return truVaoCayKy(cayKy, truTheoKy);
   }
 
   /** Kỳ này có nằm trong phạm vi khớp mã / giá vốn không.
