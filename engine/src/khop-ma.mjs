@@ -88,6 +88,39 @@ const chuanTu = (s) => String(s == null ? "" : s)
 
 const catTu = (s) => { const c = chuanTu(s); return c ? c.split(" ") : []; };
 
+/** Ba khoản PHỤ PHÍ CỐ ĐỊNH trên sổ — không phải một mặt hàng bán ra, nên
+ *  KHÔNG cần khớp mã bảng giá (chủ dự án chốt 12/09/2026). Giá vốn của
+ *  chúng luôn CHÍNH BẰNG giá bán: "chi phí lắp đặt 500.000 đ" không có một
+ *  giá mua vào 500.000 đ khác đứng sau nó — tiền công/tiền chênh thu về
+ *  đúng bằng tiền công/tiền chênh đã chi, không sinh lãi cũng không lỗ.
+ *
+ *  Khớp theo CỤM TỪ xuất hiện Ở BẤT KỲ ĐÂU trong tên — không đòi đứng đầu
+ *  câu — vì người bán hàng hay viết thêm mô tả sau nó ("Chi phí lắp đặt TV
+ *  65 inch"). Dùng lại đúng phép chuẩn hoá `chuanTu()`/`catTu()` của bậc 3
+ *  phía trên nên bỏ dấu, hoa/thường không làm trật khớp. KHÔNG đi qua
+ *  `dungBoKhop()`/`cum`: đây không phải mã bảng giá, và không cần rào "phải
+ *  có chữ số" của bậc 3 — "Chênh VAT" hợp lệ dù không một chữ số nào. */
+const PHU_PHI_CO_DINH = [
+  "Chi phí vận chuyển", "Chi phí lắp đặt", "Chênh VAT",
+].map((nhan) => ({ nhan, tu: catTu(nhan) }));
+
+/** Tên hàng có chứa một trong ba cụm phụ phí cố định không — trả nhãn khớp
+ *  được (để hiện đúng chữ chủ dự án đặt tên), hoặc `null`. */
+function timPhuPhiCoDinh(ten) {
+  const tu = catTu(ten);
+  for (const p of PHU_PHI_CO_DINH) {
+    const n = p.tu.length;
+    for (let i = 0; i + n <= tu.length; i++) {
+      let khop = true;
+      for (let j = 0; j < n; j++) {
+        if (tu[i + j] !== p.tu[j]) { khop = false; break; }
+      }
+      if (khop) return p.nhan;
+    }
+  }
+  return null;
+}
+
 /* Một mục từ điển dài hơn ngần này KHÔNG phải một mã, nó là một câu mô tả.
  * Chuyện này có thật: nhánh "thêm mã mới" của màn Tồn kho ghi `board/<mã>/name`
  * bằng nguyên câu tên hàng trong file tồn. Nhận những câu ấy vào từ điển là
@@ -245,6 +278,17 @@ export function khopMaChoBangDon(bang, nguon, ky) {
         if (d.la_chiet_khau) {
           d.ma_bang_gia = null; d.nguon_ma = "khong-phai-hang";
           d.khoa_ten = null; d.ly_do_chua_ma = null;
+          continue;
+        }
+
+        /* Phụ phí cố định — cùng lý do bỏ qua với chiết khấu ở trên: không
+           phải một mặt hàng, đưa vào hàng chờ gán mã là mời phân loại một
+           khoản tiền công/tiền chênh không hề có trên bảng giá. */
+        const phuPhi = timPhuPhiCoDinh(d.ma_san_pham);
+        if (phuPhi) {
+          d.ma_bang_gia = null; d.nguon_ma = "phu-phi-co-dinh";
+          d.khoa_ten = null; d.ly_do_chua_ma = null;
+          d.la_phu_phi_co_dinh = phuPhi;
           continue;
         }
 
@@ -454,6 +498,20 @@ export function dienGiaNhap(bang, minNgay) {
           /* Chiết khấu đã biết chắc lợi nhuận của nó từ `dungBangDon()`
              (giá nhập 0 nên lợi nhuận = chính nó, mang dấu âm). */
           loiNhuanDon = lamTronDong(loiNhuanDon + (Number(d.loi_nhuan) || 0));
+          continue;
+        }
+
+        if (d.la_phu_phi_co_dinh) {
+          /* Giá nhập LUÔN bằng giá bán (chủ dự án chốt 12/09/2026) — không
+             tra Tracking, không có "nơi nhập" (không phải một NCC giữ giá
+             cho một mã hàng). Lợi nhuận ra 0 khi `tong_ban` đúng bằng
+             `gia_ban × SL` như sổ vẫn ghi; công thức chung phía dưới tự lo
+             việc đó, không cần gán cứng `loi_nhuan = 0`. */
+          d.gia_nhap = d.gia_ban;
+          d.noi_nhap = null;
+          d.ly_do_chua_gia = null;
+          d.loi_nhuan = lamTronDong(Number(d.tong_ban) - d.gia_ban * (Number(d.so_luong) || 0));
+          loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
           continue;
         }
         /* DÒNG 0 ĐỒNG (chủ dự án chốt 12/09/2026): có thể là quà tặng kèm
