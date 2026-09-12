@@ -26,7 +26,7 @@ const GOC = path.resolve(__dirname, '..');
   /** Một dòng sổ. `ngay` là chuỗi ISO — `doiNgay` nhận cả ba dạng thật. */
   const dg = (o) => {
     const h = new Array(17).fill('');
-    h[0] = o.ngay; h[1] = o.ct; h[3] = o.ten; h[4] = o.ma_khach || '';
+    h[0] = o.ngay; h[1] = o.ct; h[2] = o.ghi_chu || ''; h[3] = o.ten; h[4] = o.ma_khach || '';
     h[5] = o.khach || ''; h[6] = o.dia_chi || ''; h[7] = o.dt || '';
     h[8] = o.sl ?? 1; h[9] = o.dg ?? 0; h[10] = o.ds ?? 0; h[11] = o.ck ?? 0;
     h[12] = o.nv || ''; h[15] = o.imei || '';
@@ -317,6 +317,34 @@ const GOC = path.resolve(__dirname, '..');
     let nem = null;
     try { D.xuLySoBanHang([[], [], [], ['sai'], [], []]); } catch (e) { nem = e.ma; }
     ok('sổ sai bố cục → ném lỗi có tên', nem, 'bo-cuc-khong-khop');
+  }
+
+  console.log('\n11) Ghi chú — lấy từ cột `Diễn giải` của sổ, không phải một cột mới');
+  {
+    const t = D.trichDongHang(so([
+      dg({ ngay: '2026-09-02', ct: 'BH1', ten: 'Tivi', ds: 9000000, nv: 'Đức Hiệp',
+           ghi_chu: 'Giao cuối tuần,  hẹn  trước' }),
+      dg({ ngay: '2026-09-02', ct: 'BH2', ten: 'Tủ lạnh', ds: 5000000, nv: 'Đức Hiệp' }),
+    ]));
+    const co = t.dong['2026-09'][D.khoaDong('BH1', 'Tivi', 1)];
+    const khong = t.dong['2026-09'][D.khoaDong('BH2', 'Tủ lạnh', 1)];
+
+    ok('đọc đúng cột Diễn giải, đã gộp khoảng trắng', co.ghi_chu, 'Giao cuối tuần, hẹn trước');
+    /* Ô trống KHÔNG sinh ra một trường `null`: nhân với hàng chục nghìn dòng
+       là vài trăm KB Firebase không nói thêm điều gì. */
+    ok('ô trống thì KHÔNG ghi trường nào', 'ghi_chu' in khong, false);
+
+    /* Ghi chú phải nằm trong danh sách SO SÁNH: sửa ghi chú trên MISA rồi tải
+       lại mà dòng không được coi là "đã đổi" thì ghi chú cũ ở lại mãi mãi. */
+    ok('ghi chú được đem ra so khi đối chiếu file mới', D.TRUONG_SO_SANH.includes('ghi_chu'), true);
+
+    const b = D.dungBangDon(t.dong['2026-09'], {}, L.BANG_LINE_HAT_GIONG, null);
+    const dong = [];
+    for (const ng of b.ngay) for (const don of ng.don) for (const d of don.dong) dong.push(d);
+    ok('bảng đơn mang ghi chú ra cột hiển thị',
+       dong.find((d) => d.ma_san_pham === 'Tivi').ghi_chu, 'Giao cuối tuần, hẹn trước');
+    ok('dòng không có ghi chú để `null` để màn hình hiện "—", không hiện rỗng',
+       dong.find((d) => d.ma_san_pham === 'Tủ lạnh').ghi_chu, null);
   }
 
   xong();

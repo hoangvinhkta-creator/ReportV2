@@ -129,7 +129,14 @@ function tinhLaiTong(bang) {
         if (d.la_chiet_khau) { loi = lamTron(loi + (Number(d.loi_nhuan) || 0)); continue; }
         /* Sửa tay giá nhập xong thì lợi nhuận dòng phải tính lại — nó là
            hàm của giá nhập, không phải một con số độc lập. */
-        if (d.gia_nhap === null || d.gia_nhap === undefined) { d.loi_nhuan = null; duLoi = false; }
+        /* Cặp BTL đã triệt tiêu nhau: SL 0 và tiền 0 nên lợi nhuận là 0 dù
+           có giá vốn hay không. Xét TRƯỚC nhánh thiếu giá bên dưới. */
+        if (d.btl_thong_bao) { d.loi_nhuan = 0; }
+        else if (d.gia_nhap === null || d.gia_nhap === undefined) { d.loi_nhuan = null; duLoi = false; }
+        /* Dòng BTL không truy ra được số tiền trả lại: xem `btl.mjs`. Công
+           thức chung ở đây cho ra một số DƯƠNG, tức một lượt trả hàng làm
+           tăng lãi — cùng lý do với nhánh tương ứng ở `khop-ma.mjs`. */
+        else if (d.btl_chua_ro_tien) { d.loi_nhuan = null; duLoi = false; }
         else d.loi_nhuan = lamTron(Number(d.tong_ban) - d.gia_nhap * (Number(d.so_luong) || 0));
         if (d.loi_nhuan === null) duLoi = false;
         else loi = lamTron(loi + d.loi_nhuan);
