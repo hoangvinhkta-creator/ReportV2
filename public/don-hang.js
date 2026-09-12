@@ -241,12 +241,18 @@
       const td = el("td", null, d.noi_nhap);
       /* "Kho" đứng cạnh một con số Giá nhập KHÔNG phải giá kho trông y như
          một lỗi — nên nói thẳng ra thay vì để người đối chiếu tay tự đoán.
-         Cả hai con số đều do Engine tính; ô này chỉ đọc và ghép chữ. */
-      if (d.gia_ton_kho !== null && d.gia_ton_kho !== undefined
+         Cả hai con số đều do Engine tính; ô này chỉ đọc và ghép chữ.
+
+         Hai điều kiện, và thiếu cái nào cũng thành một câu SAI trên màn hình
+         tiền: chữ "Kho" phải do MÁY chọn (`noi_nhap_tu_kho` — sửa tay nơi
+         nhập là Engine tắt cờ), và câu "giá nhập vẫn lấy giá Min" chỉ đúng
+         khi chính con số ấy cũng do máy điền. */
+      if (d.noi_nhap_tu_kho && d.gia_ton_kho !== null && d.gia_ton_kho !== undefined
           && d.gia_ton_kho !== d.gia_nhap) {
         td.title = "Hàng có sẵn trong kho nên xuất từ kho (giá nhập phân bổ "
-          + nghin(d.gia_ton_kho) + " nghìn). Cột Giá nhập vẫn lấy giá Min của "
-          + "ngày bán, không lấy giá kho.";
+          + nghin(d.gia_ton_kho) + " nghìn)."
+          + (d.nguon_gia === "sua-tay" ? "" : " Cột Giá nhập vẫn lấy giá Min "
+            + "của ngày bán, không lấy giá kho.");
       }
       return td;
     }

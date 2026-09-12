@@ -599,8 +599,13 @@ export function dienGiaNhap(bang, minNgay) {
         d.noi_nhap = chonNoiNhap(g.nguon, g.kho);
         /* Giá kho đi kèm ra màn hình khi nó KHÁC giá nhập: người đối chiếu
            tay sẽ thấy "Kho" ở cột Nơi nhập cạnh một con số giá nhập không
-           phải giá kho, và nếu không nói gì thì đó trông y như một lỗi. */
+           phải giá kho, và nếu không nói gì thì đó trông y như một lỗi.
+           `noi_nhap_tu_kho` là CỜ nói "chữ Kho kia do máy chọn": màn hình
+           chỉ được giải thích khi cờ còn đúng, và `apDungSuaTay()` tắt nó
+           ngay khi người dùng gõ đè một nơi nhập khác — nếu không, ô ghi
+           "Tuấn Ngoan" mà tooltip vẫn nói "hàng xuất từ kho". */
         d.gia_ton_kho = g.kho;
+        d.noi_nhap_tu_kho = d.noi_nhap === NHAN_TON_KHO;
         if (d.noi_nhap && HANG_UU_TIEN.has(chuanNcc(d.noi_nhap))) nccDaThay.add(chuanNcc(d.noi_nhap));
         d.ly_do_chua_gia = null;
         coGia++;

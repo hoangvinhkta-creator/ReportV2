@@ -84,6 +84,10 @@ export function apDungSuaTay(bang, quyetDinh) {
         if (typeof q.noi_nhap === "string" && q.noi_nhap.trim() !== "") {
           d.noi_nhap = q.noi_nhap.trim();
           d.nguon_noi_nhap = "sua-tay";
+          /* Chữ trong ô nay là của NGƯỜI, nên lời giải thích "máy chọn Kho
+             vì kho còn hàng" không còn đúng về ô này nữa. Để nguyên cờ là
+             để màn hình nói một câu mâu thuẫn với chính con chữ bên cạnh. */
+          d.noi_nhap_tu_kho = false;
         }
         giu.push(d);
       }

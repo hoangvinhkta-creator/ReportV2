@@ -542,6 +542,13 @@ const GOC = path.resolve(__dirname, '..');
       r.o.gia_ton_kho, 9000000);
   }
   ok('kho RẺ HƠN Min cũng là Kho', noiNhapCua(['Việt Hải'], 5250, 3000).o.noi_nhap, 'Kho');
+  /* Cờ "chữ Kho này do MÁY chọn" — màn hình chỉ được giải thích khi nó còn
+     đúng. `kiem/sua-tay.js` canh vế còn lại: gõ đè nơi nhập thì cờ phải tắt,
+     không thì ô ghi tên một NCC mà tooltip vẫn nói "hàng xuất từ kho". */
+  ok('máy chọn Kho thì bật cờ để màn hình biết được phép giải thích',
+    noiNhapCua(['Việt Hải'], 5250, 9000).o.noi_nhap_tu_kho, true);
+  ok('  · máy chọn một NCC thì KHÔNG bật',
+    noiNhapCua(['Việt Hải'], 5250, null).o.noi_nhap_tu_kho, false);
   /* `inventory_unit_cost: null` là câu trả lời THẬT của hợp đồng — "kho không
      có hàng mã ấy hôm đó" — chứ không phải một ô còn thiếu. */
   ok('hợp đồng nói rõ kho KHÔNG có hàng → quay về thứ tự NCC',
