@@ -293,8 +293,15 @@
     }
     /* Chữ HIỆN RA: mã ngắn nếu đã khớp, nguyên câu tên nếu chưa.
        Dựng sau ô tick và trước mọi nhánh trả về sớm, để nhánh nào cũng có
-       đúng một <span> chữ — ô rỗng là một dòng không đọc được. */
-    const s = el("span", null, d.ma_bang_gia || d.ma_san_pham);
+       đúng một <span> chữ — ô rỗng là một dòng không đọc được.
+
+       `ma_hien` là CÁCH VIẾT của mã (`RT268WE-PMV(68)`), `ma_bang_gia` là mã
+       thật đã chuẩn hoá (`RT268WEPMV68`) — chính là khoá `board/<mã>` bên
+       Tracking. Hiện cách viết, đúng thứ màn Bảng giá bên đó đang hiện; chủ
+       dự án bắt được lệch này 12/09/2026. Engine quyết cách viết nào dùng
+       được (LUẬT SỐ 1), màn hình chỉ đọc field — và rơi về mã thật nếu
+       Engine bản cũ chưa gửi field ấy. */
+    const s = el("span", null, d.ma_hien || d.ma_bang_gia || d.ma_san_pham);
     if (d.ma_bang_gia) s.classList.add("maNgan");
     td.appendChild(s);
 
@@ -319,7 +326,7 @@
       /* `title` nay mang CÂU TÊN ĐẦY ĐỦ — thứ vừa thôi hiện ra. Trước đây nó
          mang chính cái mã, mà mã thì đã nằm ngay trước mắt rồi; nhắc lại một
          thứ đang đọc được và bỏ mất thứ không đọc được là đúng chiều ngược. */
-      td.title = d.ma_san_pham + "\n\nMã bảng giá: " + d.ma_bang_gia
+      td.title = d.ma_san_pham + "\n\nMã bảng giá: " + (d.ma_hien || d.ma_bang_gia)
         + (d.nguon_ma === "tu-dong" ? " (máy tự khớp — bấm để sửa)" : " (đã gán tay — bấm để đổi)");
     } else if (d.nguon_ma === "bo-qua") {
       td.classList.add("maBoQua");
@@ -480,6 +487,11 @@
    *  đúng những ô liên quan. Vị trí cuộn, thứ tự dòng, bề rộng cột — không
    *  cái nào đụng tới. */
   function vaDongTheoKhoa(khoa, ma, muc) {
+    /* Cách viết của mã, do Engine tính và đi kèm mục vừa chọn. Rơi về `ma`
+       (mã thật đã chuẩn hoá) nếu khuyết — thà hiện đúng thứ lượt tải sau sẽ
+       hiện còn hơn đoán một cách viết ở đây: `maHoa()` là luật khớp mã, màn
+       hình không được giữ bản sao của nó (LUẬT SỐ 1). */
+    const hien = (muc && muc.hien) || null;
     const cacO = document.querySelectorAll('#veDonHang td[data-khoa="' + CSS.escape(khoa) + '"]');
     for (const td of cacO) {
       td.classList.remove("maChuaCo", "maBoQua");
@@ -491,10 +503,14 @@
       const nhan = td.querySelector("span");
       if (ma) {
         td.dataset.ma = ma;
-        if (nhan) { nhan.textContent = ma; nhan.classList.add("maNgan"); }
+        /* Cách viết do màn gán mã đưa sang (`muc.hien`, Engine tính) — phải
+           là CHÍNH chuỗi lượt tải sau sẽ hiện, nếu không ô nhấp một cái sang
+           chữ khác ngay dưới con trỏ và người dùng tưởng mình gán nhầm. */
+        const chu = hien || ma;
+        if (nhan) { nhan.textContent = chu; nhan.classList.add("maNgan"); }
         /* `dataset.ten` KHÔNG đổi — nó giữ câu tên đầy đủ, và màn gán mã khoá
            theo tên hàng nên đổi nó là ghi quyết định kế tiếp vào sai ô. */
-        td.title = (td.dataset.ten || "") + "\n\nMã bảng giá: " + ma
+        td.title = (td.dataset.ten || "") + "\n\nMã bảng giá: " + chu
           + " (đã gán tay — bấm để đổi)";
       } else {
         delete td.dataset.ma;

@@ -118,6 +118,17 @@ export async function docMaBangGia(env) {
       hang: row.brand ?? null, nhom: row.category_label ?? null });
   }
   ds.sort((a, b) => (a.ten < b.ten ? -1 : a.ten > b.ten ? 1 : 0));
+
+  /* `hien` — CÁCH VIẾT của mã, để màn hình vá được ô ngay sau khi gán tay mà
+     không phải tải lại cả bảng. Engine tính, không phải chỗ này: phép quyết
+     dựa trên `maHoa()`, đúng công thức khoá `inv/map` (LUẬT SỐ 1 — xem chú
+     thích ở `cachVietDsMa`). Engine chưa nối được thì bỏ qua, `hien` khuyết
+     và màn hình rơi về `ma` — mất một chi tiết hiển thị, không mất chức
+     năng nào. */
+  if (env.REPORT_ENGINE) {
+    try { return await env.REPORT_ENGINE.cachVietDsMa(ds); }
+    catch (e) { /* để nguyên `ds` */ }
+  }
   return ds;
 }
 

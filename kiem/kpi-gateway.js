@@ -529,7 +529,15 @@ const GOC = path.resolve(__dirname, '..');
        hơn nên bị cắt đuôi — đúng đoạn đuôi mang model, tức phần duy nhất phân
        biệt hai dòng với nhau. */
     ok('chữ hiện ra là mã ngắn khi đã khớp, câu tên khi chưa',
-       /el\("span", null, d\.ma_bang_gia \|\| d\.ma_san_pham\)/.test(UI), true);
+       /el\("span", null, d\.ma_hien \|\| d\.ma_bang_gia \|\| d\.ma_san_pham\)/.test(UI), true);
+
+    /* Và mã ngắn ấy phải là CÁCH VIẾT của Tracking, không phải khoá đã chuẩn
+       hoá: Tracking lưu `board/RT268WEPMV68` nhưng hiện `RT268WE-PMV(68)`, và
+       cùng một mặt hàng đọc ra hai kiểu ở hai màn hình là chỗ chủ dự án bắt
+       được 12/09/2026. `ma_hien` đứng TRƯỚC `ma_bang_gia` mới đúng thứ tự —
+       đảo lại thì field mới có mặt cũng không bao giờ được dùng. */
+    ok('  · và ưu tiên cách viết (ma_hien) trước mã thật',
+       UI.indexOf('d.ma_hien') < UI.indexOf('d.ma_bang_gia'), true);
 
     /* BẮT BUỘC giữ câu tên đầy đủ ở `dataset.ten`: màn gán mã khoá theo TÊN
        HÀNG, nên gửi mã ngắn thay cho tên là ghi quyết định vào một ô KHÁC ô
@@ -549,12 +557,19 @@ const GOC = path.resolve(__dirname, '..');
        /dataset\.ten/.test(thanVa), true);
     /* Câu tên cũng phải còn đọc được bằng mắt — rê chuột. */
     ok('title mang câu tên đầy đủ',
-       /td\.title = d\.ma_san_pham \+ "\\n\\nMã bảng giá: "/.test(UI), true);
+       /td\.title = d\.ma_san_pham \+ "\\n\\nMã bảng giá: " \+ \(d\.ma_hien \|\| d\.ma_bang_gia\)/.test(UI), true);
 
     /* Vá TẠI CHỖ sau khi gán tay phải đổi cả chữ trong ô, không chờ mạng —
        cả điểm của `vaDongTheoKhoa()` là lời hứa "không nhảy dòng". */
     ok('gán tay xong thì ô đổi sang mã ngắn ngay tại chỗ',
-       /nhan\.textContent = ma;/.test(UI), true);
+       /nhan\.textContent = chu;/.test(UI), true);
+    /* Chuỗi vá tại chỗ phải là CHÍNH chuỗi lượt tải sau sẽ hiện. Lệch nhau
+       thì ô nhấp một cái sang chữ khác ngay dưới con trỏ và người vừa gán
+       tưởng mình gán nhầm. */
+    ok('  · và chuỗi ấy là cách viết Engine đưa sang, không phải mã thật',
+       /const chu = hien \|\| ma;/.test(UI), true);
+    ok('  · cách viết đọc từ mục vừa chọn, không tự tính ở trình duyệt',
+       /const hien = \(muc && muc\.hien\) \|\| null;/.test(UI), true);
     ok('  · và "bỏ qua" thì ô về lại câu tên đầy đủ',
        /nhan\.textContent = td\.dataset\.ten/.test(UI), true);
 
