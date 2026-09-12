@@ -308,6 +308,51 @@ export function khopMaChoBangDon(bang, nguon, ky) {
 const DON_VI_MIN = "VND_THOUSAND";
 const NGHIN = 1000;
 
+/* THỨ TỰ ƯU TIÊN NHÀ CUNG CẤP cho cột "Nơi nhập" — chủ dự án chốt 12/09/2026.
+ *
+ * Một giá Min có thể do NHIỀU nguồn cùng giữ (hợp đồng `daily-min-v1` trả cả
+ * danh sách ở `min_sources`). Khi ấy phải chọn một cái tên để hiện, và chọn
+ * theo thứ tự này; nguồn không có tên trong danh sách xếp sau cùng, giữ
+ * nguyên thứ tự Tracking trả về.
+ *
+ * "VIỆT HẢI" VÀ "VIỆT HÀN" LÀ HAI NCC KHÁC NHAU, hai cột cạnh nhau trên bảng
+ * giá (chủ dự án xác nhận). Đây đúng lớp lỗi `65C6K`/`65C6KS` ở một chỗ khác:
+ * ghép gần đúng hai cái tên ấy là gán sai nơi nhập, im lặng. Nên phép so là
+ * so CẢ CHUỖI, chỉ bỏ qua hoa/thường và khoảng trắng thừa — KHÔNG bỏ dấu
+ * tiếng Việt (bỏ dấu thì "Hải" và "Hàn" vẫn khác, nhưng bỏ dấu là mở cửa cho
+ * một cặp tên khác va nhau sau này), KHÔNG so chuỗi con, KHÔNG so gần đúng.
+ *
+ * Danh sách này là DỮ LIỆU nghiệp vụ đặt trong code có chủ ý: nó đổi theo
+ * quan hệ nhà cung cấp, không theo phiên bản phần mềm, và đổi một dòng ở đây
+ * rẻ hơn nhiều so với mở một nhánh Firebase mới cho năm cái tên. Đổi thì sửa
+ * đúng mảng này. */
+export const NCC_UU_TIEN = [
+  "Việt Hải", "Điện tử 179", "Thăng Long", "Trung Xuân", "Văn Quân",
+];
+
+const chuanNcc = (s) => String(s == null ? "" : s).replace(/\s+/g, " ").trim().toLowerCase();
+const HANG_UU_TIEN = new Map(NCC_UU_TIEN.map((t, i) => [chuanNcc(t), i]));
+
+/** Nơi nhập của một dòng: NCC giữ giá Min hôm đó, chọn theo thứ tự ưu tiên.
+ *
+ *  `min_sources` của hợp đồng là `[{source_type, source_id}]`, và hợp đồng
+ *  BẢO ĐẢM mọi giá Min dương đều có ít nhất một nguồn (Tracking từ chối ghi
+ *  một bản ghi `thieu-nguon-cho-gia`). Nên rỗng ở đây nghĩa là dòng ấy không
+ *  có giá Min — và khi ấy nơi nhập cũng không có, đúng như chủ dự án chốt. */
+function chonNoiNhap(nguon) {
+  const ds = Array.isArray(nguon) ? nguon.filter((x) => laObj(x)
+    && typeof x.source_id === "string" && x.source_id.trim()) : [];
+  if (!ds.length) return null;
+  let tot = null, hang = Infinity;
+  for (let i = 0; i < ds.length; i++) {
+    const h = HANG_UU_TIEN.has(chuanNcc(ds[i].source_id))
+      ? HANG_UU_TIEN.get(chuanNcc(ds[i].source_id))
+      : NCC_UU_TIEN.length + i;   // ngoài danh sách: giữ nguyên thứ tự Tracking trả
+    if (h < hang) { hang = h; tot = ds[i].source_id; }
+  }
+  return tot;
+}
+
 /** Lý do một dòng chưa có giá vốn → câu cho người đọc. Mỗi mã lỗi của
  *  `daily-min-v1` một câu; mã lạ thì nói thẳng là lạ chứ không nuốt. */
 export const LY_DO_GIA = {
@@ -379,7 +424,7 @@ export function dienGiaNhap(bang, minNgay) {
        cần thấy đúng lý do của mình. */
     if (typeof r.min_price === "number")
       gia.set(k, { dong: Math.round(r.min_price * NGHIN), ngay_quan_sat: r.observed_on ?? null,
-        trang_thai_ngay: r.day_status ?? null });
+        trang_thai_ngay: r.day_status ?? null, nguon: r.min_sources });
     else lyDo.set(k, r.price_status || "NO_DATA");
   }
   for (const e of Array.isArray(mn.errors) ? mn.errors : []) {
@@ -388,11 +433,21 @@ export function dienGiaNhap(bang, minNgay) {
     if (!gia.has(k) && !lyDo.has(k)) lyDo.set(k, e.reason || "NO_DATA");
   }
 
-  let coGia = 0, chuaCoGia = 0;
+  let coGia = 0, chuaCoGia = 0, soDong0d = 0;
   const theoLyDo = {};
+  /* NCC ưu tiên nào thật sự có mặt trong dữ liệu kỳ này. Một cái tên trong
+     `NCC_UU_TIEN` không bao giờ khớp là một luật ưu tiên IM LẶNG không chạy —
+     đúng lớp lỗi "hai nơi phải khớp mà không ai đối chiếu". Đếm ra để nó lộ
+     mặt thay vì nằm im. */
+  const nccDaThay = new Set();
 
   for (const ng of bang.ngay) {
     for (const don of ng.don) {
+      /* Chứng từ BTL (bán trả lại) cũng 0 đồng nhưng KHÁC nghiệp vụ — hàng
+         quay về kho thì giá vốn có thể phải cộng ngược chứ không trừ. Chủ dự
+         án chốt 12/09/2026 để xử sau, nên ở đây BTL KHÔNG được gộp chung với
+         dòng quà tặng: không đánh dấu, không bôi đỏ. */
+      const laBTL = /^BTL/i.test(String(don.so_ct || ""));
       let loiNhuanDon = 0, duGia = true;
       for (const d of don.dong) {
         if (d.la_chiet_khau) {
@@ -401,6 +456,14 @@ export function dienGiaNhap(bang, minNgay) {
           loiNhuanDon = lamTronDong(loiNhuanDon + (Number(d.loi_nhuan) || 0));
           continue;
         }
+        /* DÒNG 0 ĐỒNG (chủ dự án chốt 12/09/2026): có thể là quà tặng kèm
+           cho khách. Nó vẫn có giá vốn, và vì doanh thu bằng 0 nên công thức
+           chung `tổng bán − giá nhập × SL` tự cho ra một số ÂM — đúng "phép
+           tính như dòng chiết khấu" mà chủ dự án mô tả, không cần nhánh
+           riêng. Cờ này chỉ để màn hình bôi đỏ cho dễ soi. */
+        d.la_dong_0d = !laBTL && Number(d.tong_ban) === 0;
+        if (d.la_dong_0d) soDong0d++;
+
         if (!d.ma_bang_gia) {
           d.ly_do_chua_gia = "chua-co-ma";
           chuaCoGia++; duGia = false;
@@ -419,6 +482,12 @@ export function dienGiaNhap(bang, minNgay) {
         d.gia_nhap = g.dong;
         d.ngay_gia = g.ngay_quan_sat;
         d.trang_thai_ngay_gia = g.trang_thai_ngay;
+        /* Nơi nhập đi CÙNG giá, từ chính bản ghi của ngày bán — không tra
+           lại ở đâu khác. `min_sources` là danh sách NCC đang giữ đúng giá
+           Min hôm ấy, nên "nơi nhập nào chứa giá A ngày hôm ấy" đã nằm sẵn
+           trong tay, không cần một lượt gọi thứ hai. */
+        d.noi_nhap = chonNoiNhap(g.nguon);
+        if (d.noi_nhap && HANG_UU_TIEN.has(chuanNcc(d.noi_nhap))) nccDaThay.add(chuanNcc(d.noi_nhap));
         d.loi_nhuan = lamTronDong(Number(d.tong_ban) - g.dong * (Number(d.so_luong) || 0));
         d.ly_do_chua_gia = null;
         loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
@@ -435,7 +504,13 @@ export function dienGiaNhap(bang, minNgay) {
   bang.tom_tat_gia = {
     co_gia: coGia,
     chua_co_gia: chuaCoGia,
+    so_dong_0d: soDong0d,
     theo_ly_do: theoLyDo,
+    /* Tên ưu tiên nào khai trong `NCC_UU_TIEN` mà cả kỳ không gặp lần nào.
+       Rỗng là bình thường; có tên trong đây nghĩa là hoặc NCC ấy tháng này
+       không giữ Min lần nào, hoặc TÊN ĐÃ VIẾT SAI và luật ưu tiên đang không
+       chạy. Hai khả năng rất khác nhau, và cái thứ hai phải thấy được. */
+    ncc_uu_tien_khong_gap: NCC_UU_TIEN.filter((t) => !nccDaThay.has(chuanNcc(t))),
   };
   return bang;
 }
