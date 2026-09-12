@@ -214,4 +214,49 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }
 
+console.log('\n10) Băng "còn N dòng chưa có giá vốn" — câu ROADMAP đòi ở P4');
+{
+  /* ROADMAP.md, P4 "Bạn nhìn thấy gì": *lợi nhuận của một kỳ, CỘNG danh sách
+     rõ ràng "N dòng chưa có giá vốn, vì lý do gì"*. Trước 12/09/2026 lý do
+     CHỈ nằm ở `title` của từng ô, nên muốn biết cả kỳ còn nợ bao nhiêu thì
+     phải rê chuột từng dòng — mà đây đúng là con số người đối chiếu tay cần
+     thấy trước nhất. */
+  ok('băng dựng từ bản kê Engine trả, không tự cộng ở trình duyệt',
+     /const tg = b\.tom_tat_gia;/.test(JS), true);
+  ok('  · nói ra CẢ số dòng lẫn lý do', /chưa có giá vốn/.test(JS), true);
+  ok('  · và nói khi mọi dòng đã đủ giá, không im lặng',
+     /đều đã có giá vốn theo ngày bán/.test(JS), true);
+  /* Kỳ ngoài phạm vi dữ liệu giá KHÔNG được hiện băng này: ở đó không có giá
+     vốn theo thiết kế, và một câu "còn N dòng chưa có giá vốn" chỉ mời người
+     ta đi làm một việc không làm được — đúng lý do băng gán mã cũng bị chặn
+     ở đó. */
+  ok('  · nhưng KHÔNG hiện ở kỳ ngoài phạm vi / lúc nguồn giá hỏng',
+     /tg && kq\.trong_pham_vi_ma !== false && !kq\.loi_nguon_ma/.test(JS), true);
+
+  /* Hai bảng dịch lý do phải phủ ĐỦ tập trạng thái của hợp đồng
+     `daily-min-v1` cộng lý do nội bộ `chua-co-ma`. Thiếu một mã là màn hình
+     hiện nguyên chữ tiếng Anh của app khác — đúng chuyện đã xảy ra với
+     `OUT_OF_STOCK`, một trạng thái CÓ THẬT mà cả ba bản bảng dịch đều
+     thiếu. */
+  const doc2 = (ten) => {
+    const khoi = cat(JS, new RegExp('const ' + ten + ' = \\{[\\s\\S]*?\\n  \\};'));
+    return [...khoi.matchAll(/^\s*"?([A-Za-z_-]+)"?\s*:/gm)].map((m) => m[1]).sort();
+  };
+  const DU = ['INVALID_PRODUCT_CODE', 'NO_DATA', 'OUT_OF_STOCK',
+    'SOURCE_UNAVAILABLE', 'chua-co-ma'];
+  ok('bảng dịch cho tooltip phủ đủ mọi lý do', doc2('LY_DO_GIA'), DU);
+  ok('bảng dịch NGẮN cho băng tổng cũng vậy', doc2('LY_DO_GIA_NGAN'), DU);
+  /* Hai bản chứ không một, có chủ đích: bản tooltip là một câu đứng sau
+     "Chưa có giá vốn:" nên có chủ ngữ và dấu chấm; nhét nguyên nó vào băng
+     sẽ ra "12 dòng dòng này chưa được gán mã bảng giá.". */
+  ok('  · và hai bản KHÁC chữ nhau, không phải một bản chép đôi',
+     cat(JS, /const LY_DO_GIA = \{[\s\S]*?\n  \};/)
+     === cat(JS, /const LY_DO_GIA_NGAN = \{[\s\S]*?\n  \};/), false);
+
+  /* Engine từng giữ một bản THỨ BA, không ai import. Nó đã bị bỏ; bài này
+     giữ cho nó không quay lại — ba bản của một bảng là ba chỗ để sửa nhầm. */
+  const ENG = doc('engine/src/khop-ma.mjs');
+  ok('Engine KHÔNG giữ một bản bảng dịch thứ ba', /export const LY_DO_GIA/.test(ENG), false);
+}
+
 xong();
