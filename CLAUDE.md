@@ -91,8 +91,31 @@ chốt 12/09/2026, sau khi được hỏi thẳng giữa hai phương án):
 
 1. Khoá tên hàng đã có quyết định trong `inv/map` của Tracking — đó là
    quyết định của NGƯỜI, không phải máy đoán. Luôn thắng cách 2.
-2. Một mã bảng giá xuất hiện trong tên như một **cụm từ liên tiếp trọn
-   vẹn**, và ra ĐÚNG MỘT mã. Tìm được 0 mã hoặc ≥2 mã thì xuống hàng chờ.
+2. Một mục bảng giá (mã, `name`, hoặc một `alt`) xuất hiện trong tên như
+   một **cụm từ liên tiếp trọn vẹn**, và ra ĐÚNG MỘT mã. Tìm được 0 mã
+   hoặc ≥2 mã thì xuống hàng chờ.
+
+   Cách 2 có **hai dạng**, khác nhau đúng ở chỗ trần độ dài:
+
+   - **Nguyên câu bằng sạch** — tên hàng chuẩn hoá BẰNG ĐÚNG một mục bảng
+     giá. KHÔNG có trần độ dài.
+   - **Cụm nằm trong câu** — mục bảng giá dài tối đa 8 từ mới được đem đi
+     dò làm cụm con.
+
+   Trần 8 từ sinh ra để một mục từ điển DÀI không nuốt mất mấy từ thường
+   gặp trong câu văn xuôi của sổ. Với phép so nguyên câu thì mối lo ấy
+   không tồn tại — không còn chữ nào thừa ra để mà nuốt — nên trần không
+   áp vào đó. Một mục dài vì vậy CHỈ khớp được bằng sạch, không bao giờ
+   làm cụm con trong một câu dài hơn.
+
+   Vì sao cần dạng thứ nhất (gặp thật 12/09/2026): màn Tồn kho của
+   Tracking có nhánh "thêm mã mới" ghi `board/<mã>` bằng NGUYÊN CÂU tên
+   hàng trong file tồn — ví dụ `"GIÁ TREO TIVI ĐA NĂNG ERGOTEK E66 32 -
+   80 INCH"`, mười từ. Dòng bán mang đúng y nguyên câu ấy mà vẫn rơi
+   xuống hàng chờ; rồi ở hàng chờ gán tay cũng không xong, vì chính mặt
+   hàng đó đang là dòng tồn kho hoạt động nên chốt NB-2 bên Tracking từ
+   chối lượt ghi. Người dùng kẹt giữa hai màn hình còn con số thì đứng
+   đó không ai đọc được.
 
 Dòng này trước đây ghi "không rút mã từ tên". Bản đó đúng chữ nhưng vô
 dụng trên dữ liệu thật: tên trên sổ MISA là văn xuôi (`"Chân máy giặt Đa

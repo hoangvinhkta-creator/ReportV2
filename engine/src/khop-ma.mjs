@@ -167,6 +167,34 @@ export function dungBoKhop(nguon) {
   const cum = new Map();
   let daiNhat = 0;
 
+  /* Từ điển thứ hai: NGUYÊN CÂU đã chuẩn hoá → mã chính, KHÔNG có trần độ dài.
+     Cùng luật "hai mã cùng nhận ⟹ null" như `cum`.
+
+     Vì sao phải có, và vì sao nó KHÔNG nới lỏng kỷ luật nào:
+
+     Màn Tồn kho của Tracking có nhánh "thêm mã mới" ghi `board/<mã>` bằng
+     NGUYÊN CÂU tên hàng trong file tồn. Gặp thật 12/09/2026: bảng giá có một
+     mục mã là `"GIÁ TREO TIVI ĐA NĂNG ERGOTEK E66 32 - 80 INCH"` — mười từ,
+     vượt trần `CUM_TOI_DA`, nên nó KHÔNG vào `cum` và dòng bán mang đúng y
+     nguyên câu ấy vẫn rơi xuống hàng chờ. Mà ở hàng chờ thì gán tay cũng
+     không xong: chính mặt hàng ấy đang là một dòng tồn kho hoạt động, nên
+     chốt NB-2 bên Tracking từ chối lượt ghi và bảo "phân loại bên màn Tồn
+     kho". Người dùng kẹt giữa hai màn hình, còn con số thì đứng đó không ai
+     đọc được.
+
+     Trần `CUM_TOI_DA` sinh ra để một mục từ điển DÀI không nuốt mất mấy từ
+     thường gặp trong câu văn xuôi của sổ. Với phép so NGUYÊN CÂU thì mối lo
+     ấy không tồn tại: không còn chữ nào thừa ra để mà nuốt — hoặc bằng sạch,
+     hoặc không tính. Đây vẫn đúng cách 2 mà CLAUDE.md cho phép ("cụm từ liên
+     tiếp trọn vẹn, ra đúng một mã"), chỉ là trường hợp chặt nhất của nó.
+
+     Rào CHỮ SỐ thì GIỮ NGUYÊN. Nó không còn cần cho an toàn chuỗi con nữa,
+     nhưng nhánh "thêm mã mới" kia cũng đẻ ra được một mục tên trần kiểu
+     `"Tủ lạnh"`, và để một dòng bán ghi đúng hai chữ ấy khớp vào đó là gán
+     một mặt hàng thật vào một mã rác. Giữ rào là giữ đúng đánh đổi đã chọn:
+     mất một khớp thì dòng xuống gán tay, khớp sai thì sai tiền. */
+  const nguyenCau = new Map();
+
   for (const k of Object.keys(board)) {
     const row = board[k];
     if (!laObj(row)) continue;
@@ -178,8 +206,16 @@ export function dungBoKhop(nguon) {
     const alt = Array.isArray(row.alt) ? row.alt : [];
     for (const nhan of [k, row.name, ...alt]) {
       const tu = catTu(nhan);
-      if (!tu.length || tu.length > CUM_TOI_DA) continue;
-      const c = tu.join(" ");
+      if (!tu.length) continue;
+      const cauDay = tu.join(" ");
+      if (/[0-9]/.test(cauDay)) {
+        if (nguyenCau.has(cauDay)) {
+          if (nguyenCau.get(cauDay) !== chinh) nguyenCau.set(cauDay, null);
+        } else nguyenCau.set(cauDay, chinh);
+      }
+
+      if (tu.length > CUM_TOI_DA) continue;
+      const c = cauDay;
       /* RÀO AN TOÀN — cụm phải có ít nhất một CHỮ SỐ. Mã model thật gần như
          luôn có số; một mục từ điển toàn chữ (một mã đặt tên kiểu "QUAT",
          hay một `name` chỉ có mỗi tên hãng) sẽ nuốt đúng những từ thường gặp
@@ -193,7 +229,7 @@ export function dungBoKhop(nguon) {
     }
   }
 
-  return { board, alias, phanLoai, cum, daiNhat };
+  return { board, alias, phanLoai, cum, daiNhat, nguyenCau };
 }
 
 /** Một câu tên hàng → mã bảng giá, hoặc lý do chưa có.
@@ -219,7 +255,22 @@ export function khopTenHang(ten, bo) {
     return { ma: chinh, nguon: "quyet-dinh", khoa, ly_do: null };
   }
 
-  /* Bậc 3 — khớp cụm liên tiếp trọn vẹn. Gom MỌI cụm khớp được rồi mới xét,
+  /* Bậc 3a — NGUYÊN CÂU bằng sạch một mục bảng giá. Xét TRƯỚC phép dò cụm vì
+     nó là bằng chứng chặt hơn hẳn: không phải "có một mã nằm đâu đó trong
+     câu" mà là "câu này CHÍNH LÀ mục ấy". Không có trần độ dài — xem
+     `nguyenCau` ở `dungBoKhop()`.
+
+     Hai mã cùng nhận nguyên một câu thì XUỐNG HÀNG CHỜ luôn, không rơi tiếp
+     xuống phép dò cụm: nhập nhằng ở bậc chặt nhất là nhập nhằng thật, và một
+     phép dò lỏng hơn thì càng không gỡ được nó. */
+  const cauDay = catTu(ten).join(" ");
+  if (cauDay) {
+    const v = bo.nguyenCau ? bo.nguyenCau.get(cauDay) : undefined;
+    if (v === null) return { ma: null, nguon: null, khoa, ly_do: "nhieu-ma" };
+    if (v !== undefined) return { ma: v, nguon: "tu-dong", khoa, ly_do: null };
+  }
+
+  /* Bậc 3b — khớp cụm liên tiếp trọn vẹn. Gom MỌI cụm khớp được rồi mới xét,
      chứ không lấy cụm dài nhất: hai mã khác nhau cùng xuất hiện trong một câu
      ("Tivi Sony K-65S20M2 thay thế K-55S20M2") không phải bằng chứng cho bên
      nào cả. Nhiều cụm cùng trỏ về MỘT mã (`name` và một `alt` cùng khớp) thì

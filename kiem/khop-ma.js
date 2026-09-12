@@ -135,6 +135,56 @@ const GOC = path.resolve(__dirname, '..');
 
   /* ─────────── C. Không đoán thay người ─────────── */
 
+  console.log('\nB2) Nguyên câu bằng sạch một mục bảng giá — ca thật 12/09/2026');
+  {
+    /* Màn Tồn kho của Tracking có nhánh "thêm mã mới" ghi `board/<mã>` bằng
+       NGUYÊN CÂU tên hàng trong file tồn. Chủ dự án gặp thật: bảng giá có
+       mục mã là cả câu mười từ, dòng bán mang đúng y nguyên câu ấy, mà vẫn
+       rơi xuống hàng chờ vì câu dài hơn trần `CUM_TOI_DA` (8 từ) nên không
+       vào từ điển cụm. Tệ hơn: ở hàng chờ thì gán tay CŨNG không xong —
+       chính mặt hàng ấy đang là dòng tồn kho hoạt động nên chốt NB-2 bên
+       Tracking từ chối. Người dùng kẹt giữa hai màn hình. */
+    const CAU = 'GIÁ TREO TIVI ĐA NĂNG ERGOTEK E66 32 - 80 INCH';
+    const bo = K.dungBoKhop({ board: { [CAU]: { name: CAU, alt: [] } }, alias: {}, inv_map: {} });
+    ok('mục dài 10 từ KHÔNG vào từ điển cụm (trần cũ giữ nguyên)', bo.cum.size, 0);
+    ok('nhưng nguyên câu bằng sạch thì vẫn khớp', K.khopTenHang(CAU, bo).ma, CAU);
+    ok('  · và ghi rõ là máy khớp', K.khopTenHang(CAU, bo).nguon, 'tu-dong');
+    /* ĐIỀU KHÔNG ĐƯỢC PHÉP ĐỔI: mục dài chỉ tham gia phép so NGUYÊN CÂU,
+       KHÔNG bao giờ được làm một cụm con nằm trong câu dài hơn. Mất tính
+       chất này là trần `CUM_TOI_DA` mất tác dụng — đúng thứ nó sinh ra để
+       chặn: một mục từ điển dài nuốt mấy từ thường gặp của câu văn xuôi. */
+    ok('câu DÀI HƠN chứa trọn mục ấy thì KHÔNG khớp',
+      K.khopTenHang(CAU + ' loại 2', bo).ma, null);
+    ok('  · và xuống hàng chờ với lý do rõ', K.khopTenHang(CAU + ' loại 2', bo).ly_do, 'chua-khop');
+
+    /* Rào CHỮ SỐ giữ nguyên cho cả bậc này: nhánh "thêm mã mới" cũng đẻ ra
+       được một mục tên trần kiểu "Tủ lạnh", và để một dòng bán ghi đúng hai
+       chữ ấy khớp vào đó là gán một mặt hàng thật vào một mã rác. */
+    const boChu = K.dungBoKhop({ board: { 'Tủ lạnh': { name: 'Tủ lạnh', alt: [] } },
+      alias: {}, inv_map: {} });
+    ok('nguyên câu KHÔNG có chữ số thì vẫn không khớp',
+      K.khopTenHang('Tủ lạnh', boChu).ma, null);
+
+    /* Hai mã cùng nhận nguyên một câu ⟹ hàng chờ, và KHÔNG rơi tiếp xuống
+       phép dò cụm: nhập nhằng ở bậc chặt nhất thì bậc lỏng hơn càng không
+       gỡ được. */
+    const boDoi = K.dungBoKhop({ board: {
+      'MA1': { name: 'Tivi ABC 123', alt: [] },
+      'MA2': { name: 'Tivi ABC 123', alt: [] },
+    }, alias: {}, inv_map: {} });
+    ok('hai mã cùng nhận nguyên một câu ⟹ hàng chờ',
+      K.khopTenHang('Tivi ABC 123', boDoi).ly_do, 'nhieu-ma');
+
+    /* Quyết định của NGƯỜI vẫn thắng bậc mới này, đúng thứ tự CLAUDE.md. */
+    const boNg = K.dungBoKhop({ board: { [CAU]: { name: CAU, alt: [] }, 'KHAC9': { name: 'KHAC9', alt: [] } },
+      alias: {}, inv_map: { [K.khoaTenHang(CAU)]: 'KHAC9' } });
+    ok('quyết định trong inv/map vẫn thắng phép so nguyên câu',
+      K.khopTenHang(CAU, boNg).ma, 'KHAC9');
+    ok('  · và "bỏ qua" của người cũng vậy',
+      K.khopTenHang(CAU, K.dungBoKhop({ board: { [CAU]: { name: CAU, alt: [] } },
+        alias: {}, inv_map: { [K.khoaTenHang(CAU)]: '-' } })).nguon, 'bo-qua');
+  }
+
   console.log('\nC) Chỗ máy phải im và nhường cho người');
 
   ok('hai mã trong một câu → hàng chờ, không chọn bên nào',
