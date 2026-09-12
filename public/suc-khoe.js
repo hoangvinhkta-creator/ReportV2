@@ -733,7 +733,14 @@
     oVe.innerHTML = '<p class="dangTai">Đang tải biểu đồ…</p>';
     try {
       const token = await user.getIdToken();
-      const r = await fetch("/api/bao-cao/suc-khoe", { headers: { Authorization: "Bearer " + token } });
+      /* `no-store`: Dashboard đọc CÙNG nguồn `bc/ky` mà lượt tải sổ và lượt
+         xoá dòng đang sửa, nên một bản cache cũ ở đây là hai màn hình của
+         cùng app nói hai con số khác nhau cho cùng một tháng. Cùng lỗi đã
+         bắt được ở `/api/don-hang` ngày 12/09/2026. */
+      const r = await fetch("/api/bao-cao/suc-khoe", {
+        cache: "no-store",
+        headers: { Authorization: "Bearer " + token },
+      });
       const than = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(than.loi || "HTTP " + r.status);
       duLieu = than;

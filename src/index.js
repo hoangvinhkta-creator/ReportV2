@@ -81,7 +81,28 @@ function withSecurityHeaders(res) {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
   const type = out.headers.get("Content-Type") || "";
-  if (type.includes("text/html")) out.headers.set("Cache-Control", "no-store, must-revalidate");
+  /* `no-store` cho CẢ HTML VÀ JSON.
+   *
+   * Bản trước chỉ đặt cho `text/html`, nên mọi phản hồi `/api/` đi ra KHÔNG
+   * MANG MỘT HEADER CACHE NÀO. Không header thì trình duyệt được phép tự đoán
+   * thời gian còn tươi (heuristic freshness) và phục vụ lại bản cũ — và nó
+   * đoán khác nhau cho từng URL.
+   *
+   * Đó là lỗi thật, chủ dự án gặp ngày 12/09/2026: tick "gia dụng" xong thì
+   * số trên DÒNG đổi mà một con số TỔNG thì không. Engine tính đúng — đã dựng
+   * phép thử chạy cả hai trạng thái tick, mọi tổng khớp tuyệt đối với tổng
+   * cộng tay của từng dòng. Chỗ hỏng là hai URL KHÁC NHAU
+   * (`?ky=…&line=Nội thành` cho tab line, `?ky=…` cho tab Tổng hợp) có hai ô
+   * cache RIÊNG, nên chúng cũ đi ở hai thời điểm khác nhau và nói hai con số
+   * khác nhau cho cùng một sự thật.
+   *
+   * Mọi đường `/api/` của app này trả về DỮ LIỆU ĐỔI ĐƯỢC — doanh số, giá
+   * vốn, quyết định sửa tay, hệ số KPI. Không có đường nào cache được, nên
+   * đặt thẳng cho mọi JSON thay vì liệt kê từng đường: một đường mới thêm sau
+   * này sẽ tự đúng, không phải nhớ thêm tên nó vào đâu cả. */
+  if (type.includes("text/html") || type.includes("application/json")) {
+    out.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
   return out;
 }
 

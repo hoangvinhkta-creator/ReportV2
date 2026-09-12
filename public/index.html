@@ -209,6 +209,16 @@
   .bangDon td.maChuaCo:hover, .bangDon td.maBoQua:hover { background: #fef3c7; }
   .bangDon td.maBoQua { color: #9ca3af; font-style: italic; }
 
+  /* Mã bảng giá hiện thay cho câu tên kế toán, ở dòng ĐÃ khớp mã (chủ dự án
+     chốt 12/09/2026). Chữ đều nét (`tabular-nums` + mono) để một cột mã xếp
+     thẳng hàng nhau — đó là cái lợi thật khi quét mắt xuống hàng trăm dòng,
+     và là cách cùng một mã đọc được y như bên Tracking. */
+  .bangDon td.oMa span.maNgan {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px; letter-spacing: .01em;
+  }
+
   .bangConNo { font-size: 13px; color: #92400e; margin: 6px 0; }
   /* Kỳ ngoài phạm vi dữ liệu giá: một câu GIẢI THÍCH, không phải cảnh báo —
      nên màu xám như `.viDu`, không vàng như băng còn-nợ. Người dùng không có
