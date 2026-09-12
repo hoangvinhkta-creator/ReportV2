@@ -498,15 +498,21 @@ const GOC = path.resolve(__dirname, '..');
     ok('bảng nằm trong khung cuộn ngang', !!boc, true);
     const b = boc.con[0];
     ok('bảng mang lớp riêng của [Tổng hợp]', b.className, 'bangNho bangTongHop');
-    ok('4 hàng: tiêu đề + 3 line + TỔNG', b.con.length, 5);
+    /* L3 KHÔNG có đơn nào trong kỳ nên bị GIẤU (chủ dự án chốt 12/09/2026),
+       cùng luật và cùng công tắc "Hiện thêm N line chưa có đơn" với hàng tab
+       ngay trên bảng — giấu ở hàng tab mà vẫn để trong bảng là hai màn hình
+       nói hai chuyện. */
+    ok('3 hàng: tiêu đề + 2 line CÓ đơn + TỔNG', b.con.length, 4);
+    ok('  · line không có đơn nào bị giấu khỏi bảng',
+       b.con.map((r) => r.con[0].textContent).includes('L3'), false);
     /* Lệch một ô ở một hàng là mọi con số từ đó trở đi đọc sang sai tên cột —
        lớp lỗi mà chỉ chạy thật mới thấy. */
-    ok('MỌI hàng đều đúng 16 ô', b.con.map((r) => r.con.length), [16, 16, 16, 16, 16]);
+    ok('MỌI hàng đều đúng 16 ô', b.con.map((r) => r.con.length), [16, 16, 16, 16]);
 
     const chu = (i) => b.con[i].con.map((c) => c.textContent);
     ok('thứ tự hàng theo tom_tat_kpi.thu_tu, không theo tom_tat_line',
-       [chu(1)[0], chu(2)[0], chu(3)[0]], ['L2', 'L1', 'L3']);
-    ok('hàng cuối là TỔNG', chu(4)[0], 'TỔNG');
+       [chu(1)[0], chu(2)[0]], ['L2', 'L1']);
+    ok('hàng cuối là TỔNG', chu(3)[0], 'TỔNG');
 
     /* Line CÓ đơn: mọi cột có số. */
     ok('L2 — số đơn, số sản phẩm, doanh số thuần',
@@ -522,12 +528,6 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · và ô đó nói vì sao', /không có dữ liệu giá vốn/.test(b.con[2].con[6].title), true);
     ok('L1 — tháng trước 0đ → "mới", KHÔNG phải "—"', chu(2)[9], 'mới');
 
-    /* Line KHÔNG có đơn nào: 0 là sự thật, "—" là chưa biết. */
-    ok('L3 — số đơn/sản phẩm/doanh số là 0 (sự thật, không phải "chưa biết")',
-       [chu(3)[1], chu(3)[2], chu(3)[3]], ['0', '0', '0']);
-    ok('L3 — các cột suy ra thì "—"', [chu(3)[4], chu(3)[6], chu(3)[7]], ['—', '—', '—']);
-    ok('L3 — line sập về 0đ vẫn hiện −100% ở cột Vs.', chu(3)[9], '▼ -100,0%');
-    ok('  · và mang lớp màu giảm', b.con[3].con[9].className, 'oSo vsGiam');
 
     /* ── Nhóm cột lương ── */
 
@@ -553,16 +553,11 @@ const GOC = path.resolve(__dirname, '..');
 
     /* L3 — hệ số không thuộc cách nào (Nội thành 2%): cả nhóm trống, kể cả ô
        Ngày công, và KHÔNG dựng ô nhập cho nó. */
-    ok('L3 — không thuộc cách nào: cả sáu ô lương đều "—"',
-       chu(3).slice(10), ['—', '—', '—', '—', '—', '—']);
-    ok('  · và KHÔNG dựng ô nhập ngày công', b.con[3].con[11].con.length, 0);
-    ok('  · Ghi chú nói thẳng vì sao', /không phải 7,5%/.test(b.con[3].con[15].title), true);
-
     /* TỔNG — cộng ba cột tiền, bỏ trống Ngày công và Ghi chú. */
-    ok('TỔNG — ba cột tiền có số', [chu(4)[10], chu(4)[12], chu(4)[13], chu(4)[14]],
+    ok('TỔNG — ba cột tiền có số', [chu(3)[10], chu(3)[12], chu(3)[13], chu(3)[14]],
        ['4.550', '4.846', '780', '10.176']);
-    ok('  · Ngày công để TRỐNG (cộng ngày công nhiều line là vô nghĩa)', chu(4)[11], '');
-    ok('  · Ghi chú cũng để trống', chu(4)[15], '');
+    ok('  · Ngày công để TRỐNG (cộng ngày công nhiều line là vô nghĩa)', chu(3)[11], '');
+    ok('  · Ghi chú cũng để trống', chu(3)[15], '');
 
     /* Highlight ba mức khi vượt KPI. */
     ok('đạt 90% thì KHÔNG tô', b.con[1].con[8].className, 'oSo ');
