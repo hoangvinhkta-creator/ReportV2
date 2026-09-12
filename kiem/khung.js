@@ -50,4 +50,29 @@ function xong() {
   process.exit(hong ? 1 : 0);
 }
 
-module.exports = { GOC, doc, docJson, docScript, cat, ok, xong };
+/* ---------------------------------------------------------- repo Tracking
+ *
+ * P4 khớp tên hàng sổ bán với bảng giá Tracking, và công thức khoá `inv/map`
+ * phải giống HỆT bản của Tracking — lệch một ký tự là quyết định gán tay của
+ * hai app rơi vào hai ô khác nhau, im lặng, cho tới lúc giá vốn sai. Bộ kiểm
+ * chéo hai repo vì vậy chạy CHÍNH mã của Tracking chứ không chép lại.
+ *
+ * Dò NHIỀU đường và IN RA đường đang dùng — chép đúng bài học của
+ * `kiem/khung.js` bên Tracking: một đường dẫn đóng cứng sai khiến bộ kiểm
+ * chéo LẶNG LẼ bỏ qua, và một bài bị bỏ qua trông y hệt một bài đã đạt.
+ *
+ * Bộ nào dùng helper này vẫn phải GHIM giá trị tuyệt đối trong repo mình:
+ * nơi không có repo Tracking (CI) thì phép chéo tự bỏ qua, và khi ấy phần
+ * ghim là thứ duy nhất còn canh. */
+const TRK_UNGVIEN = ['/home/user/Tracking', path.resolve(GOC, '../Tracking'),
+                     path.resolve(GOC, '../tracking')];
+const TRK = TRK_UNGVIEN.find(d => {
+  try { return fs.existsSync(d + '/public/index.html'); } catch (e) { return false; }
+}) || TRK_UNGVIEN[0];
+const coTracking = () => {
+  try { return fs.existsSync(TRK + '/public/index.html'); } catch (e) { return false; }
+};
+const docTracking = p => fs.readFileSync(path.join(TRK, p), 'utf8');
+
+module.exports = { GOC, doc, docJson, docScript, cat, ok, xong,
+                   TRK, coTracking, docTracking };
