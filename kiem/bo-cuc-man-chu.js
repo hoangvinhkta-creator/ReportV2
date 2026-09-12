@@ -1,10 +1,10 @@
 /* Bố cục màn chủ — cái hợp đồng giữa P3 và nhánh P2(b).
  *
- * Chủ dự án chốt 11/09/2026: đăng nhập xong vào thẳng [Báo cáo doanh số],
- * biểu đồ nằm SAU tab [Biểu đồ] và KHÔNG tự hiện ra nữa. Đây là thứ dễ mất
- * nhất khi hai nhánh cùng sửa index.html: chỉ cần ai đó bỏ `hidden` khỏi
- * `#manBieuDo` là biểu đồ lại đập vào mặt người dùng ngay lúc đăng nhập, mà
- * không bộ kiểm nào kêu.
+ * Chủ dự án chốt LẠI 12/09/2026: bỏ hẳn tab [Biểu đồ] — chỉ còn MỘT màn, và
+ * biểu đồ nằm ngay dưới bảng [Tổng hợp], theo đúng kỳ mà bảng đang mở. Đây
+ * là thứ dễ mất nhất khi hai nhánh cùng sửa index.html: chỉ cần ai đó dời
+ * `#o-dashboard` ra khỏi `#manBaoCao`, hay bỏ một trong hai cửa
+ * `window.SucKhoe`, là hai khối hết đồng bộ kỳ mà không bộ kiểm nào kêu.
  *
  * Bộ này canh bằng cách đọc CHÍNH index.html và don-hang.js, không dựng
  * DOM giả — thứ cần giữ là văn bản đã deploy, không phải hành vi mô phỏng.
@@ -15,35 +15,52 @@ const HTML = doc('public/index.html');
 const CSS = (HTML.match(/<style>([\s\S]*?)<\/style>/) || [, ''])[1];
 const JS = doc('public/don-hang.js');
 
-console.log('\n1) Hai tab chính, và [Biểu đồ] KHÔNG mở sẵn lúc đăng nhập');
+console.log('\n1) KHÔNG còn tab chính — chỉ một màn duy nhất');
 {
-  ok('có nút [Báo cáo doanh số]', /id="nutManBaoCao"/.test(HTML), true);
-  ok('có nút [Biểu đồ]', /id="nutManBieuDo"/.test(HTML), true);
+  /* Chủ dự án chốt 12/09/2026: bỏ hẳn tab [Biểu đồ], biểu đồ dời xuống dưới
+     bảng, nên hàng tab chính chỉ còn một nút — tức không còn lý do tồn tại.
+     Canh chiều NGƯỢC với bản trước P6: thứ phải vắng mặt, chứ không phải
+     thứ phải có. */
+  for (const id of ['nutManBaoCao', 'nutManBieuDo', 'tabChinh', 'manBieuDo']) {
+    ok('không còn #' + id + ' trong HTML', new RegExp('id="' + id + '"').test(HTML), false);
+  }
+  /* Soi trên mã đã bỏ chú thích: chú thích CÓ nhắc tên hàm cũ, và nhắc là
+     đúng — nó nói vì sao hàm ấy biến mất. Thứ phải vắng là lời gọi thật. */
+  const maJS = JS.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+  ok('  · và don-hang.js không còn hàm đổi màn', /doiManChinh\s*\(/.test(maJS), false);
 
   const khoiBaoCao = cat(HTML, /<section id="manBaoCao"[^>]*>/);
-  ok('  · #manBaoCao mở sẵn (không có hidden)', /hidden/.test(khoiBaoCao), false);
-
-  const khoiBieuDo = cat(HTML, /<section id="manBieuDo"[^>]*>/);
-  ok('  · #manBieuDo ẩn sẵn trong HTML', /hidden/.test(khoiBieuDo), true);
-
-  /* Không đủ nếu HTML ẩn mà mã lại mở ra ngay lúc đăng nhập. */
-  ok('  · và mã quay về tab báo cáo mỗi lần đăng nhập',
-     /doiManChinh\(false\)/.test(JS), true);
+  ok('#manBaoCao mở sẵn (không có hidden)', /hidden/.test(khoiBaoCao), false);
 }
 
-console.log('\n2) Ô #o-dashboard của P2(b) nằm TRONG tab [Biểu đồ]');
+console.log('\n2) Biểu đồ nằm TRONG màn báo cáo, ngay dưới bảng');
 {
-  const trongBieuDo = cat(HTML, /<section id="manBieuDo"[\s\S]*?<\/section>/);
-  ok('#o-dashboard nằm trong khối #manBieuDo', /id="o-dashboard"/.test(trongBieuDo), true);
-  /* P3 không được tự bật/tắt ô của nhánh kia nữa — trước đây tab Dashboard
-     làm đúng thế và nó là lý do biểu đồ nhấp nháy mỗi lần đổi line. */
-  ok('don-hang.js không còn tự bật/tắt #oDashboardBoc',
-     /oDashboardBoc/.test(JS), false);
-  /* Biểu đồ hoãn vẽ tới lần đầu mở tab — chỉ có tác dụng nếu khung tab
-     thật sự báo sang. Quên dòng này thì tab [Biểu đồ] mở ra TRỐNG mãi mãi,
-     mà mọi bộ kiểm khác vẫn xanh. */
-  ok('mở tab [Biểu đồ] thì báo sang suc-khoe.js qua window.SucKhoe.moTab()',
-     /window\.SucKhoe\.moTab\(\)/.test(JS), true);
+  const trongBaoCao = cat(HTML, /<section id="manBaoCao"[\s\S]*?<\/section>/);
+  ok('#o-dashboard nằm trong khối #manBaoCao', /id="o-dashboard"/.test(trongBaoCao), true);
+  /* "Ngay dưới bảng" là một yêu cầu về THỨ TỰ, không chỉ về chỗ chứa. */
+  ok('  · và đứng SAU ô vẽ bảng',
+     trongBaoCao.indexOf('id="veDonHang"') < trongBaoCao.indexOf('id="o-dashboard"'), true);
+  /* Ẩn sẵn: không thì nó chớp lên một khối rỗng trong lúc lượt tải đầu chưa
+     xong, và ở tab của một line nó phải ẩn hẳn. */
+  ok('  · ẩn sẵn trong HTML', /id="o-dashboard"[^>]*hidden/.test(HTML), true);
+
+  /* Hai cửa vào DUY NHẤT giữa hai nhánh — don-hang.js không được sửa thẳng
+     DOM của khối biểu đồ, và suc-khoe.js không được tự đoán kỳ bằng cách soi
+     nút nào đang sáng. Đây là chỗ hai nhánh dễ buộc chặt vào nhau nhất. */
+  ok('don-hang.js báo kỳ sang bằng window.SucKhoe.datKy()',
+     /window\.SucKhoe\.datKy\(/.test(JS), true);
+  ok('  · và bật/tắt cả khối bằng window.SucKhoe.hien()',
+     /window\.SucKhoe\.hien\(/.test(JS), true);
+  ok('  · chỉ bật ở tab [Tổng hợp] (line === null)',
+     /SucKhoe\.hien\(trangThai\.line === null && !!trangThai\.ky\)/.test(JS), true);
+  ok('  · và KHÔNG sờ thẳng vào #o-dashboard', /"o-dashboard"/.test(JS), false);
+  /* Cửa cũ `moTab()` chết cùng tab — còn sót một lượt gọi là gọi vào hư không. */
+  ok('không còn gọi cửa cũ moTab()', /SucKhoe\.moTab/.test(JS), false);
+
+  /* Đổi tháng thì biểu đồ phải đổi theo BẢNG — lượt báo nằm trong `taiKy`,
+     nơi duy nhất mọi lượt đổi năm/tháng/line đi qua. */
+  ok('mỗi lượt đổi kỳ đều báo sang biểu đồ',
+     /async function taiKy[\s\S]{0,600}?baoBieuDo\(\)/.test(JS), true);
 }
 
 console.log('\n3) Năm và tháng nằm cùng một hàng');

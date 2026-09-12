@@ -72,11 +72,6 @@
 
   /* ---- Tab + Dashboard ---- */
   .tabDonVi { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-  /* Hàng tab CHÍNH ([Báo cáo doanh số] / [Biểu đồ]): tách khỏi các hàng tab
-     con bên dưới bằng một gạch, để mắt thấy ngay đây là hai màn khác nhau
-     chứ không phải một cấp lọc nữa. */
-  .tabChinh { border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
-  .tabChinh .tabNut { padding: 8px 18px; font-size: 14px; }
   /* Năm và tháng nằm CÙNG một hàng, cách nhau một khoảng trống (chủ dự án
      chốt 11/09/2026). Hai nhóm là hai flex riêng để mỗi nhóm tự xuống dòng
      mà không trộn lẫn nút năm với nút tháng. */
@@ -90,30 +85,31 @@
   .tabNut.tabDang { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
   .tabNut:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
   .tabNut.tabNho { padding: 4px 10px; font-size: 12px; }
-  .daiPhu { margin: 10px 0 0; }
   .dangTai { color: #6b7280; font-size: 13px; }
   .tieuDeSk { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1f2430; }
   .tieuDeSk .donViCua { color: #9ca3af; font-weight: 400; }
-  .khoiBieuDo + .khoiBieuDo { margin-top: 18px; }
-  .khoiCoCauBoc:not(:empty) { border-top: 1px solid #e5e7eb; margin-top: 16px; padding-top: 14px; }
   .chuGiaiSk { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: #4b5563; }
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .chuGiaiSk i.netDut { height: 0; border-top: 3px dashed #9ca3af; background: none !important; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
 
-  /* ---- Cơ cấu theo Line (vòng tròn lồng nhau) ---- */
-  .khoiCoCau { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
-  .khoiCoCau svg { flex: 0 0 auto; }
-  .chuGiaiCoCau { flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; min-width: 180px; }
-  .chuGiaiCoCau span { display: flex; align-items: center; gap: 8px; color: #1f2430; }
-  .chuGiaiCoCau i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
-  .chuGiaiCoCau b { margin-left: auto; font-weight: 600; }
-  .chuGiaiCoCau .ptTruocCc { color: #9ca3af; font-size: 11px; }
+  /* ---- Hai cột: biểu đồ lớn bên trái, lưới nhỏ bên phải (P6) ----
+     Chủ dự án chốt 12/09/2026. Tỉ lệ 3:2 — biểu đồ lớn cần bề ngang để 31
+     ngày không dồn vào nhau, còn lưới nhỏ xếp được 2 ô mỗi hàng ở phần còn
+     lại. Dưới 1000px thì xếp dọc: ép hai cột vào màn hẹp là cả hai cùng
+     không đọc được. */
+  .daiDieuKhien { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  .daiDieuKhien .tabDonVi { margin-bottom: 10px; }
+  .haiCotBieuDo { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; align-items: start; }
+  @media (max-width: 1000px) { .haiCotBieuDo { grid-template-columns: 1fr; } }
+  .cotPhai { border-left: 1px solid #e5e7eb; padding-left: 18px; }
+  @media (max-width: 1000px) {
+    .cotPhai { border-left: none; border-top: 1px solid #e5e7eb; padding-left: 0; padding-top: 14px; }
+  }
 
   /* ---- Lưới nhỏ — xu hướng theo Line ---- */
-  .khoiLuoiNhoBoc:not(:empty) { border-top: 1px solid #e5e7eb; margin-top: 16px; padding-top: 14px; }
-  .luoiXuHuong { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+  .luoiXuHuong { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
   .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 8px; }
   .tenMini { margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #4b5563;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -191,7 +187,22 @@
   .bangTongHop.dangGui { opacity: .55; pointer-events: none; }
   /* Ghi chú là cột CHỮ duy nhất của bảng — cho nó xuống dòng được, còn lại
      giữ `nowrap` như cũ. */
-  .bangTongHop td.oGhiChuLuong { white-space: normal; min-width: 200px; color: #4b5563; }
+  .bangTongHop td.oGhiChuLuong { white-space: normal; color: #4b5563; }
+
+  /* ---- Ba chỉnh bề rộng, chủ dự án chốt 12/09/2026 ----
+     Cột Line RỘNG ra: nó là thứ người đọc quét mắt xuống để tìm hàng mình
+     cần, mà tên line dài nhất ("Quyết chiến") đang bị bóp sát bằng đúng
+     chiều dài chữ. */
+  .bangTongHop th.oLine, .bangTongHop td:first-child { min-width: 130px; }
+  /* Sáu cột từ "Thưởng" trở đi là THÔNG SỐ PHỤ — chữ nhỏ hơn, đệm hẹp hơn,
+     màu nhạt hơn, để mắt bám vào khối doanh số/lợi nhuận/quy đổi trước. Thu
+     nhỏ chứ không giấu: chúng vẫn phải đọc và đối chiếu được. */
+  .bangTongHop .oPhu { font-size: 11px; padding-left: 5px; padding-right: 5px; }
+  .bangTongHop td.oPhu { color: #6b7280; }
+  .bangTongHop th.oPhu { color: #6b7280; font-weight: 500; }
+  /* Tổng lương là con số người ta thật sự tìm trong cả nhóm phụ — cho nó lại
+     màu chữ thường để nó không chìm cùng năm cột kia. */
+  .bangTongHop td.oPhu:nth-last-child(2) { color: #111827; font-weight: 600; }
 
   /* Ghim đầu cột (chủ dự án chốt 12/09/2026): `overflow-x: auto` một mình
      đã ĐỦ để trình duyệt tự áp `overflow-y: auto` — luật phụ thuộc của CSS
@@ -430,8 +441,11 @@
   .hangDauDon td { border-top: 2px solid #d1d5db; }
   .hangChietKhau td { color: #b45309; font-style: italic; }
   .hangTongDon td { background: #fafafa; font-weight: 600; }
-  #oDashboardBoc { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-    padding: 16px; margin-bottom: 16px; max-width: 900px; }
+  /* Khối biểu đồ nay nằm TRONG màn báo cáo, ngay dưới bảng — không còn
+     `max-width` như hồi nó là một màn riêng: nó phải rộng bằng bảng phía
+     trên để hai khối đọc như một. */
+  #o-dashboard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 16px; margin-top: 18px; }
 </style>
 </head>
 <body>
@@ -458,14 +472,10 @@
   </header>
   <p id="hopLoi"></p>
 
-  <!-- Hai tab CHÍNH (chủ dự án chốt 11/09/2026). Đăng nhập xong vào thẳng
-       [Báo cáo doanh số]; biểu đồ không còn tự hiện ra nữa mà nằm sau tab
-       [Biểu đồ]. Nút do don-hang.js gắn sự kiện. -->
-  <div class="tabDonVi tabChinh" id="tabChinh">
-    <button class="tabNut tabDang" id="nutManBaoCao" type="button">Báo cáo doanh số</button>
-    <button class="tabNut" id="nutManBieuDo" type="button">Biểu đồ</button>
-  </div>
-
+  <!-- KHÔNG CÒN tab chính (chủ dự án chốt 12/09/2026). Trước đây có hai tab
+       [Báo cáo doanh số] / [Biểu đồ]; biểu đồ nay nằm ngay dưới bảng [Tổng
+       hợp] nên chỉ còn đúng một màn, và một hàng tab chỉ có một nút là một
+       hàng không ai bấm. -->
   <section id="manBaoCao">
     <!-- Năm và tháng CÙNG một hàng, cách nhau một khoảng trống. -->
     <div class="tabDonVi hangThoiGian">
@@ -479,12 +489,13 @@
          bên trong sẽ biến mất đúng lúc phép vá tại chỗ cần tới nó. -->
     <p class="bangConNo" id="bangConNo" hidden></p>
     <div id="veDonHang"></div>
-  </section>
 
-  <!-- Ô `#o-dashboard` là phần của nhánh P2(b) (xem ROADMAP.md). P3 chỉ dời
-       cả cái hộp vào đây và bật/tắt nó; không đụng vào suc-khoe.js. -->
-  <section id="manBieuDo" hidden>
-    <div id="oDashboardBoc"><div id="o-dashboard"></div></div>
+    <!-- Biểu đồ nằm NGAY DƯỚI bảng, trong cùng một màn (chủ dự án chốt
+         12/09/2026). Nó theo đúng kỳ mà bảng đang mở — `don-hang.js` báo
+         sang bằng `window.SucKhoe.datKy()` mỗi lần đổi năm/tháng — và chỉ
+         hiện ở tab [Tổng hợp]. Ẩn sẵn để nó không chớp lên một khối rỗng
+         trong lúc lượt tải đầu chưa xong. -->
+    <div id="o-dashboard" hidden></div>
   </section>
 </div>
 

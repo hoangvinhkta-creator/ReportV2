@@ -272,12 +272,24 @@ const GOC = path.resolve(__dirname, '..');
     const ten = [...(kh ? kh[1] : '').matchAll(/ten: "([^"]+)"/g)].map(m => m[1]);
     ok('đúng 16 cột', ten.length, 16);
     ok('đúng thứ tự, đúng tên', ten, [
-      'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần (nghìn đ)',
-      'Lợi nhuận (nghìn đ)', 'Doanh số quy đổi (nghìn đ)', 'Tỉ lệ tồn kho',
-      'KPI (nghìn đ)', 'Đạt', 'Vs. Tháng trước',
-      'Thưởng (nghìn đ)', 'Ngày công', 'Lương cứng (nghìn đ)',
-      'Phụ cấp (nghìn đ)', 'Tổng lương (nghìn đ)', 'Ghi chú',
+      'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần',
+      'Lợi nhuận', 'Doanh số quy đổi', 'Tỉ lệ tồn kho',
+      'KPI', 'Đạt', 'Vs. Tháng trước',
+      'Thưởng', 'Ngày công', 'Lương cứng',
+      'Phụ cấp', 'Tổng lương', 'Ghi chú',
     ]);
+    /* Tên cột KHÔNG còn mang "(nghìn đ)" (chủ dự án chốt 12/09/2026), và
+       đoạn giải thích dưới bảng cũng bỏ — nên đơn vị chỉ còn MỘT chỗ để nói:
+       đầu `title` của chính cột tiền ấy. Mất nó là bảng không còn nói đơn vị
+       ở đâu cả, và một cột tiền không đơn vị là một cột đọc sai 1.000 lần. */
+    const kh2 = kh ? kh[1] : '';
+    for (const c of ['Doanh số thuần', 'Lợi nhuận', 'Doanh số quy đổi', 'KPI',
+                     'Thưởng', 'Lương cứng', 'Phụ cấp', 'Tổng lương']) {
+      ok('cột "' + c + '" nói đơn vị ở title',
+         new RegExp('ten: "' + c + '"[\\s\\S]{0,80}?gt: "Nghìn đồng\\.').test(kh2), true);
+    }
+    ok('không còn đoạn giải thích dưới bảng',
+       /Line sắp theo doanh số thuần giảm dần/.test(UI), false);
     /* Cột "Hệ số" bỏ khỏi bảng này (chủ dự án chốt) — nó vẫn xem và sửa được
        trên dải setup của từng tab line, nên không mất đường vào. */
     ok('cột "Hệ số" đã bỏ khỏi [Tổng hợp]', ten.includes('Hệ số'), false);
@@ -529,14 +541,15 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · mang đúng số đã nhập', oNhap.value, '28');
     ok('  · và khoá theo tên line để lượt ghi biết sửa ai', oNhap.dataset.line, 'L2');
     ok('L2 — Ghi chú nói hệ số thực tế VÀ thưởng nóng đã gồm trong cột Thưởng',
-       chu(1)[15], 'Cách B · 0,45% · đã gồm 500 thưởng mốc 1,5 tỷ');
+       chu(1)[15], '0,45% · đã gồm 500 thưởng mốc 1,5 tỷ');
+    ok('  · và KHÔNG còn chữ "Cách A/Cách B"', /Cách [AB]/.test(chu(1)[15]), false);
 
     /* L1 — cùng một hàng, HAI lý do trống khác nhau, hai câu khác nhau. */
     ok('L1 — chưa có quy đổi nên Thưởng "—"', chu(2)[10], '—');
     ok('  · và ô đó nói vì sao', /chưa tính được thưởng/.test(b.con[2].con[10].title), true);
     ok('L1 — chưa nhập ngày công nên Lương cứng "—"', chu(2)[12], '—');
     ok('  · và ô đó nói một câu KHÁC', /Chưa nhập ngày công/.test(b.con[2].con[12].title), true);
-    ok('L1 — Ghi chú vẫn nói được bậc đã nhận ra', chu(2)[15], 'Cách A · chưa tính được thưởng');
+    ok('L1 — Ghi chú nói vì sao chưa có số', chu(2)[15], 'chưa tính được thưởng');
 
     /* L3 — hệ số không thuộc cách nào (Nội thành 2%): cả nhóm trống, kể cả ô
        Ngày công, và KHÔNG dựng ô nhập cho nó. */

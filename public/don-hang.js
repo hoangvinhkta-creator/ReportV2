@@ -1145,46 +1145,46 @@
        tiêu đề thay vì một đoạn chú giải dưới bảng (cùng lối đã chọn ở P4 khi
        bỏ dải chú giải màu). */
     const COT_TONG_HOP = [
-      { ten: "Line" },
+      { ten: "Line", lop: "oLine" },
       { ten: "Số đơn" },
       { ten: "Số sản phẩm",
         gt: "Tổng SỐ LƯỢNG bán ra, không phải số dòng hàng. Dòng chiết khấu "
           + "và dòng phụ phí (vận chuyển, lắp đặt, Chênh VAT) không được đếm "
           + "— chúng không phải mặt hàng." },
-      { ten: "Doanh số thuần (nghìn đ)",
-        gt: "Doanh số bán trừ chiết khấu. Đây cũng là cột dùng để sắp thứ tự "
+      { ten: "Doanh số thuần",
+        gt: "Nghìn đồng. Doanh số bán trừ chiết khấu. Đây cũng là cột dùng để sắp thứ tự "
           + "các line trong bảng này." },
-      { ten: "Lợi nhuận (nghìn đ)",
-        gt: "Cộng lợi nhuận của mọi dòng đã biết giá vốn, kể cả dòng âm "
+      { ten: "Lợi nhuận",
+        gt: "Nghìn đồng. Cộng lợi nhuận của mọi dòng đã biết giá vốn, kể cả dòng âm "
           + "(trả lại, quà tặng, chiết khấu)." },
-      { ten: "Doanh số quy đổi (nghìn đ)", lop: "oQuyDoi",
-        gt: "Lợi nhuận từng dòng ÷ hệ số quy đổi của line. Đặt hệ số ở dải "
+      { ten: "Doanh số quy đổi", lop: "oQuyDoi",
+        gt: "Nghìn đồng. Lợi nhuận từng dòng ÷ hệ số quy đổi của line. Đặt hệ số ở dải "
           + "setup trên tab của chính line đó." },
       { ten: "Tỉ lệ tồn kho",
         gt: "Doanh số thuần của những dòng có Nơi nhập = “Kho”, chia cho doanh "
           + "số thuần của line. Đối chiếu tay được: lọc cột Nơi nhập trong tab "
           + "của line rồi cộng cột Tổng bán." },
-      { ten: "KPI (nghìn đ)" },
+      { ten: "KPI", gt: "Nghìn đồng." },
       { ten: "Đạt", gt: "Doanh số quy đổi ÷ KPI." },
       { ten: "Vs. Tháng trước",
         gt: "Doanh số thuần tháng này so với CHÍNH line đó tháng liền trước, "
           + "tính bằng phần trăm chênh." },
-      { ten: "Thưởng (nghìn đ)",
-        gt: "Doanh số quy đổi × hệ số thưởng của bậc đang đạt, cộng thưởng "
+      { ten: "Thưởng", lop: "oPhu",
+        gt: "Nghìn đồng. Doanh số quy đổi × hệ số thưởng của bậc đang đạt, cộng thưởng "
           + "nóng nếu chạm mốc. Bậc lấy theo HỆ SỐ QUY ĐỔI của line: 7,5% là "
           + "cách A, 5,5% là cách B. Cột Ghi chú nói rõ line này ăn hệ số nào." },
-      { ten: "Ngày công",
+      { ten: "Ngày công", lop: "oPhu",
         gt: "Quản trị gõ tay theo thực tế, riêng từng tháng. Bỏ trống là CHƯA "
           + "NHẬP — khác với gõ số 0." },
-      { ten: "Lương cứng (nghìn đ)",
-        gt: "4.500 cho 26 ngày công, chia đều theo ngày cả khi thiếu lẫn khi "
+      { ten: "Lương cứng", lop: "oPhu",
+        gt: "Nghìn đồng. 4.500 cho 26 ngày công, chia đều theo ngày cả khi thiếu lẫn khi "
           + "vượt." },
-      { ten: "Phụ cấp (nghìn đ)",
-        gt: "30 một ngày công, TRẦN ở 26 ngày — làm thêm ngày thì được thêm "
+      { ten: "Phụ cấp", lop: "oPhu",
+        gt: "Nghìn đồng. 30 một ngày công, TRẦN ở 26 ngày — làm thêm ngày thì được thêm "
           + "lương cứng, không được thêm phụ cấp." },
-      { ten: "Tổng lương (nghìn đ)",
-        gt: "Thưởng + Lương cứng + Phụ cấp." },
-      { ten: "Ghi chú",
+      { ten: "Tổng lương", lop: "oPhu",
+        gt: "Nghìn đồng. Thưởng + Lương cứng + Phụ cấp." },
+      { ten: "Ghi chú", lop: "oPhu",
         gt: "Hệ số thưởng line này thực sự được tính, và phần thưởng nóng đã "
           + "nằm trong cột Thưởng (nếu có)." },
     ];
@@ -1290,25 +1290,24 @@
          công của nhiều line ra một con số không có nghĩa nào (26 + 26 + 24 =
          76 "ngày" của ai?), và một dòng ghi chú gộp mười line cũng vậy. */
       const tl = (luong && luong.tong) || null;
-      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.thuong) : "—"));
-      r.appendChild(el("td", "oSo", ""));
-      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.luong_cung) : "—"));
-      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.phu_cap) : "—"));
-      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.tong_luong) : "—"));
-      r.appendChild(el("td", null, ""));
+      r.appendChild(el("td", "oSo oPhu", tl ? nghinTron(tl.thuong) : "—"));
+      r.appendChild(el("td", "oSo oPhu", ""));
+      r.appendChild(el("td", "oSo oPhu", tl ? nghinTron(tl.luong_cung) : "—"));
+      r.appendChild(el("td", "oSo oPhu", tl ? nghinTron(tl.phu_cap) : "—"));
+      r.appendChild(el("td", "oSo oPhu", tl ? nghinTron(tl.tong_luong) : "—"));
+      r.appendChild(el("td", "oPhu", ""));
       b.appendChild(r);
     }
 
     const boc = el("div", "bocBangNho");
     boc.appendChild(b);
     ve.appendChild(boc);
-    ve.appendChild(el("p", "viDu",
-      "Line sắp theo doanh số thuần giảm dần. Hệ số quy đổi và KPI của từng "
-      + "line đặt ở dải setup trên tab của chính line đó — cột “Hệ số” đã bỏ "
-      + "khỏi bảng này (chủ dự án chốt 12/09/2026). Cách tính lương đi theo "
-      + "HỆ SỐ QUY ĐỔI: 7,5% là cách A, 5,5% là cách B, hệ số khác thì tạm "
-      + "chưa tính — đổi cách tính của một line là đổi hệ số của nó, không "
-      + "phải sửa phần mềm."));
+    /* KHÔNG còn đoạn giải thích dưới bảng (chủ dự án chốt 12/09/2026). Mọi
+       câu giải thích nay nằm ở `title` của đúng ô mang ý nghĩa ấy — cùng lối
+       đã chọn ở P4 khi bỏ dải chú giải màu, và cùng lý do: một đoạn văn dưới
+       bảng thì không ai đọc, còn tooltip thì hiện ra đúng lúc người ta đang
+       hỏi về đúng ô đó. Đơn vị "nghìn đồng" vì vậy đứng đầu `title` của mỗi
+       cột tiền — nó không còn chỗ nào khác để nói. */
 
     /* Ô ngày công lưu NGAY khi rời ô, nhưng bảng chỉ dựng lại khi tiêu điểm
        rời hẳn KHỎI BẢNG — đúng bài học đã trả giá ở dải setup KPI (P5): cả
@@ -1363,7 +1362,7 @@
   function oLuong(r, lg, ten, k, duocNhap) {
     const co = !!(lg && lg.cach);
 
-    const oThuong = el("td", "oSo", co ? nghinTron(lg.thuong) : "—");
+    const oThuong = el("td", "oSo oPhu", co ? nghinTron(lg.thuong) : "—");
     if (co && lg.thuong === null) {
       oThuong.title = "Tháng này chưa có doanh số quy đổi (kỳ trước 09/2026 "
         + "không có giá vốn) nên chưa tính được thưởng — khác với không được "
@@ -1381,7 +1380,7 @@
     r.appendChild(oNgayCong(lg, ten, co, duocNhap));
 
     for (const t of ["luong_cung", "phu_cap", "tong_luong"]) {
-      const td = el("td", "oSo", co ? nghinTron(lg[t]) : "—");
+      const td = el("td", "oSo oPhu", co ? nghinTron(lg[t]) : "—");
       if (co && lg[t] === null && lg.ngay_cong === null) {
         td.title = "Chưa nhập ngày công cho line này ở tháng đang xem.";
       }
@@ -1394,11 +1393,11 @@
   /** Ô Ngày công — ô NHẬP cho Quản trị, chữ thường cho Quản lí. */
   function oNgayCong(lg, ten, co, duocNhap) {
     if (!co) {
-      const td = el("td", "oSo", "—");
+      const td = el("td", "oSo oPhu", "—");
       td.title = "Line này chưa tính lương nên không cần ngày công.";
       return td;
     }
-    const td = el("td", "oSo oCong");
+    const td = el("td", "oSo oCong oPhu");
     if (!duocNhap) {
       td.textContent = lg.ngay_cong === null ? "—" : so1(lg.ngay_cong);
       td.title = "Chỉ Quản trị nhập được ngày công.";
@@ -1427,21 +1426,24 @@
    *  thành câu là việc của màn hình, không phải phép tính. */
   function oGhiChuLuong(lg, co) {
     if (!co) {
-      const td = el("td", "oGhiChuLuong", "—");
+      const td = el("td", "oGhiChuLuong oPhu", "—");
       td.title = "Hệ số quy đổi của line này không phải 7,5% (cách A) hay 5,5% "
         + "(cách B) nên tạm chưa tính lương. Đổi hệ số trên dải setup của tab "
         + "line là nó vào cách tương ứng ngay.";
       return td;
     }
     if (lg.he_so_thuong_pt === null) {
-      return el("td", "oGhiChuLuong", "Cách " + lg.cach + " · chưa tính được thưởng");
+      return el("td", "oGhiChuLuong oPhu", "chưa tính được thưởng");
     }
-    let chu = "Cách " + lg.cach + " · " + so2(lg.he_so_thuong_pt) + "%";
+    /* Chỉ còn TỈ SUẤT, bỏ chữ "Cách A/Cách B" (chủ dự án chốt 12/09/2026).
+       Tên bậc không thêm gì cho người đọc mà chính hệ số đã nói — 0,45% chỉ
+       có ở cách B, 0,25% chỉ có ở cách A. */
+    let chu = so2(lg.he_so_thuong_pt) + "%";
     if (lg.moc_nong) {
       chu += " · đã gồm " + nghinTron(lg.thuong_nong)
         + " thưởng mốc " + tyDong(lg.nguong_nong);
     }
-    const td = el("td", "oGhiChuLuong", chu);
+    const td = el("td", "oGhiChuLuong oPhu", chu);
     td.title = "Hệ số thưởng đang áp cho line này"
       + (lg.moc_nong
         ? ", và khoản thưởng nóng đã CỘNG SẴN vào cột Thưởng (không phải một "
@@ -1887,6 +1889,10 @@
     loi.textContent = "";
     veTabNam();
     veThang();
+    /* Báo kỳ sang khối biểu đồ NGAY ĐÂY, trước lượt gọi máy chủ của bảng —
+       hai khối tự tải phần của mình, không khối nào phải chờ khối kia. Đổi
+       tháng thì biểu đồ vẽ lại cùng lúc bảng đang tải, không phải sau. */
+    baoBieuDo();
 
     if (!trangThai.ky) {
       ve.innerHTML = "";
@@ -1953,36 +1959,39 @@
 
   /* ---- Hai tab CHÍNH: [Báo cáo doanh số] | [Biểu đồ] ---- */
 
-  /* Nội dung `#o-dashboard` là của suc-khoe.js — file này chỉ bật/tắt khối
-     bọc và BÁO cho nó biết tab vừa mở.
-
-     Báo, chứ không tự vẽ: suc-khoe.js hoãn lượt gọi
-     `/api/bao-cao/suc-khoe` tới lần đầu người dùng mở tab [Biểu đồ], nên
-     phần lớn lần đăng nhập không còn kéo về số liệu cả hai năm mà không ai
-     xem. Gọi qua `window.SucKhoe.moTab()` — nó tự lo chuyện chỉ tải một
-     lần; gọi lại mỗi lần bấm tab là vô hại. */
-  function doiManChinh(hienBieuDo) {
-    $("manBaoCao").hidden = hienBieuDo;
-    $("manBieuDo").hidden = !hienBieuDo;
-    $("nutManBaoCao").classList.toggle("tabDang", !hienBieuDo);
-    $("nutManBieuDo").classList.toggle("tabDang", hienBieuDo);
-    if (hienBieuDo && window.SucKhoe) window.SucKhoe.moTab();
+  /* ---- Biểu đồ: nằm ngay dưới bảng, cùng kỳ với bảng ----
+   *
+   * Tab [Biểu đồ] đã BỎ (chủ dự án chốt 12/09/2026) — không còn màn nào để
+   * bật/tắt, nên `doiManChinh()` cũ cũng bỏ theo.
+   *
+   * Hai việc còn lại, và chúng đi qua ĐÚNG hai hàm của `window.SucKhoe`:
+   *   · báo kỳ đang xem mỗi lần đổi năm/tháng → biểu đồ vẽ lại theo bảng;
+   *   · bật/tắt cả khối → chỉ tab [Tổng hợp] mới có biểu đồ.
+   *
+   * Gọi qua một cửa hẹp chứ không sửa thẳng DOM của khối kia: hai nhánh
+   * không buộc chặt vào nhau qua tên phần tử, đúng quy ước đã có từ P2(b).
+   * Thiếu hẳn `window.SucKhoe` (file chưa tải xong) cũng không được làm hỏng
+   * màn báo cáo — nên mọi lượt gọi đều qua hàm bọc này. */
+  function baoBieuDo() {
+    if (!window.SucKhoe) return;
+    /* `trangThai.ky` rỗng nghĩa là năm đang chọn chưa có tháng nào — lúc ấy
+       biểu đồ chưa từng được nạp, nên bật khối lên chỉ để lộ một hộp trắng
+       rỗng. Ẩn cả khi đang ở [Tổng hợp]. */
+    window.SucKhoe.hien(trangThai.line === null && !!trangThai.ky);
+    if (trangThai.ky) window.SucKhoe.datKy(trangThai.ky);
   }
 
   /* Màn này GIỜ LÀ TRANG CHỦ (chủ dự án chốt 11/09/2026: bỏ lưới thẻ, đăng
-     nhập xong ra thẳng [Báo cáo doanh số]), nên không còn thẻ để bấm mở và
-     không còn nút "Quay lại" để đóng. Nghe thẳng Firebase Auth thay vì chờ
-     khối <script> inline gọi sang — khối đó là của phần đăng nhập, quy ước
-     là để yên (ROADMAP.md). */
+     nhập xong ra thẳng báo cáo), nên không còn thẻ để bấm mở và không còn
+     nút "Quay lại" để đóng. Nghe thẳng Firebase Auth thay vì chờ khối
+     <script> inline gọi sang — khối đó là của phần đăng nhập, quy ước là để
+     yên (ROADMAP.md). */
   let daMo = false;
   document.addEventListener("DOMContentLoaded", function () {
-    $("nutManBaoCao").addEventListener("click", () => doiManChinh(false));
-    $("nutManBieuDo").addEventListener("click", () => doiManChinh(true));
     firebase.auth().onAuthStateChanged(function (user) {
       if (!user) { daMo = false; return; }
       if (daMo) return;          // token tự làm mới không được kéo thêm một lượt tải
       daMo = true;
-      doiManChinh(false);        // mỗi lần đăng nhập luôn quay về tab báo cáo
       moMan();
     });
   });

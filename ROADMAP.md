@@ -137,9 +137,15 @@ Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/d
 - **Lượt 2 XONG** — thưởng, ngày công, lương cứng, phụ cấp, tổng lương,
   cộng cột Ghi chú (16 cột) và highlight ba mức khi vượt KPI. Xem
   "Công thức lương" bên dưới.
-- **Còn lại của P6:** tab Biểu đồ — chủ dự án chốt "làm sau khi xong các
-  việc trên", **vẫn chưa có đặc tả nội dung**, phải hỏi lại trước khi
-  bắt tay.
+- **Lượt 3 XONG** — bỏ hẳn tab [Biểu đồ] và tab chính, dời biểu đồ xuống
+  ngay dưới bảng [Tổng hợp], gộp Doanh số + Số đơn vào một khung hai tab,
+  bố cục hai cột với "Xu hướng theo Line" bên phải, bỏ vòng "Cơ cấu theo
+  Line". Xem "Biểu đồ" bên dưới.
+- **Còn lại của P6:** một câu hỏi chưa chốt — hàng nút tháng của màn báo
+  cáo chỉ liệt kê kỳ CÓ DÒNG HÀNG (`bc/dong`, từ 08/2026), trong khi
+  biểu đồ đọc `bc/ky` (đủ 20 tháng từ 01/2025). Nên hiện tại **biểu đồ
+  chỉ xem được các tháng có dòng hàng** — lịch sử 2025 không có nút để
+  bấm tới. Xem "Câu hỏi còn mở" bên dưới.
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -1560,6 +1566,65 @@ ba lối ra `null`, thứ tự sắp, 15 cột đúng tên đúng thứ tự, v�
 CHẠY THẬT `veTongHop()` trên DOM giả (đúng lối `kiem/dashboard-ve.js`)
 để canh mọi hàng đủ 15 ô: lệch một ô là mọi con số từ đó trở đi đọc sang
 sai tên cột, và chỉ chạy thật mới thấy.
+
+#### Biểu đồ — chủ dự án chốt 12/09/2026 (lượt 3)
+
+**Bỏ hẳn tab chính.** Trước đây có hai tab [Báo cáo doanh số] / [Biểu đồ];
+nay chỉ còn MỘT màn. Biểu đồ nằm ngay dưới bảng, trong cùng
+`#manBaoCao`, và **chỉ hiện ở tab [Tổng hợp]** — ở tab một line thì bảng
+19 cột đã rất dài, thêm biểu đồ bên dưới là phải cuộn qua hàng trăm dòng
+mới thấy.
+
+**Kỳ do màn báo cáo điều khiển.** Hàng nút năm/tháng vốn có của màn báo
+cáo giờ lái cả biểu đồ: `don-hang.js` gọi `window.SucKhoe.datKy(ky)` mỗi
+lượt `taiKy()`. Dải nút năm/tháng RIÊNG của Dashboard (`skDaiPhu`) bỏ
+hẳn — một màn hình có hai bộ chọn kỳ là chỗ chắc chắn có lúc chúng lệch
+nhau. Cùng lý do bỏ `datMacDinh()`: hai chỗ cùng đoán một mặc định là hai
+chỗ sẽ đoán lệch.
+
+Hai cửa vào giữa hai nhánh, không có cửa thứ ba: `SucKhoe.datKy(ky)` và
+`SucKhoe.hien(co)`. Cửa cũ `moTab()` chết cùng tab.
+
+**Đơn vị thời gian** giữ cả ba: Ngày = tháng đang chọn; Tháng = 12 tháng
+của năm đang chọn; Quý = 4 quý của năm đang chọn. Mặc định là **Ngày**.
+
+**Một khung, hai tab chỉ số.** Doanh số và Số đơn gộp vào một khung
+(trước đây vẽ cả hai chồng dọc, khối cao gấp đôi). Hàng tab chỉ số dùng
+CHUNG cho cả biểu đồ lớn lẫn lưới nhỏ — lưới không còn bộ chọn riêng.
+
+**Hai cột:** biểu đồ lớn bên trái (3fr), cụm "Xu hướng theo Line" bên
+phải (2fr); dưới 1000px thì xếp dọc.
+
+**Lưới nhỏ đồng bộ cả khung thời gian.** Chủ dự án chốt "xu hướng line
+chỉ làm theo ngày + tháng" — nên Engine mọc thêm
+`line.theo_ngay_thang` (`gopLineTheoThoiGian` trong `line.mjs`). Chú
+thích cũ tại chỗ ghi "CHỈ tháng và năm, KHÔNG có ngày: xếp hạng theo ngày
+không ai đọc, mà chuỗi ngày × 10 line là gấp mười lần dữ liệu" — cả hai vế
+đều đã đổi, và lý do ghi ngay trong file. Ở đơn vị **Quý** lưới nói thẳng
+một câu thay vì hiện một khung thời gian khác với biểu đồ bên trái.
+
+**Bỏ "Cơ cấu theo Line"** (hai vòng khuyên lồng nhau) — xoá hẳn 143 dòng
+chứ không giấu sau một cờ, kèm bảng màu categorical chỉ nó dùng.
+
+#### Câu hỏi còn mở của P6 — hàng nút tháng
+
+Hai hàng nút tháng của app đọc **hai nguồn khác nhau**:
+
+| | Nguồn | Có những tháng nào |
+|---|---|---|
+| Hàng tháng của màn báo cáo | `bc/dong` (dòng hàng) | chỉ từ **08/2026** |
+| Dữ liệu biểu đồ | `bc/ky` (tổng theo ngày) | **20 tháng**, 01/2025 → nay |
+
+Biểu đồ nay đi theo hàng nút của màn báo cáo, nên **lịch sử trước 08/2026
+không có nút để bấm tới**. Hai đường ra, chủ dự án chưa chốt:
+
+- **(a)** Mở rộng hàng nút để liệt kê mọi kỳ có trong `bc/ky`. Bấm vào
+  03/2025 thì biểu đồ vẽ bình thường. NHƯNG bảng [Tổng hợp] của kỳ ấy
+  đọc `bc/dong` (rỗng) nên mọi con số ra **0** — một lời nói dối, vì
+  tháng đó có doanh số thật. Làm (a) thì phải kèm: kỳ không có dòng hàng
+  thì **không vẽ bảng**, thay bằng một câu nói rõ "kỳ này chỉ có tổng
+  theo ngày, xem biểu đồ bên dưới".
+- **(b)** Giữ nguyên — biểu đồ chỉ xem được từ 08/2026.
 
 #### Hai chốt của P5 không được mở lại ở P6
 
