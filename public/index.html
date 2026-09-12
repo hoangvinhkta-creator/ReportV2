@@ -147,7 +147,21 @@
   .bangNho th, .bangNho td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangNho th { background: #f9fafb; }
 
-  .bocBang { overflow-x: auto; }
+  /* Ghim đầu cột (chủ dự án chốt 12/09/2026): `overflow-x: auto` một mình
+     đã ĐỦ để trình duyệt tự áp `overflow-y: auto` — luật phụ thuộc của CSS
+     Overflow, hai trục không được lệch pha "một cái auto, một cái visible".
+     Nếu khung này không có chiều cao trần, `<th> { position: sticky }` bên
+     dưới sẽ dính so với CHÍNH khung này chứ không so với trang — mà khung
+     cao theo nội dung nên không có gì để cuộn bên trong, và khi người dùng
+     cuộn cả TRANG thì đầu cột trôi tuột theo (đo bằng Playwright: top đổi
+     416px → −483px sau một lượt cuộn, tức sticky vô tác dụng).
+
+     `max-height` là giá trị SÀN — `dieuChinhCaoBang()` bên don-hang.js tính
+     lại theo phần còn lại của màn hình ngay sau khi vẽ bảng. Giữ giá trị
+     CSS ở đây chỉ để khung không vô hạn chiều cao trong một tích tắc trước
+     khi JS chạy (không có nó thì tài liệu tĩnh — JS tắt, hay lỗi giữa
+     chừng — quay lại đúng lỗi cũ). */
+  .bocBang { overflow-x: auto; overflow-y: auto; max-height: 70vh; }
   /* `table-layout: fixed` + <colgroup> (RONG_COT bên don-hang.js) — bề rộng
      cột CHỐT CỐ ĐỊNH, chủ dự án chốt 12/09/2026. Trước đây bề rộng do nội
      dung quyết định, nên đúng lúc P4 điền chữ vào những ô đang là "—" thì cả
@@ -161,7 +175,7 @@
     table-layout: fixed; }
   .bangDon th, .bangDon td { overflow: hidden; text-overflow: ellipsis; }
   .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
-  .bangDon th { background: #f9fafb; position: sticky; top: 0; }
+  .bangDon th { background: #f9fafb; position: sticky; top: 0; z-index: 1; }
   .bangDon .oSo { text-align: right; }
   .bangDon .oTen { white-space: normal; max-width: 260px; }
 

@@ -118,6 +118,40 @@
 
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false };
 
+  /** Ghim đầu cột: đổi cách khung `.bocBang` cuộn, không đổi một dòng CSS
+   *  `position: sticky` nào cả (chủ dự án chốt 12/09/2026 — "khi kéo có
+   *  thể nhận diện được ô nào thuộc cột nào").
+   *
+   *  Đo bằng Playwright mới thấy: `.bocBang { overflow-x: auto }` MỘT MÌNH
+   *  đã đủ để trình duyệt tự áp `overflow-y: auto` (luật phụ thuộc của CSS
+   *  Overflow — hai trục không được lệch pha "một cái auto, một cái
+   *  visible"). Hệ quả là `<th>` tuy đã khai `position: sticky` nhưng chỉ
+   *  "dính" so với CHÍNH khung này — mà khung không cao theo tay lái, nó
+   *  cao theo NỘI DUNG, nên không có gì để cuộn BÊN TRONG nó cả; người
+   *  dùng cuộn cả TRANG thì đầu cột trôi tuột theo, đo được top đổi từ
+   *  416px xuống −483px sau một lượt cuộn.
+   *
+   *  Sửa bằng cách cho khung một CHIỀU CAO TRẦN rồi để nó tự cuộn dọc BÊN
+   *  TRONG — khi ấy sticky "dính" đúng vào khung đang cuộn thật. Phần
+   *  TRÊN khung (tab tháng/line, dòng tổng doanh số, các băng cảnh báo)
+   *  nằm ngoài vùng cuộn nên tự nhiên đứng yên — đúng luôn ý "ghim từ dòng
+   *  tiêu đề trở lên", không cần một `position: sticky` thứ hai cho riêng
+   *  chúng.
+   *
+   *  Tính bằng JS chứ không một con số CSS tĩnh: phần TRÊN khung dài ngắn
+   *  khác nhau tuỳ kỳ đang mở (có băng lỗi nguồn giá, có băng BTL hay
+   *  không…), một con số cố định đúng cho kỳ này sẽ sai cho kỳ khác. */
+  function dieuChinhCaoBang() {
+    const boc = document.querySelector("#veDonHang .bocBang");
+    if (!boc) return;
+    const dinh = boc.getBoundingClientRect().top;
+    /* Sàn 260px: màn rất thấp (điện thoại nằm ngang) vẫn phải còn đủ chỗ
+       để thấy vài dòng — thà cả trang cuộn thêm một chút còn hơn ép khung
+       bảng bẹp dí không dùng được. */
+    boc.style.maxHeight = Math.max(260, window.innerHeight - dinh - 12) + "px";
+  }
+  window.addEventListener("resize", dieuChinhCaoBang);
+
   async function goi(duong) {
     const user = firebase.auth().currentUser;
     if (!user) throw new Error("Chưa đăng nhập.");
@@ -384,7 +418,16 @@
     tdNoi.appendChild(oNoi);
     tr.classList.add("hangDangSua");
 
+    /* Một phiên sửa có đúng BA cách kết thúc — lưu, huỷ, hoặc lưu rồi huỷ —
+       và cả ba đều phải chỉ chạy MỘT LẦN. `phien.xong` chặn trùng: Enter gọi
+       `luu()` rồi bản thân `luu()` gọi `traLai()` xoá input khỏi DOM, việc
+       xoá ấy tự sinh một sự kiện `focusout` mà không có `phien.xong` sẽ gọi
+       `luu()` lần hai; Escape cũng xoá input và sinh `focusout` y hệt, mà
+       lần đó phải KHÔNG lưu — đó là lúc `phien.xong` được set TRƯỚC khi xoá. */
+    const phien = { xong: false };
+
     const traLai = () => {
+      phien.xong = true;
       tdGia.textContent = cuGia; tdGia.className = lopGia; tdGia.title = cuTitleGia;
       tdNoi.textContent = cuNoi; tdNoi.className = lopNoi; tdNoi.title = cuTitleNoi;
       tr.classList.remove("hangDangSua");
@@ -392,12 +435,30 @@
     };
     dangSua = { tr, khoa, huy: traLai };
 
-    oGia.addEventListener("keydown", (e) => { if (e.key === "Enter") luu(); if (e.key === "Escape") traLai(); });
-    oNoi.addEventListener("keydown", (e) => { if (e.key === "Enter") luu(); if (e.key === "Escape") traLai(); });
+    oGia.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); luu(); }
+      else if (e.key === "Escape") { e.preventDefault(); traLai(); }
+    });
+    oNoi.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); luu(); }
+      else if (e.key === "Escape") { e.preventDefault(); traLai(); }
+    });
+    /* Rời khỏi CẢ HAI ô thì tự lưu, không bắt bấm Enter (chủ dự án chốt
+       12/09/2026: "con trỏ chuột bấm đi chỗ khác ô tự lưu luôn"). Gắn ở
+       DÒNG chứ không ở từng ô: chuyển tiêu điểm giữa ô Giá nhập và ô Nơi
+       nhập của CÙNG một dòng không phải "rời dòng", nên phải xét
+       `relatedTarget` có còn nằm trong `tr` không, không phải xét từng ô
+       rời rạc. */
+    tr.addEventListener("focusout", (e) => {
+      if (phien.xong) return;
+      const diNoiKhac = !e.relatedTarget || !tr.contains(e.relatedTarget);
+      if (diNoiKhac) luu();
+    });
     oGia.focus();
     oGia.select();
 
     async function luu() {
+      if (phien.xong) return;
       const chuGia = oGia.value.trim();
       /* Ô để trống = RÚT LẠI quyết định, không phải "giá 0". Hai thứ khác
          hẳn nhau, và trên một cột tiền thì nhầm chúng là nhầm tiền. */
@@ -409,6 +470,7 @@
         giaGui = Math.round(n * 1000);
       }
       const noiGui = oNoi.value.trim() === "" ? null : oNoi.value.trim();
+      phien.xong = true;
 
       tr.classList.add("hangDangGui");
       try {
@@ -416,6 +478,7 @@
           gia_nhap: giaGui, noi_nhap: noiGui });
       } catch (e) {
         tr.classList.remove("hangDangGui");
+        phien.xong = false;
         $("loiDonHang").textContent = "Không lưu được: " + e.message;
         return;
       }
@@ -423,8 +486,10 @@
       traLai();
       /* Sửa giá nhập thì lợi nhuận của dòng và của đơn đều đổi theo, và
          những con số ấy do ENGINE tính (LUẬT SỐ 1) — nên lượt này tải lại
-         đúng bảng đang xem thay vì tự nhân trừ ở trình duyệt. */
-      taiKy();
+         đúng bảng đang xem thay vì tự nhân trừ ở trình duyệt. `imLang`:
+         không chớp "Đang tải…", không cuộn về gốc — người vừa bấm ra khỏi
+         một ô sửa, không phải vừa đổi tháng. */
+      taiKy({ imLang: true });
     }
 
     return { luu, huy: traLai };
@@ -447,8 +512,10 @@
       return;
     }
     /* Xoá đổi tổng của đơn, của ngày và của cả kỳ — bốn con số do Engine
-       tính. Tải lại đúng bảng đang xem thay vì tự trừ ở trình duyệt. */
-    taiKy();
+       tính. Tải lại đúng bảng đang xem thay vì tự trừ ở trình duyệt.
+       `imLang`: giữ nguyên cuộn, không chớp "Đang tải…" — cùng lý do ở
+       `moSua()`. */
+    taiKy({ imLang: true });
   }
 
   /** Gửi một lượt GHI. Tách khỏi `goi()` vì nó cần POST kèm thân. */
@@ -637,6 +704,7 @@
     bang.appendChild(tbody);
     boc.appendChild(bang);
     khung.appendChild(boc);
+    dieuChinhCaoBang();
 
     demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
 
@@ -758,7 +826,15 @@
     }
   }
 
-  async function taiKy() {
+  /** `tuyChon.imLang`: lượt gọi lại SAU một cú sửa/xoá tại chỗ (không phải
+   *  đổi tháng/line/đăng nhập). Con số mới BẮT BUỘC lấy từ Engine (LUẬT SỐ
+   *  1 — lợi nhuận, tổng đơn, tổng ngày đều đổi theo), nhưng người vừa bấm
+   *  ra khỏi một ô sửa không nên thấy cả bảng chớp "Đang tải…" và cuộn về
+   *  gốc — đó đúng là thứ chủ dự án chốt 12/09/2026 phải hết ("mất thời
+   *  gian và thêm lượt tải data"). Bỏ băng "Đang tải…" và giữ lại đúng vị
+   *  trí cuộn của khung bảng qua lượt vẽ lại. */
+  async function taiKy(tuyChon) {
+    const imLang = !!(tuyChon && tuyChon.imLang);
     const loi = $("loiDonHang"), ve = $("veDonHang");
     loi.textContent = "";
     veTabNam();
@@ -771,7 +847,9 @@
       return;
     }
 
-    ve.innerHTML = '<p class="dangTai">Đang tải…</p>';
+    const bocCu = imLang ? ve.querySelector(".bocBang") : null;
+    const cuonCu = bocCu ? bocCu.scrollTop : 0;
+    if (!imLang) ve.innerHTML = '<p class="dangTai">Đang tải…</p>';
     try {
       const duong = "/api/don-hang?ky=" + encodeURIComponent(trangThai.ky)
         + (trangThai.line === null ? "" : "&line=" + encodeURIComponent(trangThai.line));
@@ -805,6 +883,10 @@
           + "chỗ cho tab."));
       } else {
         veBang(kq);
+        if (imLang) {
+          const bocMoi = ve.querySelector(".bocBang");
+          if (bocMoi) bocMoi.scrollTop = cuonCu;
+        }
       }
     } catch (e) {
       ve.innerHTML = "";

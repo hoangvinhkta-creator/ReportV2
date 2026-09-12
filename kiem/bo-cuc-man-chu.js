@@ -159,4 +159,59 @@ console.log('\n7) Ghi chú — lấy từ cột Diễn giải của sổ, do Eng
      /Ghi chú chờ chốt công thức/.test(JS), false);
 }
 
+console.log('\n8) Ghim đầu cột — cuộn BÊN TRONG khung bảng, không cuộn cả trang');
+{
+  const cssSach = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  /* `overflow-x: auto` một mình đã đủ để trình duyệt tự áp `overflow-y:
+     auto` (luật phụ thuộc của CSS Overflow) — nhưng phải khai TƯỜNG MINH cả
+     hai, không được để một trong hai chỉ có "nhờ suy luận": người sau đọc
+     CSS mà không biết luật ngầm ấy sẽ xoá nhầm dòng "thừa". Đo bằng
+     Playwright trên đúng cấu hình CŨ (chỉ `overflow-x`) mới thấy: `<th>`
+     dù đã `position: sticky` vẫn trôi tuột theo trang khi cuộn — sticky chỉ
+     "dính" thật khi CHÍNH khung `.bocBang` là thứ đang cuộn. */
+  const bocBang = cat(cssSach, /\.bocBang \{[^}]*\}/);
+  ok('.bocBang khai overflow-y: auto', /overflow-y\s*:\s*auto/.test(bocBang), true);
+  ok('.bocBang có max-height (JS tính lại theo màn hình lúc chạy)',
+     /max-height\s*:/.test(bocBang), true);
+
+  ok('don-hang.js có hàm tính lại chiều cao khung bảng',
+     /function dieuChinhCaoBang\(\)/.test(JS), true);
+  ok('  · gọi hàm ấy NGAY sau khi gắn .bocBang vào DOM — sticky cần khung đã có kích thước thật',
+     /khung\.appendChild\(boc\);\s*\n\s*dieuChinhCaoBang\(\);/.test(JS), true);
+  ok('  · và gắn lại theo mỗi lượt đổi cỡ màn hình',
+     /addEventListener\("resize",\s*dieuChinhCaoBang\)/.test(JS), true);
+  /* Đúng MỘT listener resize cho cả phiên trang — hàm này nằm ở mức module,
+     không phải bên trong `veBang()`: viết nhầm vào trong đó thì mỗi lượt vẽ
+     lại bảng (đổi tháng, đổi line, sửa một dòng) sẽ CHỒNG THÊM một listener
+     nữa, và cuối buổi làm việc trang xử lý resize chậm dần không ai biết
+     vì sao. */
+  const soLanGan = (JS.match(/addEventListener\("resize"/g) || []).length;
+  ok('  · đúng MỘT listener resize trong cả file, không chồng thêm mỗi lượt vẽ', soLanGan, 1);
+}
+
+console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp "Đang tải…"');
+{
+  /* Chủ dự án chốt 12/09/2026: "bấm sửa xong phải bấm Enter sau đó trang
+     load lại thêm 1 lần nữa rất mất thời gian" — hai việc phải sửa CÙNG
+     lúc: (a) không bắt bấm Enter, rời dòng là lưu; (b) lượt tải lại sau khi
+     lưu không được chớp "Đang tải…" hay nhảy cuộn về gốc. */
+  ok('rời dòng (focusout ra ngoài tr) tự gọi lưu, không chỉ đợi Enter',
+     /tr\.addEventListener\("focusout"/.test(JS), true);
+  ok('  · xét relatedTarget còn nằm trong CHÍNH dòng đang sửa hay không '
+     + '(chuyển giữa ô Giá nhập ↔ Nơi nhập không tính là rời dòng)',
+     /!tr\.contains\(e\.relatedTarget\)/.test(JS), true);
+  /* Enter/Escape đều xoá input khỏi DOM (qua `traLai()`), và việc xoá ấy tự
+     sinh thêm một `focusout` — không chặn trùng thì Enter sẽ lưu HAI LẦN,
+     còn Escape sẽ vô tình LƯU dù người dùng vừa bấm huỷ. */
+  ok('có cờ chặn một phiên sửa kết thúc quá một lần (Enter/Escape đều tự '
+     + 'sinh thêm một focusout)', /phien\.xong/.test(JS), true);
+
+  ok('taiKy() nhận được tuỳ chọn gọi ÊM (không chớp "Đang tải…")',
+     /async function taiKy\(tuyChon\)/.test(JS), true);
+  ok('  · và lượt sửa/xoá một dòng đều gọi nó với tuỳ chọn ấy, không gọi taiKy() trần',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 2);
+  ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
+     /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
+}
+
 xong();
