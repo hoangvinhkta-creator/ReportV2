@@ -53,7 +53,11 @@ lượt đóng phase.
 hàm Engine, nhánh Firebase, ba cửa an toàn của `taiSo`, năm giới hạn cố ý
 để lại, và hai món đang treo. Session P4 đọc file đó trước.
 
-**ĐANG LÀM: P4 — lát cắt 1 (khớp mã sản phẩm với bảng giá Tracking).**
+**ĐANG LÀM: P4 — lát cắt 4 (bán trả lại + cột Ghi chú). Lát 1, 2, 3 và
+lát P5-1 đã xong; chờ chủ dự án mở bản đã deploy và đối chiếu với file
+làm tay.** Phần dưới ghi lại từng lát theo thứ tự đã làm.
+
+**Lát cắt 1 — khớp mã sản phẩm với bảng giá Tracking.**
 
 Lát cắt này cố ý CHƯA đụng tiền. Khớp mã là điều kiện cần của giá vốn;
 xong nó thì lát cắt giá vốn chỉ còn là tra `min-ngay` theo mã đã khớp.
@@ -119,7 +123,7 @@ Engine, PR-E Gateway + màn hình):
   không bị nạp lại; Gateway tính phần phải TRỪ rồi trừ lúc đọc. Số đơn chỉ
   giảm khi MỌI dòng của chứng từ ấy đều bị xoá.
 - Dòng 0 đồng (quà tặng kèm) bôi ĐỎ; chứng từ `BTL` KHÔNG gộp chung —
-  nghiệp vụ khác, chủ dự án chốt xử sau.
+  nghiệp vụ khác, đã xử ở lát 4 dưới đây.
 - Nơi nhập lấy từ `min_sources` của bản ghi ngày bán, chọn theo thứ tự
   **Việt Hải → Điện tử 179 → Thăng Long → Trung Xuân → Văn Quân → còn
   lại**. "Việt Hải" và "Việt Hàn" là HAI NCC khác nhau — so cả chuỗi,
@@ -130,11 +134,48 @@ Engine, PR-E Gateway + màn hình):
 rồi bấm lưu là tiền đã khác, và không có gì đỏ lên. Nay seed từ giá trị
 THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
 
-**Ba câu còn treo, CHƯA hỏi được:** công thức "Doanh số quy đổi"; dòng
-0đ (quà tặng/phụ kiện) và chứng từ `BTL` có giá vốn không; và "Nơi nhập"
-— bên Tracking nó là NCC đang giữ giá Min của một MÃ tại một thời điểm
-(`nccGiuMin()`), không phải thuộc tính của từng lô. Ba cột `Nơi nhập`,
-`Doanh số quy đổi`, `Ghi chú` vì vậy vẫn trống.
+**LÁT P4-4 — BÁN TRẢ LẠI (BTL) + CỘT GHI CHÚ — ĐÃ XONG 12/09/2026:**
+
+- Chứng từ `BTL` của sổ ghi 0 đồng, nên tới lát này một lượt khách trả
+  hàng KHÔNG trừ đi đồng doanh số nào. `engine/src/btl.mjs` ghép mỗi dòng
+  BTL với đơn đã bán trước đó — **cùng khách** (SĐT trước, tên là lựa
+  chọn sau), **cùng tên hàng**, **bán không sau ngày trả** — rồi:
+  - ghép được → đơn gốc cũng đang trong bảng, trừ thêm là trừ hai lần.
+    Cả hai dòng về **SL 0 / tiền 0**, "coi như 2 dòng thông báo".
+  - không ghép → đơn gốc ở tháng khác, doanh số đã tính ở tháng ấy. Dòng
+    BTL nhận **SL −1** và tổng bán ÂM, lấy theo Đơn giá của sổ.
+  - không truy ra được tiền (cả Doanh số bán lẫn Đơn giá đều 0) → KHÔNG
+    bịa một khoản trừ 0 đồng. Ô SL bôi ĐỎ, lợi nhuận để trống.
+- SL −1 chạy thẳng vào công thức chung `tổng bán − giá nhập × SL` và ra
+  đúng phần lãi phải nhả lại — không có nhánh tính tiền riêng nào.
+- Phép ghép chạy trên **TOÀN kỳ** (`bc/dong` chưa lọc line), không trên
+  bảng đã lọc: nếu không, đơn gốc của line A và chứng từ BTL của line B
+  chỉ tìm thấy nhau ở tab Tổng hợp, và cùng một tháng ra hai con số khác
+  nhau tuỳ tab đang mở.
+- Dòng 0 đồng nay chỉ bôi đỏ khi **SL > 0** — cặp BTL đã triệt tiêu cũng
+  hiện "0" ở mọi cột tiền, và đọc nhầm nó thành quà tặng là đi tìm một
+  khoản giá vốn không hề có.
+- Cột **Ghi chú** đã có nguồn: cột `Diễn giải` của sổ, ô ghi chú duy nhất
+  người nhập liệu gõ tay. Nó lưu ở `bc/dong` LÚC NHẬP, nên **phải tải lại
+  sổ** thì cột mới có chữ.
+
+**Còn treo sau lát này:**
+
+1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính
+   sẵn lúc nạp sổ), bảng đơn đọc `bc/dong` + luật BTL lúc đọc — nên một
+   tháng có lượt trả hàng sẽ lệch giữa hai màn. Cùng lớp việc với "xoá
+   dòng" đã giải ở `sua-tay.mjs` (`tinhTruDaXoa` / `truVaoCayKy`), khác
+   ở chỗ phép ghép cần cả `bc/khach` của kỳ.
+2. **Ba giả định của luật BTL cần chủ dự án xác nhận trên sổ thật:**
+   (a) ghép phải cùng TÊN HÀNG, không chỉ cùng khách — một khách mua ba
+   món rồi trả một món là chuyện thường; (b) phạm vi tìm đơn gốc là CHÍNH
+   KỲ đang xem, không tìm ngược sang kỳ khác; (c) khi không ghép được thì
+   số tiền phải trừ lấy từ cột **Đơn giá** của chính dòng BTL — cần mở
+   một chứng từ BTL thật xem ô ấy có số hay không.
+3. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống.
+4. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
+   thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô — đã dùng
+   đúng như vậy ở lát 3, ghi lại đây để không ai đi dựng lại.
 
 **Việc của chủ dự án trước khi PR-C chạy thật:** đặt Secret
 `REPORT_API_KEY` trên Gateway V2 (`wrangler secret put REPORT_API_KEY`),
