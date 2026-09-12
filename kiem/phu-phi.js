@@ -101,8 +101,17 @@ const GOC = path.resolve(__dirname, '..');
     ok('giá nhập bằng đúng giá bán', d.gia_nhap, d.gia_ban);
     ok('  · và bằng đúng 500.000', d.gia_nhap, 500000);
     ok('lợi nhuận ra 0 (không lãi cũng không lỗ)', d.loi_nhuan, 0);
-    ok('không có "nơi nhập" — không phải một NCC giữ giá cho một mã hàng',
-      d.noi_nhap, null);
+    /* Nơi nhập mặc định là KHO (chủ dự án chốt 12/09/2026): vận chuyển và
+       lắp đặt là công của CHÍNH nhà mình bỏ ra, không mua của NCC nào. */
+    ok('nơi nhập mặc định là Kho', d.noi_nhap, 'Kho');
+    /* Nhưng KHÔNG phải cả ba: "Chênh VAT" là một khoản chênh lệch thuế,
+       không có hàng nào đi ra khỏi kho, nên gán cho nó một nơi nhập là bịa
+       ra một sự kiện kho chưa từng xảy ra. */
+    ok('  · nhưng Chênh VAT thì KHÔNG — không có hàng nào rời kho',
+      tim(dungBang([{ ct: 'BH2b', ten: 'Chênh VAT', dg: 100000 }]), 'Chênh VAT').noi_nhap, null);
+    ok('  · và vận chuyển cũng là Kho như lắp đặt',
+      tim(dungBang([{ ct: 'BH2c', ten: 'Chi phí vận chuyển', dg: 200000 }]),
+        'Chi phí vận chuyển').noi_nhap, 'Kho');
     ok('không mang lý do "chưa có giá" (không phải một dòng đang thiếu)',
       d.ly_do_chua_gia, null);
 

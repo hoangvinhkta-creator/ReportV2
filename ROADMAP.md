@@ -240,6 +240,31 @@ nhau, cùng hiện ra một dấu gạch đỏ nên trông như một:
   dựng ở lượt rà soát chính là chỗ phân biệt hai ca này mà không phải rê
   chuột từng dòng.
 
+**LÁT P4-7 — SÁU VIỆC HIỂN THỊ TRƯỚC KHI ĐÓNG PHASE (12/09/2026):**
+
+1. **Gán mã xong là có giá ngay**, không phải F5. Vá tại chỗ trước (mã,
+   hãng, ngành hàng đổi ngay dưới con trỏ), rồi `taiKy({imLang:true})` lấy
+   giá vốn của mã vừa gán — bắt buộc hỏi lại máy chủ vì giá theo ngày bán
+   nằm bên Tracking và lượt tải trước chưa hề hỏi tới mã ấy.
+2. **Ô Giá nhập đỏ khi ĐÃ có mã mà vẫn thiếu giá**, mờ khi chưa gán mã.
+   Trước đây hai cảnh mờ y như nhau nên người dùng cứ đi gán lại mã cho
+   một dòng đã có mã — một việc không chữa được gì; `title` nay nói thẳng
+   điều đó.
+3. **Dòng lỗ bôi đỏ cả dòng** (`la_lo`, cờ do Engine đặt). Ba loại âm
+   THEO THIẾT KẾ đứng ngoài: chiết khấu gộp, quà tặng 0đ, bán trả lại —
+   bôi đỏ chúng là tô đỏ nửa bảng rồi không ai nhìn nữa. Việc loại ba thứ
+   ấy là phán đoán nghiệp vụ nên cờ ở Engine, không để màn hình tự xét
+   `< 0`.
+4. **Chi phí vận chuyển / lắp đặt: nơi nhập mặc định là Kho** — công của
+   chính nhà mình, không mua của NCC nào. `Chênh VAT` thì KHÔNG: không có
+   hàng nào rời kho, gán nơi nhập cho nó là bịa một sự kiện kho.
+5. **Cột Ghi chú dời ra sau Địa chỉ** — nó là chữ đọc kèm thông tin
+   khách, để chen giữa khối tiền là cắt đôi mạch đọc. Đo lại bằng
+   Playwright sau khi dời: 0 cột lệch.
+6. **Bỏ đoạn chú giải màu dưới bảng.** Nó đã dài thành một đoạn văn không
+   ai đọc tới lần thứ hai; ý nghĩa từng màu nay nằm ở `title` của đúng ô
+   mang màu ấy.
+
 **Còn treo sau lát này:**
 
 1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính

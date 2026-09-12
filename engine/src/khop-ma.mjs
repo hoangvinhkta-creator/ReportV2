@@ -101,8 +101,15 @@ const catTu = (s) => { const c = chuanTu(s); return c ? c.split(" ") : []; };
  *  `dungBoKhop()`/`cum`: đây không phải mã bảng giá, và không cần rào "phải
  *  có chữ số" của bậc 3 — "Chênh VAT" hợp lệ dù không một chữ số nào. */
 const PHU_PHI_CO_DINH = [
-  "Chi phí vận chuyển", "Chi phí lắp đặt", "Chênh VAT",
-].map((nhan) => ({ nhan, tu: catTu(nhan) }));
+  /* `kho: true` — nơi nhập mặc định là Kho (chủ dự án chốt 12/09/2026).
+     Vận chuyển và lắp đặt là công của CHÍNH nhà mình bỏ ra, không mua của
+     NCC nào, nên "xuất từ kho" là câu đúng. `Chênh VAT` thì KHÔNG: nó là một
+     khoản chênh lệch thuế, không có hàng nào đi ra khỏi kho cả, và gán cho
+     nó một nơi nhập là bịa một sự kiện kho không hề xảy ra. */
+  { nhan: "Chi phí vận chuyển", kho: true },
+  { nhan: "Chi phí lắp đặt", kho: true },
+  { nhan: "Chênh VAT", kho: false },
+].map((x) => ({ ...x, tu: catTu(x.nhan) }));
 
 /** Tên hàng có chứa một trong ba cụm phụ phí cố định không — trả nhãn khớp
  *  được (để hiện đúng chữ chủ dự án đặt tên), hoặc `null`. */
@@ -115,7 +122,7 @@ function timPhuPhiCoDinh(ten) {
       for (let j = 0; j < n; j++) {
         if (tu[i + j] !== p.tu[j]) { khop = false; break; }
       }
-      if (khop) return p.nhan;
+      if (khop) return p;
     }
   }
   return null;
@@ -339,7 +346,8 @@ export function khopMaChoBangDon(bang, nguon, ky) {
         if (phuPhi) {
           d.ma_bang_gia = null; d.nguon_ma = "phu-phi-co-dinh";
           d.khoa_ten = null; d.ly_do_chua_ma = null;
-          d.la_phu_phi_co_dinh = phuPhi;
+          d.la_phu_phi_co_dinh = phuPhi.nhan;
+          d.phu_phi_tu_kho = phuPhi.kho;
           continue;
         }
 
@@ -604,7 +612,9 @@ export function dienGiaNhap(bang, minNgay) {
              `gia_ban × SL` như sổ vẫn ghi; công thức chung phía dưới tự lo
              việc đó, không cần gán cứng `loi_nhuan = 0`. */
           d.gia_nhap = d.gia_ban;
-          d.noi_nhap = null;
+          /* Vận chuyển / lắp đặt: công của chính nhà mình, xuất từ kho.
+             Chênh VAT thì không có hàng nào đi ra nên vẫn để trống. */
+          d.noi_nhap = d.phu_phi_tu_kho ? NHAN_TON_KHO : null;
           d.ly_do_chua_gia = null;
           d.loi_nhuan = lamTronDong(Number(d.tong_ban) - d.gia_ban * (Number(d.so_luong) || 0));
           loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
