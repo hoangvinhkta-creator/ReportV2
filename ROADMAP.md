@@ -95,13 +95,24 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
   `doanh_so === 0`.
 - Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase (DỮ LIỆU).
 
-Tab đầu **[Tổng hợp]** nay có số thật (P5, 12/09/2026) — 8 cột
-`Line · Doanh số · Số đơn · Dòng hàng · Hệ số · Doanh số quy đổi · KPI ·
-Đạt`, cộng hàng TỔNG do Engine cộng. So với sheet "Summary" của file báo
-cáo tay thì còn thiếu **target thưởng, ngày công, lương** — chưa có
-nhánh dữ liệu nào lưu và chưa chốt nguồn. **Việc này chuyển sang P6**
-(mở rộng thêm: tách lương cứng/phụ cấp riêng, xem mục "P6" bên dưới) —
-không bịa cột rỗng cho đủ hình ở P5.
+Tab đầu **[Tổng hợp]** nay có **15 cột** (P6 lượt 1, 12/09/2026), sắp
+theo **doanh số thuần giảm dần**, cộng hàng TỔNG do Engine cộng:
+
+```
+Line · Số đơn · Số sản phẩm · Doanh số thuần · Lợi nhuận ·
+Doanh số quy đổi (tô nền) · Tỉ lệ tồn kho · KPI · Đạt · Vs. Tháng trước ·
+Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương
+```
+
+Năm cột cuối còn **xếp chỗ** ("—", chờ công thức chủ dự án cho sau). Cột
+**Hệ số đã bỏ** khỏi bảng này theo chốt 12/09/2026 — vẫn xem và sửa được
+trên dải setup của từng tab line, nên không mất đường vào.
+
+Một lỗi im lặng được sửa nhân lượt dựng lại này: bảng cũ lấy Doanh số /
+Số đơn từ `tom_tat_line`, thứ cộng thẳng `bc/dong` THÔ — một dòng đã xoá
+tay vẫn nằm trong đó, nên cột Doanh số ở [Tổng hợp] kể nhiều tiền hơn
+chính tab của line ấy, và không có cách nào nhìn ra. Giờ **mọi** con số
+của bảng đọc từ `tom_tat_kpi.line` (đã áp BTL và sửa tay).
 
 **P5 ĐÃ ĐÓNG (12/09/2026).** Chủ dự án xác nhận đã nghiệm thu (đối chiếu
 tay khớp kỳ 09/2026), sau một lượt repair sửa hai lỗi bắt được khi mở
@@ -115,10 +126,18 @@ Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/d
 `/api/gia-dung`, `/api/nap-kpi`) chỉ cho vai **`quantri`** — đặt KPI là
 đổi mọi báo cáo của mọi tháng. Không đụng tới chốt này khi làm P6.
 
-**ĐANG LÀM: P6 — dựng lại tab [Tổng hợp] + tab Biểu đồ.** Đọc
-`docs/handoff/2026-09-12-P5-dong.md` mục 6 trước khi bắt đầu — liệt kê
-đúng những gì P6 cần hỏi chủ dự án trước khi viết dòng code đầu tiên.
-Xem mục "P6" bên dưới cho đặc tả đầy đủ.
+**ĐANG LÀM: P6 — dựng lại tab [Tổng hợp] + tab Biểu đồ.** Sáu câu hỏi ở
+`docs/handoff/2026-09-12-P5-dong.md` mục 6 **đã được chủ dự án trả lời
+12/09/2026** — câu trả lời nguyên văn rút gọn nằm ở mục "P6" bên dưới,
+đọc chúng trước khi sửa tiếp.
+
+- **Lượt 1 XONG** — tab [Tổng hợp] 15 cột, sắp theo doanh số thuần giảm
+  dần, hai cột mới có số thật (Tỉ lệ tồn kho, Vs. Tháng trước). Chờ chủ
+  dự án mở thật để nghiệm thu.
+- **Còn lại của P6:** (a) công thức + nguồn cho năm cột lương, chủ dự án
+  sẽ cho khi thấy layout; (b) tab Biểu đồ — chủ dự án chốt "làm sau khi
+  xong các việc trên", **vẫn chưa có đặc tả nội dung**, phải hỏi lại
+  trước khi bắt tay.
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -1318,10 +1337,15 @@ này** (thêm "Phụ cấp", tách "Lương cứng" riêng), xem mục "P6" bên
 
 ### P6 — Dựng lại tab [Tổng hợp] + tab Biểu đồ *(đặc tả 12/09/2026, chưa chốt hết)*
 
-**Trạng thái: CHƯA BẮT ĐẦU.** Đọc
-**`docs/handoff/2026-09-12-P5-dong.md` mục 6 TRƯỚC khi gõ dòng code đầu
-tiên** — liệt kê đúng những câu phải hỏi chủ dự án, và một rào kỹ thuật
-thật (cột "Tỉ lệ tồn kho" cần sửa REPO TRACKING trước — bẫy số 4).
+**Trạng thái: LƯỢT 1 XONG (12/09/2026)** — tab [Tổng hợp] 15 cột, sắp
+theo doanh số thuần giảm dần. Sáu câu hỏi của
+`docs/handoff/2026-09-12-P5-dong.md` mục 6 đã có câu trả lời, chép lại ở
+mục "Sáu câu hỏi" bên dưới.
+
+Rào kỹ thuật mà handoff lo — "cột Tỉ lệ tồn kho cần sửa REPO TRACKING
+trước" — **KHÔNG còn**: chủ dự án chốt công thức chỉ dùng số liệu sẵn có
+trong V2 (cột `Nơi nhập` của P4), nên không phải mở nhánh xuất mới bên
+Tracking, không phải deploy hai repo theo thứ tự.
 
 #### Yêu cầu chủ dự án, nguyên văn rút gọn (12/09/2026)
 
@@ -1350,6 +1374,113 @@ chỗ cho "Doanh số quy đổi" trước khi P5 có công thức.
 **4. Tab Biểu đồ — dựng SAU khi tab [Tổng hợp] xong.** Chưa có mô tả nội
 dung cụ thể nào cho tab này — PHẢI HỎI trước khi bắt tay phần này.
 
+#### Sáu câu hỏi của handoff — CHỦ DỰ ÁN ĐÃ TRẢ LỜI 12/09/2026
+
+Đây là các chốt nghiệp vụ của P6. Không mở lại, không đoán lại.
+
+**1. "Số sản phẩm" = TỔNG SỐ LƯỢNG bán ra** (`so_luong` cộng lại), không
+phải số dòng hàng. Trường `so_dong` cũ vẫn giữ trong bản kê Engine — nó
+là thứ đối chiếu với bảng đơn; chỉ màn hình thôi hiện nó.
+
+Hai luật đi kèm, session này chốt theo đúng thiết kế sẵn có của P4 (ghi
+ra vì chúng ĐỔI CON SỐ, không phải chi tiết trình bày):
+- Dòng **chiết khấu** và dòng **phụ phí cố định** KHÔNG đếm — cả hai
+  không phải mặt hàng, và `dungBangDon()` gán cứng `so_luong: 1` cho
+  dòng chiết khấu gộp nên đếm nó là mỗi đơn tự mọc thêm một "sản phẩm"
+  không hề bán ra.
+- Dòng **BTL** CÓ đếm, kể cả số âm (`btl.mjs` đặt SL về 0 hoặc −1) —
+  phép cộng vì vậy ra SỐ LƯỢNG THỰC BÁN.
+
+**2. "Tỉ lệ tồn kho" = doanh số thuần của hàng BÁN RA TỪ KHO ÷ tổng
+doanh số thuần.** Chủ dự án chốt thêm: **chỉ lấy số liệu sẵn trong V2**.
+
+Đó là câu trả lời gỡ hẳn rào kỹ thuật mà handoff lo (sửa repo Tracking,
+mở nhánh xuất có số lượng tồn): **KHÔNG cần đụng Tracking**. "Bán ra từ
+kho" = cột `Nơi nhập` ghi đúng chữ `"Kho"`, nhãn mà `chonNoiNhap()` của
+P4 đã đặt từ chính dữ liệu Tracking đang chảy sang. Định nghĩa bám đúng
+cột đang hiện nên **đối chiếu tay được**: lọc cột Nơi nhập trong tab của
+line rồi cộng cột Tổng bán, ra đúng tử số.
+
+Hệ quả cố ý: vận chuyển và lắp đặt cũng mang nhãn "Kho" (P4 — "công của
+chính nhà mình, xuất từ kho") nên nằm trong tử số. Đúng như cột đang
+hiện, và đó là điều kiện để phép kiểm tay khớp.
+
+Tỉ lệ để **`null` (hiện "—") khi KHÔNG dòng nào biết nơi nhập** — kỳ
+trước `MOC_KHOP_MA`, hoặc Tracking hỏng. Hoá 0% ở đó là để một ô trống
+nói "line này không bán đồng nào từ kho", một câu sai hẳn. Biết một phần
+thì vẫn ra tỉ lệ, kèm dấu `*` nói còn bao nhiêu tiền hàng chưa rõ nguồn
+(tỉ lệ thật có thể cao hơn).
+
+**3. "Vs. Tháng trước" so bằng DOANH SỐ THUẦN.** Chọn đại lượng này có
+một cái lợi mà quy đổi/lợi nhuận không có: doanh số thuần có đủ từ
+01/2025, nên cột so được NGAY ở kỳ 09/2026 — không vướng biên
+`MOC_KHOP_MA` như handoff đã cảnh báo.
+
+Hiện bằng **phần trăm chênh**, kèm mũi tên và màu (▲ xanh / ▼ đỏ); số
+tháng trước nằm ở `title`. Ba trạng thái, ba câu khác nhau: chưa đọc
+được kỳ trước → "—"; tháng trước bằng 0 mà tháng này có số → **"mới"**
+(không chia được, nhưng cũng KHÔNG phải "chưa biết"); có số → phần trăm.
+
+Hàng TỔNG so với **toàn bộ** kỳ trước, cộng cả line tháng này không có
+đơn nào — lọc theo line có mặt là so một tháng đủ với một tháng đã bị
+cắt bớt, và con số chênh sẽ dương lên giả tạo đúng bằng phần bị cắt.
+
+**4. Cột "Hệ số" — BỎ HẲN khỏi [Tổng hợp].** Nguyên văn: "Bỏ ở tổng hợp.
+Tôi không cần theo dõi hệ số này ở tổng hợp." Vẫn xem và sửa được trên
+dải setup của từng tab line, nên không mất đường vào.
+
+**5. Năm cột Thưởng/Ngày công/Lương cứng/Phụ cấp/Tổng lương — lượt này
+CHỈ XẾP CHỖ**, đúng như handoff đề nghị. Giữ "—" và nói thẳng ở `title`
+rằng đó là "CHƯA CÓ công thức", không phải "bằng 0".
+
+Khi tới lúc gán công thức, ba câu CHƯA hỏi được (handoff mục 6.5) vẫn
+còn nguyên và phải hỏi lúc đó: nguồn ngày công / lương cứng / phụ cấp ở
+đâu; các cột này theo LINE hay theo NHÂN VIÊN (một line gộp nhiều
+người); "Tổng lương" có bằng Lương cứng + Phụ cấp + Thưởng không.
+
+**6. Tab Biểu đồ — làm SAU.** Nguyên văn: "Sau khi làm xong các việc
+trên sẽ làm." Vẫn **chưa có mô tả nội dung nào** — session làm phần đó
+PHẢI hỏi thẳng trước khi bắt tay, và nhắc lại chốt P5 ở ngay dưới đây
+(biểu đồ vẫn vẽ bằng doanh số THUẦN).
+
+#### Lượt 1 đã làm gì (12/09/2026)
+
+**Engine** (`engine/src/kpi.mjs`) — bản kê `tom_tat_kpi.line` mọc thêm:
+`so_san_pham`, `loi_nhuan` + `don_thieu_loi_nhuan`, `doanh_so_tu_kho` +
+`doanh_so_ro_nguon` + `doanh_so_chua_ro_nguon` + `ty_le_ton_kho_pt`.
+Hàng `tong` cộng đủ các trường ấy. Thêm hai bảng cạnh `line`:
+
+- `tom_tat_kpi.thu_tu` — thứ tự line SẮP SẴN theo doanh số thuần giảm
+  dần. Sắp ở Engine, không ở màn hình: "sắp theo cái gì" là một luật đọc
+  số (LUẬT SỐ 1).
+- `tom_tat_kpi.vs_line` — cột "Vs. Tháng trước", khoá theo tên line, phủ
+  **mọi** line chính thức. Để RIÊNG chứ không nhét vào `line`, vì một ca
+  thật: line bán 500 triệu tháng trước rồi tháng này không có đơn nào sẽ
+  KHÔNG có mục trong `line` (bản kê ấy chỉ gom line có đơn) — nhét vào
+  đó thì đúng con số đáng nhìn nhất, một line vừa sập hẳn, lại là con số
+  duy nhất không hiện ra. Thêm mục rỗng vào `line` cũng không phải cách
+  sửa: `gopKpiToanCongTy()` cộng KPI của mọi line có mặt ở đó, nên tổng
+  KPI sẽ phình theo những line không chạy tháng này.
+
+**Gateway** (`src/index.js`) — `kyTruoc()` (phép lịch, không phải luật
+nghiệp vụ) và `docDoanhSoLineKyTruoc()`: đọc `bc/ky/<kỳ trước>`, TRỪ
+phần xoá tay (`tinhTruXoaTay`, y như Dashboard — không trừ thì tháng
+trước đọc ra con số cao hơn thứ chính màn hình ấy hiện khi mở tháng đó),
+rồi gộp theo line bằng `gopTheoLine` — **hàm Engine ĐÃ CÓ từ P2**. Chỉ
+gọi khi ở tab [Tổng hợp]; tab line không tốn lượt đọc nào. Nguồn hỏng
+thì cột để trống, KHÔNG chặn cả bảng đơn (cùng kỷ luật với bảng KPI).
+
+**Bẫy số 4 đi đường nào:** tham số mới `doanhSoLineKyTruoc` đứng CUỐI
+chữ ký cả hai đường Engine, và Gateway chỉ gọi hàm Engine đã có — không
+mở hàm Engine mới ở cùng lượt merge. Nên giữa hai lượt deploy song song,
+điều xấu nhất là cột "Vs. Tháng trước" trống một lúc, không phải 503.
+
+**Bộ kiểm mới:** `kiem/tong-hop.js` (80 bài) — công thức hai cột mới,
+ba lối ra `null`, thứ tự sắp, 15 cột đúng tên đúng thứ tự, và một lượt
+CHẠY THẬT `veTongHop()` trên DOM giả (đúng lối `kiem/dashboard-ve.js`)
+để canh mọi hàng đủ 15 ô: lệch một ô là mọi con số từ đó trở đi đọc sang
+sai tên cột, và chỉ chạy thật mới thấy.
+
 #### Hai chốt của P5 không được mở lại ở P6
 
 - **Biểu đồ vẫn vẽ bằng doanh số THUẦN**, không đổi nguồn số dù tab có
@@ -1368,13 +1499,21 @@ Thưởng→Tổng lương có thể còn "—" nếu công thức chưa đượ
 không thuộc nhóm "chờ công thức sau" mà chủ dự án nêu — nghĩa là công
 thức hai cột này phải hỏi và chốt NGAY ở lượt này (xem handoff mục 6).
 
+**Lượt 1 đã đủ điều kiện này** — trừ một chỗ cần biết trước khi mở:
+"Tỉ lệ tồn kho" chỉ có số ở kỳ **từ 09/2026 trở đi**. Trước mốc đó không
+có giá vốn nên không dòng nào biết nơi nhập, và ô hiện "—" kèm câu giải
+thích. Đó là giới hạn dữ liệu Tracking, không phải cột chưa làm.
+
 #### Ra khỏi phase khi
 
 Mọi câu hỏi ở `docs/handoff/2026-09-12-P5-dong.md` mục 6 đã có câu trả
-lời và đã áp dụng đúng; chủ dự án mở tab [Tổng hợp] thật, xác nhận đúng
-thứ tự Line/cột, đối chiếu được ít nhất "Tỉ lệ tồn kho" và
-"Vs. Tháng trước" khớp tay; tab Biểu đồ (nếu đã có đặc tả trong lượt
-này) chạy thật và được xác nhận.
+lời và đã áp dụng đúng ✅; chủ dự án mở tab [Tổng hợp] thật, xác nhận
+đúng thứ tự Line/cột, đối chiếu được ít nhất "Tỉ lệ tồn kho" và
+"Vs. Tháng trước" khớp tay; **năm cột lương đã có công thức và chạy
+thật**; tab Biểu đồ có đặc tả, chạy thật và được xác nhận.
+
+Ba việc cuối còn lại — chưa xong, và hai trong ba đang CHỜ chủ dự án cho
+đầu bài, không phải chờ code.
 
 ---
 

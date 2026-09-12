@@ -232,13 +232,20 @@ console.log('\n8) Line là CÁCH NHÌN lúc đọc — không được ghi vào 
      /ghiDb\(duong, cay\[k\]/.test(ma), true);
 }
 
-console.log('\n9) Engine mở hàm qua Service Binding, Gateway CHƯA gọi (bẫy số 4 ROADMAP)');
+console.log('\n9) Engine mở hàm qua Service Binding, Gateway đã gọi (bẫy số 4 ROADMAP)');
 {
   const IDX = doc('engine/src/index.js');
   ok('Engine mở gopTheoLine', /async\s+gopTheoLine\s*\(/.test(IDX), true);
   ok('Engine import hàm chung, không chép lại', /from\s*"\.\/line\.mjs"/.test(IDX), true);
-  ok('Gateway CHƯA gọi gopTheoLine (để lượt merge sau mới gọi)',
-     /gopTheoLine/.test(doc('src/index.js')), false);
+  /* Bài này từng canh chiều NGƯỢC LẠI — "Gateway CHƯA gọi" — suốt từ P2, và
+     đó là nửa đầu của bẫy số 4: hàm Engine lên ở một lượt merge, Gateway gọi
+     nó ở lượt sau. Lượt sau ấy là P6 (12/09/2026), khi cột "Vs. Tháng trước"
+     cần doanh số theo line của kỳ liền trước. Đảo chiều bài kiểm chứ không
+     xoá nó: thứ đáng canh bây giờ là Gateway gọi ĐÚNG hàm Engine đã có, thay
+     vì mở một hàm Engine mới ở cùng lượt merge (hàm mới thì bản Gateway mới
+     gọi vào bản Engine cũ sẽ nổ 503, không chỉ để trống một cột). */
+  ok('Gateway đã gọi gopTheoLine (lượt merge sau — P6)',
+     /REPORT_ENGINE\.gopTheoLine\(/.test(doc('src/index.js')), true);
 }
 
 console.log('\n10) Cây bc/ky méo thì không làm sập phép gộp');

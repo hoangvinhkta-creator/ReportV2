@@ -1094,50 +1094,131 @@
         + "không bị ảnh hưởng."));
     }
 
-    const b = el("table", "bangNho");
+    /* 15 cột, đúng thứ tự chủ dự án chốt 12/09/2026 (P6). Khai thành MỘT
+       danh sách chứ không rải ra từng `el("th")`: thứ tự cột là thứ được
+       `kiem/tong-hop.js` canh, và một danh sách đọc được bằng mắt thì lượt
+       sửa sau khó chèn nhầm chỗ hơn.
+
+       `lop` đi kèm để cột "Doanh số quy đổi" được tô — chủ dự án yêu cầu
+       highlight đúng cột đó. `gt` là phần giải thích, nằm ở `title` của ô
+       tiêu đề thay vì một đoạn chú giải dưới bảng (cùng lối đã chọn ở P4 khi
+       bỏ dải chú giải màu). */
+    const COT_TONG_HOP = [
+      { ten: "Line" },
+      { ten: "Số đơn" },
+      { ten: "Số sản phẩm",
+        gt: "Tổng SỐ LƯỢNG bán ra, không phải số dòng hàng. Dòng chiết khấu "
+          + "và dòng phụ phí (vận chuyển, lắp đặt, Chênh VAT) không được đếm "
+          + "— chúng không phải mặt hàng." },
+      { ten: "Doanh số thuần (nghìn đ)",
+        gt: "Doanh số bán trừ chiết khấu. Đây cũng là cột dùng để sắp thứ tự "
+          + "các line trong bảng này." },
+      { ten: "Lợi nhuận (nghìn đ)",
+        gt: "Cộng lợi nhuận của mọi dòng đã biết giá vốn, kể cả dòng âm "
+          + "(trả lại, quà tặng, chiết khấu)." },
+      { ten: "Doanh số quy đổi (nghìn đ)", lop: "oQuyDoi",
+        gt: "Lợi nhuận từng dòng ÷ hệ số quy đổi của line. Đặt hệ số ở dải "
+          + "setup trên tab của chính line đó." },
+      { ten: "Tỉ lệ tồn kho",
+        gt: "Doanh số thuần của những dòng có Nơi nhập = “Kho”, chia cho doanh "
+          + "số thuần của line. Đối chiếu tay được: lọc cột Nơi nhập trong tab "
+          + "của line rồi cộng cột Tổng bán." },
+      { ten: "KPI (nghìn đ)" },
+      { ten: "Đạt", gt: "Doanh số quy đổi ÷ KPI." },
+      { ten: "Vs. Tháng trước",
+        gt: "Doanh số thuần tháng này so với CHÍNH line đó tháng liền trước, "
+          + "tính bằng phần trăm chênh." },
+      { ten: "Thưởng", cho: true },
+      { ten: "Ngày công", cho: true },
+      { ten: "Lương cứng", cho: true },
+      { ten: "Phụ cấp", cho: true },
+      { ten: "Tổng lương", cho: true },
+    ];
+    /* Năm cột cuối CÒN CHỜ công thức (chủ dự án chốt: gán sau khi layout
+       xong). Xếp chỗ chứ không bỏ hẳn — đúng cách P4 xếp chỗ cho "Doanh số
+       quy đổi" trước khi P5 có công thức — và nói thẳng ở `title` rằng chúng
+       đang chờ, để một ô "—" không bị đọc nhầm thành "bằng 0". */
+    const CHO_CONG_THUC = "Cột này đang xếp chỗ: chủ dự án sẽ cho công thức và "
+      + "nguồn dữ liệu sau. “—” ở đây nghĩa là CHƯA CÓ công thức, không phải "
+      + "bằng 0.";
+
+    const b = el("table", "bangNho bangTongHop");
     const tr = el("tr");
-    for (const c of ["Line", "Doanh số (nghìn đ)", "Số đơn", "Dòng hàng",
-                     "Hệ số", "Doanh số quy đổi (nghìn đ)", "KPI (nghìn đ)", "Đạt"]) {
-      tr.appendChild(el("th", null, c));
+    for (const c of COT_TONG_HOP) {
+      const th = el("th", c.lop || null, c.ten);
+      if (c.gt) th.title = c.gt;
+      if (c.cho) { th.classList.add("oCho"); th.title = CHO_CONG_THUC; }
+      tr.appendChild(th);
     }
     b.appendChild(tr);
 
-    /* Thứ tự theo `thu_tu` của bảng line — danh sách line CHÍNH THỨC. Suy từ
-       những line có đơn thì một line chưa chạy tháng này biến khỏi bảng thay
-       vì hiện ra với số 0 và mức KPI của nó. */
-    for (const ten of kq.tom_tat_line.thu_tu) {
-      const l = kq.tom_tat_line.line[ten];
+    /* Năm ô "—" của nhóm lương, dựng một chỗ để hàng line và hàng TỔNG không
+       đếm lệch nhau số cột. */
+    const oCho = (r) => {
+      for (let i = 0; i < 5; i++) {
+        const td = el("td", "oSo oCho", "—");
+        td.title = CHO_CONG_THUC;
+        r.appendChild(td);
+      }
+    };
+
+    /* Thứ tự line: DOANH SỐ THUẦN GIẢM DẦN, do Engine sắp
+       (`tom_tat_kpi.thu_tu`) — không sắp ở đây, vì "sắp theo cái gì" là một
+       luật đọc số (LUẬT SỐ 1). Lùi về `tom_tat_line.thu_tu` khi bản Engine
+       đang chạy chưa có trường đó: giữa hai lượt deploy song song (bẫy số 4)
+       bảng vẫn đủ line, chỉ là chưa sắp lại. */
+    const thuTu = (tkpi && Array.isArray(tkpi.thu_tu) && tkpi.thu_tu.length)
+      ? tkpi.thu_tu : kq.tom_tat_line.thu_tu;
+    /* Bảng RIÊNG cho cột "Vs. Tháng trước", vì nó phủ cả line tháng này
+       không có đơn nào — mà đúng những line ấy mới là chỗ con số −100% đáng
+       nhìn nhất (xem `vsThangTruocTheoLine` bên Engine). */
+    const vsCua = (tkpi && tkpi.vs_line) || {};
+
+    for (const ten of thuTu) {
+      /* MỌI con số của hàng này đọc từ `tom_tat_kpi.line` — nguồn DUY NHẤT
+         của tab [Tổng hợp]. Bản trước P6 lấy doanh số/số đơn từ
+         `tom_tat_line`, thứ cộng thẳng `bc/dong` THÔ: một dòng đã xoá tay vẫn
+         nằm trong đó, nên cột Doanh số ở đây kể nhiều tiền hơn chính tab của
+         line ấy, và không có cách nào nhìn ra. `tom_tat_kpi` cộng sau khi đã
+         áp BTL và sửa tay, nên hai màn hình về lại một con số. */
       const k = cua[ten] || null;
       const r = el("tr");
       r.appendChild(el("td", null, ten));
-      r.appendChild(el("td", "oSo", nghinTron(l.doanh_so)));
-      r.appendChild(el("td", "oSo", soNguyen(l.so_don)));
-      r.appendChild(el("td", "oSo", soNguyen(l.so_dong)));
-      /* Hệ số lấy từ bản kê Engine trả. Line không có đơn nào trong kỳ thì
-         không có mục trong `tom_tat_kpi.line` — ô để "—", đúng nghĩa "chưa có
-         dòng nào để quy đổi", không phải "chưa đặt hệ số". */
-      const oHs = el("td", "oSo", k && k.he_so_pt !== null && k.he_so_pt !== undefined
-        ? so1(k.he_so_pt) + "%" : "—");
-      if (k && k.he_so_gia_dung_pt !== null && k.he_so_gia_dung_pt !== undefined) {
-        oHs.textContent += " / " + so1(k.he_so_gia_dung_pt) + "%";
-        oHs.title = "Hệ số thường / hệ số gia dụng. Dòng nào được tick là gia "
-          + "dụng trong ô Mã sản phẩm thì ăn hệ số thứ hai.";
+      /* Line không có đơn nào trong kỳ: số đơn/số sản phẩm/doanh số là 0 —
+         một sự thật, không phải "chưa biết" — còn các cột suy ra từ chúng để
+         "—". */
+      r.appendChild(el("td", "oSo", soNguyen(k ? k.so_don : 0)));
+      r.appendChild(el("td", "oSo", soNguyen(k ? k.so_san_pham : 0)));
+      r.appendChild(el("td", "oSo", nghinTron(k ? k.doanh_so : 0)));
+
+      const oLn = el("td", "oSo", k ? nghinTron(k.loi_nhuan) : "—");
+      if (k && k.don_thieu_loi_nhuan) {
+        /* Con số đang THIẾU phần của mấy đơn chưa đủ giá vốn — dán nhãn
+           thiếu, không để nó đọc như một con số đủ. */
+        oLn.textContent += " *";
+        oLn.title = "Còn " + soNguyen(k.don_thieu_loi_nhuan)
+          + " đơn chưa đủ giá vốn nên chưa vào con số này.";
       }
-      r.appendChild(oHs);
-      const oQd = el("td", "oSo", k ? nghinTron(k.doanh_so_quy_doi) : "—");
+      r.appendChild(oLn);
+
+      const oQd = el("td", "oSo oQuyDoi", k ? nghinTron(k.doanh_so_quy_doi) : "—");
       if (k && k.don_thieu_quy_doi) {
-        /* Con số đang THIẾU phần của mấy đơn chưa đủ giá vốn — phải dán nhãn
-           thiếu, không được để nó đọc như một con số đủ. */
         oQd.textContent += " *";
         oQd.title = "Còn " + soNguyen(k.don_thieu_quy_doi)
           + " đơn chưa đủ giá vốn nên chưa vào con số này.";
       }
       r.appendChild(oQd);
+
+      r.appendChild(oTonKho(k));
+
       r.appendChild(el("td", "oSo", k && k.kpi !== null && k.kpi !== undefined
         ? nghinTron(k.kpi) : "—"));
       /* "Chưa đặt KPI" và "đạt 0%" là hai câu khác nhau. */
       r.appendChild(el("td", "oSo", k && k.dat_pt !== null && k.dat_pt !== undefined
         ? so1(k.dat_pt) + "%" : "—"));
+
+      r.appendChild(oVsThangTruoc(vsCua[ten] || null));
+      oCho(r);
       b.appendChild(r);
     }
 
@@ -1148,11 +1229,12 @@
     if (t) {
       const r = el("tr", "hangTongDon");
       r.appendChild(el("th", null, "TỔNG"));
-      r.appendChild(el("td", "oSo", nghinTron(t.doanh_so)));
       r.appendChild(el("td", "oSo", soNguyen(t.so_don)));
-      r.appendChild(el("td", "oSo", ""));
-      r.appendChild(el("td", "oSo", ""));
-      r.appendChild(el("td", "oSo", nghinTron(t.doanh_so_quy_doi)));
+      r.appendChild(el("td", "oSo", soNguyen(t.so_san_pham)));
+      r.appendChild(el("td", "oSo", nghinTron(t.doanh_so)));
+      r.appendChild(el("td", "oSo", nghinTron(t.loi_nhuan)));
+      r.appendChild(el("td", "oSo oQuyDoi", nghinTron(t.doanh_so_quy_doi)));
+      r.appendChild(oTonKho(t));
       r.appendChild(el("td", "oSo", t.kpi !== null && t.kpi !== undefined
         ? nghinTron(t.kpi) : "—"));
       const oDat = el("td", "oSo", t.dat_pt !== null && t.dat_pt !== undefined
@@ -1163,15 +1245,67 @@
       oDat.title = "Tổng KPI chỉ cộng những line có đơn trong tháng này, "
         + "không cộng cả 10 line.";
       r.appendChild(oDat);
+      r.appendChild(oVsThangTruoc(t));
+      oCho(r);
       b.appendChild(r);
     }
 
-    ve.appendChild(b);
+    const boc = el("div", "bocBangNho");
+    boc.appendChild(b);
+    ve.appendChild(boc);
     ve.appendChild(el("p", "viDu",
-      "Hệ số quy đổi và KPI của từng line đặt ở dải setup trên tab của chính "
-      + "line đó. Doanh số quy đổi = lợi nhuận từng dòng ÷ hệ số của line, "
-      + "Engine tính. Bốn cột còn lại của sheet “Summary” (target thưởng, "
-      + "ngày công, lương) chưa có nhánh dữ liệu nào lưu."));
+      "Line sắp theo doanh số thuần giảm dần. Hệ số quy đổi và KPI của từng "
+      + "line đặt ở dải setup trên tab của chính line đó — cột “Hệ số” đã bỏ "
+      + "khỏi bảng này (chủ dự án chốt 12/09/2026). Năm cột từ “Thưởng” trở "
+      + "đi đang xếp chỗ, chờ công thức."));
+  }
+
+  /** Ô "Tỉ lệ tồn kho". Ba trạng thái, ba câu khác nhau — `null` KHÔNG được
+   *  hiện thành 0%: "chưa biết dòng nào xuất từ kho" và "không đồng nào từ
+   *  kho" là hai kết luận nghiệp vụ trái ngược nhau. */
+  function oTonKho(k) {
+    if (!k || k.ty_le_ton_kho_pt === null || k.ty_le_ton_kho_pt === undefined) {
+      const td = el("td", "oSo", "—");
+      if (k) {
+        td.title = "Chưa dòng nào của line này biết Nơi nhập — kỳ trước tháng "
+          + "09/2026 không có dữ liệu giá vốn của Tracking, nên cũng không "
+          + "biết hàng xuất từ đâu.";
+      }
+      return td;
+    }
+    const td = el("td", "oSo", so1(k.ty_le_ton_kho_pt) + "%");
+    if (k.doanh_so_chua_ro_nguon) {
+      /* Còn hàng chưa biết nguồn thì tỉ lệ này là SÀN, không phải con số
+         cuối — nói thẳng ra, thay vì để nó đọc như đã đủ. */
+      td.textContent += " *";
+      td.title = "Còn " + nghinTron(k.doanh_so_chua_ro_nguon)
+        + " nghìn đ hàng chưa biết Nơi nhập (chưa gán mã, hoặc chưa có giá "
+        + "vốn), nên tỉ lệ thật có thể cao hơn con số này.";
+    }
+    return td;
+  }
+
+  /** Ô "Vs. Tháng trước". Ba lý do trống, ba câu khác nhau. */
+  function oVsThangTruoc(k) {
+    const truoc = k ? k.doanh_so_ky_truoc : undefined;
+    if (!k || truoc === null || truoc === undefined) {
+      const td = el("td", "oSo", "—");
+      if (k) td.title = "Chưa có số của tháng liền trước để so.";
+      return td;
+    }
+    if (k.vs_thang_truoc_pt === null || k.vs_thang_truoc_pt === undefined) {
+      /* Tháng trước bằng 0 mà tháng này có số: không chia được, nhưng cũng
+         KHÔNG phải "chưa biết" — nói đúng chuyện đã xảy ra. */
+      const td = el("td", "oSo", "mới");
+      td.title = "Tháng liền trước line này chưa có doanh số nào, nên không "
+        + "có gì để chia.";
+      return td;
+    }
+    const v = k.vs_thang_truoc_pt;
+    const td = el("td", "oSo " + (v < 0 ? "vsGiam" : v > 0 ? "vsTang" : ""),
+      (v > 0 ? "▲ +" : v < 0 ? "▼ " : "") + so1(v) + "%");
+    td.title = "Tháng liền trước: " + nghinTron(truoc) + " nghìn đ.";
+    return td;
   }
 
   function veBang(kq) {
