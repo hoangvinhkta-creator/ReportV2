@@ -1730,6 +1730,55 @@ bề rộng cố định 148 trong một ô 290px làm nét đậm gấp đôi v
 to như tiêu đề); trục ngang ô nhỏ dừng ở ngày cuối CÓ SỐ của cả cụm thay
 vì kéo hết tháng.
 
+#### Lượt hiển thị thứ năm — hai tiêu đề về đúng cụm, ô nhỏ bỏ nhãn in sẵn (12/09/2026)
+
+Chủ dự án duyệt bố cục ("rất đẹp") kèm ba việc còn phải chỉnh.
+
+**1. Mỗi tiêu đề đứng trên đúng cụm mà nó gọi tên.** Dải điều khiển trước
+đó là MỘT flex duy nhất, nên `margin-left: auto` đẩy tiêu đề của biểu đồ
+TRÁI tới mép phải của cả dải — tức là nằm ngay trên cụm ô nhỏ, đọc ra
+thành tiêu đề của cụm ấy. Sửa: dải chia `1fr 1fr` cùng khe hở 20px với
+`.haiCotBieuDo`, nên hai dải xếp thẳng hàng; tiêu đề trái dồn về mép phải
+của CỤM TRÁI, tiêu đề cụm ô nhỏ về mép phải của CỤM PHẢI.
+
+**2. Tiêu đề "Xu hướng theo Line" dời hẳn ra khỏi cột phải** (nay ở
+`#skTieuDeLuoi` trên dải điều khiển), nên dòng nó bỏ lại trong cột trả về
+cho các ô: `.luoiXuHuong` bỏ `margin-top`, lưới bắt đầu ngay mép trên cột
+— cùng đường ngang với biểu đồ trái. Đổi lại, tiêu đề không còn tự biến
+mất theo cột nữa: MỌI lối ra của `veKhoiLuoiNho()` phải đi qua
+`tieuDeLuoi()`, không thì tiêu đề của kỳ trước treo lại trên một cột đã
+trống. Có bài kiểm ghim đúng ca ấy.
+
+**3. Ô nhỏ bỏ nhãn số in sẵn, giá trị chuyển sang RÊ CHUỘT.** Nhãn cuối
+đường là "value at the end" của dataviz skill — hợp lệ trên một biểu đồ
+đứng một mình, nhưng sáu ô nằm sát nhau thì sáu con số rải rác đọc ra như
+nhiễu, và con số cuối cũng không phải thứ người đọc cần từ một ô xu hướng
+(hình dạng mới là). Ba điểm đáng ghi:
+
+- `<title>` trên từng chấm cũng bỏ theo: để lại thì sau chừng một giây
+  trình duyệt vẽ ô chữ hệ thống chồng lên ô chữ của mình.
+- Bắt chuột bằng một tấm `<rect fill="transparent">` phủ TRỌN ô rồi tra
+  điểm gần nhất theo trục ngang, KHÔNG bắt trên chấm: chấm của ô nhỏ chỉ
+  1,4px, nhắm trúng nó gần như không thể. (`fill="none"` thì không nhận
+  chuột — phải là `transparent`.)
+- Đổi toạ độ màn hình sang toạ độ ô bằng ma trận của SVG
+  (`getScreenCTM()`), không lấy tỉ lệ `clientX / bề rộng`: viewBox và
+  khung chứa hiếm khi cùng tỉ lệ tới từng pixel, mà SVG mặc định giữ tỉ lệ
+  (`meet`) nên có viền thừa ở một chiều — lấy tỉ lệ thẳng là lệch đúng
+  bằng viền ấy, càng ra mép ô càng lệch.
+
+Biểu đồ LỚN giữ nguyên `<title>` rê chuột của nó (ngày · doanh số · số
+đơn) — chủ dự án khoanh đỏ đúng cụm ô nhỏ, và ở biểu đồ lớn con số đầy đủ
+là thứ có ích chứ không phải nhiễu.
+
+**`bin/chup-man.mjs` thêm hai phép soi** mà bộ kiểm DOM giả không làm
+được: mỗi tiêu đề có nằm TRỌN trong cụm của nó không (lỗi số 1 ở trên sinh
+ra chuỗi HTML vẫn "đúng", chỉ chỗ đứng là sai), và lượt rê chuột có thật
+sự ra ô chữ + chấm nổi không (giá trị giờ CHỈ đến từ đó, hỏng là ô nhỏ
+thành một đường không đọc được con số nào). Đo lại: 900px, 768px, 1440px
+đều lọt một màn, hai cột cùng chiều cao, hai tiêu đề đúng cụm, rê chuột
+ra số.
+
 #### Câu hỏi còn mở của P6 — hàng nút tháng
 
 Hai hàng nút tháng của app đọc **hai nguồn khác nhau**:

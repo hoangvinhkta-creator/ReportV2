@@ -408,10 +408,13 @@
    *  một KHOẢNG TRỐNG THẬT, không phải số 0 — ngắt đoạn giống mọi biểu đồ
    *  khác trong file này, để một line đã dừng bán không vẽ liền thành một
    *  đường phẳng ở đáy như thể vẫn đang bán với giá 0. */
-  function veMiniDuong(ten, diem, bd, k) {
+  function veMiniDuong(ten, diem, bd, k, chiSo) {
     if (!diem.length) {
-      return '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
-        + '<p class="miniRong">Chưa có số ' + thoat(k.tenKyNgan) + "</p></div>";
+      return {
+        html: '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
+          + '<p class="miniRong">Chưa có số ' + thoat(k.tenKyNgan) + "</p></div>",
+        toaDo: null,
+      };
     }
     /* Hệ toạ độ của ô bằng ĐÚNG số pixel của ô (do `canhCaoKhoi()` đo).
        Giữ bề rộng cố định 148 như bản trước là sai ở chỗ trông thấy ngay khi
@@ -439,7 +442,7 @@
     const x = (vt) => LE_MINI_TRAI + ((vt - 1) / nhip) * RONG_VE_MINI;
     const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
 
-    const doan = [];
+    const doan = [], toaDo = [];
     let cur = null, cham = "", vtTruoc = null;
     for (const p of diem) {
       const px = x(p.vt), py = y(bd.layGiaTri(p));
@@ -448,33 +451,138 @@
       if (vtTruoc === null || p.vt - vtTruoc > 1) { cur = { x: [], y: [] }; doan.push(cur); }
       cur.x.push(px); cur.y.push(py);
       vtTruoc = p.vt;
+      /* KHÔNG còn `<title>` trên từng chấm: ô chữ rê chuột (xem `ganReChuot`)
+         đã nói đúng con số ấy, và hai thứ cùng chạy thì trình duyệt vẽ chồng
+         ô chữ hệ thống lên ô chữ của mình sau chừng một giây. */
       cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="'
-        + (k.vtMax > 15 ? "1.4" : "2") + '" fill="' + MAU_NAY + '">'
-        + "<title>" + thoat(ten + " · " + k.moTaNgan(p.vt) + ": " + bd.taDayDu(bd.layGiaTri(p)))
-        + "</title></circle>";
+        + (k.vtMax > 15 ? "1.4" : "2") + '" fill="' + MAU_NAY + '"/>';
+      toaDo.push({ vt: p.vt, px, py, gt: bd.layGiaTri(p) });
     }
 
-    /* Nhãn giá trị vị trí CUỐI CÙNG có số — "Lines -> value at the end"
-       (dataviz skill), chọn lọc một nhãn chứ không ghi số lên từng điểm.
-       Neo chữ theo NỬA nào của khung mà điểm cuối rơi vào, không thì
-       tháng 11-12 sẽ đẩy nhãn tràn ra ngoài viewBox. */
-    const cuoi = diem[diem.length - 1];
-    const pxCuoi = x(cuoi.vt), pyCuoi = y(bd.layGiaTri(cuoi));
-    const neoPhai = pxCuoi > LE_MINI_TRAI + RONG_VE_MINI / 2;
-    const nhanCuoi = '<text x="' + (pxCuoi + (neoPhai ? -3 : 3)).toFixed(1) + '" y="' + (pyCuoi - 5).toFixed(1)
-      + '" font-size="9" font-weight="600" fill="#1f2430" text-anchor="' + (neoPhai ? "end" : "start") + '">'
-      + bd.nhanDoc(bd.layGiaTri(cuoi)) + "</text>";
-
+    /* Nhãn số in sẵn ở cuối mỗi đường ĐÃ BỎ (chủ dự án chốt 12/09/2026).
+       Trước đây nó là "value at the end" của dataviz skill — hợp lệ trên một
+       biểu đồ đứng một mình, nhưng ở đây sáu ô nằm sát nhau nên sáu con số
+       rải rác khắp cụm đọc ra như nhiễu, và con số cuối cùng cũng không phải
+       thứ người đọc cần từ một ô xu hướng (hình dạng mới là). Giá trị giờ
+       hiện khi RÊ CHUỘT — xem `ganReChuot`. */
     const nenDuoi = LE_MINI_TREN + CAO_VE_MINI;
-    const svg = '<svg viewBox="0 0 ' + RONG_MINI + " " + CAO_MINI + '" width="100%" role="img" aria-label="Xu hướng '
-      + thoat(ten) + '">'
+    const svg = '<svg viewBox="0 0 ' + RONG_MINI + " " + CAO_MINI + '" width="100%" role="img" data-mini="'
+      + chiSo + '" aria-label="Xu hướng ' + thoat(ten) + '">'
       + '<line x1="' + LE_MINI_TRAI + '" x2="' + (RONG_MINI - LE_MINI_PHAI) + '" y1="' + nenDuoi + '" y2="' + nenDuoi
       + '" stroke="#e5e7eb" stroke-width="1"/>'
       + '<path d="' + doan.map((g) => duongCong(g.x, g.y)).join(" ")
       + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="1.5" stroke-linecap="round"/>'
-      + cham + nhanCuoi + "</svg>";
+      + cham
+      /* Chấm nổi của điểm đang rê — nằm SAU chuỗi chấm thường để luôn vẽ đè
+         lên chúng, và ẩn cho tới lượt rê đầu tiên. */
+      + '<circle class="chamNoi" r="3" fill="' + MAU_NAY
+      + '" stroke="#fff" stroke-width="1.5" style="display:none"/>'
+      /* Tấm bắt chuột phủ TRỌN ô, đặt cuối cùng nên nó nhận chuột trước mọi
+         nét vẽ. Chấm của ô nhỏ chỉ 1,4px — bắt chuột ngay trên chấm thì gần
+         như không bao giờ trúng; rê ngang ô rồi tra điểm gần nhất theo trục
+         ngang mới là thứ dùng được. `transparent` chứ không `none`: `none`
+         là không nhận chuột. */
+      + '<rect class="batChuot" x="0" y="0" width="' + RONG_MINI + '" height="' + CAO_MINI
+      + '" fill="transparent"/>'
+      + "</svg>";
 
-    return '<div class="oMini"><p class="tenMini">' + thoat(ten) + "</p>" + svg + "</div>";
+    return {
+      html: '<div class="oMini"><p class="tenMini">' + thoat(ten) + "</p>" + svg + "</div>",
+      toaDo: { ten, diem: toaDo },
+    };
+  }
+
+  /* ─────────── Rê chuột trong ô nhỏ → hiện đúng con số ───────────
+   *
+   * Chủ dự án chốt 12/09/2026: bỏ nhãn số in sẵn ở cuối mỗi đường, "di chuột
+   * vào điểm biểu đồ thì chỉ cần hiện ra số đơn là được". Nên ô chữ nói ĐÚNG
+   * giá trị của điểm, kèm một dòng nhỏ ghi ngày/tháng — không có nó thì rê
+   * giữa một chuỗi ba mươi ngày không biết con số vừa hiện là của ngày nào.
+   */
+
+  /** Toạ độ điểm của từng ô, theo đúng thứ tự `data-mini` của lượt vẽ gần
+   *  nhất. Vẽ lại là thay cả mảng — không có ô nào sống sót qua hai lượt. */
+  let khoMini = [];
+  /** MỘT ô chữ cho cả cụm: sáu ô nhỏ mà mỗi ô một thẻ thì năm thẻ luôn thừa,
+   *  và thẻ của ô vừa rời chuột dễ còn treo lại. */
+  let oChuBay = null;
+
+  function bangChu() {
+    if (oChuBay) return oChuBay;
+    /* DOM giả của bộ kiểm không có `body` — lúc đó bỏ hẳn phần rê chuột, mọi
+       mục kiểm khác chạy y như trước. */
+    if (!document.createElement || !document.body || !document.body.appendChild) return null;
+    oChuBay = document.createElement("div");
+    oChuBay.className = "chuBay";
+    document.body.appendChild(oChuBay);
+    return oChuBay;
+  }
+
+  /** Đổi toạ độ màn hình sang hệ toạ độ của chính `svg`.
+   *
+   *  Đi qua ma trận của SVG chứ không lấy tỉ lệ `clientX / bề rộng`: viewBox
+   *  của ô và khung chứa nó hiếm khi CÙNG tỉ lệ tới từng pixel, mà SVG mặc
+   *  định giữ tỉ lệ (`meet`) nên hình bị chừa viền ở một chiều. Lấy tỉ lệ
+   *  thẳng là lệch đúng bằng viền ấy — càng ra mép ô càng lệch. */
+  function xTrongSvg(svg, e) {
+    if (svg.getScreenCTM && typeof DOMPoint === "function") {
+      const m = svg.getScreenCTM();
+      if (m) return new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()).x;
+    }
+    const r = svg.getBoundingClientRect();
+    if (!r || !r.width) return 0;
+    return ((e.clientX - r.left) / r.width) * rongOMini;
+  }
+
+  function anChuBay(svg) {
+    if (oChuBay) oChuBay.style.display = "none";
+    const cham = svg && svg.querySelector ? svg.querySelector(".chamNoi") : null;
+    if (cham) cham.style.display = "none";
+  }
+
+  /** Gắn lượt rê cho mọi ô của cụm vừa vẽ. */
+  function ganReChuot(goc, bd, k) {
+    /* Lượt vẽ lại vứt bỏ mọi thẻ cũ, nên `mouseleave` của ô đang rê không
+       bao giờ nổ — dọn tay trước khi gắn lượt mới. */
+    anChuBay(null);
+    if (!goc.querySelectorAll) return;      // DOM giả — không có phần này
+    const ds = goc.querySelectorAll("svg[data-mini]");
+    for (let i = 0; i < ds.length; i++) {
+      const svg = ds[i];
+      const muc = khoMini[Number(svg.getAttribute("data-mini"))];
+      if (!muc || !muc.diem.length) continue;
+      svg.addEventListener("mousemove", (e) => {
+        const x = xTrongSvg(svg, e);
+        let gan = muc.diem[0];
+        for (const p of muc.diem) {
+          if (Math.abs(p.px - x) < Math.abs(gan.px - x)) gan = p;
+        }
+        const cham = svg.querySelector(".chamNoi");
+        if (cham) {
+          cham.setAttribute("cx", gan.px.toFixed(1));
+          cham.setAttribute("cy", gan.py.toFixed(1));
+          cham.style.display = "";
+        }
+        const o = bangChu();
+        if (!o) return;
+        o.innerHTML = "<b>" + thoat(bd.taDayDu(gan.gt)) + "</b>"
+          + "<span>" + thoat(k.moTaNgan(gan.vt)) + "</span>";
+        o.style.display = "block";
+        datViTriChu(o, e);
+      });
+      svg.addEventListener("mouseleave", () => anChuBay(svg));
+    }
+  }
+
+  /** Đặt ô chữ cạnh con trỏ, lật vào trong khi sát mép màn hình. */
+  function datViTriChu(o, e) {
+    const rong = o.offsetWidth || 0, cao = o.offsetHeight || 0;
+    let x = e.clientX + 14, y = e.clientY - cao - 12;
+    if (x + rong > (window.innerWidth || 0) - 8) x = e.clientX - rong - 14;
+    if (x < 8) x = 8;
+    if (y < 8) y = e.clientY + 18;
+    o.style.left = Math.round(x) + "px";
+    o.style.top = Math.round(y) + "px";
   }
 
   /* CƠ CẤU THEO LINE (hai vòng khuyên lồng nhau) ĐÃ BỎ — chủ dự án chốt
@@ -770,16 +878,24 @@
     });
   }
 
+  /** Ghi tiêu đề cụm ô nhỏ — nó KHÔNG còn nằm trong cột phải mà ở dải điều
+   *  khiển, nên mọi lối ra của `veKhoiLuoiNho()` phải đi qua đây: một lối ra
+   *  quên dọn là tiêu đề của kỳ trước còn treo trên một cột đã trống. */
+  function tieuDeLuoi(chu) {
+    const o = $("skTieuDeLuoi");
+    if (o) o.innerHTML = chu;
+  }
+
   function veKhoiLuoiNho() {
     const o = $("skLuoiNho");
     if (!o) return;
-    if (!duLieu || !duLieu.line) { o.innerHTML = ""; return; }
+    if (!duLieu || !duLieu.line) { o.innerHTML = ""; tieuDeLuoi(""); return; }
 
     const L = duLieu.line;
     const k = dungKhung(trangThai.nam);
     const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
     const thuTu = L.thu_tu || [];
-    if (!thuTu.length) { o.innerHTML = ""; return; }
+    if (!thuTu.length) { o.innerHTML = ""; tieuDeLuoi(""); return; }
     const tenCuoi = thuTu[thuTu.length - 1];
 
     /* Chủ dự án chốt "xu hướng line chỉ làm theo ngày + tháng". Ở đơn vị Quý
@@ -787,8 +903,8 @@
        nhau nói hai khung thời gian khác nhau, người đọc so chúng là ra kết
        luận sai — hay (b) để trống trơn, thứ trông y như một lỗi. */
     if (!k.layLine) {
-      o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line</p>'
-        + '<p class="miniRong">Cụm này chỉ vẽ theo ngày và theo tháng. '
+      tieuDeLuoi("Xu hướng theo Line");
+      o.innerHTML = '<p class="miniRong">Cụm này chỉ vẽ theo ngày và theo tháng. '
         + 'Chuyển biểu đồ bên trái về [Ngày] hoặc [Tháng] để xem.</p>';
       return;
     }
@@ -798,8 +914,8 @@
        thẳng một câu thay vì hiện mười ô trống trông như mười line đã ngừng
        bán. */
     if (trangThai.donVi === "ngay" && !L.theo_ngay_thang) {
-      o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line</p>'
-        + '<p class="miniRong">Máy chủ chưa trả số theo ngày cho từng line '
+      tieuDeLuoi("Xu hướng theo Line");
+      o.innerHTML = '<p class="miniRong">Máy chủ chưa trả số theo ngày cho từng line '
         + '(bản vừa cập nhật đang lên). Thử lại sau ít phút.</p>';
       return;
     }
@@ -815,7 +931,7 @@
       .filter((ten) => ten !== tenCuoi)
       .map((ten) => ({ ten, diem: k.layLine(L, ten) }))
       .filter((x) => x.diem.length);
-    if (!dsLine.length) { o.innerHTML = ""; return; }
+    if (!dsLine.length) { o.innerHTML = ""; tieuDeLuoi(""); return; }
 
     /* Sắp GIẢM DẦN theo tổng của CHÍNH chỉ số đang xem — đổi chỉ số không làm
        lưới xáo trộn ngoài dự đoán. */
@@ -838,12 +954,19 @@
     }
     const kO = Object.assign({}, k, { vtMaxMini: Math.max(2, vtCuoi) });
 
-    o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · ' + thoat(k.duoi)
-      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-      + '<div class="luoiXuHuong" id="skLuoiGrid" style="grid-template-columns:repeat('
+    tieuDeLuoi("Xu hướng theo Line · " + thoat(k.duoi)
+      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>");
+
+    /* Toạ độ điểm của từng ô được giữ lại để lượt rê chuột tra ra điểm gần
+       nhất — tính lại từ đầu trong lúc rê thì mỗi lượt `mousemove` phải dựng
+       lại cả chuỗi. */
+    const oVe = dsLine.map(({ ten, diem }, i) => veMiniDuong(ten, diem, bd, kO, i));
+    khoMini = oVe.map((m) => m.toaDo);
+    o.innerHTML = '<div class="luoiXuHuong" id="skLuoiGrid" style="grid-template-columns:repeat('
       + soCot + ',1fr)">'
-      + dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, kO)).join("")
+      + oVe.map((m) => m.html).join("")
       + "</div>";
+    ganReChuot(o, bd, kO);
   }
 
   /** Hàng tab đơn vị thời gian [Ngày] [Tháng] [Quý].
@@ -887,6 +1010,15 @@
        khiển CẢ HAI cột — để chúng nằm trong cột trái thì người đọc tưởng
        chúng chỉ đổi cột ấy. */
     o.innerHTML = '<div class="daiDieuKhien">'
+      /* Dải điều khiển chia ĐÚNG HAI CỤM, thẳng hàng với hai cột biểu đồ bên
+         dưới (chủ dự án chốt 12/09/2026). Mỗi tiêu đề đứng trên đúng cụm mà
+         nó gọi tên: bản trước cả dải là một flex, nên tiêu đề của biểu đồ
+         TRÁI bị đẩy tới mép phải của cả dải — tức nằm ngay trên cụm ô nhỏ,
+         đọc ra thành tiêu đề của cụm ấy.
+         Hai hàng nút vẫn điều khiển CẢ HAI cột; chúng ở cụm trái vì đó là
+         nơi chúng vốn đứng, còn cái quyết định "đổi cả hai" là việc hai
+         tiêu đề luôn nói cùng một khung thời gian. */
+      + '<div class="cumTrai">'
       + '<div class="tabDonVi" id="skTabDonVi"></div>'
       + '<div class="tabDonVi" id="skTabChiSo"></div>'
       /* Chú giải nằm CÙNG hàng với hai dải nút, dồn sang mép phải (chủ dự án
@@ -895,6 +1027,10 @@
          dòng chiều cao, trong khi nửa phải của hàng nút thì bỏ không. */
       + '<p class="tieuDeSk" id="skTieuDe"></p>'
       + '<div class="chuGiaiSk" id="skChuGiai"></div>'
+      + "</div>"
+      /* Tiêu đề cụm ô nhỏ dời từ TRONG cột phải lên đây (chủ dự án chốt
+         12/09/2026) — chỗ nó bỏ lại trong cột trả về cho chính các ô. */
+      + '<div class="cumPhai"><p class="tieuDeSk" id="skTieuDeLuoi"></p></div>'
       + "</div>"
       + '<div class="haiCotBieuDo">'
       + '<div class="cotTrai" id="skVe"></div>'
@@ -981,6 +1117,9 @@
     hien: function (co) {
       const o = $("o-dashboard");
       if (o) o.hidden = !co;
+      /* Ẩn khối trong lúc con trỏ đang nằm trên một ô nhỏ thì `mouseleave`
+         không bao giờ nổ — ô chữ sẽ treo lại giữa màn hình của tab kia. */
+      if (!co) anChuBay(null);
     },
   };
 
