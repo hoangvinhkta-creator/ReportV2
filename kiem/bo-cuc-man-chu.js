@@ -122,4 +122,41 @@ console.log('\n5) Bốn cột hẹp cắt chữ thay vì xuống dòng');
   }
 }
 
+console.log('\n6) Bán trả lại (BTL) — màn hình chỉ ĐỌC cờ, không tự đặt luật');
+{
+  /* LUẬT SỐ 1. "Chứng từ nào là bán trả lại", "trừ bao nhiêu", "dòng nào bị
+     triệt tiêu" đều là nghiệp vụ và nằm ở `engine/src/btl.mjs`. Trình duyệt
+     chạm vào bất kỳ phần nào của luật ấy là một luật thứ hai, và hai bản sẽ
+     trôi khỏi nhau mà không ai đối chiếu. */
+  ok('không tự nhận dạng số chứng từ BTL', /\/\^BTL/i.test(JS), false);
+  ok('không tự đặt số lượng −1', /so_luong\s*=\s*-\s*1/.test(JS), false);
+  ok('chỉ đọc cờ Engine đặt', /d\.btl_trang_thai/.test(JS), true);
+
+  /* Ô SL của một dòng BTL mang con số 0 hoặc −1 — hai con số trông giống
+     nhau tới mức không ai đoán được vì sao, nên nó phải đi qua hàm có
+     `title` giải thích chứ không phải ô trơn. */
+  ok('ô SL dựng bằng oSoLuong() để còn chỗ giải thích',
+     /tr\.appendChild\(oSoLuong\(d\)\)/.test(JS), true);
+  ok('  · và dòng chưa truy ra tiền bôi đỏ như mọi ô chưa rõ',
+     /btl_chua_ro_tien[\s\S]{0,200}classList\.add\("oChuaRo"\)/.test(JS), true);
+
+  const cssSach = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('có nền riêng cho dòng BTL', /\.bangDon tr\.hangBTL > td \{/.test(cssSach), true);
+  /* KHÔNG dùng lại nền đỏ của dòng 0 đồng: một cặp BTL đã triệt tiêu nhau
+     cũng hiện "0" ở mọi cột tiền, và cùng màu là người đọc đi tìm một khoản
+     giá vốn không hề có. */
+  const nenBTL = cat(cssSach, /\.bangDon tr\.hangBTL > td \{[^}]*\}/);
+  const nen0d = cat(cssSach, /\.bangDon tr\.hang0d > td \{[^}]*\}/);
+  ok('  · và nền ấy KHÁC nền dòng 0 đồng', nenBTL === nen0d, false);
+}
+
+console.log('\n7) Ghi chú — lấy từ cột Diễn giải của sổ, do Engine trả về');
+{
+  ok('cột Ghi chú vẽ từ trường Engine trả', /tr\.appendChild\(o\(d\.ghi_chu\)\)/.test(JS), true);
+  /* Chú giải dưới bảng từng ghi "Ghi chú chờ chốt công thức" — để nguyên câu
+     ấy sau khi cột đã có dữ liệu là nói sai với người đọc. */
+  ok('chú giải không còn nói Ghi chú chờ công thức',
+     /Ghi chú chờ chốt công thức/.test(JS), false);
+}
+
 xong();

@@ -231,6 +231,15 @@
 
   .bangDon tr.hang0d > td { background: #fef2f2; color: #b91c1c; }
   .bangDon tr.hang0d > td.oChuaRo { color: #dc2626; font-weight: 600; }
+
+  /* BÁN TRẢ LẠI (chứng từ BTL) — cả dòng gốc lẫn dòng trả lại. Xám trung
+     tính, KHÔNG dùng lại nền đỏ của dòng 0 đồng: một cặp BTL đã triệt tiêu
+     nhau cũng hiện "0" ở mọi cột tiền, nên nếu hai thứ cùng màu thì người
+     đọc sẽ hiểu nhầm nó là quà tặng và đi tìm một khoản giá vốn không có.
+     Vạch trái để lướt mắt bắt được cặp dòng đi với nhau. */
+  .bangDon tr.hangBTL > td { background: #f1f5f9; color: #334155; }
+  .bangDon tr.hangBTL > td:first-child { box-shadow: inset 3px 0 0 #64748b; }
+  .bangDon tr.hangBTL > td.oChuaRo { color: #dc2626; font-weight: 600; }
   .bangConNo.xong { color: #15803d; }
   .bangNguonHong {
     font-size: 13px; color: #991b1b; background: #fef2f2;

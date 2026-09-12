@@ -77,9 +77,10 @@
     if (chu !== undefined && chu !== null) e.textContent = String(chu);
     return e;
   }
-  /** Ô của bảng: `null` hiện "—" chứ không hiện 0. Sáu cột của P4 (giá nhập,
-   *  lợi nhuận, nơi nhập, hãng, ngành hàng, ghi chú) chưa có nguồn, và "0
-   *  đồng" với "chưa biết" là hai chuyện hoàn toàn khác nhau. */
+  /** Ô của bảng: `null` hiện "—" chứ không hiện 0. "0 đồng" và "chưa biết" là
+   *  hai chuyện hoàn toàn khác nhau, và nhầm hai thứ đó trên một cột tiền là
+   *  nhầm tiền. (Cột Ghi chú đã có nguồn từ 12/09/2026 — cột `Diễn giải` của
+   *  sổ; còn lại "Doanh số quy đổi" chờ chốt công thức.) */
   const o = (v, lop) => el("td", lop, v === null || v === undefined || v === "" ? "—" : v);
 
   /** Ô HẸP: chữ dài bị cắt bớt chứ không ngắt xuống dòng (chủ dự án chốt
@@ -204,6 +205,35 @@
     if (!d.la_chiet_khau && d.ly_do_chua_gia)
       td.title = "Chưa tra được nơi nhập: " + (LY_DO_GIA[d.ly_do_chua_gia]
         || d.ly_do_chua_gia);
+    return td;
+  }
+
+  /** Ô "SL". Bình thường chỉ là một con số; với chứng từ bán trả lại thì con
+   *  số ấy (0 hoặc −1) là KẾT QUẢ của một luật nghiệp vụ, nên `title` phải
+   *  nói luật ấy ra — 0 và −1 trông giống nhau tới mức không ai đoán được vì
+   *  sao dòng này 0 còn dòng kia −1.
+   *
+   *  Cờ và số do Engine đặt (`engine/src/btl.mjs`); ô này chỉ đọc và vẽ. */
+  function oSoLuong(d) {
+    const td = el("td", "oSo", soNguyen(d.so_luong));
+    if (!d.btl_trang_thai) return td;
+    if (d.btl_chua_ro_tien) {
+      /* Chưa trừ được đồng nào, và đó là việc CÒN PHẢI LÀM của người đọc —
+         nên đỏ như mọi ô "chưa rõ thông tin" khác. */
+      td.classList.add("oChuaRo");
+      td.title = "Bán trả lại nhưng sổ không ghi số tiền (cả Doanh số bán lẫn Đơn giá "
+        + "đều 0) — chưa trừ được đồng nào.";
+    } else if (d.btl_thong_bao) {
+      td.title = d.la_btl
+        ? "Bán trả lại đơn " + (d.btl_doi_ct || "") + " của chính kỳ này. Doanh số của "
+          + "đơn ấy cũng đang trong bảng nên hai dòng triệt tiêu nhau — đây chỉ là "
+          + "dòng thông báo."
+        : "Đã bị trả lại ở chứng từ " + (d.btl_doi_ct || "") + " trong chính kỳ này, "
+          + "nên dòng này về 0 thay vì bị trừ hai lần.";
+    } else {
+      td.title = "Bán trả lại: không tìm thấy đơn gốc trong kỳ này — nhiều khả năng đơn "
+        + "ở tháng khác và doanh số đã tính ở tháng ấy, nên lượt trừ nằm ở đây.";
+    }
     return td;
   }
 
@@ -527,7 +557,11 @@
              nên nó ở Engine (LUẬT SỐ 1). */
           const lop = [d.la_chiet_khau ? "hangChietKhau" : null,
             dauDon ? "hangDauDon" : null,
-            d.la_dong_0d ? "hang0d" : null].filter(Boolean).join(" ");
+            d.la_dong_0d ? "hang0d" : null,
+            /* Dòng dính tới một lượt bán trả lại — CẢ dòng gốc lẫn dòng BTL.
+               Nền riêng chứ không dùng lại nền đỏ của dòng 0 đồng: hai thứ
+               đều "0 đồng" nhưng là hai nghiệp vụ khác hẳn nhau. */
+            d.btl_trang_thai ? "hangBTL" : null].filter(Boolean).join(" ");
           const tr = el("tr", lop || null);
           /* Ngày và số BH chỉ ghi ở DÒNG ĐẦU của đơn — cùng cách file tay
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
@@ -537,7 +571,7 @@
           tdNoi.dataset.o = "noi";
           tr.appendChild(tdNoi);
           tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma));
-          tr.appendChild(o(soNguyen(d.so_luong), "oSo"));
+          tr.appendChild(oSoLuong(d));
           const tdGia = oGiaNhap(d);
           tdGia.dataset.o = "gia";
           tr.appendChild(tdGia);
@@ -606,6 +640,21 @@
 
     demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
 
+    /* Băng BÁN TRẢ LẠI. Chỉ hiện khi kỳ này thật sự có chứng từ BTL — một
+       dòng "0 lượt trả hàng" ở mọi tháng là nhiễu. Đếm do Engine trả về;
+       màn hình không tự cộng lại (LUẬT SỐ 1). */
+    const tb = b.tom_tat_btl;
+    if (tb && tb.tren_bang) {
+      const phan = [soNguyen(tb.so_dong_btl) + " chứng từ bán trả lại"];
+      if (tb.khop) phan.push(soNguyen(tb.khop) + " khớp được đơn gốc trong kỳ (cả hai dòng về 0)");
+      if (tb.khong_khop) phan.push(soNguyen(tb.khong_khop)
+        + " không tìm thấy đơn gốc — trừ thẳng vào kỳ này");
+      if (tb.khong_ro_tien) phan.push(soNguyen(tb.khong_ro_tien)
+        + " KHÔNG truy ra được số tiền, chưa trừ được đồng nào");
+      const p = el("p", tb.khong_ro_tien ? "bangConNo" : "ghiChuPhamVi", phan.join(" · ") + ".");
+      khung.appendChild(p);
+    }
+
     /* Chú giải MÀU nằm ngay dưới bảng, không giấu trong tooltip: ba màu là ba
        việc khác nhau, và người đọc không nên phải rê chuột mới biết đỏ nghĩa
        là gì. */
@@ -621,7 +670,10 @@
       + "Bấm ✏️ để mở hai ô Giá nhập và Nơi nhập (bình thường chúng khoá); "
       + "Enter lưu, Esc huỷ. Bấm 🗑 để xoá dòng khỏi báo cáo — doanh số của nó "
       + "bị trừ khỏi cả biểu đồ, sổ gốc không đổi. "
-      + "Doanh số quy đổi và Ghi chú chờ chốt công thức."));
+      + "Dòng nền xám: liên quan tới một lượt bán trả lại — rê chuột vào ô SL để "
+      + "biết đơn gốc nằm trong kỳ này (cả hai dòng về 0) hay ở tháng khác (trừ −1). "
+      + "Ghi chú lấy từ cột Diễn giải của sổ — tải lại sổ thì cột này mới có chữ. "
+      + "Doanh số quy đổi chờ chốt công thức."));
   }
 
   /* ---- Tab con: Tổng hợp + từng line ---- */
