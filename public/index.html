@@ -104,14 +104,28 @@
      ngày không dồn vào nhau, còn lưới nhỏ xếp được 2 ô mỗi hàng ở phần còn
      lại. Dưới 1000px thì xếp dọc: ép hai cột vào màn hẹp là cả hai cùng
      không đọc được. */
-  .daiDieuKhien { display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
-    margin-bottom: 6px; }
+  /* Dải điều khiển chia ĐÚNG HAI CỘT như khối biểu đồ bên dưới (chủ dự án
+     chốt 12/09/2026): mỗi tiêu đề phải đứng trên đúng cụm mà nó gọi tên.
+     Bản trước là một flex duy nhất nên tiêu đề của biểu đồ TRÁI bị đẩy tới
+     mép phải của cả dải — tức là nằm ngay trên cụm ô nhỏ, trông như tiêu đề
+     của cụm ấy. Hai cột cùng `1fr 1fr` và cùng khe hở 20px với
+     `.haiCotBieuDo` nên hai dải xếp thẳng hàng nhau. */
+  .daiDieuKhien { display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    align-items: center; margin-bottom: 6px; }
+  @media (max-width: 1000px) { .daiDieuKhien { grid-template-columns: 1fr; } }
+  .daiDieuKhien .cumTrai { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  /* Tiêu đề cụm ô nhỏ dồn về mép phải của CỘT PHẢI — cùng lối với tiêu đề
+     biểu đồ trái, nên hai tiêu đề cân nhau ở hai đầu dải. */
+  .daiDieuKhien .cumPhai { display: flex; justify-content: flex-end; align-items: center;
+    min-width: 0; }
   .daiDieuKhien .tabDonVi { margin-bottom: 0; }
   /* Chú giải dồn sang mép PHẢI của cùng hàng ấy — nửa phải của hàng nút vốn
      bỏ không, còn chú giải thì đang chiếm trọn một dòng riêng. */
   .daiDieuKhien .chuGiaiSk { margin-top: 0; }
-  /* Tiêu đề biểu đồ dồn sang mép PHẢI của hàng nút, chú giải bám ngay sau. */
-  .daiDieuKhien .tieuDeSk { margin: 0 0 0 auto; font-weight: 500; color: #4b5563; }
+  /* Tiêu đề biểu đồ dồn sang mép PHẢI của cụm trái, chú giải bám ngay sau. */
+  .daiDieuKhien .tieuDeSk { margin: 0 0 0 auto; font-weight: 500; color: #4b5563;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .daiDieuKhien .cumPhai .tieuDeSk { margin: 0; }
   /* `align-items: stretch` (mặc định của grid) là điều kiện để hai cột CÙNG
      chiều cao — chiều cao ấy do `canhCaoKhoi()` đo và gán, xem suc-khoe.js.
      Bản trước dùng `align-items: start` nên mỗi cột tự cao theo nội dung, và
@@ -145,8 +159,11 @@
      từng ô do `canhCaoKhoi()` tính theo đúng số hàng ấy. */
   /* `grid-template-columns` do JS gán (`veKhoiLuoiNho` chọn số cột theo bề
      rộng thật và số ô, để lưới chia thành ít hàng mà ô không quá hẹp). */
+  /* `margin-top: 0` từ 12/09/2026: tiêu đề cụm đã dời lên dải điều khiển,
+     nên lưới bắt đầu ngay mép trên cột — chỗ tiêu đề bỏ lại thuộc về các ô,
+     đúng ý "dời rồi thì lấp vào khoảng trống ấy". */
   .luoiXuHuong { flex: 1 1 0; min-height: 0; overflow-y: auto;
-    display: grid; grid-auto-rows: 1fr; gap: 8px; margin-top: 6px; align-content: stretch; }
+    display: grid; grid-auto-rows: 1fr; gap: 8px; margin-top: 0; align-content: stretch; }
   .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 6px;
     display: flex; flex-direction: column; min-height: 0; }
   .oMini svg { flex: 1 1 0; min-height: 0; width: 100%; height: 100%; display: block; }
@@ -154,6 +171,16 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .oMiniRong { display: flex; flex-direction: column; justify-content: center; min-height: 56px; }
   .miniRong { margin: 0; font-size: 11px; color: #9ca3af; }
+  /* Ô chữ hiện khi rê chuột trong một ô nhỏ (chủ dự án chốt 12/09/2026,
+     thay cho nhãn số in sẵn ở cuối mỗi đường). `pointer-events: none` bắt
+     buộc: ô chữ bám theo con trỏ, nếu nó ăn được chuột thì chính nó che mất
+     vùng đang rê và biểu đồ nhấp nháy. */
+  .chuBay { position: fixed; z-index: 40; pointer-events: none; display: none;
+    background: #1f2430; color: #fff; border-radius: 6px; padding: 5px 9px;
+    font-size: 12px; line-height: 1.4; white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .22); }
+  .chuBay b { font-weight: 600; }
+  .chuBay span { display: block; color: #cbd5e1; font-size: 11px; }
 
   /* ---- Màn nhập sổ + màn đơn hàng (P3) ---- */
   .hangChon { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }

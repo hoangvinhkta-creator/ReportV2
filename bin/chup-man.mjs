@@ -151,6 +151,7 @@ const so = await trang.evaluate(() => {
   };
   return { manHinh: innerHeight, trangCao: document.documentElement.scrollHeight,
     bang: o(".bangTongHop"), khoi: o("#o-dashboard"), trai: o("#skVe"), phai: o("#skLuoiNho"),
+    tdTrai: o("#skTieuDe"), tdPhai: o("#skTieuDeLuoi"),
     soO: document.querySelectorAll(".oMini").length,
     soHangBang: document.querySelectorAll(".bangTongHop tr").length };
 });
@@ -166,6 +167,45 @@ const thua = so.trangCao - so.manHinh;
 console.log("\n  " + (thua > 0 ? "✗ còn phải CUỘN " + thua + "px" : "✓ lọt trọn một màn"));
 console.log("  " + (so.trai && so.phai && so.trai.cao === so.phai.cao
   ? "✓ hai cột cùng chiều cao" : "✗ hai cột LỆCH chiều cao"));
+
+/* Mỗi tiêu đề phải nằm TRỌN trong cụm mà nó gọi tên — chủ dự án chốt
+   12/09/2026 sau khi tiêu đề biểu đồ trái bị đẩy tới mép phải của cả dải, tức
+   nằm ngay trên cụm ô nhỏ. Đây đúng là loại lỗi chỉ thấy được khi có bố cục
+   thật: chuỗi HTML sinh ra vẫn "đúng", chỉ chỗ đứng là sai. */
+const trongCot = (td, cot) => !!td && !!cot && td.trai >= cot.trai - 2 && td.phai <= cot.phai + 2;
+const viTri = await trang.evaluate(() => {
+  const o = (s) => {
+    const e = document.querySelector(s);
+    if (!e) return null;
+    const b = e.getBoundingClientRect();
+    return { trai: Math.round(b.left), phai: Math.round(b.right) };
+  };
+  return { tdTrai: o("#skTieuDe"), cotTrai: o("#skVe"), tdPhai: o("#skTieuDeLuoi"), cotPhai: o("#skLuoiNho") };
+});
+console.log("  tiêu đề TRÁI  " + (trongCot(viTri.tdTrai, viTri.cotTrai)
+  ? "✓ nằm trọn trên cột trái" : "✗ TRÀN sang cột kia")
+  + "   (" + viTri.tdTrai.trai + "→" + viTri.tdTrai.phai + " trong " + viTri.cotTrai.trai + "→" + viTri.cotTrai.phai + ")");
+console.log("  tiêu đề PHẢI  " + (trongCot(viTri.tdPhai, viTri.cotPhai)
+  ? "✓ nằm trọn trên cột phải" : "✗ TRÀN sang cột kia")
+  + "   (" + viTri.tdPhai.trai + "→" + viTri.tdPhai.phai + " trong " + viTri.cotPhai.trai + "→" + viTri.cotPhai.phai + ")");
+
+/* Rê chuột vào một ô nhỏ: giá trị giờ CHỈ đến từ đây (nhãn in sẵn đã bỏ), nên
+   nếu lượt rê hỏng thì ô nhỏ thành một đường không đọc được con số nào. */
+const oDau = await trang.$(".oMini svg[data-mini]");
+if (oDau) {
+  const h = await oDau.boundingBox();
+  await trang.mouse.move(h.x + h.width * 0.35, h.y + h.height / 2);
+  await trang.waitForTimeout(120);
+  const re = await trang.evaluate(() => {
+    const t = document.querySelector(".chuBay");
+    const c = document.querySelector(".oMini svg[data-mini] .chamNoi");
+    return { hien: !!t && getComputedStyle(t).display !== "none", chu: t ? t.textContent : "",
+      chamHien: !!c && c.style.display !== "none",
+      cham: c ? c.getAttribute("cx") + "," + c.getAttribute("cy") : "" };
+  });
+  console.log("  rê ô nhỏ      " + (re.hien && re.chamHien ? "✓" : "✗") + " ô chữ «"
+    + re.chu + "», chấm nổi tại " + re.cham);
+}
 
 const anh = path.join(NOI_PW, "man-" + CAO + ".png");
 await trang.screenshot({ path: anh });

@@ -468,7 +468,11 @@ function kiemMoc(ten, gtThat, doiSo) {
     napLai();
     await nghi(); await nghi(); await nghi();
 
-    const tieuDe = () => CAY.skLuoiNho.innerHTML;
+    /* Tiêu đề cụm KHÔNG còn nằm trong cột phải: từ 12/09/2026 nó ở dải điều
+       khiển (`#skTieuDeLuoi`), ngang hàng với tiêu đề biểu đồ trái. Chốt này
+       đổi hướng vì chủ dự án chỉ rõ hai tiêu đề phải đứng trên đúng cụm của
+       mình, và chỗ tiêu đề bỏ lại trong cột thì trả cho các ô. */
+    const tieuDe = () => CAY.skTieuDeLuoi.innerHTML;
     const luoi = () => CAY.skLuoiNho.innerHTML;
     const miniCua = (ten) => luoi().split('<svg').slice(1).map((s) => '<svg' + s.split('</svg>')[0])
       .find((s) => s.includes('aria-label="Xu hướng ' + ten + '"')) || '';
@@ -510,8 +514,22 @@ function kiemMoc(ten, gtThat, doiSo) {
 
     console.log('    (Tín Phát đủ ngày 1-5 — đường liền MỘT đoạn)');
     ok('đường Tín Phát chỉ MỘT đoạn', (dCua(miniCua('Tín Phát')).match(/M/g) || []).length, 1);
-    ok('rê chuột đọc được tên line, ngày/tháng/năm và tiền đầy đủ',
-       /<title>Tín Phát · 5\/09\/2026: [\d.]+ đ<\/title>/.test(miniCua('Tín Phát')), true);
+    /* Nhãn số in sẵn ở cuối đường ĐÃ BỎ và `<title>` trên từng chấm cũng
+       vậy (chủ dự án chốt 12/09/2026: "những chú thích nhỏ này bỏ đi giúp
+       tôi... di chuột vào điểm biểu đồ thì chỉ cần hiện ra số đơn"). Giá trị
+       giờ đến từ lượt RÊ CHUỘT, thứ bộ kiểm này không mô phỏng được (DOM giả
+       không có hình học lẫn `body`) — nên soi đúng phần DỰNG RA nó: tấm bắt
+       chuột phủ trọn ô, chấm nổi, và số thứ tự để tra ngược ra chuỗi điểm.
+       Thiếu một trong ba thì rê chuột không ra gì mà không ai biết. */
+    ok('KHÔNG còn nhãn số in sẵn trong ô nhỏ', /<text/.test(luoi()), false);
+    ok('  · và KHÔNG còn <title> trên chấm (nó chồng lên ô chữ của mình)',
+       /<title>/.test(luoi()), false);
+    ok('mỗi ô có tấm bắt chuột phủ trọn + chấm nổi + số thứ tự',
+       [...luoi().matchAll(/<svg[^>]*data-mini="(\d+)"/g)].map((m) => m[1]), ['0', '1']);
+    ok('  · tấm bắt chuột là `transparent` (fill="none" thì không nhận chuột)',
+       (luoi().match(/class="batChuot"[^>]*fill="transparent"/g) || []).length, 2);
+    ok('  · chấm nổi ẩn cho tới lượt rê đầu tiên',
+       (luoi().match(/class="chamNoi"[^>]*display:none/g) || []).length, 2);
 
     /* ── Đổi CHỈ SỐ ở hàng tab CHUNG: cả hai khối phải đổi theo. */
     console.log('    (đổi qua "Số đơn" — Nội thành (50 đơn) vượt Tín Phát (15 đơn))');
@@ -527,8 +545,9 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('tiêu đề lưới đổi theo', /Xu hướng theo Line · theo tháng · năm 2026/.test(tieuDe()), true);
     ok('Nội thành ở mức tháng tách 3 đoạn (1-2-3, 7, 9) vì lỗ hổng 4-6 và 8',
        (dCua(miniCua('Nội thành')).match(/M/g) || []).length, 3);
-    ok('rê chuột ở mức tháng đọc đúng nhãn tháng',
-       /<title>Tín Phát · Tháng 9\/2026: [\d.]+ đ<\/title>/.test(miniCua('Tín Phát')), true);
+    /* Ở mức tháng cũng KHÔNG còn nhãn in sẵn — xem lý do ở mục [Ngày]. */
+    ok('ở mức tháng cũng không nhãn in sẵn, vẫn đủ tấm bắt chuột',
+       !/<text/.test(luoi()) && /class="batChuot"/.test(miniCua('Tín Phát')), true);
     ok('ở mức tháng cũng chỉ còn line CÓ số, không có "Khác"',
        tenTheoThuTu(), ['Tín Phát', 'Nội thành']);
 
@@ -552,6 +571,8 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('vẫn vẽ được biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 1);
     ok('lưới nói thẳng máy chủ chưa trả số theo ngày',
        /chưa trả số theo ngày cho từng line/.test(CAY.skLuoiNho.innerHTML), true);
+    ok('  · tiêu đề cụm vẫn còn, chỉ mất phần khung thời gian',
+       CAY.skTieuDeLuoi.innerHTML, 'Xu hướng theo Line');
     ok('  · và KHÔNG vẽ ô rỗng nào', /<svg/.test(CAY.skLuoiNho.innerHTML), false);
     LINE_GIA.theo_ngay_thang = cu;
   }
@@ -566,6 +587,10 @@ function kiemMoc(ten, gtThat, doiSo) {
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 1);
     ok('khối lưới nhỏ để trống', CAY.skLuoiNho.innerHTML, '');
+    /* Tiêu đề cụm nằm NGOÀI cột (dải điều khiển) từ 12/09/2026, nên nó không
+       tự biến mất theo — mọi lối ra của `veKhoiLuoiNho()` phải dọn nó, không
+       thì tiêu đề của kỳ trước treo lại trên một cột đã trống. */
+    ok('  · và tiêu đề cụm cũng dọn theo', CAY.skTieuDeLuoi.innerHTML, '');
     LINE_GIA.thu_tu = cu;
   }
 
@@ -578,6 +603,7 @@ function kiemMoc(ten, gtThat, doiSo) {
        /Hệ thống tạm thời chưa phục vụ được/.test(CAY.skLoi.textContent), true);
     ok('không còn biểu đồ cũ nằm lại', /<svg/.test(veHtml()), false);
     ok('khối lưới nhỏ cũng dọn sạch', CAY.skLuoiNho.innerHTML, '');
+    ok('  · tiêu đề cụm cũng vậy', CAY.skTieuDeLuoi.innerHTML, '');
   }
 
   console.log('\n14) Hai cột CÙNG chiều cao, và khối vừa đúng chỗ còn lại của màn hình');
