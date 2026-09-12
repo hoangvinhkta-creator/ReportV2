@@ -44,6 +44,21 @@
 
 const laObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
+/** Kỳ ĐẦU TIÊN có khớp mã và giá vốn. Trước mốc này KHÔNG khớp gì cả.
+ *
+ *  Chủ dự án chốt 12/09/2026, và nó trùng đúng một giới hạn dữ liệu thật:
+ *  `min_ngay` của Tracking chỉ có bản ghi ổn định từ khoảng 07/09/2026 (cron
+ *  20 phút/lượt bắt đầu quãng đó). Kỳ trước mốc KHÔNG có giá vốn theo ngày để
+ *  đối chiếu — không phải việc chưa làm, là giới hạn của chính nguồn.
+ *
+ *  Nên với những kỳ ấy, hỏi "còn bao nhiêu dòng chưa có mã" là một câu hỏi vô
+ *  nghĩa: gán xong cũng không ra được đồng giá vốn nào. Băng cảnh báo ở đó chỉ
+ *  mời người ta làm một việc không dùng được. */
+export const MOC_KHOP_MA = "2026-09";
+
+/** Kỳ này có nằm trong phạm vi khớp mã / giá vốn không. */
+export const kyCoKhopMa = (ky) => typeof ky === "string" && ky >= MOC_KHOP_MA;
+
 /* Chuẩn hoá để TRA KHOÁ `inv/map`. Phải giống HỆT `normCode()` của Tracking
  * (`public/index.html`) và bản máy chủ trong `src/index.js` bên đó — lệch một
  * ký tự là quyết định gán tay rơi vào một ô khác ô Tracking đang đọc, và không
@@ -207,7 +222,15 @@ export function khopTenHang(ten, bo) {
  *
  *  `gia_nhap`, `loi_nhuan`, `noi_nhap` KHÔNG đụng tới ở đây: chúng cần
  *  `POST /api/min-ngay` và thuộc lát cắt sau. */
-export function khopMaChoBangDon(bang, nguon) {
+export function khopMaChoBangDon(bang, nguon, ky) {
+  /* Kỳ ngoài phạm vi thì KHÔNG khớp gì cả, và nói thẳng lý do. Cố ý không
+     chạy rồi trả "0 dòng khớp được": ở những kỳ ấy không có giá vốn theo ngày
+     để đối chiếu, nên một bảng kê hàng chờ chỉ mời người ta gán một đống mã
+     rồi vẫn không ra được đồng nào. Xem `MOC_KHOP_MA`. */
+  if (ky !== undefined && !kyCoKhopMa(ky)) {
+    bang.tom_tat_ma = { ngoai_pham_vi: true, tu_ky: MOC_KHOP_MA };
+    return bang;
+  }
   const bo = dungBoKhop(nguon);
 
   let tong = 0, tu_dong = 0, quyet_dinh = 0, bo_qua = 0;
@@ -263,3 +286,163 @@ export function khopMaChoBangDon(bang, nguon) {
   };
   return bang;
 }
+
+/* ═════════════ GIÁ NHẬP THEO ĐÚNG NGÀY BÁN ═════════════
+ *
+ * Một đơn bán ngày 01/09 phải mang giá vốn của ĐÚNG ngày 01/09 — không phải
+ * giá của ngày người ta bấm nút nạp file. Bảng giá đổi mỗi đêm theo crawler,
+ * nên "giá hiện tại" và "giá lúc bán" là hai con số khác nhau, và dùng nhầm
+ * cái thứ nhất là sai lợi nhuận của cả tháng mà không có gì đỏ lên.
+ *
+ * TRACKING SỞ HỮU CON SỐ NÀY. Module này KHÔNG tính một Min thứ hai — nó chỉ
+ * đọc bản ghi `POST /api/min-ngay` trả về và chiếu vào từng dòng. Đó là điều
+ * kiện để hai hệ thống không bao giờ hiện hai giá vốn khác nhau cho cùng một
+ * mã cùng một ngày.
+ */
+
+/* Đơn vị tiền của hợp đồng `daily-min-v1`. `min_price` đếm bằng NGHÌN đồng,
+ * còn mọi con số trong Báo cáo đếm bằng ĐỒNG — quên phép nhân này là sai gấp
+ * một nghìn lần, và sai êm: 5.250 đọc thành 5.250 đ trông vẫn như một cái giá
+ * thật. Nên đơn vị được KIỂM chứ không tin: Tracking đổi đơn vị mà bên này
+ * không hay thì phải nổ, không được lặng lẽ nhân nhầm. */
+const DON_VI_MIN = "VND_THOUSAND";
+const NGHIN = 1000;
+
+/** Lý do một dòng chưa có giá vốn → câu cho người đọc. Mỗi mã lỗi của
+ *  `daily-min-v1` một câu; mã lạ thì nói thẳng là lạ chứ không nuốt. */
+export const LY_DO_GIA = {
+  "chua-co-ma": "chưa gán mã bảng giá",
+  SOURCE_UNAVAILABLE: "Tracking không quan sát được bảng giá ngày hôm đó",
+  NO_DATA: "chưa có mốc giá nào của mã này tính tới ngày đó",
+  INVALID_PRODUCT_CODE: "mã hàng không hợp lệ với hệ giá của Tracking",
+};
+
+/** Tập mã cần hỏi giá vốn cho một kỳ.
+ *
+ *  Gateway hỏi cái này TRƯỚC, rồi mới gọi `POST /api/min-ngay` — hợp đồng bên
+ *  đó nhận một TẬP MÃ, không nhận "tất cả". Chạy thẳng trên cây dòng thay vì
+ *  dựng cả bảng đơn: chỉ cần biết mã nào có mặt, không cần nhóm theo ngày và
+ *  chứng từ, và dựng bảng rồi bắn qua Service Binding hai lượt là trả giá
+ *  băng thông cho một danh sách vài trăm chuỗi.
+ *
+ *  KHÔNG lọc theo line: người dùng bấm đổi line liên tục trên cùng một kỳ, và
+ *  một tập mã cho cả kỳ dùng lại được cho mọi line — lọc theo line là mỗi lần
+ *  bấm một lượt gọi mạng mới cho phần lớn là cùng dữ liệu. */
+export function maCanGiaVon(dongCuaKy, nguon, ky) {
+  if (ky !== undefined && !kyCoKhopMa(ky)) return [];
+  const dong = laObj(dongCuaKy) ? dongCuaKy : {};
+  const bo = dungBoKhop(nguon);
+  const ra = new Set();
+  for (const khoa of Object.keys(dong)) {
+    const d = dong[khoa];
+    if (!laObj(d)) continue;
+    const kq = khopTenHang(d.ten_hang, bo);
+    if (kq.ma) ra.add(kq.ma);
+  }
+  return [...ra].sort();
+}
+
+/** Điền `gia_nhap` và `loi_nhuan` vào một bảng đơn ĐÃ khớp mã.
+ *
+ *  `minNgay` = `{ currency_unit, records, errors }` gộp từ mọi trang mà
+ *  `POST /api/min-ngay` trả về. Mỗi cặp (mã, ngày) đã hỏi nằm ở `records`
+ *  HOẶC `errors` — nhờ vậy bảng kê cuối luôn cân: không dòng nào biến mất
+ *  khỏi cả hai phía.
+ *
+ *  LỢI NHUẬN của một dòng = `tổng bán − giá nhập × số lượng`. `tong_ban` là
+ *  con số CHÍNH SỔ khẳng định dòng đó bán được bao nhiêu (không phải
+ *  `giá bán × SL` — xem `gop-ban-hang.mjs`), nên lấy nó làm vế doanh thu giữ
+ *  cho lợi nhuận cộng lại đúng bằng số bảng đang hiện. Chiết khấu của cả đơn
+ *  nằm ở một dòng riêng mang dấu âm và đã có sẵn lợi nhuận của nó.
+ *
+ *  Dòng không có giá vốn để `loi_nhuan = null`, KHÔNG để 0: "lãi 0 đồng" và
+ *  "chưa biết lãi bao nhiêu" là hai câu khác hẳn nhau, và trên một cột tiền
+ *  thì nhầm hai thứ đó là nhầm tiền. */
+export function dienGiaNhap(bang, minNgay) {
+  const mn = laObj(minNgay) ? minNgay : {};
+  if (mn.currency_unit && mn.currency_unit !== DON_VI_MIN)
+    throw new Error("khop-ma: min-ngay đổi đơn vị tiền — " + mn.currency_unit);
+
+  /* (mã, ngày) → giá đồng, hoặc lý do chưa có. Dựng một bản đồ phẳng thay vì
+     dò tuyến tính cho từng dòng: một kỳ có hàng nghìn dòng và hàng nghìn bản
+     ghi, dò lồng nhau là phép nhân hai con số ấy. */
+  const gia = new Map();
+  const lyDo = new Map();
+  const khoa = (ma, ngay) => ma + "\x1f" + ngay;
+
+  for (const r of Array.isArray(mn.records) ? mn.records : []) {
+    if (!laObj(r)) continue;
+    const k = khoa(r.product_code, r.effective_date);
+    /* `min_price: null` là một bản ghi THẬT nói "ngày ấy không nguồn nào báo
+       giá mã này" (`price_status: NO_DATA`) — khác hẳn việc cặp ấy không được
+       trả về. Cả hai đều là chưa có giá, nhưng lý do khác nhau và người đọc
+       cần thấy đúng lý do của mình. */
+    if (typeof r.min_price === "number")
+      gia.set(k, { dong: Math.round(r.min_price * NGHIN), ngay_quan_sat: r.observed_on ?? null,
+        trang_thai_ngay: r.day_status ?? null });
+    else lyDo.set(k, r.price_status || "NO_DATA");
+  }
+  for (const e of Array.isArray(mn.errors) ? mn.errors : []) {
+    if (!laObj(e)) continue;
+    const k = khoa(e.product_code, e.effective_date);
+    if (!gia.has(k) && !lyDo.has(k)) lyDo.set(k, e.reason || "NO_DATA");
+  }
+
+  let coGia = 0, chuaCoGia = 0;
+  const theoLyDo = {};
+
+  for (const ng of bang.ngay) {
+    for (const don of ng.don) {
+      let loiNhuanDon = 0, duGia = true;
+      for (const d of don.dong) {
+        if (d.la_chiet_khau) {
+          /* Chiết khấu đã biết chắc lợi nhuận của nó từ `dungBangDon()`
+             (giá nhập 0 nên lợi nhuận = chính nó, mang dấu âm). */
+          loiNhuanDon = lamTronDong(loiNhuanDon + (Number(d.loi_nhuan) || 0));
+          continue;
+        }
+        if (!d.ma_bang_gia) {
+          d.ly_do_chua_gia = "chua-co-ma";
+          chuaCoGia++; duGia = false;
+          theoLyDo["chua-co-ma"] = (theoLyDo["chua-co-ma"] || 0) + 1;
+          continue;
+        }
+        const k = khoa(d.ma_bang_gia, ng.ngay);
+        const g = gia.get(k);
+        if (!g) {
+          const ly = lyDo.get(k) || "NO_DATA";
+          d.ly_do_chua_gia = ly;
+          chuaCoGia++; duGia = false;
+          theoLyDo[ly] = (theoLyDo[ly] || 0) + 1;
+          continue;
+        }
+        d.gia_nhap = g.dong;
+        d.ngay_gia = g.ngay_quan_sat;
+        d.trang_thai_ngay_gia = g.trang_thai_ngay;
+        d.loi_nhuan = lamTronDong(Number(d.tong_ban) - g.dong * (Number(d.so_luong) || 0));
+        d.ly_do_chua_gia = null;
+        loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
+        coGia++;
+      }
+      /* Lợi nhuận của ĐƠN chỉ có nghĩa khi MỌI dòng hàng của nó đã có giá
+         vốn. Thiếu một dòng mà vẫn cộng là đưa ra một con số nhỏ hơn sự thật
+         và không nói rằng nó thiếu — đúng kiểu sai êm mà cả file này đang
+         tránh. Thiếu thì để `null`, màn hình hiện "—". */
+      don.loi_nhuan = duGia ? loiNhuanDon : null;
+    }
+  }
+
+  bang.tom_tat_gia = {
+    co_gia: coGia,
+    chua_co_gia: chuaCoGia,
+    theo_ly_do: theoLyDo,
+  };
+  return bang;
+}
+
+/* CÙNG phép làm tròn với `lamTron()` của `dong-hang.mjs` — cố ý chép đúng,
+   không "chuẩn hơn". Hai module cùng cộng tiền trên một bảng; lệch phép làm
+   tròn là hai cột cùng dòng không cộng lại được với nhau, và cái lệch ấy chỉ
+   lộ ra ở con số tổng cuối tháng. Sổ thật có dòng lẻ tới phần trăm đồng
+   (4.090.909,09 — giá tính ngược từ giá gồm VAT) nên phần lẻ được giữ. */
+const lamTronDong = (n) => Math.round((Number(n) || 0) * 100) / 100;
