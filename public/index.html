@@ -343,6 +343,20 @@
   }
 
   .bangConNo { font-size: 13px; color: #92400e; margin: 6px 0; }
+  /* Nút lọc trong đầu cột (chủ dự án chốt 12/09/2026). Cột hẹp nhất mang nút
+     này là "Lợi nhuận" (86px) và tiêu đề của nó đã chiếm gần hết, nên nút
+     phải nhỏ và KHÔNG được đẩy chữ xuống dòng — `float: right` giữ nó trên
+     cùng dòng chữ mà không cần đổi `.bangDon th` sang flex (đổi sang flex là
+     mất `text-overflow: ellipsis` của chính đầu cột). */
+  .nutLoc { float: right; border: 0; background: none; cursor: pointer;
+            font-size: 11px; line-height: 1; padding: 1px 3px; margin-left: 2px;
+            color: #9ca3af; border-radius: 3px; }
+  .nutLoc:hover { background: #e5e7eb; color: #374151; }
+  .nutLoc.locDang { background: #1d4ed8; color: #fff; }
+  .bangLoc { font-size: 13px; color: #1d4ed8; margin: 6px 0; }
+  .nutBoLoc { border: 1px solid #1d4ed8; background: #fff; color: #1d4ed8;
+              border-radius: 4px; padding: 1px 8px; font-size: 12px; cursor: pointer; }
+  .nutBoLoc:hover { background: #1d4ed8; color: #fff; }
   /* Kỳ ngoài phạm vi dữ liệu giá: một câu GIẢI THÍCH, không phải cảnh báo —
      nên màu xám như `.viDu`, không vàng như băng còn-nợ. Người dùng không có
      việc gì phải làm với nó. */

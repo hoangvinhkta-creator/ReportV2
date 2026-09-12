@@ -387,7 +387,12 @@ console.log('\n12) Ba luật hiển thị chốt 12/09/2026');
      là phán đoán nghiệp vụ chứ không phải một phép so `< 0`. */
   ok('dòng lỗ đọc cờ Engine, không tự xét loi_nhuan < 0',
      /d\.la_lo \? "hangLo" : null/.test(JS), true);
-  ok('  · màn hình KHÔNG tự so lợi nhuận với 0', /loi_nhuan\s*<\s*0/.test(JS), false);
+  /* Soi trên mã ĐÃ BỎ CHÚ THÍCH — cùng cách mục 1 xử `doiManChinh`. Chú
+     thích của bộ lọc dòng lỗ có nhắc nguyên văn `loi_nhuan < 0` để nói vì
+     sao KHÔNG được viết thế, và một bài kiểm đỏ vì lời giải thích đúng là
+     một bài kiểm dạy người ta gỡ lời giải thích đi. */
+  ok('  · màn hình KHÔNG tự so lợi nhuận với 0',
+     /loi_nhuan\s*<\s*0/.test(JS.replace(/\/\*[\s\S]*?\*\//g, ' ')), false);
   ok('  · và có nền riêng, không dùng lại lớp của dòng 0 đồng',
      /\.bangDon tr\.hangLo > td \{/.test(cssSach), true);
 
@@ -400,6 +405,80 @@ console.log('\n12) Ba luật hiển thị chốt 12/09/2026');
      /Ô vàng: chưa có mã bảng giá/.test(JS), false);
   ok('  · và cũng không còn câu chú giải về nút sửa/xoá',
      /Enter lưu, Esc huỷ|bấm ra chỗ khác hoặc Enter/.test(JS), false);
+}
+
+console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, không phải cách xem số');
+{
+  const maJS = JS.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  /* `COT` của mục 4 nằm trong khối riêng của nó — đọc lại ở đây thay vì nâng
+     nó lên phạm vi chung, để hai mục không dính vào nhau. */
+  const COT = JSON.parse(cat(JS, /const COT = \[[\s\S]*?\];/)
+    .replace(/^const COT = /, '').replace(/;$/, '').replace(/,(\s*\])/, '$1'));
+
+  /* Chủ dự án chốt 12/09/2026: nút lọc nằm Ở CỘT nó lọc, không gom thành một
+     dải riêng — đứng ngay trên cột thì không phải đặt tên cho nó. */
+  const khoi = cat(JS, /const LOC = \{[\s\S]*?\n  \};/);
+  for (const [khoa, cot] of [['ma', 'Mã sản phẩm'], ['gia', 'Giá nhập'], ['lo', 'Lợi nhuận']]) {
+    ok('bộ lọc "' + khoa + '" gắn vào đúng cột ' + cot,
+       new RegExp(khoa + ': \\{ cot: "' + cot + '"').test(khoi), true);
+    /* Tên cột phải là tên THẬT trong COT — gõ lệch một chữ thì nút lặng lẽ
+       không mọc ra ở đâu cả, và không có gì đỏ lên. */
+    ok('  · và ' + cot + ' là một cột có thật', COT.includes(cot), true);
+  }
+  ok('nút mọc trong <th> của đúng cột ấy', /th\.appendChild\(nutLoc\(k\)\)/.test(JS), true);
+
+  /* ── Ba phép khớp đều chỉ ĐỌC cờ Engine đã đặt ── */
+
+  /* `ly_do_chua_ma` chỉ có giá trị khi CHƯA có quyết định nào. Dòng đã đánh
+     "bỏ qua" không lọt vào — bỏ qua là quyết định của người, không phải việc
+     còn treo. Chiết khấu/phụ phí cũng không: Engine đặt `null` cho chúng. */
+  ok('lọc "chưa phân loại" đọc ly_do_chua_ma, không tự xét thiếu mã',
+     /hop: \(d\) => !!d\.ly_do_chua_ma/.test(khoi), true);
+  ok('  · không lọc bằng ma_bang_gia rỗng (sẽ vơ cả dòng đã "bỏ qua")',
+     /hop:[^\n]*!d\.ma_bang_gia/.test(khoi), false);
+
+  /* Ca đắt nhất của cả khối. Ba loại dòng âm THEO THIẾT KẾ — chiết khấu, quà
+     tặng 0 đồng, bán trả lại — đã bị Engine loại khỏi `la_lo`. So `< 0` ở
+     trình duyệt là dựng lại một luật nghiệp vụ (LUẬT SỐ 1) và cho ra một
+     danh sách việc đầy những dòng không có việc gì phải làm. */
+  ok('lọc "lỗ" đọc cờ la_lo của Engine', /hop: \(d\) => !!d\.la_lo/.test(khoi), true);
+  ok('  · và KHÔNG có phép so tay nào trong bảng bộ lọc',
+     /[<>]=?\s*0/.test(khoi.replace(/\/\*[\s\S]*?\*\//g, ' ')), false);
+
+  /* `undefined` là ca THẬT: kỳ ngoài phạm vi khớp mã thì Engine không đặt
+     trường `gia_nhap` chút nào. Chỉ so `=== null` là bỏ sót trọn mấy kỳ ấy. */
+  ok('lọc "chưa có giá nhập" bắt cả null lẫn undefined',
+     /d\.gia_nhap === null \|\| d\.gia_nhap === undefined/.test(khoi), true);
+
+  /* ── Lọc là phép ẨN DÒNG, không phải phép tính ── */
+  ok('bật/tắt lọc vẽ lại từ bản chụp, KHÔNG gọi lại máy chủ',
+     /if \(bangCuoi\) veKetQua\(bangCuoi\);/.test(JS), true);
+  ok('  · và không có lượt gọi máy chủ nào trong nút lọc',
+     /function nutLoc[\s\S]{0,900}?goi\(/.test(maJS), false);
+
+  /* Băng ngày và hàng tổng đơn mang tổng Engine cộng trên TOÀN BỘ dòng của
+     ngày/của đơn. Để chúng đứng cạnh một tập đã lọc là in một con số không
+     khớp thứ đang nhìn thấy, mà người đọc không có cách nào biết nó nói về
+     tập nào. */
+  ok('đang lọc thì KHÔNG in hàng tổng đơn', /if \(loc\) continue;/.test(JS), true);
+  ok('  · và KHÔNG in băng ngày', /if \(!loc\) tbody\.appendChild\(trNgay\);/.test(JS), true);
+  ok('  · ngày nào lọc xong không còn dòng thì bỏ hẳn, không để băng trơ trọi',
+     /if \(!hangNgay\.length\) continue;/.test(JS), true);
+
+  /* Băng "còn N dòng chưa có mã" đếm trên DOM. Đang lọc thì DOM chỉ còn phần
+     khớp, nên nó sẽ in một con số NHỎ HƠN SỰ THẬT dưới đúng cái tên ấy. */
+  ok('băng "còn N dòng chưa có mã" im khi đang lọc',
+     /if \(trangThai\.loc\) \{ bn\.hidden = true; return; \}/.test(JS), true);
+
+  /* Bảng rỗng sau khi lọc phải NÓI RA là do lọc. Không thì nó đọc y hệt một
+     line không có đơn nào, hoặc một cái hỏng. */
+  ok('lọc ra 0 dòng thì nói rõ vì sao bảng trống',
+     /bảng này không còn dòng nào như thế/.test(JS), true);
+  ok('  · và luôn có nút Bỏ lọc để thoát', /class="nutBoLoc"|"nutBoLoc"/.test(JS), true);
+
+  /* Đổi tab mà còn giữ lọc thì mở một line mới ra thấy bảng gần như trống. */
+  ok('đổi năm/tháng/line thì bỏ lọc',
+     /trangThai\.loc = null;\s*\n\s*taiKy\(\);/.test(JS), true);
 }
 
 xong();
