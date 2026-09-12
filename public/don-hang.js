@@ -775,6 +775,26 @@
       }
     }
 
+    /* Băng QUYẾT ĐỊNH MỒ CÔI — quyết định sửa tay còn đó mà không dòng nào
+       mang khoá ấy nữa (dòng đã biến mất khỏi sổ ở một lượt nhập sau).
+
+       CLAUDE.md đòi thẳng: "màn hình phải nói rõ có bao nhiêu quyết định cũ
+       không còn dòng nào để áp, KÈM DANH SÁCH. Không im lặng bỏ qua." Engine
+       tính sẵn `tom_tat_sua_tay.mo_coi` từ P5 và chú thích của nó cũng chép
+       lại đúng câu ấy — nhưng tới 12/09/2026 vẫn chưa màn nào hiện ra.
+
+       KHÔNG cắt bớt danh sách: đây là việc của người dùng (hoặc sổ thiếu
+       dòng, hoặc quyết định gõ nhầm chứng từ), và một danh sách bị cắt lặng
+       lẽ là một phần việc không ai thấy — cùng kỷ luật với hàng chờ gán mã. */
+    const tst = b.tom_tat_sua_tay;
+    if (tst && tst.mo_coi && tst.mo_coi.length) {
+      const p = el("p", "bangConNo", soNguyen(tst.mo_coi.length)
+        + " quyết định sửa tay không còn dòng nào để áp — dòng đã biến mất khỏi "
+        + "sổ. Quyết định vẫn được GIỮ: lúc nào dòng xuất hiện lại thì nó tự áp "
+        + "trở lại. Khoá: " + tst.mo_coi.map((x) => x.khoa).join(" · ") + ".");
+      khung.appendChild(p);
+    }
+
     /* Băng BÁN TRẢ LẠI. Chỉ hiện khi kỳ này thật sự có chứng từ BTL — một
        dòng "0 lượt trả hàng" ở mọi tháng là nhiễu. Đếm do Engine trả về;
        màn hình không tự cộng lại (LUẬT SỐ 1). */
