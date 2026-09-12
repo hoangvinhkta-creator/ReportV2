@@ -39,6 +39,11 @@ console.log('\n2) Ô #o-dashboard của P2(b) nằm TRONG tab [Biểu đồ]');
      làm đúng thế và nó là lý do biểu đồ nhấp nháy mỗi lần đổi line. */
   ok('don-hang.js không còn tự bật/tắt #oDashboardBoc',
      /oDashboardBoc/.test(JS), false);
+  /* Biểu đồ hoãn vẽ tới lần đầu mở tab — chỉ có tác dụng nếu khung tab
+     thật sự báo sang. Quên dòng này thì tab [Biểu đồ] mở ra TRỐNG mãi mãi,
+     mà mọi bộ kiểm khác vẫn xanh. */
+  ok('mở tab [Biểu đồ] thì báo sang suc-khoe.js qua window.SucKhoe.moTab()',
+     /window\.SucKhoe\.moTab\(\)/.test(JS), true);
 }
 
 console.log('\n3) Năm và tháng nằm cùng một hàng');

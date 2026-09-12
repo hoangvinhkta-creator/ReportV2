@@ -750,14 +750,41 @@
     }
   }
 
-  /* Tự chạy khi đăng nhập xong — Dashboard là thứ đầu tiên người dùng thấy,
-   * không còn phải bấm vào thẻ nào để mở. Nghe thẳng Firebase Auth thay vì
-   * chờ khối <script> inline gọi sang: khối đó là của phần đăng nhập, quy
-   * ước là để yên (ROADMAP.md). */
+  /* Vẽ LẦN ĐẦU khi người dùng mở tab [Biểu đồ], không phải lúc đăng nhập.
+   *
+   * Trước đây khối này gọi thẳng `tai(user)` trong `onAuthStateChanged`, vì
+   * hồi đó Dashboard LÀ thứ đầu tiên người dùng thấy. Từ lúc bố cục đổi
+   * (11/09/2026) biểu đồ nằm sau tab [Biểu đồ] và ẩn sẵn, nên lượt gọi
+   * `/api/bao-cao/suc-khoe` ngay lúc đăng nhập là một lượt đọc `bc/ky` của
+   * cả hai năm mà phần lớn lần đăng nhập không ai xem tới.
+   *
+   * `don-hang.js` (chủ của khung tab) gọi `window.SucKhoe.moTab()` mỗi lần
+   * mở tab. Cửa vào duy nhất là hàm đó — file này không tự đoán trạng thái
+   * tab bằng cách soi `hidden` của một id ở ngoài, để hai nhánh không buộc
+   * chặt vào nhau qua tên phần tử.
+   */
+  let daMoTab = false;       // tab [Biểu đồ] đã từng được mở trong phiên này chưa
+  let nguoiDung = null;
+
+  /* Chỉ tải khi ĐỦ ba điều: tab đã mở, đã có người đăng nhập, và chưa có số.
+     `duLieu` vừa là bộ nhớ đệm vừa là cái chặn — `onAuthStateChanged` còn
+     nổ lại mỗi lần token tự làm mới, không có nó là mỗi giờ thêm một lượt
+     gọi thừa. */
+  function taiNeuCan() {
+    if (daMoTab && nguoiDung && !duLieu) tai(nguoiDung);
+  }
+
+  window.SucKhoe = {
+    moTab: function () { daMoTab = true; taiNeuCan(); },
+  };
+
   document.addEventListener("DOMContentLoaded", function () {
     firebase.auth().onAuthStateChanged(function (user) {
-      if (user) tai(user);
-      else duLieu = null;
+      nguoiDung = user || null;
+      /* Đăng xuất thì quên sạch: người sau đăng nhập vào cùng trình duyệt
+         không được thấy số của người trước. */
+      if (!user) { duLieu = null; daMoTab = false; return; }
+      taiNeuCan();
     });
   });
 })();

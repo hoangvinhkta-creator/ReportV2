@@ -394,17 +394,20 @@
 
   /* ---- Hai tab CHÍNH: [Báo cáo doanh số] | [Biểu đồ] ---- */
 
-  /* Chỉ BẬT/TẮT chứ không dựng lại: `#o-dashboard` do suc-khoe.js (nhánh
-     P2(b)) tự vẽ ngay lúc đăng nhập và vẽ bằng SVG có viewBox cố định, nên
-     nằm trong khối đang ẩn vẫn ra đúng kích thước. Đổi sang "chỉ vẽ khi mở
-     tab" là phải sửa suc-khoe.js — file của nhánh kia, quy ước là không
-     đụng vào (ROADMAP.md). Giá phải trả: một lượt gọi API thừa mỗi lần đăng
-     nhập nếu người dùng không mở tab Biểu đồ. */
+  /* Nội dung `#o-dashboard` là của suc-khoe.js — file này chỉ bật/tắt khối
+     bọc và BÁO cho nó biết tab vừa mở.
+
+     Báo, chứ không tự vẽ: suc-khoe.js hoãn lượt gọi
+     `/api/bao-cao/suc-khoe` tới lần đầu người dùng mở tab [Biểu đồ], nên
+     phần lớn lần đăng nhập không còn kéo về số liệu cả hai năm mà không ai
+     xem. Gọi qua `window.SucKhoe.moTab()` — nó tự lo chuyện chỉ tải một
+     lần; gọi lại mỗi lần bấm tab là vô hại. */
   function doiManChinh(hienBieuDo) {
     $("manBaoCao").hidden = hienBieuDo;
     $("manBieuDo").hidden = !hienBieuDo;
     $("nutManBaoCao").classList.toggle("tabDang", !hienBieuDo);
     $("nutManBieuDo").classList.toggle("tabDang", hienBieuDo);
+    if (hienBieuDo && window.SucKhoe) window.SucKhoe.moTab();
   }
 
   /* Màn này GIỜ LÀ TRANG CHỦ (chủ dự án chốt 11/09/2026: bỏ lưới thẻ, đăng

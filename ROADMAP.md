@@ -32,14 +32,33 @@ bằng máy thật và nghiệm thu.** Cả hai phần:
   #22, #23, #27, #28, #31, #34, #35, #37, #41, #42; dọn ba field cũ của
   Engine (`theo_ngay`, `theo_nam`, `hai_nam`) sau khi nghiệm thu ở PR #43.
 
-P3 LƯỢT 1 — đường tải sổ qua trình duyệt + danh sách đơn hàng theo line —
-ĐÃ MERGE THẲNG (11/09/2026, PR #24 + #25 + #26, cộng một lượt sửa
-`bc/khach` theo kỳ + nút xoá kỳ ở mục "P3" dưới). CHỦ DỰ ÁN ĐÃ TỰ MỞ BẰNG
-MÁY THẬT VÀ XÁC NHẬN Dashboard theo line hiển thị đúng (ảnh chụp màn hình
-thật, sau khi publish rules và chạy lại `nap-line.mjs`).
+**P3 ĐÃ ĐÓNG (12/09/2026).** Điều kiện ra khỏi phase — *"một kỳ tải qua
+UI đối chiếu khớp Excel, nối đúng vào chuỗi thời gian đã có từ P2"* — đã
+chứng minh hai lượt, cả hai đi trọn đường dây thật không script nào chen
+vào:
 
-**Việc tiếp theo:** P3 lượt 2 (sửa/xoá đơn + khoá chống đè + audit trail
-— xem "P3 — lượt 2 còn lại" dưới), rồi P4 (giá vốn).**
+- Sổ **08/2026** tải qua UI ra **15.818.470.000 đ · 1.150 đơn**, trùng
+  KHÍT `bc/ky/2026-08` mà P2 nạp bằng script. Cùng một sổ, hai đường nạp
+  khác hẳn nhau, ra cùng một con số tới từng đồng.
+- Sổ **cả năm 2025** tải lại qua UI tái lập đúng cả 12 con số tháng đã
+  ghi trong file này.
+- Sổ **09/2026** (file mẫu sống) nối liền vào chuỗi, biểu đồ không đứt ở
+  mốc chuyển legacy → sống.
+
+Chủ dự án đã tự mở bằng máy thật và nghiệm thu. Merge qua PR #24, #25,
+#26, #29, #30, #32, #33, #36, #38, #39, #40, #44, cộng lượt bố cục và
+lượt đóng phase.
+
+**Bàn giao đầy đủ: `docs/handoff/2026-09-12-P3-dong.md`** — đường API,
+hàm Engine, nhánh Firebase, ba cửa an toàn của `taiSo`, năm giới hạn cố ý
+để lại, và hai món đang treo. Session P4 đọc file đó trước.
+
+**Việc tiếp theo: P4 — giá vốn / lợi nhuận.**
+
+Bốn việc trước ghi là "P3 lượt 2" (nút sửa/xoá dòng, khoá chống đè, audit
+trail, giữ dòng đã sửa tay khi nó biến mất) **đã chuyển sang P5** —
+chúng đúng nguyên văn phạm vi "Chỉnh sửa tay + audit trail" của P5, giữ
+một lượt 2 lơ lửng ở P3 chỉ làm hai chỗ cùng nhận một việc.
 
 **BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI LẦN 2 (11/09/2026, PR #28 rồi dựng lại ở
 lượt bố cục) — đọc trước khi sửa `public/index.html`:** không còn lưới
@@ -94,9 +113,8 @@ nay có thêm mục "Các kỳ đã có" (chọn kỳ, xoá kỳ) — xem "P3" d
 **Hai việc tay đã xong** (rules đã publish, `nap-line.mjs` đã chạy lại) —
 xem lịch sử ở "P3 — lượt 1" nếu cần tra lại.
 
-**Việc TRƯỚC MẶT tiếp theo:** P3 lượt 2 (nút sửa/xoá đơn + audit trail) —
-xem "P3 — lượt 2 còn lại". Hoặc P2(b) bước 2, xem "Việc còn lại của P2
-phần (b)".
+**Việc TRƯỚC MẶT tiếp theo: P4 — giá vốn / lợi nhuận.** P2 và P3 đều đã
+đóng và đã được chủ dự án nghiệm thu trên bản chạy thật.
 
 Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
 Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
@@ -470,7 +488,7 @@ Engine ĐÃ có sẵn `gopSoBanHang()`, `gopTheoLine()`, `gopSucKhoeCongTy()`,
 trước, Gateway gọi ở lượt merge sau) — bất cứ hàm gộp-theo-Line mới nào lên
 Engine ở MỘT lượt merge riêng, Gateway gọi nó ở lượt sau.
 
-### P3 — tải sổ qua trình duyệt: LƯỢT 1 ĐÃ MERGE (11/09/2026)
+### P3 — tải sổ qua trình duyệt: ĐÃ ĐÓNG (12/09/2026)
 
 Chủ dự án mở rộng phạm vi P3 ngay trong phiên (11/09/2026), nên P3 chia
 **hai lượt merge**. Lượt 1 xong; lượt 2 còn lại ở cuối mục này.
@@ -626,11 +644,25 @@ con "Dashboard" của bảng đơn hàng nữa. Với `suc-khoe.js` thì không 
 vẫn ra đúng kích thước. P3 chỉ bật/tắt `#manBieuDo`, không đụng vào bên
 trong.
 
-Giá phải trả, và **việc để lại cho P2(b)**: `suc-khoe.js` vẫn tự chạy lúc
-`onAuthStateChanged`, nên mỗi lần đăng nhập có **một lượt gọi
-`/api/bao-cao/suc-khoe` thừa** nếu người dùng không mở tab Biểu đồ. Sửa
-đúng chỗ là hoãn lượt vẽ tới lần đầu mở tab — nhưng đó là file của nhánh
-P2(b), P3 không đụng vào.
+**Đã hoãn lượt vẽ (12/09/2026, sau khi P2(b) đóng).** Trước đó
+`suc-khoe.js` tự gọi `/api/bao-cao/suc-khoe` ngay trong
+`onAuthStateChanged`, tức mỗi lần đăng nhập đều kéo `bc/ky` của cả hai
+năm cho một màn phần lớn lần đăng nhập không ai mở. Nay:
+
+- `suc-khoe.js` phơi ra đúng một cửa `window.SucKhoe.moTab()`;
+- `don-hang.js` gọi cửa đó trong `doiManChinh(true)`, tức mỗi lần mở tab
+  [Biểu đồ];
+- `suc-khoe.js` tự lo chuyện chỉ tải MỘT lần (`duLieu` vừa là bộ nhớ đệm
+  vừa là cái chặn), nên bấm qua bấm lại giữa hai tab không thêm lượt gọi
+  nào, và `onAuthStateChanged` nổ lại lúc token tự làm mới cũng không.
+- Đăng xuất thì quên cả `duLieu` lẫn "tab đã mở" — người sau đăng nhập
+  vào cùng trình duyệt không được tự động thấy số của người trước.
+
+Cửa vào là một tên hàm, KHÔNG phải một id: file này không soi `hidden`
+của phần tử nào ở ngoài, để hai bên không buộc chặt vào nhau qua tên
+phần tử. `kiem/dashboard-ve.js` chạy thật và canh đúng bốn điều trên;
+`kiem/bo-cuc-man-chu.js` canh phía `don-hang.js` có gọi — quên gọi thì
+tab [Biểu đồ] mở ra trống mãi mãi mà mọi bộ kiểm khác vẫn xanh.
 
 Có thêm hàng CHỌN THÁNG mà file tay không có, vì dữ liệu lưu theo kỳ và
 một tháng nặng ~390 KB — mở thẳng cả năm là kéo về ~4,7 MB cho một lượt
@@ -670,7 +702,12 @@ hàng. `kiem/doc-xlsx-trinh-duyet.js` dựng một .xlsx thật trong bộ nhớ
 (ZIP + deflate + SpreadsheetML) rồi so từng ô giữa hai bộ, và ghim luôn
 LUẬT SỐ 1: file đó không được biết "cột 12 là nhân viên".
 
-#### P3 — lượt 2 còn lại
+#### P3 — bốn việc "lượt 2" ĐÃ CHUYỂN SANG P5 (12/09/2026)
+
+Bốn việc dưới đây trước ghi là "P3 lượt 2". Chúng đúng nguyên văn phạm vi
+**P5 — Chỉnh sửa tay + audit trail**, nên chuyển hẳn sang đó; giữ một
+lượt 2 lơ lửng ở P3 chỉ làm hai chỗ trong file này cùng nhận một việc.
+Giữ nguyên mô tả ở đây vì nó là bối cảnh P5 cần đọc.
 
 Chủ dự án đã chốt nội dung, chưa code:
 
@@ -1026,7 +1063,7 @@ trước, quý này với quý trước ra đúng cho mọi nhân viên.
 
 ---
 
-### P3 — Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu
+### P3 — Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu ✅
 
 Tải lên sổ bán hàng thô của **một kỳ hiện tại/tương lai** (từ tháng bắt
 đầu dùng V2 hàng ngày trở đi) — qua UI thật trên trình duyệt, không phải
@@ -1045,7 +1082,8 @@ dựng, không phải một tính năng riêng.
 mạch từ tháng trước, không đứt gãy ở mốc chuyển từ legacy sang sống.
 
 **Ra khỏi phase khi:** một kỳ tải qua UI đối chiếu khớp Excel, nối đúng
-vào chuỗi thời gian đã có từ P2.
+vào chuỗi thời gian đã có từ P2. — **ĐÃ ĐÓNG 12/09/2026**, chứng cứ và
+bàn giao đầy đủ ở `docs/handoff/2026-09-12-P3-dong.md`.
 
 ---
 
@@ -1078,6 +1116,16 @@ tay.
 ---
 
 ### P5 — Chỉnh sửa tay + audit trail
+
+**Nhận thêm bốn việc từ P3 (12/09/2026)** — nút sửa/xoá DÒNG trên bảng
+đơn hàng, ghi `bc/quyetdinh/dong/<kỳ>`, audit trail, và giữ-lại-cảnh-báo
+khi một dòng đã sửa tay biến mất khỏi file mới. Máy khoá đã dựng xong và
+có bài kiểm từ P3: `doiChieuKy()` nhận tập khoá đã sửa tay, dòng nào
+trong tập đó thì GIỮ BẢN CŨ và trả về ở nhánh `bi_khoa` thay vì bị đè —
+P5 chỉ còn phải GHI vào nhánh quyết định và dựng giao diện. Khoá đặt ở
+mức DÒNG, cảnh báo gom theo ĐƠN. Hai cột icon `[Sửa dòng][Xoá dòng]` đã
+chừa sẵn ở cuối bảng, đang `disabled`. Chi tiết: mục "P3 — bốn việc
+lượt 2 đã chuyển sang P5" ở trên.
 
 Sửa tay khi cột nhân viên trên sổ sai/thiếu (ghi nhầm người, để trống),
 áp dụng cho cả dữ liệu legacy (P2) lẫn dữ liệu sống (P3). Mọi lần sửa ghi
