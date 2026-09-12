@@ -10,11 +10,13 @@ import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
 import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
 } from "./dong-hang.mjs";
-import { khoaTenHang, khopMaChoBangDon } from "./khop-ma.mjs";
+import {
+  khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon,
+} from "./khop-ma.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.6.0-p4";
+const PHIEN_BAN = "0.7.0-p4-gia-von";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -154,9 +156,32 @@ export default class extends WorkerEntrypoint {
    *  Ném lỗi khi bảng giá Tracking rỗng hay sai kiểu — Gateway phải trả lỗi
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
-  async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking) {
-    return khopMaChoBangDon(
-      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking);
+  async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking, ky, minNgay) {
+    const bang = khopMaChoBangDon(
+      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
+    /* Giá vốn chỉ có nghĩa sau khi đã khớp mã, nên hai việc đi liền trong một
+       lượt. `minNgay` vắng mặt (Gateway chưa lấy được, hoặc kỳ ngoài phạm vi)
+       thì bỏ qua — cột Giá nhập ở lại "—", KHÔNG thành 0. */
+    if (minNgay) dienGiaNhap(bang, minNgay);
+    return bang;
+  }
+
+  /** Kỳ này có nằm trong phạm vi khớp mã / giá vốn không.
+   *
+   *  Gateway hỏi TRƯỚC khi đi lấy dữ liệu Tracking: kỳ ngoài phạm vi thì
+   *  không cần kéo bảng giá (~400 KB) lẫn Min theo ngày về làm gì. Mốc là
+   *  một LUẬT NGHIỆP VỤ nên nó ở Engine, không chép sang Gateway. */
+  async kyCoKhopMa(ky) {
+    return kyCoKhopMa(ky);
+  }
+
+  /** Tập mã bảng giá cần hỏi Min theo ngày cho một kỳ.
+   *
+   *  Gateway gọi hàm này TRƯỚC `POST /api/min-ngay` — hợp đồng bên đó nhận
+   *  một TẬP MÃ chứ không nhận "tất cả", và phép khớp tên → mã là luật nghiệp
+   *  vụ nên nó ở Engine. */
+  async maCanGiaVon(dongCuaKy, nguonTracking, ky) {
+    return maCanGiaVon(dongCuaKy, nguonTracking, ky);
   }
 
   /** Khoá `inv/map` của một câu tên hàng.

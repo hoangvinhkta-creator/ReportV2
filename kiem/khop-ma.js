@@ -279,5 +279,159 @@ const GOC = path.resolve(__dirname, '..');
   ok('bảng giá hỏng → cả lượt dựng bảng ném lỗi',
     nem(() => K.khopMaChoBangDon(bang4, { board: {} })), true);
 
+  /* ─────────── F. Mốc kỳ: trước 09/2026 KHÔNG khớp gì ─────────── */
+
+  console.log('\nF) Mốc kỳ');
+
+  ok('kỳ 09/2026 nằm trong phạm vi', K.kyCoKhopMa('2026-09'), true);
+  ok('kỳ sau đó cũng vậy', K.kyCoKhopMa('2026-10'), true);
+  ok('kỳ 08/2026 NGOÀI phạm vi', K.kyCoKhopMa('2026-08'), false);
+  ok('kỳ 2025 ngoài phạm vi', K.kyCoKhopMa('2025-12'), false);
+  ok('không phải chuỗi thì ngoài phạm vi', K.kyCoKhopMa(null), false);
+
+  {
+    const b8 = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b8, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-08');
+    const ds8 = [];
+    for (const ng of b8.ngay) for (const d of ng.don) for (const x of d.dong) ds8.push(x);
+    ok('kỳ ngoài phạm vi: bảng đơn vẫn dựng đủ dòng', ds8.length > 0, true);
+    /* Điểm mấu chốt: KHÔNG chạy phép khớp, nên không dòng nào bị gắn "chưa
+       khớp". Chạy rồi trả "0 dòng khớp" là mời người dùng gán một đống mã mà
+       ở kỳ ấy gán xong cũng không ra được đồng giá vốn nào. */
+    ok('  · nhưng KHÔNG dòng nào bị gắn lý do chưa khớp',
+      ds8.some((d) => d.ly_do_chua_ma), false);
+    ok('  · và nói rõ là ngoài phạm vi, kèm mốc',
+      b8.tom_tat_ma, { ngoai_pham_vi: true, tu_ky: '2026-09' });
+    ok('  · không có bảng kê hàng chờ', b8.tom_tat_ma.chua_khop, undefined);
+
+    const b9 = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b9, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
+    ok('kỳ trong phạm vi vẫn khớp như thường', b9.tom_tat_ma.tu_dong, 2);
+  }
+
+  ok('mã cần hỏi giá: chỉ những mã đã khớp, khử trùng và sắp',
+    K.maCanGiaVon(DONG, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09'),
+    ['65C6K', 'X198VDGEN']);
+  ok('kỳ ngoài phạm vi thì không hỏi mã nào',
+    K.maCanGiaVon(DONG, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-08'), []);
+
+  /* ─────────── G. Giá nhập theo ĐÚNG ngày bán ─────────── */
+
+  console.log('\nG) Giá nhập theo ngày bán');
+
+  const bg = (o) => ({ product_code: o.ma, effective_date: o.ngay,
+    min_price: o.gia === undefined ? null : o.gia,
+    price_status: o.ts || (o.gia === undefined ? 'NO_DATA' : 'OK'),
+    day_status: o.ds || 'FINAL', observed_on: o.qs || o.ngay,
+    carried_from: (o.qs && o.qs !== o.ngay) ? o.qs : null });
+
+  const veBangGia = (mn, ky) => {
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, ky || '2026-09');
+    K.dienGiaNhap(b, mn);
+    const ds = [];
+    for (const ng of b.ngay) for (const don of ng.don) for (const x of don.dong) ds.push(x);
+    return { b, ds, tim: (t) => ds.find((d) => d.ma_san_pham === t) };
+  };
+
+  /* ĐÂY LÀ BÀI QUAN TRỌNG NHẤT CỦA CẢ BỘ. `min_price` đếm bằng NGHÌN đồng
+     (`currency_unit: VND_THOUSAND`), mọi con số của Báo cáo đếm bằng ĐỒNG.
+     Quên phép nhân 1.000 là sai gấp một nghìn lần, và sai ÊM: 5.250 đọc lên
+     vẫn trông y như một cái giá thật. */
+  {
+    const { tim } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-08', gia: 5250 })], errors: [] });
+    ok('min_price 5.250 (nghìn đ) thành 5.250.000 đ', tim('Tivi TCL 65C6K').gia_nhap, 5250000);
+    /* Lợi nhuận = tổng bán − giá nhập × số lượng. */
+    ok('lợi nhuận = tổng bán − giá nhập × SL',
+      tim('Tivi TCL 65C6K').loi_nhuan, 9000000 - 5250000 * 1);
+  }
+
+  /* Đơn vị lạ phải NỔ, không được lặng lẽ nhân nhầm. */
+  ok('đơn vị tiền khác hợp đồng → ném lỗi',
+    nem(() => veBangGia({ currency_unit: 'VND', records: [], errors: [] })), true);
+  ok('đơn vị vắng mặt thì vẫn chạy (trang rỗng không khai đơn vị)',
+    nem(() => veBangGia({ records: [], errors: [] })), false);
+
+  /* Giá của ĐÚNG NGÀY BÁN, không phải ngày khác. Bản ghi đặt ở ngày 09 mà
+     đơn bán ngày 08 thì dòng ấy KHÔNG có giá — hệ Min trả bản ghi cho từng
+     ngày đã hỏi, nên "gần đúng ngày" không phải một khái niệm ở đây. */
+  {
+    const { tim } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-09', gia: 5250 })], errors: [] });
+    ok('bản ghi của ngày KHÁC không được dùng cho ngày bán này',
+      tim('Tivi TCL 65C6K').gia_nhap, null);
+  }
+
+  /* Mốc MANG QUA: hệ Min chỉ ghi khi đổi, nên bản ghi của ngày bán có thể
+     được quan sát từ một ngày trước. Đó là bình thường và phải dùng được —
+     nhưng ngày quan sát thật phải đi kèm để còn đối chiếu tay. */
+  {
+    const { tim } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-08', gia: 5250, qs: '2026-09-01' })],
+      errors: [] });
+    ok('mốc mang qua vẫn cho giá', tim('Tivi TCL 65C6K').gia_nhap, 5250000);
+    ok('  · và giữ ngày quan sát thật', tim('Tivi TCL 65C6K').ngay_gia, '2026-09-01');
+  }
+
+  /* Ba lý do chưa có giá, mỗi lý do phải tới được đúng dòng của nó. */
+  {
+    const { tim, b } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-08' })],
+      errors: [{ product_code: 'X198VDGEN', effective_date: '2026-09-08',
+        reason: 'SOURCE_UNAVAILABLE' }] });
+    ok('bản ghi có mà min_price null → NO_DATA',
+      tim('Tivi TCL 65C6K').ly_do_chua_gia, 'NO_DATA');
+    ok('  · và KHÔNG hiện giá 0', tim('Tivi TCL 65C6K').gia_nhap, null);
+    ok('  · lợi nhuận cũng để trống, không phải 0', tim('Tivi TCL 65C6K').loi_nhuan, null);
+    ok('lý do từ errors tới đúng dòng',
+      tim('Tủ lạnh Sharp SJ-X198V-DG').ly_do_chua_gia, 'SOURCE_UNAVAILABLE');
+    ok('dòng chưa có mã thì lý do là chưa-có-mã',
+      tim('Chân máy giặt Đa Năng - chiều').ly_do_chua_gia, 'chua-co-ma');
+    ok('bản kê đếm đủ số dòng chưa có giá', b.tom_tat_gia.chua_co_gia, 4);
+    /* So theo CẶP ĐÃ SẮP, không so nguyên object: thứ tự khoá của một object
+       là thứ tự gặp dòng, một chi tiết cài đặt — ghim nó vào bài kiểm là để
+       một lượt đổi thứ tự sắp dòng làm đỏ một phép canh không liên quan. */
+    ok('  · và tách theo từng lý do',
+      Object.entries(b.tom_tat_gia.theo_ly_do).sort(),
+      [['NO_DATA', 1], ['SOURCE_UNAVAILABLE', 1], ['chua-co-ma', 2]]);
+  }
+
+  /* Lợi nhuận của ĐƠN chỉ có nghĩa khi mọi dòng hàng của nó đã có giá vốn.
+     Thiếu một dòng mà vẫn cộng là đưa ra một con số nhỏ hơn sự thật và không
+     nói rằng nó thiếu. */
+  {
+    const { b } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-08', gia: 1000 })], errors: [] });
+    const don1 = b.ngay[0].don.find((x) => x.so_ct === 'BH1');
+    ok('đơn còn dòng thiếu giá thì lợi nhuận đơn để trống', don1.loi_nhuan, null);
+  }
+  {
+    const mn = { currency_unit: 'VND_THOUSAND', records: [
+      bg({ ma: '65C6K', ngay: '2026-09-08', gia: 1000 }),
+      bg({ ma: 'X198VDGEN', ngay: '2026-09-08', gia: 2000 }),
+    ], errors: [] };
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS,
+      inv_map: { N_CHNMYGITANNGCHIU: '-' } }, '2026-09');
+    K.dienGiaNhap(b, mn);
+    const don2 = b.ngay[0].don.find((x) => x.so_ct === 'BH2');
+    /* BH2 có hai dòng: một tủ lạnh đã có giá, một dòng "bỏ qua" (không phải
+       sản phẩm). "Bỏ qua" vẫn là dòng chưa có giá vốn, nên đơn vẫn treo. */
+    ok('dòng "bỏ qua" vẫn làm lợi nhuận đơn treo', don2.loi_nhuan, null);
+  }
+
+  /* Dòng chiết khấu đã biết chắc lợi nhuận của nó từ dungBangDon() — giá
+     nhập 0 nên lợi nhuận = chính nó, mang dấu âm. dienGiaNhap không được
+     đụng vào, và cũng không được đếm nó là "chưa có giá". */
+  {
+    const { ds, b } = veBangGia({ currency_unit: 'VND_THOUSAND',
+      records: [bg({ ma: '65C6K', ngay: '2026-09-08', gia: 1 })], errors: [] });
+    const ck = ds.find((d) => d.la_chiet_khau);
+    ok('dòng chiết khấu giữ nguyên lợi nhuận của nó', ck.loi_nhuan, -50000);
+    ok('  · và không bị đếm vào bản kê thiếu giá',
+      b.tom_tat_gia.co_gia + b.tom_tat_gia.chua_co_gia, 4);
+  }
+
   xong();
 })();
