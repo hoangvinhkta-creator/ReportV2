@@ -443,16 +443,17 @@ const GOC = path.resolve(__dirname, '..');
   const nguonHd = (x) => (typeof x === 'string'
     ? { source_type: 'SUPPLIER', source_id: x }
     : { source_type: x.t, source_id: x.id });
-  const bgN = (nguon, gia) => ({ product_code: '65C6K', effective_date: '2026-09-08',
+  const bgN = (nguon, gia, kho) => ({ product_code: '65C6K', effective_date: '2026-09-08',
     min_price: gia === undefined ? 5250 : gia, price_status: 'AVAILABLE',
     day_status: 'FINAL', observed_on: '2026-09-08', carried_from: null,
-    min_sources: nguon.map(nguonHd) });
+    min_sources: nguon.map(nguonHd),
+    ...(kho === undefined ? {} : { inventory_unit_cost: kho }) });
 
-  const noiNhapCua = (nguon, gia) => {
+  const noiNhapCua = (nguon, gia, kho) => {
     const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
     K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
     K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND',
-      records: [bgN(nguon, gia)], errors: [] });
+      records: [bgN(nguon, gia, kho)], errors: [] });
     for (const ng of b.ngay) for (const don of ng.don) for (const x of don.dong)
       if (x.ma_san_pham === 'Tivi TCL 65C6K') return { o: x, bang: b };
     return { o: null, bang: b };
@@ -525,6 +526,34 @@ const GOC = path.resolve(__dirname, '..');
      trong danh sách mà cả kỳ không gặp lần nào". */
   ok('Kho không bị đếm như một NCC ưu tiên',
     noiNhapCua([KHO]).bang.tom_tat_gia.ncc_uu_tien_khong_gap.length, 5);
+
+  /* ── KHO ĐẮT HƠN MIN (hợp đồng `min-2` của Tracking) ──
+     Đây là ca cả lượt sửa này sinh ra để giải, và nó KHÔNG thấy được qua
+     `min_sources`: kho đắt hơn nên Tracking không kể tên kho ở đó — đúng như
+     `min_sources` phải thế, vì nó trả lời "ai giữ giá rẻ nhất". Sự thật "kho
+     còn hàng" đi bằng trường riêng `inventory_unit_cost`. */
+  {
+    const r = noiNhapCua(['Việt Hải'], 5250, 9000);
+    ok('kho còn hàng mà ĐẮT HƠN Min: nơi nhập vẫn là Kho', r.o.noi_nhap, 'Kho');
+    /* Vế thứ hai của luật, và là vế dễ làm hỏng nhất: đổi NHÃN thì được,
+       đụng vào TIỀN thì không. Giá nhập phải vẫn là giá Min. */
+    ok('  · nhưng GIÁ NHẬP vẫn là giá Min, không phải giá kho', r.o.gia_nhap, 5250000);
+    ok('  · và giá kho đi kèm ra màn hình để người đối chiếu không tưởng là lỗi',
+      r.o.gia_ton_kho, 9000000);
+  }
+  ok('kho RẺ HƠN Min cũng là Kho', noiNhapCua(['Việt Hải'], 5250, 3000).o.noi_nhap, 'Kho');
+  /* `inventory_unit_cost: null` là câu trả lời THẬT của hợp đồng — "kho không
+     có hàng mã ấy hôm đó" — chứ không phải một ô còn thiếu. */
+  ok('hợp đồng nói rõ kho KHÔNG có hàng → quay về thứ tự NCC',
+    noiNhapCua(['Việt Hải', 'Trung Xuân'], 5250, null).o.noi_nhap, 'Việt Hải');
+  ok('  · và không bịa ra một giá kho', noiNhapCua(['Việt Hải'], 5250, null).o.gia_ton_kho, null);
+  /* Bản ghi ghi TRƯỚC lượt deploy `min-2` không có khoá ấy. Hai đường phải
+     cùng ra "không có hàng" — và khi ấy nhánh `min_sources` cũ vẫn phải còn
+     hiệu lực, nếu không thì ngày cũ tệ hơn cả trước khi có luật ưu tiên. */
+  ok('bản ghi CŨ (không có khoá) cũng quay về thứ tự NCC',
+    noiNhapCua(['Việt Hải', 'Trung Xuân']).o.noi_nhap, 'Việt Hải');
+  ok('  · nhưng nếu bản ghi cũ ấy có kho giữ Min thì Kho vẫn thắng',
+    noiNhapCua([KHO, 'Việt Hải']).o.noi_nhap, 'Kho');
 
   /* Luật ưu tiên im lặng không chạy là lỗi không ai thấy — bản kê phải nói
      tên nào cả kỳ không gặp lần nào. */

@@ -405,14 +405,20 @@ export const NHAN_TON_KHO = "Kho";
  *  một bản ghi `thieu-nguon-cho-gia`). Nên rỗng ở đây nghĩa là dòng ấy không
  *  có giá Min — và khi ấy nơi nhập cũng không có, đúng như chủ dự án chốt.
  *
- *  CÒN THIẾU, cố ý và có ghi ở ROADMAP.md: `min_sources` chỉ kể tên tồn kho
- *  khi giá kho ĐÚNG BẰNG giá Min hôm đó. Kho còn hàng mà giá kho CAO HƠN Min
- *  thì hợp đồng hiện chưa nói ra, nên nhánh dưới đây chưa thấy để mà ưu tiên.
- *  Lượt sau mở đường ấy bên Tracking. */
-function chonNoiNhap(nguon) {
+ *  Hai đường nhận ra "hàng xuất từ kho", và cần CẢ HAI:
+ *
+ *    · `giaKho` — `inventory_unit_cost` của hợp đồng `min-2`: kho CÓ HÀNG hôm
+ *      đó, bất kể giá kho đắt hay rẻ. Đây là đường chính.
+ *    · `min_sources` có một mục `INVENTORY` — kho giữ đúng giá Min hôm đó.
+ *      Đường này có từ `min-1` và vẫn cần: bản ghi ghi TRƯỚC lượt deploy
+ *      `min-2` không mang `inventory_unit_cost`, nhưng nếu hôm ấy kho giữ Min
+ *      thì nó vẫn có tên trong `min_sources`. Bỏ nhánh này là làm những ngày
+ *      cũ tệ hơn cả trước khi có luật ưu tiên. */
+function chonNoiNhap(nguon, giaKho) {
   const ds = Array.isArray(nguon) ? nguon.filter((x) => laObj(x)
     && typeof x.source_id === "string" && x.source_id.trim()) : [];
   if (!ds.length) return null;
+  if (typeof giaKho === "number" && giaKho > 0) return NHAN_TON_KHO;
   if (ds.some((x) => x.source_type === NGUON_TON_KHO)) return NHAN_TON_KHO;
   let tot = null, hang = Infinity;
   for (let i = 0; i < ds.length; i++) {
@@ -495,7 +501,16 @@ export function dienGiaNhap(bang, minNgay) {
        cần thấy đúng lý do của mình. */
     if (typeof r.min_price === "number")
       gia.set(k, { dong: Math.round(r.min_price * NGHIN), ngay_quan_sat: r.observed_on ?? null,
-        trang_thai_ngay: r.day_status ?? null, nguon: r.min_sources });
+        trang_thai_ngay: r.day_status ?? null, nguon: r.min_sources,
+        /* `inventory_unit_cost` (hợp đồng `min-2` của Tracking): giá nhập phân
+           bổ của hàng ĐANG TRONG KHO hôm đó, `null` khi kho không có hàng —
+           và ĐỘC LẬP với việc kho có giữ Min hay không. Bản ghi cũ (trước
+           `min-2`) không có khoá này, đọc lên thành `undefined`; cả hai đều
+           rơi vào nhánh "không có hàng" bên dưới, tức quay về thứ tự NCC như
+           trước. Đó là hướng an toàn: thà không nói gì còn hơn gán một nơi
+           nhập không có bằng chứng. */
+        kho: typeof r.inventory_unit_cost === "number" && r.inventory_unit_cost > 0
+          ? Math.round(r.inventory_unit_cost * NGHIN) : null });
     else lyDo.set(k, r.price_status || "NO_DATA");
   }
   for (const e of Array.isArray(mn.errors) ? mn.errors : []) {
@@ -581,7 +596,11 @@ export function dienGiaNhap(bang, minNgay) {
            lại ở đâu khác. `min_sources` là danh sách NCC đang giữ đúng giá
            Min hôm ấy, nên "nơi nhập nào chứa giá A ngày hôm ấy" đã nằm sẵn
            trong tay, không cần một lượt gọi thứ hai. */
-        d.noi_nhap = chonNoiNhap(g.nguon);
+        d.noi_nhap = chonNoiNhap(g.nguon, g.kho);
+        /* Giá kho đi kèm ra màn hình khi nó KHÁC giá nhập: người đối chiếu
+           tay sẽ thấy "Kho" ở cột Nơi nhập cạnh một con số giá nhập không
+           phải giá kho, và nếu không nói gì thì đó trông y như một lỗi. */
+        d.gia_ton_kho = g.kho;
         if (d.noi_nhap && HANG_UU_TIEN.has(chuanNcc(d.noi_nhap))) nccDaThay.add(chuanNcc(d.noi_nhap));
         d.ly_do_chua_gia = null;
         coGia++;
