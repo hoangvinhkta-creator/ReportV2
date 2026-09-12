@@ -28,6 +28,15 @@ function elGia(id) {
   const el = {
     id, hidden: false, textContent: '', disabled: false,
     type: '', className: '', con: [], _l: {}, _html: '',
+    /* Hình học: mặc định RỖNG (0 / null) đúng như một DOM giả không bố cục,
+       nên `canhCaoKhoi()` của file thật tự thoát sớm và mọi mục kiểm khác
+       chạy y như trước. Mục "hai cột cùng chiều cao" bật chúng lên bằng tay
+       để soi đúng phép đo — thứ không mục nào khác thấy được. */
+    style: {}, _hop: null, _cha: null, _w: 0, _h: 0,
+    getBoundingClientRect() { return el._hop; },
+    get parentElement() { return el._cha; },
+    get clientWidth() { return typeof el._w === 'function' ? el._w() : el._w; },
+    get clientHeight() { return typeof el._h === 'function' ? el._h() : el._h; },
     /* DOM thật: gán innerHTML là THAY luôn con. Stub phải làm y hệt, không
        thì nút của tab cũ còn nằm lại và bài kiểm bấm nhầm vào chúng. */
     get innerHTML() { return el._html; },
@@ -167,6 +176,11 @@ NgayGia.now = () => HOM_NAY;
 let fetchGoi = null, tuChoi = false, cbAuth = null;
 const ctx = {
   document: documentGia, Date: NgayGia, console, setTimeout, clearTimeout,
+  /* `window.addEventListener` — file thật nghe `resize` để đo lại chỗ còn
+     lại của màn hình. DOM giả không có hình học nên phép đo tự bỏ qua
+     (`canhCaoKhoi` thoát sớm khi `innerHeight` vắng mặt), nhưng nếu thiếu
+     hẳn hàm này thì cả file không nạp nổi. */
+  addEventListener: () => {},
   fetch: async (url, opts) => {
     fetchGoi = { url, opts };
     if (tuChoi) {
@@ -542,6 +556,61 @@ function kiemMoc(ten, gtThat, doiSo) {
        /Hệ thống tạm thời chưa phục vụ được/.test(CAY.skLoi.textContent), true);
     ok('không còn biểu đồ cũ nằm lại', /<svg/.test(veHtml()), false);
     ok('khối lưới nhỏ cũng dọn sạch', CAY.skLuoiNho.innerHTML, '');
+  }
+
+  console.log('\n14) Hai cột CÙNG chiều cao, và khối vừa đúng chỗ còn lại của màn hình');
+  {
+    /* Chủ dự án chốt 12/09/2026, hai yêu cầu đi liền nhau: hai cụm phải cân
+       nhau, và mở trang ra phải thấy cả bảng lẫn biểu đồ không cần cuộn.
+       Cả hai là MỘT phép chia: lấy phần màn hình còn lại DƯỚI bảng rồi ép
+       hai cột cùng chiều cao ấy.
+
+       Trước lượt này mỗi cột tự cao theo nội dung, nên lưới 10 ô bên phải
+       cao gần gấp đôi biểu đồ bên trái — và không bài kiểm nào thấy, vì
+       không bài nào đo hình học. Mục này dựng một màn 900px giả: bảng phía
+       trên kết thúc ở y=520, phần đệm + dải nút của khối cao 72px. */
+    tuChoi = false;
+    /* `layEl` chứ không `CAY[...]`: ô khung vẽ chỉ được tạo ra khi file thật
+       hỏi tới nó, mà nó chưa hỏi lần nào (phép đo vẫn đang thoát sớm). */
+    layEl('o-dashboard')._hop = { top: 520, height: 300 };
+    layEl('skVe')._cha = { offsetHeight: 228 };
+    layEl('skHopVe')._w = 684;
+    /* Khung vẽ = chiều cao cột đã ép, trừ tiêu đề và chú giải (≈50px) —
+       đúng cách `flex: 1` chia trong trình duyệt thật. */
+    layEl('skHopVe')._h = () => Math.max(0, parseInt(layEl('skVe').style.height || '0', 10) - 50);
+    ctx.innerHeight = 900;
+
+    napLai();
+    await nghi(); await nghi(); await nghi();
+
+    /* 900 − 520 (đỉnh khối) − 14 (lề đáy) − 72 (phần ngoài hai cột) = 294. */
+    ok('cột trái cao đúng phần màn hình còn lại', CAY.skVe.style.height, '294px');
+    ok('cột phải CÙNG chiều cao — hai cụm cân nhau', CAY.skLuoiNho.style.height, CAY.skVe.style.height);
+
+    /* viewBox phải cùng TỈ LỆ với khung vẽ, nếu không SVG chừa dải trắng và
+       cột trái lại trông "hụt" — đúng triệu chứng chủ dự án báo. */
+    const vb = veHtml().match(/viewBox="0 0 (\d+) (\d+)"/);
+    ok('viewBox đã tính lại theo khung (không còn cao cố định 200)', vb && vb[2] !== '200', true);
+    const tlKhung = 684 / layEl('skHopVe').clientHeight;
+    ok('  · và ĐÚNG tỉ lệ khung (lệch dưới 1%)',
+       Math.abs(Number(vb[1]) / Number(vb[2]) / tlKhung - 1) < 0.01, true);
+    ok('  · svg lấp kín khung (width + height 100%)',
+       /width="100%" height="100%"/.test(veHtml()), true);
+
+    /* Lượt đo GỌI LẠI lượt vẽ, mà lượt vẽ lại gọi lượt đo — không có cái
+       chốt `dangCanh` thì đây là một vòng lặp vô hạn treo cả trang. */
+    const caoCu = vb[2];
+    nutChiSo()[1].click();
+    const vb2 = veHtml().match(/viewBox="0 0 (\d+) (\d+)"/);
+    ok('vẽ lại không làm chiều cao trôi đi (không lặp vô hạn)', vb2[2], caoCu);
+    nutChiSo()[0].click();
+
+    /* Màn rất thấp: thà cả trang cuộn thêm một chút còn hơn ép biểu đồ bẹp
+       tới mức không đọc được — cùng kỷ luật sàn của khung bảng đơn. */
+    ctx.innerHeight = 600;
+    napLai();
+    await nghi(); await nghi(); await nghi();
+    ok('màn thấp → chặn ở sàn 240px, không bẹp dí', CAY.skVe.style.height, '240px');
   }
 
   xong();

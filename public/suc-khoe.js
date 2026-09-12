@@ -60,14 +60,16 @@
   const MAU_NAY = "#2563eb";    // kỳ đang xem — màu nhấn
   const MAU_TRUOC = "#9ca3af";  // cùng kỳ năm trước — xám, không tranh màu nhấn
 
-  /* Thấp hơn bản một-biểu-đồ: giờ có HAI biểu đồ xếp dọc, giữ nguyên chiều
-     cao cũ là phải cuộn mới thấy hết dải nút tháng nằm dưới cùng. */
-  const RONG = 640, CAO = 200;
+  /* `RONG` là bề rộng của HỆ TOẠ ĐỘ, không phải bề rộng trên màn: SVG khai
+     `width: 100%` nên nó co giãn theo cột. `CAO_MAC_DINH` chỉ là bản lùi khi
+     chưa đo được màn hình (trước lượt bố cục đầu tiên, hay trong bộ kiểm
+     chạy trên DOM giả) — bình thường chiều cao được TÍNH theo chỗ còn lại
+     của màn hình, xem `canhCaoKhoi()`. */
+  const RONG = 640, CAO_MAC_DINH = 200;
   const LE_TRAI = 64, LE_PHAI = 14, LE_TREN = 12, LE_DUOI = 30;
   /* Lane riêng bên phải cho hai chấm "TB" (trung bình) — xem lý do ở
      `veBieuDo`. RONG_VE (vùng vẽ chuỗi thời gian) nhường bớt chỗ cho nó. */
   const RONG_TB = 30, KHOANG_TB = 18;
-  const CAO_VE = CAO - LE_TREN - LE_DUOI;
   const RONG_VE = RONG - LE_TRAI - LE_PHAI - RONG_TB - KHOANG_TB;
 
   /* Bước chia "đẹp" cho trục dọc. Bước KHÔNG NGUYÊN bị bỏ (2,5 chỉ dùng được
@@ -138,6 +140,11 @@
    *  · `moTa(p, nam)` — câu hiện khi rê chuột (kể CẢ HAI con số, để rê ở
    *                     biểu đồ nào cũng đọc được đủ) */
   function veBieuDo(c) {
+    /* Chiều cao hệ toạ độ do bên gọi đưa vào (đã tính từ chỗ còn lại của màn
+       hình). Lề trên/dưới KHÔNG đổi theo — chúng chừa chỗ cho nhãn trục, thứ
+       cao bao nhiêu là bấy nhiêu dù khung cao hay thấp; chỉ vùng vẽ giãn ra. */
+    const CAO = c.cao || CAO_MAC_DINH;
+    const CAO_VE = CAO - LE_TREN - LE_DUOI;
     const gtLonNhat = Math.max(
       c.sanGiaTri || 0,
       ...c.diemNay.map((p) => c.layGiaTri(p)), ...c.diemTruoc.map((p) => c.layGiaTri(p)));
@@ -209,7 +216,11 @@
     khoiTb += chamTb(tbNay, MAU_NAY,
       () => "Trung bình mỗi " + c.donViDiem + " · " + c.tenKyNay + ": " + c.taDayDu(tbNay));
 
-    return '<svg viewBox="0 0 ' + RONG + " " + CAO + '" width="100%" role="img" aria-label="'
+    /* `height: 100%` đi CÙNG viewBox đã tính đúng tỉ lệ của khung chứa: khi
+       hai con số ấy khớp nhau thì hình lấp kín khung, không chừa dải trắng
+       hai bên (`meet` của SVG luôn giữ tỉ lệ, nên viewBox lệch tỉ lệ là có
+       dải trắng — thứ làm cột trái trông "hụt" so với cột phải). */
+    return '<svg viewBox="0 0 ' + RONG + " " + CAO + '" width="100%" height="100%" role="img" aria-label="'
       + thoat(c.nhanKhung) + '">'
       + luoi + nhan
       + veChuoi(c.diemTruoc, c.layGiaTri, x, y, MAU_TRUOC, true, (p) => c.moTa(p, c.namTruoc))
@@ -259,8 +270,12 @@
 
   /* ─────────── Lưới nhỏ (small multiples) — xu hướng theo Line ─────────── */
 
-  const RONG_MINI = 148, CAO_MINI = 56;
-  const LE_MINI_TRAI = 4, LE_MINI_PHAI = 4, LE_MINI_TREN = 16, LE_MINI_DUOI = 4;
+  /* Thấp hơn bản trước (56 → 44): mười ô xếp 3–4 cột là 3–4 HÀNG, nên mỗi
+     ô cao thêm 12px là cả cụm cao thêm gần 50px — đúng phần làm cột phải
+     vượt hẳn cột trái. Một đường xu hướng 32px vẫn đọc được hình dạng; đó
+     là cả điểm của small multiples. */
+  const RONG_MINI = 148, CAO_MINI = 44;
+  const LE_MINI_TRAI = 4, LE_MINI_PHAI = 4, LE_MINI_TREN = 13, LE_MINI_DUOI = 4;
   const RONG_VE_MINI = RONG_MINI - LE_MINI_TRAI - LE_MINI_PHAI;
   const CAO_VE_MINI = CAO_MINI - LE_MINI_TREN - LE_MINI_DUOI;
 
@@ -421,17 +436,79 @@
        nên khối biểu đồ cao gấp đôi và đẩy mọi thứ khác xuống dưới màn hình. */
     const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
     const nhanKhung = bd.ten + " " + k.duoi;
-    oVe.innerHTML = '<div class="khoiBieuDo"><p class="tieuDeSk">' + thoat(nhanKhung)
+    oVe.innerHTML = '<p class="tieuDeSk">' + thoat(nhanKhung)
       + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
+      + '<div class="khoiBieuDo" id="skHopVe">'
       + veBieuDo({
         diemNay, diemTruoc, namNay: nam, namTruoc,
         vtMin: k.vtMin, vtMax: k.vtMax, nhanTruc: k.nhanTruc, moTa: k.moTa,
         layGiaTri: bd.layGiaTri, nhanDoc: bd.nhanDoc, sanGiaTri: bd.sanGiaTri,
         taDayDu: bd.taDayDu, donViDiem: k.donViDiem,
         tenKyNay: k.tenKyCua(nam), tenKyTruoc: k.tenKyCua(namTruoc),
-        nhanKhung,
+        nhanKhung, cao: caoHeToaDo,
       }) + "</div>"
       + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
+  }
+
+  /* ─────────── Cân chiều cao theo MÀN HÌNH THẬT ───────────
+   *
+   * Chủ dự án chốt 12/09/2026, hai việc đi liền nhau:
+   *   1. hai cột phải cân nhau — trước đó lưới 10 ô bên phải cao gần gấp đôi
+   *      biểu đồ bên trái, vì mỗi bên tự cao theo nội dung của mình;
+   *   2. mở trang ra phải thấy CẢ bảng lẫn biểu đồ, không phải cuộn.
+   *
+   * Cả hai là MỘT bài toán: chia phần màn hình còn lại DƯỚI BẢNG cho khối
+   * biểu đồ, rồi ép hai cột cùng đúng chiều cao ấy. Đo bằng
+   * `getBoundingClientRect()` chứ không đoán bằng một con số px cố định —
+   * cùng cách `dieuChinhCaoBang()` bên `don-hang.js` đang tính chiều cao
+   * khung bảng đơn, và cùng lý do: chiều cao hàng tab, số line, cỡ chữ của
+   * người dùng đều đổi được.
+   */
+
+  /** Khoảng chừa dưới đáy màn hình, để khối không dính sát mép. */
+  const LE_DAY = 14;
+  /** Sàn chiều cao khối. Màn rất thấp (laptop 768px, hay bảng nhiều line) thì
+   *  thà cả trang cuộn thêm một chút còn hơn ép biểu đồ bẹp tới mức không
+   *  đọc được — cùng kỷ luật sàn 260px của khung bảng đơn. */
+  const SAN_KHOI = 240;
+
+  /** Chiều cao hệ toạ độ của biểu đồ trái, tính từ lần đo gần nhất. */
+  let caoHeToaDo = CAO_MAC_DINH;
+  let dangCanh = false;
+
+  /** Đo chỗ còn lại rồi ép hai cột cùng chiều cao.
+   *
+   *  Gọi SAU mỗi lượt vẽ. Nếu phép đo cho ra một tỉ lệ khác hẳn tỉ lệ đang
+   *  vẽ thì vẽ lại ĐÚNG MỘT lần nữa — `dangCanh` chặn vòng lặp, vì lượt vẽ
+   *  lại cũng gọi lại chính hàm này. */
+  function canhCaoKhoi() {
+    const khoi = $("o-dashboard"), oVe = $("skVe"), oLuoi = $("skLuoiNho");
+    if (!khoi || !oVe || !oLuoi) return;
+    /* DOM giả của bộ kiểm không có hình học — `getBoundingClientRect` trả 0.
+       Khi ấy giữ nguyên hình học mặc định, đúng hành vi trước lượt sửa này. */
+    const hop = khoi.getBoundingClientRect ? khoi.getBoundingClientRect() : null;
+    if (!hop || !window.innerHeight || !hop.height) return;
+
+    /* Phần màn hình còn lại DƯỚI đỉnh khối, trừ đi lề dưới và phần đệm +
+       dải nút của chính khối (đo bằng hiệu chiều cao, không cộng tay các
+       hằng số CSS — chúng đổi được mà không ai báo). */
+    const conLai = window.innerHeight - hop.top - LE_DAY;
+    const caoNgoai = hop.height - (oVe.parentElement ? oVe.parentElement.offsetHeight : hop.height);
+    const caoCot = Math.max(SAN_KHOI, conLai - caoNgoai);
+
+    oVe.style.height = caoCot + "px";
+    oLuoi.style.height = caoCot + "px";
+
+    /* Khung vẽ (phần còn lại của cột sau tiêu đề và chú giải) — `flex: 1`
+       nên nó đúng bằng chỗ thừa, không phụ thuộc hình đang vẽ cao bao nhiêu. */
+    const hopVe = $("skHopVe");
+    if (!hopVe || !hopVe.clientHeight || !hopVe.clientWidth) return;
+    /* viewBox phải CÙNG TỈ LỆ với khung, nếu không SVG tự chừa dải trắng. */
+    const canCao = Math.round(RONG * hopVe.clientHeight / hopVe.clientWidth);
+    if (dangCanh || Math.abs(canCao - caoHeToaDo) < 6) return;
+    caoHeToaDo = canCao;
+    dangCanh = true;
+    try { veBieuDoHienTai(); } finally { dangCanh = false; }
   }
 
   /** Hàng tab chỉ số [Doanh số] [Số đơn] — dùng CHUNG cho cả hai khối. */
@@ -526,6 +603,7 @@
     veTabChiSo();
     veBieuDoHienTai();
     veKhoiLuoiNho();
+    canhCaoKhoi();
   }
 
   /** Khung cố định của Dashboard, dựng một lần vào ô P3 chừa sẵn.
@@ -622,6 +700,10 @@
       if (o) o.hidden = !co;
     },
   };
+
+  /* Đổi cỡ cửa sổ là đổi chỗ còn lại — cùng lý do `don-hang.js` nghe `resize`
+     cho khung bảng đơn. */
+  window.addEventListener("resize", canhCaoKhoi);
 
   document.addEventListener("DOMContentLoaded", function () {
     firebase.auth().onAuthStateChanged(function (user) {

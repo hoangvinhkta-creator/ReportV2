@@ -1606,6 +1606,26 @@ một câu thay vì hiện một khung thời gian khác với biểu đồ bên
 **Bỏ "Cơ cấu theo Line"** (hai vòng khuyên lồng nhau) — xoá hẳn 143 dòng
 chứ không giấu sau một cờ, kèm bảng màu categorical chỉ nó dùng.
 
+**Chiều cao ĐO theo màn hình, không đoán bằng px cố định** (chủ dự án chốt
+cùng ngày, lượt sửa hiển thị). Hai yêu cầu — "hai cụm phải cân nhau" và
+"mở trang ra thấy cả bảng lẫn biểu đồ, không phải cuộn" — là MỘT phép
+chia: `canhCaoKhoi()` lấy phần màn hình còn lại dưới bảng
+(`getBoundingClientRect().top` so với `window.innerHeight`, cùng cách
+`dieuChinhCaoBang()` tính khung bảng đơn), trừ phần đệm và dải nút, rồi ép
+hai cột CÙNG chiều cao ấy.
+
+Biểu đồ lớn vì vậy không còn `viewBox` cao cố định 200: chiều cao hệ toạ
+độ tính lại theo TỈ LỆ của khung vẽ, nếu không SVG giữ tỉ lệ cũ và tự chừa
+dải trắng — đúng triệu chứng "cột trái trông hụt". Lượt đo gọi lại lượt
+vẽ, mà lượt vẽ lại gọi lượt đo, nên có chốt `dangCanh` chặn vòng lặp và
+ngưỡng 6px chặn rung.
+
+Sàn 240px: màn rất thấp hay bảng nhiều line thì thà cả trang cuộn thêm một
+chút còn hơn ép biểu đồ bẹp tới mức không đọc được. Cụm lưới nhỏ có van an
+toàn riêng (`overflow-y: auto`) — nó cuộn trong chính nó thay vì đẩy cả
+trang dài ra. Ô nhỏ hạ từ 56 xuống 44 đơn vị: mười ô xếp 3–4 cột là 3–4
+HÀNG, nên mỗi ô cao thêm 12px là cả cụm cao thêm gần 50px.
+
 #### Câu hỏi còn mở của P6 — hàng nút tháng
 
 Hai hàng nút tháng của app đọc **hai nguồn khác nhau**:
