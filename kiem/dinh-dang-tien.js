@@ -76,11 +76,20 @@ console.log('\n2) Đúng hàm được gọi ở đúng chỗ');
 {
   /* Cắt lấy phần vẽ MỘT DÒNG HÀNG (các ô `tr.appendChild(o(...))`) và phần
      vẽ DÒNG TỔNG, rồi soi từng phần dùng hàm nào. */
-  const dongHang = DON.match(/tr\.appendChild\(o\(d\.gia_nhap[\s\S]*?tr\.appendChild\(o\(d\.loi_nhuan[^\n]*\n/);
+  const dongHang = DON.match(/tr\.appendChild\(oGiaNhap\(d\)\)[\s\S]*?tr\.appendChild\(o\(d\.loi_nhuan[^\n]*\n/);
   ok('tìm thấy đoạn vẽ dòng hàng', !!dongHang, true);
   ok('dòng hàng dùng nghin(), KHÔNG dùng nghinTron()',
      /nghinTron\(/.test(dongHang ? dongHang[0] : 'nghinTron('), false);
   ok('  · và có gọi nghin()', /nghin\(/.test(dongHang ? dongHang[0] : ''), true);
+
+  /* Ô Giá nhập tách thành hàm riêng từ P4 (nó còn phải nói lý do khi chưa có
+     giá), nên phép canh đơn vị tiền phải theo nó sang đó — không thì đúng cái
+     cột vừa mọc ra số tiền lại là cột không ai canh cách viết. */
+  const oGia = DON.match(/function oGiaNhap\(d\)\{?[\s\S]*?\n  \}/);
+  ok('tìm thấy hàm oGiaNhap()', !!oGia, true);
+  ok('ô Giá nhập dùng nghin(), KHÔNG dùng nghinTron()',
+     /nghinTron\(/.test(oGia ? oGia[0] : 'nghinTron('), false);
+  ok('  · và có gọi nghin()', /nghin\(/.test(oGia ? oGia[0] : ''), true);
 
   /* Bốn chỗ tổng: tổng kỳ/line, tổng của một ngày, cộng đơn, bảng Dashboard. */
   const tong = [

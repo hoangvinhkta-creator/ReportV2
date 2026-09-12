@@ -120,6 +120,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   gai(dungDb({}));
   const mod = await import('file://' + path.join(GOC, 'src/index.js'));
   const D = await import('file://' + path.join(GOC, 'engine/src/dong-hang.mjs'));
+  const K = await import('file://' + path.join(GOC, 'engine/src/khop-ma.mjs'));
   const w = mod.default;
   globalThis.fetch = fetchThat;
 
@@ -131,6 +132,11 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     async doiChieuKy(a, b, c) { return D.doiChieuKy(a, b, c); },
     async dungBangDon(a, b, c, d) { return D.dungBangDon(a, b, c, d); },
     async tomTatLine(a, b) { return D.tomTatLine(a, b); },
+    /* P4 — bộ này KHÔNG đặt `REPORT_API_KEY`, nên Gateway không gọi được
+       Tracking và tự lùi về `dungBangDon()` trần. Đó chính là điều đáng canh
+       ở đây: thiếu khoá thì đường tải sổ vẫn chạy trọn vẹn, không hỏng lây. */
+    async kyCoKhopMa(ky) { return K.kyCoKhopMa(ky); },
+    async maCanGiaVon(dong, n, ky) { return K.maCanGiaVon(dong, n, ky); },
   });
 
   const ENV = () => ({

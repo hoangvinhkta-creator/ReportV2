@@ -118,6 +118,19 @@ const b64u = (b) => Buffer.from(b).toString('base64')
         if (uu.pathname === '/api/xuat/inv_map')
           return new Response(JSON.stringify({ map: t.invMap || {} }),
             { headers: { 'content-type': 'application/json' } });
+        if (uu.pathname === '/api/min-ngay') {
+          if (t.minHong) return new Response('{"ok":false,"ly":"nguon-hong"}', { status: 502 });
+          const b = opt && opt.body ? JSON.parse(opt.body) : {};
+          let than;
+          try { than = typeof t.min === 'function' ? t.min(b) : (t.min || { records: [], errors: [] }); }
+          catch (e) {
+            if (e.ma409) return new Response('{"ok":false,"ly":"nguon-dang-ghi"}', { status: 409 });
+            throw e;
+          }
+          return new Response(JSON.stringify({ currency_unit: 'VND_THOUSAND',
+            next_cursor: null, ...than }),
+            { headers: { 'content-type': 'application/json' } });
+        }
         if (uu.pathname === '/api/inv-map') {
           if (t.ghiTuChoi)
             return new Response(JSON.stringify({ ok: false, ly: t.ghiTuChoi }),
@@ -162,10 +175,14 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     async phienBan() { return 'kiem'; },
     async tomTatLine(a, b) { return D.tomTatLine(a, b); },
     async dungBangDon(a, b, c, d) { return D.dungBangDon(a, b, c, d); },
-    async dungBangDonKemMa(a, b, c, d, n) {
-      return K.khopMaChoBangDon(D.dungBangDon(a, b, c, d), n);
+    async dungBangDonKemMa(a, b, c, d, n, ky, mn) {
+      const bang = K.khopMaChoBangDon(D.dungBangDon(a, b, c, d), n, ky);
+      if (mn) K.dienGiaNhap(bang, mn);
+      return bang;
     },
     async khoaTenHang(ten) { return K.khoaTenHang(ten); },
+    async kyCoKhopMa(ky) { return K.kyCoKhopMa(ky); },
+    async maCanGiaVon(dong, n, ky) { return K.maCanGiaVon(dong, n, ky); },
   });
 
   const ENV = (them) => ({
@@ -200,7 +217,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
 
   async function goi(duong, o) {
     const opt = o || {};
-    TRK.xoaDem();              // mỗi phép thử bắt đầu từ bộ đệm sạch
+    TRK.xoaDem(); TRK.xoaDemMin();   // mỗi phép thử bắt đầu từ bộ đệm sạch
     daGoiTrk = [];
     gai(dungDb(opt.hat || HAT()), opt.trk);
     try {
@@ -352,7 +369,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
 
   console.log('\nBộ đệm bảng giá');
 
-  TRK.xoaDem();
+  TRK.xoaDem(); TRK.xoaDemMin();
   daGoiTrk = [];
   gai(dungDb(HAT()), {});
   try {
@@ -368,6 +385,108 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   /* `inv_map` CỐ Ý không nhớ tạm: nó là thứ người dùng vừa sửa ở lượt bấm
      trước, và hiện lại bản cũ là làm người ta tưởng lượt gán vừa rồi trượt. */
   ok('bản đồ phân loại LUÔN kéo lại, không nhớ tạm', demMap, 2);
+
+  /* ───────── E. Mốc kỳ: ngoài phạm vi thì KHÔNG hỏi Tracking ───────── */
+
+  console.log('\nE) Kỳ ngoài phạm vi dữ liệu giá');
+
+  {
+    const hat = HAT();
+    hat.bc.dong['2026-08'] = hat.bc.dong['2026-09'];
+    r = await goi('/api/don-hang?ky=2026-08', { hat });
+    ok('kỳ 08/2026 vẫn ra bảng đơn', r.ma, 200);
+    ok('  · và nói rõ là ngoài phạm vi', r.js.trong_pham_vi_ma, false);
+    /* Điểm mấu chốt của mục này: KHÔNG một lượt gọi nào sang Tracking. Kéo
+       bảng giá (~400 KB) và vài nghìn bản ghi Min về cho một kỳ không dùng
+       được chúng là trả tiền cho một việc chắc chắn vô ích. */
+    ok('  · KHÔNG gọi Tracking lượt nào', daGoiTrk.length, 0);
+    /* Gateway đi đường `dungBangDon()` trần, nên không có bảng kê nào được
+       dựng — đó là kết quả mong muốn, không phải thiếu sót. Engine vẫn có
+       chốt riêng cho ca bị gọi với kỳ ngoài phạm vi (xem `kiem/khop-ma.js`
+       mục F); hai lớp, hai lý do: Gateway để khỏi tốn lượt mạng, Engine để
+       khỏi tính sai nếu một chỗ gọi khác quên chốt. */
+    ok('  · không dựng bảng kê hàng chờ nào', r.js.bang.tom_tat_ma, undefined);
+    ok('  · và không dòng nào bị gắn lý do chưa khớp',
+      moiDong(r.js.bang).some((d) => d.ly_do_chua_ma), false);
+  }
+
+  r = await goi('/api/don-hang?ky=2026-09');
+  ok('kỳ 09/2026 thì trong phạm vi', r.js.trong_pham_vi_ma, true);
+  ok('  · và CÓ gọi Tracking',
+    daGoiTrk.some((g) => g.duong === '/api/xuat/board'), true);
+
+  /* ───────── F. Giá nhập theo ngày bán ───────── */
+
+  console.log('\nF) Giá nhập theo ngày bán');
+
+  const minCho = (gia) => ({
+    records: [{ product_code: '65C6K', effective_date: '2026-09-08',
+      min_price: gia, price_status: 'OK', day_status: 'FINAL',
+      observed_on: '2026-09-08', carried_from: null }],
+    errors: [],
+  });
+
+  r = await goi('/api/don-hang?ky=2026-09', { trk: { min: minCho(5250) } });
+  {
+    const d = moiDong(r.js.bang).find((x) => x.ma_san_pham === 'Tivi TCL 65C6K');
+    /* Đơn vị đi qua trọn đường dây: Tracking đếm bằng NGHÌN đồng, bảng đơn
+       đếm bằng ĐỒNG. Bài này canh đúng chỗ hai thang đo gặp nhau. */
+    ok('min_price 5.250 (nghìn) tới màn hình là 5.250.000 đ', d.gia_nhap, 5250000);
+    ok('  · và lợi nhuận tính từ đó', d.loi_nhuan, 9000000 - 5250000);
+  }
+
+  const luotMin = daGoiTrk.find((g) => g.duong === '/api/min-ngay');
+  ok('có gọi POST /api/min-ngay', !!luotMin, true);
+  ok('  · khoá đi ở header', luotMin.khoa, KHOA_BC);
+  /* Hỏi trọn tháng của kỳ, không phải "hôm nay" — một đơn ngày 01/09 phải
+     lấy giá của mốc 01/09, không phải giá của ngày tải file lên. */
+  ok('  · hỏi đúng khoảng ngày của kỳ',
+    [luotMin.than.date_from, luotMin.than.date_to], ['2026-09-01', '2026-09-30']);
+  /* Chỉ hỏi mã ĐÃ KHỚP. Hỏi cả bảng giá là vượt trần 100 mã/trang của hợp
+     đồng và kéo về hàng trăm nghìn bản ghi không ai dùng. */
+  /* HAT() có hai dòng: một khớp được `65C6K`, một là câu văn xuôi không khớp
+     mã nào. Nên tập hỏi đúng bằng MỘT mã — dòng chưa khớp không sinh ra một
+     lượt hỏi giá vô nghĩa. */
+  ok('  · chỉ hỏi những mã đã khớp được', luotMin.than.product_codes, ['65C6K']);
+
+  /* Nguồn Min hỏng KHÔNG được biến thành giá 0. */
+  r = await goi('/api/don-hang?ky=2026-09', { trk: { minHong: true } });
+  ok('Min hỏng: bảng đơn vẫn ra', r.ma, 200);
+  ok('  · kèm cờ nguồn hỏng', !!r.js.loi_nguon_ma, true);
+  {
+    const ds = moiDong(r.js.bang);
+    ok('  · và KHÔNG dòng nào có giá nhập bịa ra',
+      ds.some((x) => x.gia_nhap !== null && x.gia_nhap !== undefined), false);
+  }
+
+  /* Phân trang: hợp đồng trả tối đa 100 mã một trang. Bỏ trang sau là mất
+     giá vốn của một phần mã mà bảng vẫn trông bình thường. */
+  {
+    let lan = 0;
+    r = await goi('/api/don-hang?ky=2026-09', { trk: { min: (b) => {
+      lan++;
+      if (!b.cursor) return { records: [], errors: [], next_cursor: 'rev1:1' };
+      return { records: minCho(5250).records, errors: [], next_cursor: null };
+    } } });
+    ok('đi hết mọi trang của min-ngay', lan, 2);
+    ok('  · và gộp được bản ghi ở trang cuối',
+      moiDong(r.js.bang).find((x) => x.ma_san_pham === 'Tivi TCL 65C6K').gia_nhap, 5250000);
+  }
+
+  /* 409 = Tracking cố ý từ chối cả trang thay vì trả một ảnh ghép của hai
+     trạng thái database. Đúng việc phải làm là chờ rồi hỏi lại — báo lỗi ở
+     đây là biến một cơ chế an toàn thành một sự cố trước mắt người dùng. */
+  {
+    let lan = 0;
+    r = await goi('/api/don-hang?ky=2026-09', { trk: { min: (b) => {
+      lan++;
+      if (lan === 1) { const e = new Error('409'); e.ma409 = true; throw e; }
+      return minCho(5250);
+    } } });
+    ok('409 thì THỬ LẠI, không báo lỗi ra màn hình', r.js.loi_nguon_ma, null);
+    ok('  · và lấy được giá ở lượt sau',
+      moiDong(r.js.bang).find((x) => x.ma_san_pham === 'Tivi TCL 65C6K').gia_nhap, 5250000);
+  }
 
   xong();
 })();

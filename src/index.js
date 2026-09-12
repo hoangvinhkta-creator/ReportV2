@@ -1,7 +1,7 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
 import { docDb, docDbNong, ghiDb, vaDb, xoaDb } from './firebase.js';
 import {
-  docNguonTracking, docMaBangGia, ghiPhanLoai, cauLoiPhanLoai, LoiTracking,
+  docNguonTracking, docMaBangGia, ghiPhanLoai, cauLoiPhanLoai, docMinNgay, LoiTracking,
 } from './tracking.js';
 
 /**
@@ -607,23 +607,50 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
    * Nên khi ấy phép khớp KHÔNG chạy chút nào, và `loi_nguon_ma` đi kèm phản
    * hồi để màn hình treo băng cảnh báo nói thẳng vì sao ba cột kia trống.
    * Ba trạng thái tách bạch: có mã / chưa có mã / CHƯA BIẾT vì nguồn hỏng. */
-  let nguon = null, loi_nguon_ma = null;
+  /* Mốc khớp mã là một LUẬT NGHIỆP VỤ nên Engine giữ nó, Gateway chỉ hỏi.
+     Hỏi TRƯỚC khi đi lấy gì: kỳ ngoài phạm vi thì không kéo bảng giá (~400 KB)
+     lẫn Min theo ngày (vài nghìn bản ghi) về làm gì. */
+  let trongPhamVi;
   try {
-    nguon = await docNguonTracking(env);
+    trongPhamVi = await env.REPORT_ENGINE.kyCoKhopMa(ky);
   } catch (e) {
-    if (!(e instanceof LoiTracking)) throw e;
-    loi_nguon_ma = e.ly;
-    nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + e.ly });
+    throw new LoiXacThuc(503, "engine-loi-pham-vi:" + (e && e.message));
+  }
+
+  let nguon = null, minNgay = null, loi_nguon_ma = null;
+  if (trongPhamVi) {
+    try {
+      nguon = await docNguonTracking(env);
+      /* Hỏi Engine mã nào có mặt trong kỳ, rồi mới hỏi Tracking giá của đúng
+         những mã ấy theo TỪNG NGÀY BÁN. Một đơn ngày 01/09 lấy giá của mốc
+         01/09, không phải giá của hôm tải file lên. */
+      const maCan = await env.REPORT_ENGINE.maCanGiaVon(dong.val || {}, nguon, ky);
+      minNgay = await docMinNgay(env, ky, maCan);
+    } catch (e) {
+      if (!(e instanceof LoiTracking)) throw e;
+      /* Tracking hỏng thì KHÔNG làm hỏng cả bảng đơn: doanh số, số đơn, khách
+         hàng đều đọc được mà không cần bảng giá, và chặn hẳn màn hình vì một
+         nhánh phụ không trả lời là lấy đi nhiều hơn phần bị mất.
+
+         Nhưng cũng KHÔNG im lặng trả một bảng "chưa dòng nào khớp" — đó đúng
+         là thứ CLAUDE.md cấm: một sự cố mạng nói một kết luận nghiệp vụ thay
+         người. Nên phép khớp KHÔNG chạy chút nào, và `loi_nguon_ma` đi kèm để
+         màn hình nói thẳng vì sao mấy cột kia trống. Ba trạng thái tách bạch:
+         có / chưa có / CHƯA BIẾT vì nguồn hỏng. */
+      nguon = null; minNgay = null;
+      loi_nguon_ma = e.ly;
+      nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + e.ly });
+    }
   }
 
   try {
     const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
     const bang = nguon
       ? await env.REPORT_ENGINE.dungBangDonKemMa(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon)
+        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky, minNgay)
       : await env.REPORT_ENGINE.dungBangDon(
         dong.val || {}, khach.val || {}, bangLine.val, line || null);
-    return { ky, tom_tat_line, bang, loi_nguon_ma };
+    return { ky, tom_tat_line, bang, loi_nguon_ma, trong_pham_vi_ma: trongPhamVi };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
