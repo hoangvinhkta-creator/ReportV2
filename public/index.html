@@ -101,17 +101,37 @@
      không đọc được. */
   .daiDieuKhien { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
   .daiDieuKhien .tabDonVi { margin-bottom: 10px; }
-  .haiCotBieuDo { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; align-items: start; }
+  /* `align-items: stretch` (mặc định của grid) là điều kiện để hai cột CÙNG
+     chiều cao — chiều cao ấy do `canhCaoKhoi()` đo và gán, xem suc-khoe.js.
+     Bản trước dùng `align-items: start` nên mỗi cột tự cao theo nội dung, và
+     lưới 10 ô bên phải cao gần gấp đôi biểu đồ bên trái. */
+  .haiCotBieuDo { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
   @media (max-width: 1000px) { .haiCotBieuDo { grid-template-columns: 1fr; } }
+  /* Cả hai cột là flex dọc: tiêu đề/chú giải cao bao nhiêu tuỳ chữ, phần
+     CÒN LẠI (`flex: 1`) mới là khung vẽ. Nhờ vậy JS không phải cộng tay
+     chiều cao của tiêu đề — thứ đổi theo cỡ chữ của người dùng. */
+  .cotTrai, .cotPhai { display: flex; flex-direction: column; min-height: 0; }
   .cotPhai { border-left: 1px solid #e5e7eb; padding-left: 18px; }
   @media (max-width: 1000px) {
     .cotPhai { border-left: none; border-top: 1px solid #e5e7eb; padding-left: 0; padding-top: 14px; }
   }
+  /* Khung vẽ của biểu đồ lớn — `min-height: 0` bắt buộc, không có nó thì
+     một flex item không co xuống dưới kích thước nội dung và cả cột phình
+     ra khỏi chiều cao đã ép. */
+  .khoiBieuDo { flex: 1 1 0; min-height: 0; }
+  .khoiBieuDo svg { display: block; width: 100%; height: 100%; }
 
   /* ---- Lưới nhỏ — xu hướng theo Line ---- */
-  .luoiXuHuong { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
-  .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 8px; }
-  .tenMini { margin: 0 0 4px; font-size: 11px; font-weight: 600; color: #4b5563;
+  /* Ô nhỏ hơn (120px thay vì 130px) để cùng bề rộng cột xếp được nhiều cột
+     hơn, tức ít hàng hơn, tức cụm thấp xuống cho cân với biểu đồ bên trái.
+     `overflow-y: auto` là VAN AN TOÀN: màn quá thấp hay quá nhiều line thì
+     riêng cụm này cuộn, thay vì đẩy cả trang dài ra — chủ dự án chốt mở
+     trang là thấy hết, không phải kéo thanh trượt. */
+  .luoiXuHuong { flex: 1 1 0; min-height: 0; overflow-y: auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 8px; margin-top: 8px; align-content: start; }
+  .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 6px; }
+  .tenMini { margin: 0 0 2px; font-size: 11px; line-height: 1.3; font-weight: 600; color: #4b5563;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .oMiniRong { display: flex; flex-direction: column; justify-content: center; min-height: 56px; }
   .miniRong { margin: 0; font-size: 11px; color: #9ca3af; }
