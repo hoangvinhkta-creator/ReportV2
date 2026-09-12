@@ -2,12 +2,35 @@
 # Tên Worker: reportv2-gateway — xác nhận cùng chủ dự án trước khi deploy lần
 # đầu (P1, ROADMAP.md).
 #
-# *.workers.dev lúc làm (Q6 trong docs/audit/...): route thật và
-# ENFORCE_CANONICAL_HOST là việc của P8, không mở trước.
+# P7 (12/09/2026) — V2 nhận lại tên miền `reports.tinphatcrm.com` của V1, và
+# Cloudflare Access bị BỎ: đăng nhập Firebase của chính app này là lớp duy
+# nhất (chủ dự án chốt 12/09/2026, thu hẹp P7 còn đúng hai việc này). Trước
+# đó Q6 của `docs/audit/...` để V2 ở `*.workers.dev` và hoãn route thật —
+# phần hoãn đó nay hết hiệu lực, phần còn lại của Q6 không đổi.
 
 name = "reportv2-gateway"
 main = "src/index.js"
 compatibility_date = "2026-09-11"
+
+# ---- Tên miền thật (P7) ----
+#
+# Khai ROUTE, không khai `custom_domain = true`, và đây là lý do: host này
+# đang có một bản ghi DNS proxied trỏ về Render (V1). Một route chạy TRƯỚC
+# origin, nên lượt deploy này là chính lượt chuyển tên miền sang V2 — bản ghi
+# cũ nằm lại nhưng không còn ai đi tới. `custom_domain = true` thì ngược lại:
+# Cloudflare đòi chiếm luôn bản ghi DNS và TỪ CHỐI khi đang có bản ghi khác,
+# tức phải xoá đường về V1 trước rồi mới deploy được — đổi một bước lùi được
+# thành hai bước không lùi được.
+#
+# V1 KHÔNG còn lối vào nào khác sau lượt này: `render.yaml` của nó đặt
+# `renderSubdomainPolicy: disabled`, nên địa chỉ `*.onrender.com` đã tắt và
+# `reports.tinphatcrm.com` là cửa duy nhất của V1. Route này lấy đúng cửa đó.
+# Đó cũng là lý do bỏ Access không mở V1 ra cho ai: V1 thành tối, không phải
+# thành công khai. Điều kiện duy nhất phải giữ: đừng xoá route này khi Render
+# của V1 còn sống — V1 không có đăng nhập nào cả (audit F-04).
+[[routes]]
+pattern = "reports.tinphatcrm.com/*"
+zone_name = "tinphatcrm.com"
 
 # Bật xem log (Cloudflare Dashboard → Observability). ĐỂ Ở ĐÂY, không bật
 # bằng nút trên Dashboard: nút đó chỉ đổi cấu hình của MỘT lần build — build
@@ -60,6 +83,23 @@ service = "reportv2-engine"
 # khai ở đây để đổi được mà không phải sửa code.
 FB_PROJECT_ID = "tinphattracking"
 FB_DB_URL = "https://tinphattracking-default-rtdb.asia-southeast1.firebasedatabase.app"
+
+# Tên miền DUY NHẤT được phục vụ (P7). Là dữ liệu, không phải hằng số trong
+# mã: đổi tên miền không được là một lần sửa code. Phải khớp đúng hostname
+# của `[[routes]]` ở trên — `kiem/dinh-tuyen.js` canh đúng chỗ đó, vì hai
+# nơi khai cùng một tên miền mà lệch nhau thì cờ dưới đây chuyển hướng người
+# dùng sang một host Worker này không hề phục vụ.
+CANONICAL_HOST = "reports.tinphatcrm.com"
+
+# Cờ đóng địa chỉ `*.workers.dev`: "1" thì mọi host khác CANONICAL_HOST bị
+# chỉ sang địa chỉ thật (GET/HEAD) hoặc bị 421 (method khác).
+#
+# ĐANG LÀ "0" CÓ CHỦ Ý, và đây là thứ tự bắt buộc: bật "1" trước khi route
+# trên thật sự chiếm được host thì `*.workers.dev` chuyển hướng sang một tên
+# miền còn đang trả về V1 — tự đẩy mình ra khỏi bản V2 vừa deploy, và không
+# còn địa chỉ nào để vào mà sửa. Bật cờ là MỘT LƯỢT COMMIT RIÊNG, sau khi mở
+# `reports.tinphatcrm.com` bằng máy thật và thấy V2.
+ENFORCE_CANONICAL_HOST = "0"
 
 # ---- Secret còn thiếu, phải đặt tay trước khi deploy thật ----
 # FB_SA_EMAIL, FB_SA_KEY — tài khoản dịch vụ Firebase, dùng để đọc

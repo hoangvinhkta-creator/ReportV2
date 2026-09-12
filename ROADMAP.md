@@ -141,6 +141,17 @@ Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/d
   ngay dưới bảng [Tổng hợp], gộp Doanh số + Số đơn vào một khung hai tab,
   bố cục hai cột với "Xu hướng theo Line" bên phải, bỏ vòng "Cơ cấu theo
   Line". Xem "Biểu đồ" bên dưới.
+**P7 CHẠY SONG SONG (12/09/2026).** Chủ dự án thu hẹp P7 còn ĐÚNG hai
+việc: giữ tên miền `reports.tinphatcrm.com` cho V2, và màn đăng nhập chỉ
+cần Firebase (bỏ Cloudflare Access). Mọi việc khác của P7 cũ — di trú dữ
+liệu còn lại, đối chiếu chéo, xoay khoá, tắt Render/PostgreSQL/R2 — **BỎ**
+theo chỉ thị. Lượt 1 (mã + cấu hình) đã xong và chỉ chạm `wrangler.toml`,
+`src/index.js`, `kiem/dinh-tuyen.js` — **không chạm file nào của P6/P6b**.
+Lượt 2 là năm bước chủ dự án bấm trên Firebase + Cloudflare, theo đúng thứ
+tự ở mục "P7" bên dưới; bước 1 (thêm `reports.tinphatcrm.com` vào
+Authorized domains của Firebase) làm TRƯỚC, thiếu nó là app không còn
+đường đăng nhập nào.
+
 - **Còn lại của P6:** một câu hỏi chưa chốt — hàng nút tháng của màn báo
   cáo chỉ liệt kê kỳ CÓ DÒNG HÀNG (`bc/dong`, từ 08/2026), trong khi
   biểu đồ đọc `bc/ky` (đủ 20 tháng từ 01/2025). Nên hiện tại **biểu đồ
@@ -964,8 +975,8 @@ không mất. Lộ trình từ đây có CHÍN phase (P0–P8), không còn tám
 | P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | ✅ Xong — 12/09, chủ dự án đã nghiệm thu |
 | P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ✅ Đóng — 12/09 (gồm cả "Chỉnh sửa tay + audit trail" cũ của P5, xem lát P5-1) |
 | P5 | Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026 — nội dung cũ đã làm xong trong P4)* | — | ✅ Đóng — 12/09, chủ dự án đã nghiệm thu |
-| P6 | Dựng lại tab Tổng hợp + Biểu đồ *(định nghĩa lại 12/09/2026 — nội dung cũ dời xuống P8)* | chưa ước lượng — chưa chốt hết câu hỏi | ⬜ Chưa bắt đầu |
-| P7 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
+| P6 | Dựng lại tab Tổng hợp + Biểu đồ *(định nghĩa lại 12/09/2026 — nội dung cũ dời xuống P8)* | chưa ước lượng — chưa chốt hết câu hỏi | 🔄 Đang làm — lượt 1–4 xong |
+| P7 | Lấy lại tên miền cho V2 *(thu hẹp còn 2 việc, 12/09/2026)* | 1 buổi | 🔄 Lượt 1 (mã + cấu hình) xong 12/09 — chờ chủ dự án bấm lượt 2 |
 | P8 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
 
 ---
@@ -1778,25 +1789,96 @@ bài, không phải chờ code.
 
 ---
 
-### P7 — Khai tử V1
+### P7 — Lấy lại tên miền cho V2 *(chủ dự án thu hẹp phạm vi 12/09/2026)*
 
-Phần "di trú số 2025 → nay" đã làm ở P2 (qua sổ chi tiết bán hàng thô,
-không qua PostgreSQL/JSONL của V1 — hai nguồn đó chỉ có tổng cả công ty,
-không tách theo nhân viên). Bốn việc còn lại khi khai tử (xem
-`docs/audit/...` mục 5):
+**Phạm vi CHÍNH THỨC, đúng hai việc** — chủ dự án chốt 12/09/2026 sau khi
+đọc bản kiểm kê dữ liệu V1 ở cuối mục này:
 
-1. Đối chiếu chéo một lần với PostgreSQL + JSONL của V1 (không phải
-   nguồn trích chính, chỉ để xác nhận không lệch) trước khi tắt bất cứ
-   gì.
-2. Xoay `REPORT_API_KEY`.
-3. Tắt Render service, PostgreSQL, R2 bucket.
-4. Trỏ `reports.tinphatcrm.com` sang V2 (bật `ENFORCE_CANONICAL_HOST=1`).
+1. Giữ tên miền `reports.tinphatcrm.com` cho V2.
+2. Màn đăng nhập chỉ cần Firebase — **bỏ Cloudflare Access**.
 
-Chạy song song hai hệ một kỳ đầy đủ trước khi tắt, để có một lần đối
-chiếu thật.
+Mọi việc khác của bản P7 cũ (di trú dữ liệu còn lại, đối chiếu chéo
+PostgreSQL/JSONL, xoay `REPORT_API_KEY`, tắt Render/PostgreSQL/R2, chạy
+song song một kỳ) **BỎ** theo chỉ thị của chủ dự án. Không mở lại chúng
+mà không có chốt mới — bản kiểm kê cuối mục này là để sau này còn đọc
+được lý do, không phải một danh sách việc treo.
 
-**Ra khỏi phase khi:** Render, PostgreSQL, R2 đã tắt; khoá đã xoay; hoá
-đơn hai nơi về 0.
+#### Lượt 1 — mã và cấu hình: XONG (12/09/2026)
+
+- `wrangler.toml`: khai `[[routes]]` cho `reports.tinphatcrm.com/*`, zone
+  `tinphatcrm.com`. Khai **route** chứ không `custom_domain = true` có lý
+  do — đọc chú thích tại chỗ trong file.
+- `src/index.js`: `chuyenVeTenMienChinh()` là bước 0 của `xuLy` — host
+  khác `CANONICAL_HOST` thì GET/HEAD ra **301** về địa chỉ thật (giữ path
+  + query), method khác ra **421** (không chuyển hướng: 301 làm client đổi
+  POST thành GET).
+- `[vars]`: `CANONICAL_HOST = "reports.tinphatcrm.com"`,
+  `ENFORCE_CANONICAL_HOST = "0"`.
+- `kiem/dinh-tuyen.js` mục 8/9/10 (+54 bài, tổng **1859 đạt**): hành vi cờ
+  tắt/bật, cờ chỉ bật bằng đúng chuỗi `"1"`, **hostname của route phải
+  khớp đúng `CANONICAL_HOST`**, và — vì Access đã bỏ — mọi đường trong
+  `API_ROUTES` bị gọi không kèm token phải ra 401.
+
+Cờ **đang là `"0"` có chủ ý**. Bật sẵn `"1"` trước khi route thật sự chiếm
+được host thì `*.workers.dev` chuyển hướng sang một tên miền còn đang trả
+về V1 — tự đẩy mình ra khỏi bản V2 vừa deploy, và không còn địa chỉ nào để
+vào mà sửa.
+
+#### Lượt 2 — việc của chủ dự án, theo ĐÚNG thứ tự này
+
+1. **Firebase Console → Authentication → Settings → Authorized domains →
+   thêm `reports.tinphatcrm.com`.** Làm việc này TRƯỚC. Thiếu nó thì đăng
+   nhập trên tên miền mới chết hẳn với `auth/unauthorized-domain` — và vì
+   P7 bỏ Access, Firebase là lớp đăng nhập DUY NHẤT, tức app không còn
+   đường vào nào cả.
+2. Deploy Gateway. Route ở bước này là chính lượt chuyển tên miền: một
+   Worker route chạy TRƯỚC origin, nên `reports.tinphatcrm.com` bắt đầu
+   trả về V2 ngay, bản ghi DNS cũ trỏ Render nằm lại nhưng không còn ai đi
+   tới. Lùi được bằng cách xoá route.
+3. Mở `reports.tinphatcrm.com` bằng máy thật, đăng nhập, xem đúng V2.
+4. Bỏ Cloudflare Access application của `reports.tinphatcrm.com`. **Giữ
+   nguyên** policy Bypass path `api` của `price.tinphatcrm.com` — CRM dùng
+   chung, không liên quan.
+5. Sửa `ENFORCE_CANONICAL_HOST` thành `"1"` (một commit riêng, một dòng),
+   deploy. Từ đây `*.workers.dev` chỉ còn một việc: chỉ sang địa chỉ thật.
+
+**Một điều kiện phải giữ về sau:** đừng xoá route ở bước 2 khi Render của
+V1 còn sống. V1 **không có đăng nhập nào cả** (audit F-04) và Access nay
+đã bỏ, nên xoá route là để `reports.tinphatcrm.com` rơi về V1 mà không
+lớp nào chặn. Hôm nay việc đó an toàn vì `render.yaml` của V1 đặt
+`renderSubdomainPolicy: disabled` — `*.onrender.com` đã tắt, nên
+`reports.tinphatcrm.com` là cửa duy nhất của V1 và route này lấy đúng cửa
+đó: V1 thành **tối**, không thành công khai.
+
+**Ra khỏi phase khi:** `reports.tinphatcrm.com` trả về V2, đăng nhập
+Firebase chạy trên tên miền đó, Access đã bỏ, `ENFORCE_CANONICAL_HOST =
+"1"`.
+
+#### Kiểm kê dữ liệu V1 — đã soi 12/09/2026, chủ dự án chốt BỎ
+
+Giữ lại đúng để sau này còn đọc được đã bỏ cái gì và vì sao bỏ được:
+
+| Thứ ở V1 | Quy mô thật | Vì sao bỏ được |
+|---|---|---|
+| `data/chart_gapfill/daily_revenue.jsonl` | 579 ngày, 02/01/2025→31/08/2026 | V2 có số MỊN HƠN ở `bc/ky` (ngày × nhân viên), từ nguồn khác (sổ chi tiết bán hàng, không phải workbook kế toán) |
+| `data/chart_gapfill/daily_orders.jsonl` | 579 ngày, 29.883 đơn | Cùng nguồn V2 đã nạp |
+| `data/historical_confirmed/registry.jsonl` | **2 dòng** giá vốn xác nhận tay (BH62063 02/01/2026, BH62439 08/01/2026) | V2 chỉ có dòng hàng từ ~07/09/2026 — không có dòng nào để áp |
+| `data/product_identity/mappings.jsonl` | **1 dòng** (`Máy Giặt LG T2109NT1G` → `T2109NT1G`) | Gán lại tay mất vài giây nếu `inv/map` Tracking chưa có |
+| `data/confirmed_adjustments/…jsonl` | **0 byte** | Rỗng |
+| `config/*.yaml` (8 file) | Luật nghiệp vụ V1 | V2 đã chốt lại theo cách riêng (KPI + hệ số nhập tay trên UI, `line.mjs`, `khop-ma.mjs`) |
+| PostgreSQL (Render) | 21 bảng; 10 bảng là quyết định của NGƯỜI, không tái tạo được từ file | Chủ dự án chốt bỏ. Repo V1 **không có công cụ nào xuất mấy bảng đó ra file** — nếu về sau muốn cứu thì phải viết trước khi tắt PostgreSQL |
+| R2 `reports-web-runs` | artifact theo `run_id` | Bản ghi lượt chạy, không phải nguồn số liệu |
+
+Một lệch đã biết trước nếu sau này có ai đối chiếu: `daily_orders.jsonl`
+xếp mỗi chứng từ vào **ngày nhỏ nhất**, còn V2 đếm `so_don` theo từng ô
+`(kỳ, nhân viên, ngày)` — một chứng từ trải hai ngày hoặc hai người được
+đếm hai lần, và V2 tự báo bằng `don-nhieu-ngay` / `don-nhieu-nhan-vien` /
+`so-don-cong-doi`. Lệch giải thích được, **không được "sửa cho khớp"**.
+
+Tắt Render / PostgreSQL / R2 và xoay `REPORT_API_KEY` nằm ngoài P7 theo
+chốt này. `REPORT_API_KEY` hiện dùng chung: Worker `tracking` giữ giá trị
+gốc, V2 đặt ở Secret của **Gateway** (`src/tracking.js` — Engine không
+giữ khoá), V1 đặt ở env Render tên `TRACKING_REPORT_API_KEY`.
 
 ---
 

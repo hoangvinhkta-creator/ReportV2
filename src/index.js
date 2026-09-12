@@ -16,6 +16,8 @@ import {
  * (qua Service Binding) → màn hình.
  *
  * Thứ tự xử lý:
+ *   0. Chặn host lạ — chỉ `CANONICAL_HOST` được phục vụ (P7, xem
+ *      `chuyenVeTenMienChinh`)
  *   1. Chặn method lạ (P1 chỉ cần GET/HEAD, chưa endpoint nào nhận POST)
  *   2. Chặn đường dẫn nhạy cảm
  *   3. Định tuyến /api/*
@@ -1287,7 +1289,70 @@ function methodChoPhep(duong) {
   return co ? ra : null;
 }
 
+/* ═══════════ MỘT TÊN MIỀN DUY NHẤT — P7, 12/09/2026 ═══════════
+ *
+ * V2 nhận lại `reports.tinphatcrm.com` của V1, và Cloudflare Access bị BỎ:
+ * đăng nhập Firebase của chính app này là lớp duy nhất. Hệ quả trực tiếp là
+ * địa chỉ `*.workers.dev` mà Cloudflare cấp sẵn không còn được phục vụ app.
+ *
+ * Vì sao phải đóng nó, dù đường nào cũng đòi đúng một token Firebase như
+ * nhau nên đây KHÔNG phải một lỗ quyền: hai địa chỉ cho cùng một app là hai
+ * nơi phải nhớ mỗi lần siết bất cứ thứ gì ở tầng ngoài — WAF, rate limit,
+ * hay chính Access nếu sau này đặt lại. Và cái bị quên luôn là cái Cloudflare
+ * tự cấp, không phải cái người ta tự gõ vào ô DNS.
+ *
+ * Ba quyết định trong hàm này, cả ba đều có giá đã trả trước:
+ *
+ * · `CANONICAL_HOST` là DỮ LIỆU (`[vars]` của wrangler.toml), không phải hằng
+ *   số trong mã — đổi tên miền không được là một lần sửa code.
+ *
+ * · Cờ "1" mà `CANONICAL_HOST` rỗng thì hàm KHÔNG chặn gì cả. Một tên miền gõ
+ *   sai không được phép hạ cả app, và chặn ở đây không cứu được gì vì lúc ấy
+ *   không còn địa chỉ nào để vào mà sửa. Cặp giá trị ấy được canh ở
+ *   `kiem/dinh-tuyen.js` đọc thẳng wrangler.toml — tức lỗi cấu hình đỏ ở
+ *   `npm test`, và `[build] command` làm `wrangler deploy` không chạy. Cửa
+ *   chặn đứng trước lúc deploy, không đứng sau lúc có người dùng.
+ *
+ * · GET/HEAD được CHỈ ĐƯỜNG (301, giữ nguyên path + query) để một dấu trang
+ *   cũ vẫn tới đúng nơi. Method khác ra 421 chứ KHÔNG chuyển hướng: một 301
+ *   khiến client đổi POST thành GET, hoặc gửi lại nguyên thân request sang
+ *   một origin khác — cả hai đều tệ hơn một lỗi nói thẳng.
+ */
+function chuyenVeTenMienChinh(request, env) {
+  if (String(env.ENFORCE_CANONICAL_HOST ?? "0") !== "1") return null;
+  const chinh = String(env.CANONICAL_HOST || "").trim().toLowerCase();
+  if (!chinh) return null;
+
+  const url = new URL(request.url);
+  const hostGoc = url.hostname;
+  if (hostGoc.toLowerCase() === chinh) return null;
+
+  const method = request.method.toUpperCase();
+  const chiDuong = method === "GET" || method === "HEAD";
+  if (chiDuong) {
+    url.protocol = "https:";
+    url.hostname = chinh;
+    url.port = "";
+  }
+  /* Ghi lại MỌI lượt gõ vào host cũ. Địa chỉ này lẽ ra đã chết, nên một dòng
+     log ở đây không phải tiếng ồn — nó là cách duy nhất biết còn ai (hay còn
+     cái gì tự động) đang gọi vào đó trước khi tắt hẳn. Khoá log không dấu,
+     như mọi dòng `nhatKy` khác: chúng được lọc bằng máy qua `wrangler tail`. */
+  nhatKy({ host_la: hostGoc, duong: url.pathname, cach: method,
+           ma: chiDuong ? 301 : 421 });
+
+  return chiDuong
+    ? new Response(null, { status: 301, headers: { Location: url.toString() } })
+    : new Response("Misdirected Request", { status: 421 });
+}
+
 async function xuLy(request, env) {
+  /* Bước 0 — host nào được phục vụ. Đứng TRƯỚC cả cửa chặn đường dẫn có chủ
+     ý: từ P7, `*.workers.dev` chỉ còn đúng một việc là chỉ sang địa chỉ
+     thật, không trả lời thay app về bất cứ đường nào — kể cả để nói 404. */
+  const hostLa = chuyenVeTenMienChinh(request, env);
+  if (hostLa) return hostLa;
+
   const url = new URL(request.url);
   const method = request.method.toUpperCase();
   const duong = url.pathname;
