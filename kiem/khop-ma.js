@@ -433,5 +433,114 @@ const GOC = path.resolve(__dirname, '..');
       b.tom_tat_gia.co_gia + b.tom_tat_gia.chua_co_gia, 4);
   }
 
+  /* ─────────── H. Nơi nhập theo ngày bán ─────────── */
+
+  console.log('\nH) Nơi nhập');
+
+  const bgN = (nguon, gia) => ({ product_code: '65C6K', effective_date: '2026-09-08',
+    min_price: gia === undefined ? 5250 : gia, price_status: 'AVAILABLE',
+    day_status: 'FINAL', observed_on: '2026-09-08', carried_from: null,
+    min_sources: nguon.map((id) => ({ source_type: 'SUPPLIER', source_id: id })) });
+
+  const noiNhapCua = (nguon, gia) => {
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
+    K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND',
+      records: [bgN(nguon, gia)], errors: [] });
+    for (const ng of b.ngay) for (const don of ng.don) for (const x of don.dong)
+      if (x.ma_san_pham === 'Tivi TCL 65C6K') return { o: x, bang: b };
+    return { o: null, bang: b };
+  };
+
+  ok('một nguồn giữ Min → lấy đúng nguồn đó',
+    noiNhapCua(['Tuấn Ngoan']).o.noi_nhap, 'Tuấn Ngoan');
+
+  /* Thứ tự ưu tiên chủ dự án chốt. Tracking trả danh sách theo thứ tự của
+     nó, nên phép chọn KHÔNG được ăn theo vị trí trong mảng. */
+  ok('nhiều nguồn cùng giá → chọn theo thứ tự ưu tiên',
+    noiNhapCua(['Văn Quân', 'Việt Hải', 'Thăng Long']).o.noi_nhap, 'Việt Hải');
+  ok('  · Điện tử 179 trên Thăng Long',
+    noiNhapCua(['Thăng Long', 'Điện tử 179']).o.noi_nhap, 'Điện tử 179');
+  ok('  · Trung Xuân trên Văn Quân',
+    noiNhapCua(['Văn Quân', 'Trung Xuân']).o.noi_nhap, 'Trung Xuân');
+  ok('nguồn ngoài danh sách xếp SAU mọi tên đã khai',
+    noiNhapCua(['Minh Ngọc', 'Văn Quân']).o.noi_nhap, 'Văn Quân');
+  ok('  · toàn nguồn ngoài danh sách thì giữ thứ tự Tracking trả',
+    noiNhapCua(['Minh Ngọc', 'Đất Việt']).o.noi_nhap, 'Minh Ngọc');
+
+  /* CA NGUY HIỂM: "Việt Hải" và "Việt Hàn" là HAI NCC khác nhau, hai cột
+     cạnh nhau trên bảng giá (chủ dự án xác nhận). Ghép gần đúng hai cái tên
+     ấy là gán sai nơi nhập, im lặng — đúng lớp lỗi 65C6K/65C6KS. */
+  ok('"Việt Hàn" KHÔNG được hưởng ưu tiên của "Việt Hải"',
+    noiNhapCua(['Văn Quân', 'Việt Hàn']).o.noi_nhap, 'Văn Quân');
+  ok('  · và khi chỉ có Việt Hàn thì vẫn lấy đúng tên nó',
+    noiNhapCua(['Việt Hàn']).o.noi_nhap, 'Việt Hàn');
+  ok('  · còn Việt Hải thì thắng tất',
+    noiNhapCua(['Việt Hàn', 'Trung Xuân', 'Việt Hải']).o.noi_nhap, 'Việt Hải');
+
+  /* Hoa/thường và khoảng trắng thừa là lỗi gõ, không phải một NCC khác. */
+  ok('khác hoa/thường vẫn được ưu tiên',
+    noiNhapCua(['Văn Quân', '  việt   hải ']).o.noi_nhap, '  việt   hải ');
+
+  /* Không truy ra được giá Min thì cũng không có nơi nhập — chủ dự án chốt
+     dòng ấy bôi đỏ chứ không bịa một cái tên. */
+  {
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
+    K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND', records: [], errors: [] });
+    let x = null;
+    for (const ng of b.ngay) for (const don of ng.don) for (const y of don.dong)
+      if (y.ma_san_pham === 'Tivi TCL 65C6K') x = y;
+    ok('không có giá Min → không có nơi nhập', x.noi_nhap, null);
+  }
+
+  /* Luật ưu tiên im lặng không chạy là lỗi không ai thấy — bản kê phải nói
+     tên nào cả kỳ không gặp lần nào. */
+  ok('bản kê nói tên ưu tiên nào cả kỳ không gặp',
+    noiNhapCua(['Việt Hải']).bang.tom_tat_gia.ncc_uu_tien_khong_gap,
+    ['Điện tử 179', 'Thăng Long', 'Trung Xuân', 'Văn Quân']);
+
+  /* ─────────── I. Dòng 0 đồng ─────────── */
+
+  console.log('\nI) Dòng 0 đồng');
+
+  {
+    const dg0 = (o) => ({ ngay: '2026-09-08', so_ct: o.ct, ten_hang: o.ten,
+      so_luong: 1, don_gia: o.tien, doanh_so: o.tien, chiet_khau: 0,
+      nhan_vien: 'Tín Phát 0869931931', imei: null });
+    const D0 = {
+      a: dg0({ ct: 'BH9', ten: 'Tivi TCL 65C6K', tien: 9000000 }),
+      b: dg0({ ct: 'BH9', ten: 'Tủ lạnh Sharp SJ-X198V-DG', tien: 0 }),
+      c: dg0({ ct: 'BTL9', ten: 'Tivi TCL 65C6K', tien: 0 }),
+    };
+    const b = D.dungBangDon(D0, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
+    K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND', records: [
+      bgN(['Việt Hải']),
+      { product_code: 'X198VDGEN', effective_date: '2026-09-08', min_price: 3000,
+        price_status: 'AVAILABLE', day_status: 'FINAL', observed_on: '2026-09-08',
+        min_sources: [{ source_type: 'SUPPLIER', source_id: 'Trung Xuân' }] },
+    ], errors: [] });
+
+    const ds = [];
+    for (const ng of b.ngay) for (const don of ng.don) for (const x of don.dong) ds.push(x);
+    const qua = ds.find((x) => x.ma_san_pham === 'Tủ lạnh Sharp SJ-X198V-DG');
+    const thuong = ds.find((x) => x.ma_san_pham === 'Tivi TCL 65C6K' && x.tong_ban > 0);
+    const btl = ds.find((x) => x.tong_ban === 0 && x.ma_san_pham === 'Tivi TCL 65C6K');
+
+    ok('dòng 0 đồng được đánh dấu', qua.la_dong_0d, true);
+    ok('dòng có tiền KHÔNG bị đánh dấu', thuong.la_dong_0d, false);
+    /* Doanh thu 0 nên công thức chung tự cho ra số ÂM — đúng "phép tính như
+       dòng chiết khấu", không cần nhánh riêng. */
+    ok('dòng 0 đồng vẫn có giá vốn', qua.gia_nhap, 3000000);
+    ok('  · và lợi nhuận ÂM đúng bằng giá vốn', qua.loi_nhuan, -3000000);
+    ok('  · vẫn có nơi nhập như mọi dòng khác', qua.noi_nhap, 'Trung Xuân');
+
+    /* BTL là nghiệp vụ khác (hàng trả về), chủ dự án chốt để xử sau — nên nó
+       KHÔNG được gộp chung với dòng quà tặng. */
+    ok('chứng từ BTL 0 đồng KHÔNG bị đánh dấu như quà tặng', btl.la_dong_0d, false);
+    ok('đếm đúng số dòng 0 đồng, không tính BTL', b.tom_tat_gia.so_dong_0d, 1);
+  }
+
   xong();
 })();
