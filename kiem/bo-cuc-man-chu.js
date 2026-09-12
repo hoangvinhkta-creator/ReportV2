@@ -77,6 +77,28 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
      số cột mà quên chỗ này thì hàng tổng lệch sang cột khác. */
   ok('hàng tổng đơn đặt số dưới đúng cột “Tổng bán”', COT.indexOf('Tổng bán'), 7);
   ok('  · và colSpan sau đó tính từ COT.length', /COT\.length - 8/.test(JS), true);
+
+  /* Bề rộng cột chốt cố định (P4) — `<colgroup>` chỉ đúng khi số <col> khớp
+     số cột. Thiếu một số thì cột cuối mất bề rộng và bảng lại co giãn theo
+     nội dung đúng lúc P4 điền chữ vào; thừa một số thì lệch hết từ chỗ đó
+     trở đi. Cả hai đều là "biến dạng cột" mà chủ dự án chốt phải hết. */
+  const RONG = JSON.parse(cat(JS, /const RONG_COT = \[[\s\S]*?\];/)
+    .replace(/^const RONG_COT = /, '').replace(/;$/, ''));
+  ok('RONG_COT có đúng một số cho mỗi cột', RONG.length, COT.length);
+  ok('mọi bề rộng đều là số dương', RONG.every((w) => Number.isFinite(w) && w > 0), true);
+  ok('bảng đơn khai table-layout: fixed',
+     /\.bangDon\s*\{[^}]*table-layout:\s*fixed/.test(HTML), true);
+  ok('ô bảng đơn có overflow: hidden (bố cục cố định KHÔNG tự cắt chữ tràn)',
+     /\.bangDon th,\s*\.bangDon td\s*\{[^}]*overflow:\s*hidden/.test(HTML), true);
+
+  /* Đo thật trên Chromium 12/09/2026: thiếu dòng khai bề rộng TOÀN BẢNG thì
+     `table-layout: fixed` vẫn co bảng cho vừa khung bọc rồi chia lại theo TỈ
+     LỆ — và tỉ lệ phụ thuộc nội dung, nên cột "Hãng" nhảy 47px → 49px ngay
+     sau một lượt gán mã. Đúng cái "biến dạng cột" chủ dự án chốt phải hết,
+     và không một bài kiểm tĩnh nào trước đó thấy. Phải tính từ RONG_COT chứ
+     không gõ tay một con số — gõ tay là mời một bản lệch nằm im. */
+  ok('bề rộng toàn bảng khai tường minh, tính từ tổng RONG_COT',
+     /bang\.style\.width\s*=\s*RONG_COT\.reduce/.test(JS), true);
 }
 
 console.log('\n5) Bốn cột hẹp cắt chữ thay vì xuống dòng');

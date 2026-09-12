@@ -61,8 +61,16 @@ xong nó thì lát cắt giá vốn chỉ còn là tra `min-ngay` theo mã đã 
 | Lượt | Repo | Trạng thái |
 |---|---|---|
 | PR-A — `POST /api/inv-map`, đường ghi quyết định phân loại | Tracking | ✅ merge 12/09/2026 (PR #34) |
-| PR-B — `engine/src/khop-ma.mjs` + hai RPC Engine | ReportV2 | ✅ lượt này |
-| PR-C — Gateway gọi Tracking + giao diện gán tại chỗ | ReportV2 | ⬜ |
+| PR-B — `engine/src/khop-ma.mjs` + hai RPC Engine | ReportV2 | ✅ merge 12/09/2026 (PR #47) |
+| PR-C — Gateway gọi Tracking + giao diện gán tại chỗ | ReportV2 | ✅ lượt này |
+
+**Một lỗi CHỈ trình duyệt thật bắt được, ghi lại để đừng vấp lại:**
+`table-layout: fixed` + `<colgroup>` là CHƯA ĐỦ. Bảng không khai bề rộng
+thì trình duyệt vẫn co nó cho vừa khung bọc rồi chia lại theo TỈ LỆ, mà tỉ
+lệ phụ thuộc nội dung — đo trên Chromium: cột "Hãng" nhảy 47px → 49px ngay
+sau một lượt gán mã. Phải khai `bang.style.width` bằng đúng tổng
+`RONG_COT`. Không một bài kiểm tĩnh nào trong repo thấy chuyện này; nó lộ
+ra vì lượt kiểm chạy thật trên trình duyệt đo bề rộng trước/sau.
 
 **Thứ tự này BẮT BUỘC** (bẫy số 4): hàm Engine và đường Tracking phải
 deploy xong TRƯỚC lượt Gateway gọi tới chúng.

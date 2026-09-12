@@ -104,6 +104,17 @@
     "Tên khách hàng", "Số điện thoại", "Địa chỉ",
     "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
 
+  /* Bề rộng CHỐT CỐ ĐỊNH cho từng cột, đi cùng `table-layout: fixed` (chủ dự
+     án chốt 12/09/2026). Trước đây bề rộng do nội dung quyết định, nên đúng
+     lúc P4 điền chữ vào những ô đang là "—" thì cả bảng nống ra và dịch chỗ —
+     mà gán mã là việc làm liên tục trên cùng một màn hình, mỗi lần gán một
+     cái giật bố cục là không dùng được. Cố định rồi thì điền gì vào cũng
+     không xê dịch một pixel.
+
+     Phải đúng 19 số, đúng thứ tự `COT` — `kiem/bo-cuc-man-chu.js` canh cặp. */
+  const RONG_COT = [78, 78, 92, 240, 44, 82, 82, 90, 86, 96, 92,
+    132, 94, 152, 92, 112, 112, 34, 34];
+
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false };
 
   async function goi(duong) {
@@ -135,12 +146,114 @@
 
   /* ---- Vẽ bảng đơn hàng của một (kỳ, line) ---- */
 
+  /** Ô "Mã sản phẩm" — vẫn hiện NGUYÊN câu tên hàng như trước (chủ dự án
+   *  chốt: dòng đã phân loại giữ y như cũ). Khác biệt duy nhất nằm ở dòng
+   *  CHƯA phân loại: chữ mờ đi, gạch chân nhạt, con trỏ bàn tay — lướt mắt
+   *  là thấy đúng chỗ còn nợ, không phải dò từng dòng.
+   *
+   *  Dòng đã có mã vẫn bấm được: một lượt khớp TỰ ĐỘNG có thể sai, và không
+   *  cho sửa thì cái sai ấy nằm lại vĩnh viễn. Mã đang gán để ở `title`, chỗ
+   *  duy nhất thêm được thông tin mà không đổi thứ đang hiện. */
+  function oMaSanPham(d) {
+    const td = el("td", "oTen oMa");
+    const s = el("span", null, d.ma_san_pham);
+    td.appendChild(s);
+
+    if (d.la_chiet_khau) { td.className = "oTen"; return td; }
+
+    td.dataset.o = "ma";
+    td.dataset.ten = d.ma_san_pham;
+    if (d.khoa_ten) td.dataset.khoa = d.khoa_ten;
+
+    if (d.ma_bang_gia) {
+      td.dataset.ma = d.ma_bang_gia;
+      td.title = "Mã bảng giá: " + d.ma_bang_gia
+        + (d.nguon_ma === "tu-dong" ? " (máy tự khớp — bấm để sửa)" : " (đã gán tay — bấm để đổi)");
+    } else if (d.nguon_ma === "bo-qua") {
+      td.classList.add("maBoQua");
+      td.title = "Đã đánh dấu không phải sản phẩm cần gán mã — bấm để đổi.";
+    } else if (d.nguon_ma === null && d.ly_do_chua_ma) {
+      td.classList.add("maChuaCo");
+      td.title = LY_DO_MA[d.ly_do_chua_ma] || "Chưa có mã — bấm để phân loại.";
+    } else {
+      /* Nguồn Tracking hỏng nên phép khớp không chạy lượt này. KHÔNG tô như
+         "chưa phân loại": ta không biết dòng này đã có mã hay chưa, và vẽ nó
+         thành "chưa có" là để một sự cố mạng nói thay người. Băng cảnh báo
+         phía trên đã nói rõ, ô này giữ nguyên như cũ và không bấm được. */
+      delete td.dataset.o;
+    }
+    return td;
+  }
+
+  const LY_DO_MA = {
+    "chua-khop": "Chưa có mã: không tìm thấy mã bảng giá nào trong tên hàng — bấm để phân loại.",
+    "nhieu-ma": "Chưa có mã: tên hàng có nhiều hơn một mã bảng giá, máy không tự chọn — bấm để phân loại.",
+    "ma-da-xoa": "Mã đã gán trước đây không còn trên bảng giá — bấm để chọn lại.",
+  };
+
+  /** Vá TẠI CHỖ mọi dòng mang cùng một câu tên hàng, sau khi Tracking đã
+   *  nhận quyết định.
+   *
+   *  Đây là chỗ giữ lời hứa "không tải lại, không nhảy dòng": không gọi lại
+   *  `taiKy()`, không dựng lại `<tbody>`, chỉ sửa `textContent` và class của
+   *  đúng những ô liên quan. Vị trí cuộn, thứ tự dòng, bề rộng cột — không
+   *  cái nào đụng tới. */
+  function vaDongTheoKhoa(khoa, ma, muc) {
+    const cacO = document.querySelectorAll('#veDonHang td[data-khoa="' + CSS.escape(khoa) + '"]');
+    for (const td of cacO) {
+      td.classList.remove("maChuaCo", "maBoQua");
+      if (ma) {
+        td.dataset.ma = ma;
+        td.title = "Mã bảng giá: " + ma + " (đã gán tay — bấm để đổi)";
+      } else {
+        delete td.dataset.ma;
+        td.classList.add("maBoQua");
+        td.title = "Đã đánh dấu không phải sản phẩm cần gán mã — bấm để đổi.";
+      }
+      const tr = td.parentElement;
+      if (!tr) continue;
+      const tdHang = tr.querySelector('td[data-o="hang"]');
+      const tdNganh = tr.querySelector('td[data-o="nganh"]');
+      /* "Bỏ qua" không phải một mặt hàng, nên hai cột nhãn về lại "—". */
+      if (tdHang) tdHang.textContent = (muc && muc.hang) || "—";
+      if (tdNganh) tdNganh.textContent = (muc && muc.nhom) || "—";
+    }
+    demLaiConNo();
+  }
+
+  /** Đếm lại băng "còn N dòng chưa có mã" từ chính DOM đang hiện.
+   *
+   *  Đếm trên DOM chứ không trừ dần một biến: sau vài lượt gán, một biến đếm
+   *  lệch đi là không cách nào biết, còn DOM thì luôn là thứ người dùng đang
+   *  thật sự nhìn. */
+  function demLaiConNo(hien) {
+    const bn = $("bangConNo");
+    if (!bn) return;
+    if (hien === false) { bn.hidden = true; return; }
+
+    const khung = $("veDonHang");
+    const oNo = khung ? khung.querySelectorAll("td.maChuaCo") : [];
+    const ten = new Set();
+    for (const td of oNo) ten.add(td.dataset.khoa);
+
+    bn.hidden = false;
+    if (!oNo.length) {
+      bn.textContent = "Mọi dòng trong bảng đều đã có mã bảng giá.";
+      bn.className = "bangConNo xong";
+      return;
+    }
+    bn.textContent = "Còn " + soNguyen(oNo.length) + " dòng chưa có mã bảng giá, thuộc "
+      + soNguyen(ten.size) + " tên hàng. Bấm vào ô Mã sản phẩm của dòng đó để phân loại.";
+    bn.className = "bangConNo";
+  }
+
   function veBang(kq) {
     const khung = $("veDonHang");
     khung.innerHTML = "";
 
     const b = kq.bang;
     if (!b.ngay.length) {
+      demLaiConNo(false);
       khung.appendChild(el("p", "dangTai", "Line này chưa có đơn nào trong tháng đã chọn."));
       return;
     }
@@ -151,8 +264,39 @@
       + soNguyen(b.tom_tat.so_dong) + " dòng"));
     khung.appendChild(tt);
 
+    /* Nguồn bảng giá hỏng — nói THẲNG, và nói trước khi người dùng kịp đọc
+       ba cột trống bên dưới thành "hàng này không có mã". Một sự cố mạng
+       không được phép nói một kết luận nghiệp vụ thay người (CLAUDE.md). */
+    if (kq.loi_nguon_ma) {
+      khung.appendChild(el("p", "bangNguonHong",
+        "Chưa đọc được bảng giá Tracking lượt này, nên ba cột Mã · Hãng · "
+        + "Ngành hàng CHƯA BIẾT — khác với \"không có\". Doanh số và số đơn "
+        + "bên dưới không bị ảnh hưởng. Thử tải lại trang sau ít phút."));
+    }
+
     const boc = el("div", "bocBang");
     const bang = el("table", "bangDon");
+
+    /* `<colgroup>` chứ không đặt bề rộng lên từng <th>: với
+       `table-layout: fixed` trình duyệt lấy bề rộng của HÀNG ĐẦU TIÊN, mà
+       hàng đầu của tbody là hàng tiêu đề ngày (một <td> colSpan=19). Khai ở
+       colgroup thì không phụ thuộc hàng nào cả. */
+    const cg = el("colgroup");
+    for (const w of RONG_COT) {
+      const c = el("col");
+      c.style.width = w + "px";
+      cg.appendChild(c);
+    }
+    bang.appendChild(cg);
+
+    /* Bề rộng TOÀN BẢNG phải khai tường minh, bằng đúng tổng RONG_COT.
+       Thiếu dòng này thì `table-layout: fixed` vẫn co cả bảng cho vừa khung
+       bọc rồi chia lại bề rộng theo TỈ LỆ — và tỉ lệ thì phụ thuộc nội dung,
+       nên cột vẫn nhích khi P4 điền chữ vào một ô đang trống. Đo thật trên
+       Chromium: cột "Hãng" nhảy 47px → 49px sau một lượt gán, đúng cái
+       "biến dạng cột" đang muốn hết. Khung `.bocBang` có `overflow-x: auto`
+       nên bảng rộng hơn màn hình thì cuộn, không ép ai cả. */
+    bang.style.width = RONG_COT.reduce((a, b) => a + b, 0) + "px";
 
     const thead = el("thead");
     const trTen = el("tr");
@@ -180,7 +324,7 @@
           tr.appendChild(o(dauDon ? nhanNgayDay(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
           tr.appendChild(o(d.noi_nhap));
-          tr.appendChild(o(d.ma_san_pham, "oTen"));
+          tr.appendChild(oMaSanPham(d));
           tr.appendChild(o(soNguyen(d.so_luong), "oSo"));
           tr.appendChild(o(d.gia_nhap === null ? null : nghin(d.gia_nhap), "oSo"));
           tr.appendChild(o(nghin(d.gia_ban), "oSo"));
@@ -194,8 +338,10 @@
           tr.appendChild(oHep(dauDon ? don.ten_khach : "", "oKhach"));
           tr.appendChild(oHep(dauDon ? don.dien_thoai : "", "oDienThoai"));
           tr.appendChild(oHep(dauDon ? don.dia_chi : "", "oDiaChi"));
-          tr.appendChild(o(d.hang));
-          tr.appendChild(o(d.nganh_hang));
+          const tdHang = o(d.hang); tdHang.dataset.o = "hang";
+          const tdNganh = o(d.nganh_hang); tdNganh.dataset.o = "nganh";
+          tr.appendChild(tdHang);
+          tr.appendChild(tdNganh);
           tr.appendChild(oHep(d.imei, "oImei"));
           tr.appendChild(nutDong("✏️", "Sửa dòng"));
           tr.appendChild(nutDong("🗑", "Xoá dòng"));
@@ -213,14 +359,30 @@
         tbody.appendChild(trTong);
       }
     }
+    /* MỘT listener cho cả bảng, không gắn từng dòng: bảng một tháng có hàng
+       nghìn ô, và gắn từng ô là hàng nghìn listener phải dọn mỗi lượt vẽ
+       lại. Uỷ quyền cũng là thứ sống sót qua phép vá tại chỗ — ô được sửa
+       không cần gắn lại gì. */
+    tbody.addEventListener("click", function (e) {
+      const td = e.target.closest('td[data-o="ma"]');
+      if (!td || !tbody.contains(td)) return;
+      const khoa = td.dataset.khoa;
+      if (!khoa) return;
+      window.GanMa.moChonMa(td.dataset.ten, td.dataset.ma || null,
+        (ma, muc) => vaDongTheoKhoa(khoa, ma, muc));
+    });
+
     bang.appendChild(tbody);
     boc.appendChild(bang);
     khung.appendChild(boc);
 
+    demLaiConNo(!kq.loi_nguon_ma);
+
     khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
-      + "Giá nhập, lợi nhuận, doanh số quy đổi, nơi nhập, hãng, ngành hàng lấy từ Tracking ở P4/P5 "
-      + "— nay còn trống. Chiết khấu của cả đơn gộp thành một dòng mang dấu âm. "
-      + "Nút Sửa/Xoá dòng mở ở lượt sau."));
+      + "Bấm vào ô Mã sản phẩm để gán mã bảng giá — quyết định ghi sang Tracking và "
+      + "áp cho mọi dòng cùng tên hàng, ở mọi kỳ. Giá nhập, lợi nhuận, doanh số quy đổi "
+      + "và nơi nhập lấy từ Tracking ở lượt sau — nay còn trống. Chiết khấu của cả đơn "
+      + "gộp thành một dòng mang dấu âm. Nút Sửa/Xoá dòng mở ở lượt sau."));
   }
 
   /* ---- Tab con: Tổng hợp + từng line ---- */
