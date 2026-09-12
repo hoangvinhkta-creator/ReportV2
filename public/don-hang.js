@@ -237,7 +237,19 @@
    *  chốt). KHÔNG bịa một cái tên: một nơi nhập sai còn tệ hơn một ô trống,
    *  vì ô trống thì người đọc biết là mình chưa biết. */
   function oNoiNhap(d) {
-    if (d.noi_nhap) return el("td", null, d.noi_nhap);
+    if (d.noi_nhap) {
+      const td = el("td", null, d.noi_nhap);
+      /* "Kho" đứng cạnh một con số Giá nhập KHÔNG phải giá kho trông y như
+         một lỗi — nên nói thẳng ra thay vì để người đối chiếu tay tự đoán.
+         Cả hai con số đều do Engine tính; ô này chỉ đọc và ghép chữ. */
+      if (d.gia_ton_kho !== null && d.gia_ton_kho !== undefined
+          && d.gia_ton_kho !== d.gia_nhap) {
+        td.title = "Hàng có sẵn trong kho nên xuất từ kho (giá nhập phân bổ "
+          + nghin(d.gia_ton_kho) + " nghìn). Cột Giá nhập vẫn lấy giá Min của "
+          + "ngày bán, không lấy giá kho.";
+      }
+      return td;
+    }
     /* Phụ phí cố định không có khái niệm "nơi nhập" (không phải một NCC
        giữ giá cho một mã hàng) — ô để trống, KHÔNG bôi đỏ như một dòng
        chưa tra được giá. */

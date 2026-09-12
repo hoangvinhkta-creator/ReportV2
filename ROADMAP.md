@@ -159,6 +159,33 @@ THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
   người nhập liệu gõ tay. Nó lưu ở `bc/dong` LÚC NHẬP, nên **phải tải lại
   sổ** thì cột mới có chữ.
 
+**LÁT P4-5 — NƠI NHẬP ƯU TIÊN TỒN KHO — ĐÃ XONG 12/09/2026** (hai repo):
+
+- Chủ dự án chốt: "ưu tiên cao nhất sẽ là Tồn Kho, sau đó mới đến các nhà
+  cung cấp khác" — hàng đã nằm trong kho thì bắt buộc xuất từ kho, kể cả
+  khi hôm ấy một NCC chào giá rẻ hơn. **Nhưng giá nhập VẪN lấy theo giá
+  Min**, không lấy giá kho: "lấy hàng ở đâu" và "giá vốn bao nhiêu" là hai
+  câu hỏi khác nhau.
+- **Lát 5a — sửa một lỗi thật, không phải thêm ưu tiên cho đẹp.** Hợp đồng
+  trả nguồn kho là `{source_type:"INVENTORY", source_id:"TON_KHO"}`, mà
+  `chonNoiNhap()` xếp hạng theo `source_id` đối chiếu `NCC_UU_TIEN`.
+  `TON_KHO` không có trong danh sách ấy nên nó rơi vào nhánh "ngoài danh
+  sách" — xếp SAU mọi NCC có tên; cộng với việc Tracking luôn đẩy kho xuống
+  CUỐI mảng, Kho gần như không bao giờ được hiện, và lúc được hiện thì hiện
+  ra đúng chữ `TON_KHO`. Nay nhận theo `source_type` (enum ĐÓNG của hợp
+  đồng) và hiện chữ "Kho".
+- **Lát 5b — mở đường cho ca chính.** `min_sources` chỉ kể tên kho khi giá
+  kho ĐÚNG BẰNG Min, vì nó trả lời "ai giữ giá rẻ nhất". Ca chủ dự án nêu
+  đích danh — *kho còn hàng nhưng giá kho CAO HƠN Min* — không đi ra được
+  bằng đường ấy. Tracking mở trường riêng `inventory_unit_cost` (R8,
+  `PHIEN_BAN_MIN` → `min-2`), Báo cáo đọc nó.
+- Giữ CẢ HAI đường nhận dạng: bản ghi ghi trước lượt deploy `min-2` không
+  có trường mới, nhưng nếu hôm ấy kho giữ Min thì nó vẫn có tên trong
+  `min_sources`. Bỏ đường cũ là làm ngày cũ tệ hơn cả trước khi có luật.
+- Giá kho đi kèm ra màn hình (`gia_ton_kho`) và hiện ở tooltip cột Nơi
+  nhập khi nó khác giá nhập — "Kho" đứng cạnh một con số không phải giá
+  kho trông y như một lỗi.
+
 **Còn treo sau lát này:**
 
 1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính
@@ -172,8 +199,14 @@ THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
    KỲ đang xem, không tìm ngược sang kỳ khác; (c) khi không ghép được thì
    số tiền phải trừ lấy từ cột **Đơn giá** của chính dòng BTL — cần mở
    một chứng từ BTL thật xem ô ấy có số hay không.
-3. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống.
-4. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
+3. **Ngày TRƯỚC lượt deploy `min-2` chưa có giá tồn kho.** Bản ghi cũ không
+   mang `inventory_unit_cost`, nên Báo cáo hiểu là "kho không có hàng" rồi
+   quay về thứ tự NCC — an toàn đúng hướng, nhưng chưa đúng sự thật. Chữa
+   bằng đúng một lượt chạy `POST /api/min-ngay/dung-lai` bên Tracking cho
+   khoảng ngày ấy (đường R7, admin) — cùng một thao tác đang cần cho việc
+   giá nhập trống ở đầu tháng 9.
+4. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống.
+5. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
    thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô — đã dùng
    đúng như vậy ở lát 3, ghi lại đây để không ai đi dựng lại.
 
