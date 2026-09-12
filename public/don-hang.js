@@ -191,6 +191,20 @@
     return td;
   }
 
+  /** Ô "Nơi nhập" — NCC giữ giá Min của đúng ngày bán.
+   *
+   *  Chưa tra được giá Min thì cũng chưa có nơi nhập, và ô bôi đỏ (chủ dự án
+   *  chốt). KHÔNG bịa một cái tên: một nơi nhập sai còn tệ hơn một ô trống,
+   *  vì ô trống thì người đọc biết là mình chưa biết. */
+  function oNoiNhap(d) {
+    if (d.noi_nhap) return el("td", null, d.noi_nhap);
+    const td = el("td", d.la_chiet_khau ? null : "oChuaRo", "—");
+    if (!d.la_chiet_khau && d.ly_do_chua_gia)
+      td.title = "Chưa tra được nơi nhập: " + (LY_DO_GIA[d.ly_do_chua_gia]
+        || d.ly_do_chua_gia);
+    return td;
+  }
+
   /** Ô "Giá nhập". Chưa có giá thì hiện "—" và NÓI VÌ SAO ở `title` — ô trống
    *  không giải thích để người đọc tự đoán, mà mọi phỏng đoán trên một cột
    *  tiền đều tốn kém. Không bao giờ hiện 0: "giá vốn 0 đồng" và "chưa biết
@@ -367,12 +381,19 @@
       for (const don of ng.don) {
         let dauDon = true;
         for (const d of don.dong) {
-          const tr = el("tr", d.la_chiet_khau ? "hangChietKhau" : (dauDon ? "hangDauDon" : null));
+          /* Dòng 0 đồng (quà tặng kèm) bôi đỏ — chủ dự án chốt 12/09/2026. Cờ
+             do Engine đặt, không suy từ `tong_ban === 0` ở đây: luật "0 đồng
+             là gì" có ngoại lệ (chứng từ BTL) và ngoại lệ ấy là NGHIỆP VỤ,
+             nên nó ở Engine (LUẬT SỐ 1). */
+          const lop = [d.la_chiet_khau ? "hangChietKhau" : null,
+            dauDon ? "hangDauDon" : null,
+            d.la_dong_0d ? "hang0d" : null].filter(Boolean).join(" ");
+          const tr = el("tr", lop || null);
           /* Ngày và số BH chỉ ghi ở DÒNG ĐẦU của đơn — cùng cách file tay
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
           tr.appendChild(o(dauDon ? nhanNgayDay(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
-          tr.appendChild(o(d.noi_nhap));
+          tr.appendChild(oNoiNhap(d));
           tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma));
           tr.appendChild(o(soNguyen(d.so_luong), "oSo"));
           tr.appendChild(oGiaNhap(d));
@@ -427,11 +448,17 @@
 
     demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
 
+    /* Chú giải MÀU nằm ngay dưới bảng, không giấu trong tooltip: ba màu là ba
+       việc khác nhau, và người đọc không nên phải rê chuột mới biết đỏ nghĩa
+       là gì. */
     khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
-      + "Bấm vào ô Mã sản phẩm để gán mã bảng giá — quyết định ghi sang Tracking và "
-      + "áp cho mọi dòng cùng tên hàng, ở mọi kỳ. Giá nhập, lợi nhuận, doanh số quy đổi "
-      + "và nơi nhập lấy từ Tracking ở lượt sau — nay còn trống. Chiết khấu của cả đơn "
-      + "gộp thành một dòng mang dấu âm. Nút Sửa/Xoá dòng mở ở lượt sau."));
+      + "Giá nhập và nơi nhập lấy từ Tracking theo ĐÚNG NGÀY BÁN của từng dòng. "
+      + "Ô vàng: chưa có mã bảng giá — bấm vào để gán, quyết định ghi sang Tracking "
+      + "và áp cho mọi dòng cùng tên hàng ở mọi kỳ. "
+      + "Dòng đỏ: bán 0 đồng (quà tặng kèm) — vẫn có giá vốn nên vẫn trừ vào lợi nhuận. "
+      + "Nơi nhập đỏ: chưa tra được giá Min của ngày đó. "
+      + "Chiết khấu của cả đơn gộp thành một dòng mang dấu âm. "
+      + "Doanh số quy đổi và Ghi chú chờ chốt công thức. Nút Sửa/Xoá dòng mở ở lượt sau."));
   }
 
   /* ---- Tab con: Tổng hợp + từng line ---- */
