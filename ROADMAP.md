@@ -1620,8 +1620,21 @@ dải trắng — đúng triệu chứng "cột trái trông hụt". Lượt đo
 vẽ, mà lượt vẽ lại gọi lượt đo, nên có chốt `dangCanh` chặn vòng lặp và
 ngưỡng 6px chặn rung.
 
-Sàn 240px: màn rất thấp hay bảng nhiều line thì thà cả trang cuộn thêm một
-chút còn hơn ép biểu đồ bẹp tới mức không đọc được. Cụm lưới nhỏ có van an
+**Kẹp GIỮA sàn và TRẦN (200–300px).** Bản đầu chỉ có sàn — `max(sàn, chỗ
+còn lại)` — và chủ dự án bắt được ngay khi mở thật: *"vẫn không khác gì và
+thậm chí còn to hơn"*. Trên màn CAO, "chỗ còn lại" lên tới 600px và biểu đồ
+ăn hết, tức nó phình to ra đúng lúc lẽ ra phải gọn lại. "Lấp đầy màn hình"
+không phải điều được yêu cầu; điều được yêu cầu là "thấy hết mà không phải
+cuộn", và một biểu đồ 600px không giúp gì cho việc ấy.
+
+Cùng lượt sửa: phần nằm DƯỚI khối (đệm đáy của khung trang) nay ĐO thật
+bằng `scrollHeight` thay vì đoán bằng một hằng số 14px — không trừ nó ra
+thì khối tính ra vừa khít đáy màn hình, nhưng đệm của khung trang vẫn đẩy
+trang dài thêm và người dùng VẪN phải cuộn.
+
+Đo trên năm cỡ màn: 858px → cột 257, đáy trang 858 (lọt); 900 → 299, lọt;
+1200 và 1440 → chặn ở trần 300, đáy trang 901 (lọt, còn dư); 700 → chạm
+sàn 200 và còn phải cuộn 101px — đó là đánh đổi cố ý của cái sàn. Cụm lưới nhỏ có van an
 toàn riêng (`overflow-y: auto`) — nó cuộn trong chính nó thay vì đẩy cả
 trang dài ra. Ô nhỏ hạ từ 56 xuống 44 đơn vị: mười ô xếp 3–4 cột là 3–4
 HÀNG, nên mỗi ô cao thêm 12px là cả cụm cao thêm gần 50px.

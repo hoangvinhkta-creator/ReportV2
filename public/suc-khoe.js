@@ -465,12 +465,26 @@
    * người dùng đều đổi được.
    */
 
-  /** Khoảng chừa dưới đáy màn hình, để khối không dính sát mép. */
+  /** Khoảng chừa dưới đáy màn hình, dùng khi không đo được phần nằm DƯỚI
+   *  khối (đệm đáy của khung trang). */
   const LE_DAY = 14;
   /** Sàn chiều cao khối. Màn rất thấp (laptop 768px, hay bảng nhiều line) thì
    *  thà cả trang cuộn thêm một chút còn hơn ép biểu đồ bẹp tới mức không
    *  đọc được — cùng kỷ luật sàn 260px của khung bảng đơn. */
-  const SAN_KHOI = 240;
+  const SAN_KHOI = 200;
+  /** TRẦN chiều cao khối — và đây là thứ THIẾU ở bản đầu, lỗi chủ dự án bắt
+   *  được ngay khi mở thật ("vẫn không khác gì và thậm chí còn to hơn").
+   *
+   *  Bản đầu chỉ có sàn: `max(SAN, chỗ còn lại)`. Trên một màn CAO thì "chỗ
+   *  còn lại" lên tới 600px, và biểu đồ ăn hết — nó phình to ra đúng lúc lẽ
+   *  ra phải gọn lại. "Lấp đầy màn hình" không phải điều chủ dự án yêu cầu;
+   *  điều họ yêu cầu là "thấy hết mà không phải cuộn", và một biểu đồ 600px
+   *  không giúp gì cho việc ấy — nó chỉ đẩy mọi thứ khác đi.
+   *
+   *  300px là chiều cao đủ đọc một chuỗi 31 ngày mà vẫn để cả bảng lẫn biểu
+   *  đồ lọt một màn 900px: 195 (đầu trang + hai hàng tab) + 295 (bảng 11
+   *  dòng) + 300 + ~105 (đệm và dải nút của khối) = 895. */
+  const TRAN_KHOI = 300;
 
   /** Chiều cao hệ toạ độ của biểu đồ trái, tính từ lần đo gần nhất. */
   let caoHeToaDo = CAO_MAC_DINH;
@@ -489,12 +503,22 @@
     const hop = khoi.getBoundingClientRect ? khoi.getBoundingClientRect() : null;
     if (!hop || !window.innerHeight || !hop.height) return;
 
-    /* Phần màn hình còn lại DƯỚI đỉnh khối, trừ đi lề dưới và phần đệm +
-       dải nút của chính khối (đo bằng hiệu chiều cao, không cộng tay các
-       hằng số CSS — chúng đổi được mà không ai báo). */
-    const conLai = window.innerHeight - hop.top - LE_DAY;
+    /* Phần nằm DƯỚI khối (đệm đáy của khung trang) — đo thật thay vì đoán
+       bằng `LE_DAY`: không trừ nó ra thì khối tính ra vừa khít đáy màn hình,
+       nhưng đệm của khung trang vẫn đẩy trang dài thêm và người dùng VẪN
+       phải cuộn. `LE_DAY` chỉ còn là bản lùi khi không đọc được tài liệu. */
+    const gocTrang = document.documentElement;
+    const duoiKhoi = gocTrang && gocTrang.scrollHeight
+      ? Math.max(0, gocTrang.scrollHeight - (hop.top + (window.scrollY || 0)) - hop.height)
+      : LE_DAY;
+
+    /* Chỗ còn lại của màn hình cho khối, trừ tiếp phần đệm + dải nút của
+       chính nó (đo bằng hiệu chiều cao, không cộng tay các hằng số CSS —
+       chúng đổi được mà không ai báo). */
+    const conLai = window.innerHeight - hop.top - duoiKhoi;
     const caoNgoai = hop.height - (oVe.parentElement ? oVe.parentElement.offsetHeight : hop.height);
-    const caoCot = Math.max(SAN_KHOI, conLai - caoNgoai);
+    /* Kẹp GIỮA sàn và trần. Thiếu trần là lỗi của bản đầu — xem `TRAN_KHOI`. */
+    const caoCot = Math.min(TRAN_KHOI, Math.max(SAN_KHOI, conLai - caoNgoai));
 
     oVe.style.height = caoCot + "px";
     oLuoi.style.height = caoCot + "px";
