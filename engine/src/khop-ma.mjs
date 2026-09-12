@@ -430,14 +430,17 @@ function chonNoiNhap(nguon, giaKho) {
   return tot;
 }
 
-/** Lý do một dòng chưa có giá vốn → câu cho người đọc. Mỗi mã lỗi của
- *  `daily-min-v1` một câu; mã lạ thì nói thẳng là lạ chứ không nuốt. */
-export const LY_DO_GIA = {
-  "chua-co-ma": "chưa gán mã bảng giá",
-  SOURCE_UNAVAILABLE: "Tracking không quan sát được bảng giá ngày hôm đó",
-  NO_DATA: "chưa có mốc giá nào của mã này tính tới ngày đó",
-  INVALID_PRODUCT_CODE: "mã hàng không hợp lệ với hệ giá của Tracking",
-};
+/* BỎ `LY_DO_GIA` khỏi module này (12/09/2026). Nó là chữ CHO NGƯỜI ĐỌC, và
+ * nó đã nằm sẵn ở `public/don-hang.js` — nơi duy nhất thật sự hiện chữ ra.
+ * Bản ở đây chưa từng được import lần nào, nên nó chỉ là một bản thứ ba của
+ * cùng một bảng, chờ trôi khỏi hai bản kia: đúng lúc Tracking thêm một trạng
+ * thái mới thì người sửa dễ sửa nhầm bản chết này rồi tưởng đã xong.
+ * (Chính chuyện ấy vừa xảy ra: cả ba bản đều thiếu `OUT_OF_STOCK`, một trạng
+ * thái CÓ THẬT trong `TRANG_THAI_GIA` của hợp đồng.)
+ *
+ * Engine vẫn là nơi đặt ra MÃ lý do (`d.ly_do_chua_gia`) — chỉ phần dịch mã
+ * ấy sang tiếng người là việc của màn hình, và đó là hiển thị, không phải
+ * nghiệp vụ (LUẬT SỐ 1). */
 
 /** Tập mã cần hỏi giá vốn cho một kỳ.
  *

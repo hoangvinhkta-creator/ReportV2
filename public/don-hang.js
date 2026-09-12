@@ -328,7 +328,24 @@
     "chua-co-ma": "dòng này chưa được gán mã bảng giá.",
     SOURCE_UNAVAILABLE: "Tracking không quan sát được bảng giá ngày hôm đó.",
     NO_DATA: "chưa có mốc giá nào của mã này tính tới ngày bán.",
+    /* `OUT_OF_STOCK` là trạng thái THẬT của hợp đồng `daily-min-v1`
+       (`TRANG_THAI_GIA` bên Tracking có ba giá trị, không phải hai) và là
+       cảnh thường gặp: hôm ấy không NCC nào còn bán và kho cũng không có.
+       Thiếu nó ở đây thì màn hình hiện nguyên chữ `OUT_OF_STOCK`. */
+    OUT_OF_STOCK: "hôm đó mã này hết hàng ở mọi nguồn nên không có giá vốn.",
     INVALID_PRODUCT_CODE: "mã hàng không hợp lệ với hệ giá của Tracking.",
+  };
+
+  /* Cùng bốn lý do, nhưng viết NGẮN để ghép sau "N dòng …" trên băng tổng.
+     Hai bản chứ không một: bản trên là một câu đứng sau "Chưa có giá vốn:"
+     nên có dấu chấm và chủ ngữ ("dòng này…"); nhét nguyên nó vào băng sẽ ra
+     "12 dòng dòng này chưa được gán mã bảng giá.". */
+  const LY_DO_GIA_NGAN = {
+    "chua-co-ma": "chưa gán mã bảng giá",
+    SOURCE_UNAVAILABLE: "Tracking không quan sát được bảng giá ngày bán",
+    NO_DATA: "chưa có mốc giá nào tính tới ngày bán",
+    OUT_OF_STOCK: "hết hàng ở mọi nguồn hôm bán",
+    INVALID_PRODUCT_CODE: "mã không hợp lệ với hệ giá Tracking",
   };
 
   const LY_DO_MA = {
@@ -732,6 +749,31 @@
     dieuChinhCaoBang();
 
     demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
+
+    /* Băng GIÁ VỐN — "N dòng chưa có giá vốn, vì lý do gì", đúng câu
+       ROADMAP.md đòi ở mục "Bạn nhìn thấy gì" của P4.
+       Trước đây lý do CHỈ nằm ở `title` của từng ô Giá nhập, nên muốn biết
+       cả kỳ còn nợ bao nhiêu thì phải rê chuột từng dòng một — mà đây đúng
+       là con số người đối chiếu tay cần thấy đầu tiên.
+       Đếm và phân loại do Engine trả về (`tom_tat_gia`); màn hình chỉ đọc
+       và ghép chữ, không tự cộng lại (LUẬT SỐ 1). */
+    const tg = b.tom_tat_gia;
+    if (tg && kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma
+        && (tg.co_gia || tg.chua_co_gia)) {
+      if (!tg.chua_co_gia) {
+        khung.appendChild(el("p", "bangConNo xong",
+          "Mọi dòng hàng trong bảng đều đã có giá vốn theo ngày bán."));
+      } else {
+        /* Xếp lý do theo SỐ DÒNG giảm dần: việc đáng làm trước đứng trước.
+           Mã lạ giữ nguyên chữ của Tracking thay vì nuốt — hợp đồng bên kia
+           thêm một lý do mới thì nó phải lộ ra để còn bổ sung. */
+        const ly = Object.entries(tg.theo_ly_do || {})
+          .sort((a, b2) => b2[1] - a[1])
+          .map(([k, n]) => soNguyen(n) + " dòng " + (LY_DO_GIA_NGAN[k] || k));
+        khung.appendChild(el("p", "bangConNo", "Còn " + soNguyen(tg.chua_co_gia)
+          + " dòng chưa có giá vốn" + (ly.length ? ": " + ly.join(" · ") : "") + "."));
+      }
+    }
 
     /* Băng BÁN TRẢ LẠI. Chỉ hiện khi kỳ này thật sự có chứng từ BTL — một
        dòng "0 lượt trả hàng" ở mọi tháng là nhiễu. Đếm do Engine trả về;
