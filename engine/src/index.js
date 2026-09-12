@@ -15,11 +15,12 @@ import {
 } from "./khop-ma.mjs";
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
+import { apDungKpi, hanhKpi, kiemBangKpi } from "./kpi.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.9.0-btl-ghi-chu";
+const PHIEN_BAN = "0.10.0-kpi-quy-doi";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -160,7 +161,7 @@ export default class extends WorkerEntrypoint {
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
-                         ky, minNgay, quyetDinh) {
+                         ky, minNgay, quyetDinh, bangKpi, giaDung) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -176,6 +177,11 @@ export default class extends WorkerEntrypoint {
        án chốt "sửa tay luôn thắng". Chạy trước `dienGiaNhap` thì lượt điền tự
        động sẽ đè ngược lại chính quyết định của người. */
     apDungSuaTay(bang, quyetDinh);
+    /* DOANH SỐ QUY ĐỔI chạy CUỐI CÙNG, sau cả sửa tay — vì nó chia chính
+       `loi_nhuan`, mà sửa tay thì đổi giá nhập, tức đổi lợi nhuận. Chạy trước
+       sửa tay là quy đổi một con số đã bị người thay thế. */
+    apDungKpi(bang, bangKpi, ky, giaDung,
+      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null);
     return bang;
   }
 
@@ -184,13 +190,27 @@ export default class extends WorkerEntrypoint {
    *  Kỳ trước 09/2026 không có giá vốn theo ngày, nhưng một dòng bị XOÁ TAY
    *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
-  async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh) {
+  async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
+                          bangKpi, giaDung, ky) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem),
       ghepBTL(dongCuaKy, khachCuaKy));
-    return apDungSuaTay(bang, quyetDinh);
+    apDungSuaTay(bang, quyetDinh);
+    /* `ky` đứng CUỐI dù nó là tham số tự nhiên thứ nhất của phép tra hệ số:
+       thêm vào giữa là đổi chữ ký một hàm Gateway đang gọi THẬT, tức tự
+       chuốc bẫy số 4 vào người (ROADMAP.md — hai Worker build song song khi
+       merge). Đuôi thì bản Gateway cũ vẫn gọi đúng, chỉ là chưa truyền.
+
+       Đường này KHÔNG có lợi nhuận (kỳ ngoài phạm vi giá vốn) nên quy đổi ra
+       null hết. Vẫn gọi, có chủ đích: `tom_tat_kpi` còn mang doanh số thuần
+       theo line và MỨC KPI của từng line, nên tab [Tổng hợp] của một tháng
+       cũ hiện được bảng thật kèm câu "chưa có quy đổi" — thay vì một ô trống
+       không giải thích. */
+    apDungKpi(bang, bangKpi, ky, giaDung,
+      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null);
+    return bang;
   }
 
   /** Phần doanh số / số đơn phải trừ khỏi `bc/ky/<kỳ>` vì đã xoá tay.
@@ -237,5 +257,31 @@ export default class extends WorkerEntrypoint {
    *  lộ ra ngay ở lượt ghi đầu tiên, không phải lúc giá vốn đã sai. */
   async khoaTenHang(ten) {
     return khoaTenHang(ten);
+  }
+
+  /* ─────────── P5 — doanh số quy đổi + KPI theo line ───────────
+   *
+   * Hai hàm dưới đây lên TRƯỚC lượt Gateway gọi chúng (bẫy số 4). Lượt này
+   * là lượt "lên trước"; Gateway nối vào ở lượt merge sau.
+   */
+
+  /** Hệ số và KPI đang áp cho một line trong một kỳ, đã hợp nhất mặc định
+   *  với bản ghi đè riêng kỳ. Xem `kpi.mjs` cho luật hợp nhất theo TỪNG
+   *  TRƯỜNG (đặt riêng KPI tháng 9 thì hệ số vẫn là mặc định).
+   *
+   *  Gateway gọi sau mỗi lượt GHI để dội lại đúng con số đang áp — màn hình
+   *  không tự suy ra "vừa ghi thì chắc là bằng cái vừa gõ", vì luật hợp nhất
+   *  là nghiệp vụ và nó ở đây (LUẬT SỐ 1). */
+  async hanhKpi(bangKpi, line, ky) {
+    return hanhKpi(bangKpi, line, ky);
+  }
+
+  /** Bảng KPI có dùng được không — danh sách vấn đề, rỗng là dùng được.
+   *
+   *  Gateway gọi TRƯỚC một lượt ghi để từ chối một bộ số không dùng được
+   *  ngay tại cửa, thay vì để nó nằm trên Firebase rồi mỗi lượt đọc lại phải
+   *  bỏ qua. Luật "thế nào là hợp lệ" chỉ có MỘT bản, ở đây. */
+  async kiemBangKpi(bang) {
+    return kiemBangKpi(bang);
   }
 }
