@@ -385,9 +385,9 @@ const GOC = path.resolve(__dirname, '..');
        lại cái đuôi. */
     const ENG = doc('engine/src/index.js');
     ok('dungBangDonKemMa nhận tham số mới ở ĐUÔI',
-       /dungBangDonKemMa\([^)]*doanhSoLineKyTruoc, bangCong\)/.test(ENG), true);
+       /dungBangDonKemMa\([^)]*doanhSoLineKyTruoc,\s*\n?\s*bangCong, quyetDinhBonus\)/.test(ENG), true);
     ok('dungBangDonSuaTay cũng vậy',
-       /dungBangDonSuaTay\([^)]*doanhSoLineKyTruoc, bangCong\)/.test(ENG), true);
+       /dungBangDonSuaTay\([^)]*doanhSoLineKyTruoc, bangCong,\s*\n?\s*quyetDinhBonus\)/.test(ENG), true);
   }
 
   /* ─────────── O. Hàng TỔNG ─────────── */

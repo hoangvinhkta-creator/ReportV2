@@ -68,9 +68,16 @@ Khoá phải BỀN qua lần nhập lại. Không bao giờ dùng số thứ t�
 ```
 quyết định về MỘT DÒNG     khoá = (số chứng từ, tên hàng chuẩn hoá,
                                    lần xuất hiện thứ mấy trong chứng từ)
+quyết định về MỘT ĐƠN      khoá = số chứng từ
 quyết định về MỘT MẶT HÀNG khoá = tên hàng đã chuẩn hoá
                            → áp cho MỌI kỳ, kể cả kỳ chưa nhập
 ```
+
+Loại "MỘT ĐƠN" thêm 12/09/2026 cho bonus lợi nhuận (`bc/quyetdinh/bonus`,
+xem `engine/src/bonus.mjs`). Số chứng từ do MISA cấp và không đổi giữa hai
+lần xuất sổ — đúng nửa đầu của khoá dòng. Tuyệt đối không dùng số thứ tự đơn
+trong bảng: nhập lại một kỳ là thứ tự ấy đổi, và tiền thưởng nhảy sang đơn
+của người khác mà không ai thấy.
 
 Quyết định cũ không còn dòng nào để áp ("mồ côi") phải được ĐẾM và GIỮ, và
 Engine vẫn làm đúng thế: `tom_tat_sua_tay.mo_coi` liệt kê đủ từng khoá, quyết

@@ -307,6 +307,136 @@
     return b;
   }
 
+  /** Hộp nhập bonus. Mở NGAY TRONG hàng tổng của đơn, không phải một hộp
+   *  thoại giữa màn hình: người dùng đang đọc dọc theo một đơn cụ thể, và
+   *  một hộp che mất bảng thì họ không còn thấy đơn mình đang cộng cho.
+   *
+   *  LÝ DO LÀ BẮT BUỘC — chặn ngay tại đây, trước khi gửi. Gateway và Engine
+   *  cũng chặn (ba lớp), nhưng chặn ở đây là chỗ DUY NHẤT nói được cho người
+   *  dùng biết ngay lúc họ đang gõ, thay vì trả về một lỗi đỏ sau một vòng
+   *  mạng.
+   *
+   *  Bốn lý do mặc định đọc từ ENGINE (`kq.bang.ly_do_bonus`), không gõ cứng
+   *  ở đây: thêm một lý do phải là sửa đúng một chỗ. Vẫn cho gõ lý do khác —
+   *  bốn cái kia là phím tắt cho bốn ca hay gặp, không phải một bộ phân loại
+   *  đóng. */
+  function moBonus(nut, kq) {
+    const so_ct = nut.dataset.soCt;
+    if (!so_ct || nut.disabled) return;
+    const td = nut.parentElement;
+    const tr = td.parentElement;
+    const cu = tr.querySelector(".hopBonus");
+    if (cu) { cu.remove(); return; }
+
+    const dsLyDo = (kq.bang && Array.isArray(kq.bang.ly_do_bonus))
+      ? kq.bang.ly_do_bonus : [];
+    const dangCo = td.querySelector(".soBonus");
+    const tienCu = dangCo ? dangCo.textContent.replace(/[^0-9,.]/g, "") : "";
+    const lyDoCu = (tr.querySelector(".oLyDoBonus") || {}).textContent || "";
+
+    const hop = el("div", "hopBonus");
+    const oTien = el("input", "oNhap oBonusTien");
+    oTien.type = "text";
+    oTien.inputMode = "decimal";
+    oTien.placeholder = "50";
+    oTien.value = tienCu;
+    oTien.title = "Số tiền cộng thêm vào lợi nhuận, theo nghìn đồng.";
+
+    const chon = el("select", "oNhap oBonusLyDo");
+    for (const t of [...dsLyDo, "Khác…"]) chon.appendChild(el("option", null, t));
+    const oKhac = el("input", "oNhap oBonusKhac");
+    oKhac.type = "text";
+    oKhac.placeholder = "Lý do";
+    oKhac.hidden = true;
+    /* Lý do cũ không nằm trong bốn cái mặc định thì mở sẵn ô gõ tay và điền
+       lại — nếu không, mở ra sửa số tiền là lý do lặng lẽ bị thay bằng lựa
+       chọn đầu danh sách. */
+    if (lyDoCu && !dsLyDo.includes(lyDoCu)) {
+      chon.value = "Khác…"; oKhac.hidden = false; oKhac.value = lyDoCu;
+    } else if (lyDoCu) chon.value = lyDoCu;
+    chon.addEventListener("change", () => {
+      oKhac.hidden = chon.value !== "Khác…";
+      if (!oKhac.hidden) oKhac.focus();
+    });
+
+    const loi = el("span", "loiBonus");
+    const nutLuu = el("button", "nutNho", "Lưu");
+    nutLuu.type = "button";
+    const nutXoa = el("button", "nutNho", "Xoá");
+    nutXoa.type = "button";
+    nutXoa.hidden = !dangCo;
+    const nutHuy = el("button", "nutNho", "Huỷ");
+    nutHuy.type = "button";
+
+    for (const x of [oTien, chon, oKhac, nutLuu, nutXoa, nutHuy, loi]) hop.appendChild(x);
+    td.appendChild(hop);
+    oTien.focus();
+    oTien.select();
+
+    const dong = () => hop.remove();
+    nutHuy.addEventListener("click", dong);
+
+    async function gui(than) {
+      for (const x of [nutLuu, nutXoa, nutHuy]) x.disabled = true;
+      try {
+        const kq2 = await goiGhi("/api/bonus",
+          { ky: trangThai.ky, so_ct, line: trangThai.line, ...than });
+        apBangMoi(kq2);
+      } catch (e) {
+        for (const x of [nutLuu, nutXoa, nutHuy]) x.disabled = false;
+        loi.textContent = e.message;
+      }
+    }
+
+    nutLuu.addEventListener("click", () => {
+      const chu = oTien.value.trim().replace(/\s/g, "").replace(",", ".");
+      const n = Number(chu);
+      if (!chu || !Number.isFinite(n) || n <= 0) {
+        loi.textContent = "Nhập số tiền lớn hơn 0.";
+        oTien.focus(); return;
+      }
+      const ly_do = (chon.value === "Khác…" ? oKhac.value : chon.value).trim();
+      if (!ly_do) {
+        /* Đúng câu chủ dự án đòi: "phải nhập thêm cả lí do được cộng, nếu
+           không sẽ hiện ngay cảnh báo". */
+        loi.textContent = "Phải chọn hoặc gõ lý do được cộng.";
+        (oKhac.hidden ? chon : oKhac).focus(); return;
+      }
+      gui({ tien: Math.round(n * 1000), ly_do });
+    });
+    nutXoa.addEventListener("click", () => gui({ tien: null }));
+  }
+
+  /** Ô BONUS trên hàng tổng của một đơn — chủ dự án chốt 12/09/2026.
+   *
+   *  "Một số đơn nếu khách qua kho lấy, hoặc có thưởng, nhân viên sẽ được
+   *  cộng một ít vào lợi nhuận để có thêm doanh số quy đổi."
+   *
+   *  Con số hiện ra là con số ENGINE trả về (`don.bonus.tien`), không phải
+   *  con số vừa gõ: quy đổi của nó do Engine chia theo hệ số của line (LUẬT
+   *  SỐ 1), nên hiện lại thứ Engine đã nhận mới chắc hai bên nói cùng một
+   *  con số.
+   *
+   *  Quản lí thấy con số nhưng không thấy nút: cộng bonus là sửa lương, cùng
+   *  mức khoá với đặt KPI. */
+  function oBonus(don) {
+    const td = el("td", "oSo oBonus");
+    if (don.bonus) {
+      const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
+      so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
+      td.appendChild(so);
+    }
+    if (!laQuanTri()) return td;
+    const b = el("button", "nutBonus", don.bonus ? "✎" : "+");
+    b.type = "button";
+    b.title = don.bonus ? "Sửa hoặc xoá bonus của đơn này"
+      : "Cộng thêm lợi nhuận cho đơn này (khách qua kho lấy, NCC giao hộ…)";
+    b.setAttribute("aria-label", b.title);
+    b.dataset.soCt = don.so_ct;
+    td.appendChild(b);
+    return td;
+  }
+
   /* Kết quả `/api/don-hang` gần nhất, giữ lại để bật/tắt bộ lọc vẽ lại được
      mà không phải hỏi máy chủ. KHÔNG dùng nó cho việc gì khác — nó là bản
      chụp, và một bản chụp đem đi trả lời câu hỏi khác là số cũ. */
@@ -1844,8 +1974,19 @@
         tdTrong.colSpan = 7;
         trTong.appendChild(tdTrong);
         trTong.appendChild(el("td", "oSo", nghinTron(don.tong_ban)));
-        const tdSau = el("td");
-        tdSau.colSpan = COT.length - 8;
+        /* Ô BONUS đứng dưới đúng cột "Lợi nhuận" — chủ dự án chỉ đúng ô ấy
+           trên ảnh 12/09/2026. Trước đây cả phần đuôi hàng tổng là MỘT ô
+           colSpan, nên phải cắt nó ra: một ô cho Lợi nhuận, phần còn lại
+           gộp tiếp và mang câu lý do. */
+        trTong.appendChild(oBonus(don));
+        const tdSau = el("td", "oLyDoBonus",
+          don.bonus ? don.bonus.ly_do : "");
+        if (don.bonus && don.bonus.boi) {
+          tdSau.title = "Bonus do " + don.bonus.boi + " cộng"
+            + (don.bonus.luc ? " lúc " + new Date(don.bonus.luc).toLocaleString("vi-VN") : "")
+            + ".";
+        }
+        tdSau.colSpan = COT.length - 9;
         trTong.appendChild(tdSau);
         hangNgay.push(trTong);
       }
@@ -1872,6 +2013,12 @@
          màn gán mã đè lên. Người dùng tick một cái rồi phải đóng một hộp
          thoại không ai gọi: đúng kiểu hỏng nhỏ làm tính năng không dùng
          được. */
+      const nb = e.target.closest("button.nutBonus");
+      if (nb && tbody.contains(nb)) {
+        e.stopPropagation();
+        moBonus(nb, kq);
+        return;
+      }
       const tick = e.target.closest('input[data-o="gd"]');
       if (tick && tbody.contains(tick)) {
         e.stopPropagation();

@@ -294,8 +294,12 @@ const GOC = path.resolve(__dirname, '..');
 
     ok('Gateway đọc nhánh ngày công của ĐÚNG kỳ đang xem',
        /docDb\(DUONG_NGAY_CONG \+ "\/" \+ ky, env\)/.test(GW), true);
-    ok('  · và truyền xuống Engine ở CUỐI chữ ký (bẫy số 4)',
-       /doanhSoKyTruoc, congVal\)/.test(GW), true);
+    /* `congVal` không còn đứng cuối từ lượt bonus (12/09/2026) — `bonusVal`
+       nối vào SAU nó, đúng luật "thêm vào ĐUÔI" của bẫy số 4. Điều phải canh
+       vẫn là: ngày công có tới được Engine hay không, và nó phải nằm sau
+       `doanhSoKyTruoc` chứ không bị ai chèn lên trước. */
+    ok('  · và truyền xuống Engine sau doanhSoKyTruoc (bẫy số 4)',
+       /doanhSoKyTruoc, congVal[,)]/.test(GW), true);
     ok('đường nhánh nằm dưới bc/quyetdinh (thừa hưởng rules đang chạy)',
        L.DUONG_NGAY_CONG, 'bc/quyetdinh/cong');
   }

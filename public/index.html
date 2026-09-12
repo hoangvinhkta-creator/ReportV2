@@ -371,6 +371,31 @@
   /* TÊN CỘT ĐỎ = cột này còn ô thiếu. Thay hẳn hai băng chữ dưới bảng. */
   .bangDon th.cotCanhBao .tenCot { color: #c4361f; font-weight: 700; }
   .bangLoc { font-size: 13px; color: #56637f; margin: 6px 0; }
+  /* ---- Bonus lợi nhuận theo đơn (chốt 12/09/2026) ----
+     Ô nằm trên hàng TỔNG của đơn, dưới đúng cột Lợi nhuận. `position:
+     relative` để hộp nhập bung ra được mà không kéo giãn hàng tổng — hàng ấy
+     nằm giữa bảng, giãn nó ra là mọi dòng bên dưới nhảy chỗ ngay dưới con
+     trỏ người đang bấm. */
+  .bangDon td.oBonus { position: relative; white-space: nowrap; }
+  .soBonus { color: #0f9d58; font-weight: 600; }
+  .nutBonus { border: 1px solid #d1d5db; background: #fff; color: #6b7280;
+              border-radius: 6px; padding: 0 5px; height: 17px; margin-left: 4px;
+              font-size: 11px; line-height: 15px; cursor: pointer;
+              transition: border-color .12s, color .12s; }
+  .nutBonus:hover { border-color: #0f9d58; color: #0f9d58; }
+  .bangDon td.oLyDoBonus { color: #56637f; font-style: italic; }
+  /* Hộp nhập bung ra ĐÈ LÊN bảng, không chen vào bố cục: chen vào là đẩy
+     mọi dòng bên dưới xuống đúng lúc người dùng đang nhắm vào một dòng. */
+  .hopBonus { position: absolute; z-index: 5; top: 100%; left: 0;
+              display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+              background: #fff; border: 1px solid #d1d5db; border-radius: 10px;
+              padding: 8px 10px; box-shadow: 0 6px 20px rgba(17,24,39,.14);
+              white-space: normal; width: max-content; max-width: 460px; }
+  .oBonusTien { width: 76px; text-align: right; }
+  .oBonusLyDo { max-width: 180px; }
+  .oBonusKhac { width: 160px; }
+  .loiBonus { color: #c4361f; font-size: 12px; flex-basis: 100%; }
+  .loiBonus:empty { display: none; }
   /* Kỳ ngoài phạm vi dữ liệu giá: một câu GIẢI THÍCH, không phải cảnh báo —
      nên màu xám như `.viDu`, không vàng như băng còn-nợ. Người dùng không có
      việc gì phải làm với nó. */

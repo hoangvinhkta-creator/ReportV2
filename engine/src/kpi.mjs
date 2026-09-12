@@ -422,12 +422,30 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
         d.doanh_so_quy_doi = lamTron(Number(d.loi_nhuan) * 100 / hs);
         quyDoiDon = lamTron((quyDoiDon || 0) + d.doanh_so_quy_doi);
       }
+      /* ── QUY ĐỔI CỦA BONUS (chủ dự án chốt 12/09/2026) ──
+         Bonus là một khoản cộng vào lợi nhuận của cả ĐƠN, nên nó quy đổi
+         bằng hệ số THƯỜNG của line — không bao giờ bằng hệ số gia dụng.
+         Hệ số gia dụng là thuộc tính của một MẶT HÀNG (`laGiaDung(d)`), mà
+         bonus không thuộc mặt hàng nào: nó là tiền công giao nhận của cả
+         đơn. Cho nó ăn hệ số gia dụng vì đơn tình cờ có một món gia dụng là
+         gán một luật của dòng lên một thứ không phải dòng.
+
+         Tính Ở ĐÂY chứ không ở `bonus.mjs`: mọi con số quy đổi của bảng đều
+         cộng trong chính vòng lặp này. Tách ra hai nơi thì tổng của line và
+         tổng của đơn cộng theo hai đường, và chỗ lệch chỉ lộ ra ở con số
+         cuối tháng. */
+      const bonus = don.bonus && Number.isFinite(Number(don.bonus.tien))
+        ? Number(don.bonus.tien) : 0;
+      const quyDoiBonus = (bonus > 0 && laSoDuong(h.he_so_pt) && h.he_so_pt <= 100)
+        ? lamTron(bonus * 100 / h.he_so_pt) : 0;
+      don.quy_doi_bonus = quyDoiBonus || null;
+
       /* Tổng của ĐƠN chỉ có nghĩa khi MỌI dòng của đơn đã quy đổi được —
          cùng luật `don.loi_nhuan` của P4 ("thiếu một dòng → null"). Cộng
          phần biết được rồi gọi nó là tổng của đơn là nói một con số thiếu mà
          không dán nhãn thiếu. */
       const duQuyDoi = don.dong.every((d) => d.doanh_so_quy_doi !== null);
-      don.doanh_so_quy_doi = duQuyDoi ? (quyDoiDon || 0) : null;
+      don.doanh_so_quy_doi = duQuyDoi ? lamTron((quyDoiDon || 0) + quyDoiBonus) : null;
 
       const o = theoLine.get(don.line) || oTrong();
       o.doanh_so = lamTron(o.doanh_so + (Number(don.tong_ban) || 0));
@@ -447,6 +465,22 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
         quyDoiNgay = lamTron((quyDoiNgay || 0) + d.doanh_so_quy_doi);
         tongQuyDoi = lamTron((tongQuyDoi || 0) + d.doanh_so_quy_doi);
       }
+      /* Bonus vào tổng của LINE theo đúng luật của line, không theo luật của
+         đơn: line cộng mọi phần quy đổi được, kể cả khi đơn chứa nó còn
+         thiếu dòng khác (xem chú thích ngay trên). Một đơn còn thiếu giá vốn
+         mà đã được duyệt bonus thì phần bonus ấy vẫn là tiền chắc chắn. */
+      if (quyDoiBonus) {
+        o.doanh_so_quy_doi = lamTron(o.doanh_so_quy_doi + quyDoiBonus);
+        quyDoiNgay = lamTron((quyDoiNgay || 0) + quyDoiBonus);
+        tongQuyDoi = lamTron((tongQuyDoi || 0) + quyDoiBonus);
+      }
+      /* Lợi nhuận của LINE cộng từ từng DÒNG (`congThemVaoLine`), nên bonus —
+         thứ gắn vào ĐƠN, không gắn vào dòng nào — phải cộng tường minh ở
+         đây. Thiếu dòng này thì cột Lợi nhuận của [Tổng hợp] thấp hơn tổng
+         cột Lợi nhuận của chính tab line ấy, đúng lớp lỗi im lặng mà bảng
+         [Tổng hợp] vừa phải sửa ở P6. */
+      if (bonus > 0) o.loi_nhuan = lamTron(o.loi_nhuan + bonus);
+
       if (!duQuyDoi) o.don_thieu_quy_doi++;
       /* Đếm RIÊNG khỏi `don_thieu_quy_doi`, không dùng lại con số kia. Hai
          cột trống vì hai lý do khác nhau: quy đổi còn trống thêm khi line

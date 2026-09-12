@@ -16,6 +16,7 @@ import {
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
 import { apDungKpi, hanhKpi, kiemBangKpi, BANG_KPI_HAT_GIONG } from "./kpi.mjs";
+import { apDungBonus, LY_DO_BONUS } from "./bonus.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
@@ -161,7 +162,8 @@ export default class extends WorkerEntrypoint {
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
-                         ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc, bangCong) {
+                         ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc,
+                         bangCong, quyetDinhBonus) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -177,6 +179,12 @@ export default class extends WorkerEntrypoint {
        án chốt "sửa tay luôn thắng". Chạy trước `dienGiaNhap` thì lượt điền tự
        động sẽ đè ngược lại chính quyết định của người. */
     apDungSuaTay(bang, quyetDinh);
+    /* BONUS đứng SAU sửa tay và TRƯỚC quy đổi, và cả hai vế đều bắt buộc:
+       sau sửa tay vì nó cộng vào `don.loi_nhuan` mà sửa tay đổi giá nhập tức
+       đổi lợi nhuận; trước quy đổi vì quy đổi chia chính con số ấy. Đặt sai
+       một vế là bonus không vào được doanh số quy đổi — đúng thứ chủ dự án
+       yêu cầu nó phải vào. */
+    apDungBonus(bang, quyetDinhBonus);
     /* DOANH SỐ QUY ĐỔI chạy CUỐI CÙNG, sau cả sửa tay — vì nó chia chính
        `loi_nhuan`, mà sửa tay thì đổi giá nhập, tức đổi lợi nhuận. Chạy trước
        sửa tay là quy đổi một con số đã bị người thay thế. */
@@ -197,13 +205,20 @@ export default class extends WorkerEntrypoint {
    *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
-                          bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong) {
+                          bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong,
+                          quyetDinhBonus) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem),
       ghepBTL(dongCuaKy, khachCuaKy));
     apDungSuaTay(bang, quyetDinh);
+    /* BONUS đứng SAU sửa tay và TRƯỚC quy đổi, và cả hai vế đều bắt buộc:
+       sau sửa tay vì nó cộng vào `don.loi_nhuan` mà sửa tay đổi giá nhập tức
+       đổi lợi nhuận; trước quy đổi vì quy đổi chia chính con số ấy. Đặt sai
+       một vế là bonus không vào được doanh số quy đổi — đúng thứ chủ dự án
+       yêu cầu nó phải vào. */
+    apDungBonus(bang, quyetDinhBonus);
     /* `ky` đứng CUỐI dù nó là tham số tự nhiên thứ nhất của phép tra hệ số:
        thêm vào giữa là đổi chữ ký một hàm Gateway đang gọi THẬT, tức tự
        chuốc bẫy số 4 vào người (ROADMAP.md — hai Worker build song song khi
