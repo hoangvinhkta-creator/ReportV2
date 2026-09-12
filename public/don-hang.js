@@ -157,7 +157,40 @@
      gì. Về mặc định mỗi lần nạp trang, vì đặt mặc định là lượt sửa thường
      gặp, còn ghi đè một tháng là việc cố ý làm. */
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false,
-    kpiRiengKy: false, moGiaDung: null };
+    kpiRiengKy: false, moGiaDung: null, loc: null };
+
+  /** BA BỘ LỌC trên đầu cột (chủ dự án chốt 12/09/2026). Mỗi cái trả lời một
+   *  câu hỏi "còn việc gì phải làm trên bảng này", nên cả ba đều là DANH SÁCH
+   *  VIỆC chứ không phải một cách xem số khác.
+   *
+   *  `hop()` chỉ ĐỌC cờ Engine đã đặt sẵn, không tự phán đoán — và ba chỗ đều
+   *  quan trọng:
+   *
+   *   · `ly_do_chua_ma` chỉ có giá trị khi thật sự chưa có quyết định nào.
+   *     Dòng đã đánh "bỏ qua" KHÔNG lọt vào đây: bỏ qua là một quyết định
+   *     của người, không phải một việc còn treo. Chiết khấu và phụ phí cố
+   *     định cũng không, vì Engine đặt `null` cho chúng — chúng không phải
+   *     mặt hàng.
+   *
+   *   · `la_lo` chứ KHÔNG phải `loi_nhuan < 0`. Ba loại dòng âm THEO THIẾT
+   *     KẾ — chiết khấu, quà tặng 0 đồng, bán trả lại — đã bị Engine loại ra
+   *     khỏi cờ này. So `< 0` ở đây là dựng lại một luật nghiệp vụ ngay
+   *     trong trình duyệt (LUẬT SỐ 1) và cho ra một danh sách việc đầy những
+   *     dòng không có việc gì. Đây đúng là cờ đang tô đỏ những dòng ấy, nên
+   *     "lọc" = "chỉ hiện mấy dòng đỏ tôi đang thấy".
+   *
+   *   · `gia_nhap` rỗng gồm cả `undefined` (kỳ ngoài phạm vi khớp mã, Engine
+   *     không đặt trường này chút nào) lẫn `null` (trong phạm vi mà chưa tra
+   *     ra giá). Cả hai đều là "chưa có giá nhập" theo đúng nghĩa người dùng
+   *     hỏi. */
+  const LOC = {
+    ma: { cot: "Mã sản phẩm", nhan: "Chỉ hiện dòng CHƯA PHÂN LOẠI",
+      hop: (d) => !!d.ly_do_chua_ma },
+    gia: { cot: "Giá nhập", nhan: "Chỉ hiện dòng CHƯA CÓ GIÁ NHẬP",
+      hop: (d) => d.gia_nhap === null || d.gia_nhap === undefined },
+    lo: { cot: "Lợi nhuận", nhan: "Chỉ hiện dòng LỖ",
+      hop: (d) => !!d.la_lo },
+  };
 
   /** Ghim đầu cột: đổi cách khung `.bocBang` cuộn, không đổi một dòng CSS
    *  `position: sticky` nào cả (chủ dự án chốt 12/09/2026 — "khi kéo có
@@ -229,6 +262,36 @@
     td.appendChild(b);
     return td;
   }
+
+  /** Nút lọc của MỘT cột. Bấm lần nữa là tắt; bật cái này thì cái kia tắt.
+   *
+   *  Chọn MỘT-TRONG-BA chứ không cho chồng nhau, và đó là một lựa chọn chứ
+   *  không phải sự lười: giao của "chưa phân loại" với "lỗ" gần như luôn
+   *  rỗng (chưa phân loại thì chưa có giá vốn, chưa có giá vốn thì lợi nhuận
+   *  chưa biết chứ không âm), nên một bảng trống hiện ra sau hai cú bấm hợp
+   *  lệ đọc lên y hệt một cái hỏng. Ba câu hỏi này vốn hỏi lần lượt, không
+   *  hỏi cùng lúc. */
+  function nutLoc(khoa) {
+    const b = el("button", "nutLoc" + (trangThai.loc === khoa ? " locDang" : ""), "⌄");
+    b.type = "button";
+    b.title = trangThai.loc === khoa ? "Đang lọc — bấm để bỏ lọc" : LOC[khoa].nhan;
+    b.setAttribute("aria-label", LOC[khoa].nhan);
+    b.setAttribute("aria-pressed", trangThai.loc === khoa ? "true" : "false");
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      trangThai.loc = trangThai.loc === khoa ? null : khoa;
+      /* Vẽ lại từ dữ liệu ĐANG CÓ, không gọi lại máy chủ: lọc là phép ẩn
+         dòng, không phải phép tính — không con số nào đổi. Gọi lại là bắt
+         người dùng chờ một vòng mạng cho đúng thứ đang nằm sẵn trong tay. */
+      if (bangCuoi) veKetQua(bangCuoi);
+    });
+    return b;
+  }
+
+  /* Kết quả `/api/don-hang` gần nhất, giữ lại để bật/tắt bộ lọc vẽ lại được
+     mà không phải hỏi máy chủ. KHÔNG dùng nó cho việc gì khác — nó là bản
+     chụp, và một bản chụp đem đi trả lời câu hỏi khác là số cũ. */
+  let bangCuoi = null;
 
   /* ---- Vẽ bảng đơn hàng của một (kỳ, line) ---- */
 
@@ -543,6 +606,11 @@
     const bn = $("bangConNo");
     if (!bn) return;
     if (hien === false) { bn.hidden = true; return; }
+    /* Đang lọc thì băng này im. Nó đếm trên DOM (xem chú thích trên), mà DOM
+       lúc ấy chỉ còn phần khớp bộ lọc — in ra là in một con số nhỏ hơn sự
+       thật dưới đúng cái tên "còn N dòng chưa có mã". Băng bộ lọc ngay trên
+       bảng đã nói rõ đang xem cái gì và bao nhiêu dòng. */
+    if (trangThai.loc) { bn.hidden = true; return; }
 
     const khung = $("veDonHang");
     const oNo = khung ? khung.querySelectorAll("td.maChuaCo") : [];
@@ -1606,6 +1674,12 @@
         + "để trống. Doanh số và số đơn không bị ảnh hưởng."));
     }
 
+    /* Băng bộ lọc: dựng CHỖ trước, điền chữ sau — số dòng khớp chỉ biết
+       được sau khi chạy hết vòng vẽ, mà băng thì phải đứng TRÊN bảng. */
+    const bangLoc = el("p", "bangLoc");
+    bangLoc.hidden = true;
+    khung.appendChild(bangLoc);
+
     const boc = el("div", "bocBang");
     const bang = el("table", "bangDon");
 
@@ -1632,11 +1706,31 @@
 
     const thead = el("thead");
     const trTen = el("tr");
-    for (const c of COT) trTen.appendChild(el("th", null, c));
+    /* Nút lọc nằm TRONG đầu cột nó lọc (chủ dự án chốt 12/09/2026) — không
+       gom thành một dải riêng phía trên. Đứng ngay trên cột thì không phải
+       giải thích nó lọc theo cái gì; một dải riêng thì phải đặt tên cho từng
+       nút, và ba cái tên ấy lại là ba chỗ nữa để trôi khỏi sự thật. */
+    const theoCot = {};
+    for (const k of Object.keys(LOC)) theoCot[LOC[k].cot] = k;
+    for (const c of COT) {
+      const th = el("th", null, c);
+      const k = theoCot[c];
+      if (k) th.appendChild(nutLoc(k));
+      trTen.appendChild(th);
+    }
     thead.appendChild(trTen);
     bang.appendChild(thead);
 
     const tbody = el("tbody");
+    /* ── BỘ LỌC ──
+       Đang lọc thì bảng thành một DANH SÁCH VIỆC phẳng: không băng ngày,
+       không hàng tổng đơn. Hai thứ ấy mang tổng do Engine cộng trên TOÀN BỘ
+       dòng của ngày/của đơn; để chúng đứng cạnh một tập dòng đã lọc là in ra
+       một con số không khớp với những gì đang nhìn thấy, và người đọc không
+       có cách nào biết con số ấy đang nói về tập nào. Thà bỏ hẳn còn hơn in
+       một số đúng ở chỗ nó đọc thành sai. */
+    const loc = trangThai.loc ? LOC[trangThai.loc] : null;
+    let soKhop = 0;
     for (const ng of b.ngay) {
       /* Một hàng tiêu đề cho mỗi ngày — đúng cách file tay chia. Kèm luôn
          tổng của ngày để đọc dọc không phải tự cộng. */
@@ -1645,11 +1739,16 @@
         + " đơn  ·  " + nghinTron(ng.doanh_so));
       tdNgay.colSpan = COT.length;
       trNgay.appendChild(tdNgay);
-      tbody.appendChild(trNgay);
+      /* Gom hàng của cả ngày rồi mới quyết định có in băng ngày hay không:
+         lọc xong mà ngày ấy không còn dòng nào thì một băng ngày trơ trọi
+         không có gì bên dưới là dòng nhiễu thuần tuý. */
+      const hangNgay = [];
 
       for (const don of ng.don) {
         let dauDon = true;
+        const hangDon = [];
         for (const d of don.dong) {
+          if (loc && !loc.hop(d)) continue;
           /* Dòng 0 đồng (quà tặng kèm) bôi đỏ — chủ dự án chốt 12/09/2026. Cờ
              do Engine đặt, không suy từ `tong_ban === 0` ở đây: luật "0 đồng
              là gì" có ngoại lệ (chứng từ BTL) và ngoại lệ ấy là NGHIỆP VỤ,
@@ -1703,9 +1802,13 @@
           tr.appendChild(nutDong("🗑", "Xoá dòng", suaDuoc, "xoa"));
           if (d.khoa) tr.dataset.khoaDong = d.khoa;
           if (d.da_sua_tay) tr.classList.add("hangSuaTay");
-          tbody.appendChild(tr);
+          hangDon.push(tr);
+          soKhop++;
           dauDon = false;
         }
+        if (!hangDon.length) continue;
+        for (const t of hangDon) hangNgay.push(t);
+        if (loc) continue;
         const trTong = el("tr", "hangTongDon");
         const tdTrong = el("td");
         tdTrong.colSpan = 7;
@@ -1714,8 +1817,12 @@
         const tdSau = el("td");
         tdSau.colSpan = COT.length - 8;
         trTong.appendChild(tdSau);
-        tbody.appendChild(trTong);
+        hangNgay.push(trTong);
       }
+
+      if (!hangNgay.length) continue;
+      if (!loc) tbody.appendChild(trNgay);
+      for (const t of hangNgay) tbody.appendChild(t);
     }
     /* MỘT listener cho cả bảng, không gắn từng dòng: bảng một tháng có hàng
        nghìn ô, và gắn từng ô là hàng nghìn listener phải dọn mỗi lượt vẽ
@@ -1758,6 +1865,21 @@
         taiKy({ imLang: true });
       });
     });
+
+    if (loc) {
+      bangLoc.hidden = false;
+      bangLoc.textContent = "Đang lọc: " + loc.nhan.replace("Chỉ hiện dòng ", "")
+        + " — " + soNguyen(soKhop) + " dòng"
+        + (soKhop ? ". Băng ngày và hàng tổng đơn tạm ẩn." : ": bảng này không còn dòng nào như thế.");
+      const bo = el("button", "nutBoLoc", "Bỏ lọc");
+      bo.type = "button";
+      bo.addEventListener("click", () => {
+        trangThai.loc = null;
+        if (bangCuoi) veKetQua(bangCuoi);
+      });
+      bangLoc.appendChild(document.createTextNode(" "));
+      bangLoc.appendChild(bo);
+    }
 
     bang.appendChild(tbody);
     boc.appendChild(bang);
@@ -1844,6 +1966,11 @@
        của dữ liệu. Giữ lại thì sang line khác lại thấy một ô trống mời gõ một
        hệ số line ấy không cần. */
     trangThai.moGiaDung = null;
+    /* Bộ lọc là "tôi đang soi việc còn treo của BẢNG NÀY", không phải một
+       thiết lập của người dùng. Mang nó sang tab khác thì mở một line mới ra
+       thấy bảng gần như trống mà không hiểu vì sao — nhất là khi line ấy
+       không còn dòng nào khớp và bảng rỗng hoàn toàn. */
+    trangThai.loc = null;
     taiKy();
   }
 
@@ -1946,6 +2073,7 @@
    *  ở chỗ gọi thì đường ghi phải nhớ đo, và cái phải-nhớ nào rồi cũng có chỗ
    *  quên. */
   function veKetQua(kq) {
+    bangCuoi = kq;
     const ve = $("veDonHang");
     const bocCu = ve.querySelector(".bocBang");
     const cuonCu = bocCu ? bocCu.scrollTop : 0;
