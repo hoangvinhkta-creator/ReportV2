@@ -948,6 +948,79 @@ const datGiaDung = boc("quantri", async ({ nguoi, request, env, rid }) => {
   return { ghi: true, khoa, gia_dung: than.gia_dung };
 });
 
+/* =================== POST /api/nap-kpi ===================
+ * Nạp bộ số KPI / hệ số MẶC ĐỊNH — lượt khởi tạo đầu tiên.
+ *
+ * VÌ SAO ĐƯỜNG NÀY TỒN TẠI. Trước nó, nạp lượt đầu bắt buộc chạy
+ * `bin/nap-kpi.mjs` dưới máy, tức phải tải khoá service account Firebase về.
+ * Chủ dự án không clone repo trên máy — và bắt tải khoá admin của một
+ * Firebase dùng chung với Marketing về một máy, chỉ để đặt 10 con số, là cái
+ * giá không đáng trả. Gateway đã giữ khoá làm Secret sẵn, nên nó hỏi Engine
+ * bộ số rồi tự ghi: không ai phải chạm vào khoá riêng lần nào.
+ *
+ * CHỈ CHẠY KHI NHÁNH CÒN RỖNG, và đó là cả thiết kế của đường này — nó là
+ * nút KHỞI TẠO, không phải nút đặt-lại. Nhờ vậy nó không thể nào xoá mất một
+ * con số chủ dự án đã sửa trên màn hình, kể cả khi bấm nhầm hai lần, kể cả
+ * sau này. Muốn đặt lại toàn bộ thì đó là một việc khác, cần một lượt bàn
+ * khác — không lẳng lặng gói vào cùng một nút.
+ *
+ * `ghiDb` (PUT) ở đây là ĐÚNG, khác `dat-kpi` dùng `vaDb` (PATCH): lượt này
+ * dựng cả cây từ rỗng, không hợp nhất vào gì cả. Và vì đã chặn "chỉ khi
+ * rỗng" nên PUT không đè được của ai.
+ *
+ * CHỈ QUẢN TRỊ, cùng mức `dat-kpi`: nó đặt mục tiêu kinh doanh của mọi line.
+ */
+const napKpi = boc("quantri", async ({ nguoi, env, rid }) => {
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  /* Đọc NÔNG: chỉ cần biết nhánh có gì chưa, không cần kéo cả cây về. */
+  const dangCo = await docDbNong(DUONG_BANG_KPI, env);
+  if (!dangCo.ok)
+    throw new LoiXacThuc(503, "khong-doc-duoc-kpi:" + chiTietLoi(dangCo));
+  if (dangCo.val && Object.keys(dangCo.val).length) {
+    /* KHÔNG phải lỗi máy chủ — là một lời từ chối có lý do, nên trả 200 kèm
+       `ghi: false` để màn hình nói được câu đúng ("đã có bộ số rồi, sửa trên
+       dải setup"). Trả 4xx ở đây sẽ hiện thành "Dữ liệu gửi lên không hợp
+       lệ", một câu sai và làm người dùng đi tìm sai chỗ. */
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/nap-kpi", tu_choi: "da-co-bo-so" });
+    return { ghi: false, ly_do: "da-co-bo-so" };
+  }
+
+  /* Bộ số là một quyết định NGHIỆP VỤ nên nó ở Engine, Gateway chỉ đi lấy
+     (LUẬT SỐ 1). Chép một bản sang đây là dựng bản thứ hai của mục tiêu kinh
+     doanh, và chỗ hai bản trôi khỏi nhau là chỗ không ai thấy. */
+  let hat;
+  try {
+    hat = await env.REPORT_ENGINE.bangKpiHatGiong();
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-hat-giong:" + (e && e.message));
+  }
+
+  /* Kiểm TRƯỚC khi ghi, bằng chính phép kiểm của Engine. Dư thừa trên giấy
+     (hằng số đã có bài kiểm ghim) nhưng rẻ, và nó canh đúng ca một lượt sửa
+     hằng số lọt qua: bộ kiểm chạy ở lượt build, còn cái này chạy ở lượt GHI. */
+  const van_de = await env.REPORT_ENGINE.kiemBangKpi(hat);
+  if (van_de.length) {
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/nap-kpi", hat_giong_sai: van_de });
+    throw new LoiXacThuc(503, "hat-giong-khong-hop-le");
+  }
+
+  const r = await ghiDb(DUONG_BANG_KPI, hat, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-kpi:" + chiTietLoi(r));
+
+  /* Đọc ngược để xác nhận — KHÔNG tin lời chính mình, cùng kỷ luật
+     `--doc-lai` của mọi script nạp trong repo này. Ghi xong mà đọc lại rỗng
+     là lượt ghi đã thất bại lặng lẽ, và đó là thứ phải lộ ra ngay bây giờ
+     chứ không phải lúc chủ dự án mở màn hình thấy bảng trống. */
+  const lai = await docDbNong(DUONG_BANG_KPI, env);
+  const soLine = lai.ok && lai.val && lai.val.mac_dinh
+    ? Object.keys(hat.mac_dinh || {}).length : 0;
+  if (!soLine) throw new LoiXacThuc(503, "ghi-roi-doc-lai-rong");
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/nap-kpi", so_line: soLine });
+  return { ghi: true, so_line: soLine };
+});
+
 /* =================== GET /api/ma-bang-gia ===================
  * Danh sách mã trên bảng giá Tracking, cho ô chọn của màn gán tay.
  *
@@ -1030,6 +1103,7 @@ const API_ROUTES = new Map([
   ["POST /api/sua-dong", suaDong],
   ["POST /api/dat-kpi", datKpi],
   ["POST /api/gia-dung", datGiaDung],
+  ["POST /api/nap-kpi", napKpi],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn

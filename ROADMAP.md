@@ -102,29 +102,31 @@ bịa cột rỗng cho đủ hình (xem mục "P5").
 Công thức đã chốt (12/09/2026) và code đã merge. Hai việc còn lại, theo
 đúng thứ tự:
 
-1. **Nạp bộ số hạt giống lên Firebase — một lượt, chạy tay.** Session
-   không làm được: nó không có `FB_SA_EMAIL`/`FB_SA_KEY`.
+1. **Nạp bộ số hạt giống — MỘT CÚ BẤM trên màn hình.** Mở tab [Tổng
+   hợp], bấm **"Nạp bộ số mặc định"** trong khung vàng. Hết.
 
-   ```
-   export FB_SA_EMAIL='firebase-adminsdk-...@tinphattracking.iam.gserviceaccount.com'
-   export FB_SA_KEY="$(cat duong-dan-khoa.pem)"
-   node bin/nap-kpi.mjs                  # xem trước, không ghi gì
-   node bin/nap-kpi.mjs --ghi --doc-lai  # ghi thật
-   ```
+   Không cần khoá, không cần clone repo, không cần terminal — Gateway đã
+   giữ `FB_SA_EMAIL`/`FB_SA_KEY` làm Secret nên nó tự ghi. Đường này
+   (`POST /api/nap-kpi`, chỉ `quantri`) **chỉ chạy khi nhánh còn rỗng**:
+   nó là nút KHỞI TẠO, không phải nút đặt-lại, nên bấm nhầm hai lần cũng
+   không xoá mất con số nào đã sửa.
 
-   Chưa nạp thì tab [Tổng hợp] NÓI ĐÚNG câu đó ("chưa nạp bảng KPI…"),
-   không để ô trống tự nói thay. Sau lượt này không phải chạy script nữa:
-   sửa thẳng trên dải setup của từng tab line.
+   `bin/nap-kpi.mjs` vẫn còn dùng được cho ai có repo và có khoá dưới
+   máy, nhưng **không còn là đường bắt buộc**. Nhớ: script PUT ĐÈ TRỌN
+   nhánh, kể cả mọi bản ghi đè theo kỳ — nút trên màn hình thì không thể.
 
 2. **Mở kỳ 09/2026, đối chiếu tay.** Đó là kỳ DUY NHẤT có số quy đổi —
    xem "Phạm vi" ở mục P5 bên dưới.
 
 **Một điều phải kiểm ngay ở lượt mở đầu tiên:** hai đường ghi
-(`/api/dat-kpi`, `/api/gia-dung`) chỉ cho vai **`quantri`**. Nếu tài
-khoản chủ dự án đang là `quanly` thì ô trên dải setup sẽ KHOÁ SẴN kèm
-câu "Chỉ Quản trị đặt được" — không phải lỗi, là chốt an toàn cố ý (đặt
-KPI là đổi mọi báo cáo của mọi tháng). Muốn nới cho cả hai vai thì nói,
-sửa đúng một chữ ở `src/index.js`.
+(`/api/dat-kpi`, `/api/gia-dung`, `/api/nap-kpi`) chỉ cho vai
+**`quantri`**. Nếu tài
+khoản chủ dự án đang là `quanly` thì nút "Nạp bộ số mặc định" KHÔNG hiện
+(thay bằng câu "Chỉ Quản trị nạp được bộ số này") và ô trên dải setup
+KHOÁ SẴN kèm câu "Chỉ Quản trị đặt được" — không phải lỗi, là chốt an
+toàn cố ý (đặt KPI là đổi mọi báo cáo của mọi tháng). Hai cách: sửa
+`profiles/<uid>/vai` thành `quantri` trên Console, hoặc nói để nới cho cả
+hai vai (sửa đúng một chữ ở `src/index.js`).
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -1252,6 +1254,11 @@ Nút "Đặt riêng tháng này" tự TẮT mỗi lần đổi năm/tháng/line 
 `doiCho()`): bật ở tab này rồi bấm sang tab khác mà nó còn bật là đặt
 một bản ghi đè người dùng không hề muốn, ở đúng một tháng, lặng lẽ.
 
+**Line chưa có hệ số gia dụng thì khai bằng nút "+ thêm hệ số gia dụng"**
+trên dải setup. Bản đầu của P5 ẩn ô ấy khi giá trị còn trống, nên không
+có đường nào khai nó từ màn hình — con gà và quả trứng, sửa ở lát 3b.
+Xoá trắng ô là bỏ hệ số đi, nên không cần nút xoá riêng.
+
 #### Hai nhánh Firebase MỚI
 
 ```
@@ -1270,6 +1277,7 @@ Ba đường Gateway:
 ```
 POST /api/dat-kpi     KPI/hệ số cho một line — mặc định hoặc riêng kỳ   (CHỈ quantri)
 POST /api/gia-dung    đánh dấu/rút lại một mặt hàng là gia dụng         (CHỈ quantri)
+POST /api/nap-kpi     nạp bộ số mặc định, CHỈ khi nhánh còn rỗng        (CHỈ quantri)
 GET  /api/don-hang    (mở rộng) kèm quy đổi + bản kê KPI theo line
 ```
 
