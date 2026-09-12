@@ -46,6 +46,12 @@
  * không kéo nguồn doanh số thứ hai vào đó.
  */
 
+/* Nhãn "Kho" của cột Nơi nhập — MƯỢN của `khop-ma.mjs`, cố ý không chép lại.
+ * Cột "Tỉ lệ tồn kho" (P6) đếm đúng những dòng mang nhãn ấy, nên hai chỗ dùng
+ * hai chuỗi khác nhau là tỉ lệ tụt về 0% mà bảng vẫn trông bình thường —
+ * đúng lớp lỗi "hai nơi phải khớp mà không ai đối chiếu". */
+import { NHAN_TON_KHO } from "./khop-ma.mjs";
+
 /** Đường dẫn hai nhánh trên Firebase. Khai MỘT chỗ để script nạp, Gateway
  *  đọc và Gateway ghi không bao giờ trỏ lệch nhau.
  *
@@ -245,6 +251,125 @@ const laGiaDung = (d, giaDung) => {
   return !!(m && m.gia_dung === true);
 };
 
+/* ─────────────── Bốn cột mới của tab [Tổng hợp] — P6 ───────────────
+ *
+ * Chủ dự án chốt 12/09/2026, khi P6 mở ra: bảng [Tổng hợp] đổi từ 8 cột
+ * thành 15. Bốn con số dưới đây là phần Engine phải tính thêm; mười một cột
+ * còn lại đã có sẵn hoặc còn xếp chỗ (nhóm lương).
+ *
+ * ── "Số sản phẩm" — ĐẾM CÁI, KHÔNG ĐẾM DÒNG ──
+ *
+ * Cột cũ tên "Dòng hàng" đếm số dòng (`so_dong`). Chủ dự án chốt đổi sang
+ * TỔNG SỐ LƯỢNG bán ra: một đơn bán 3 tivi + 1 tủ lạnh là 4, không phải 2.
+ * `so_dong` VẪN GIỮ trong bản kê — nó là thứ đối chiếu với bảng đơn, và bỏ
+ * một trường đang đúng chỉ vì màn hình thôi hiện nó là tự tay xoá một đường
+ * dò lỗi.
+ *
+ * Chiết khấu và phụ phí cố định KHÔNG được đếm. Cả hai đều không phải mặt
+ * hàng — `dungBangDon()` gán cứng `so_luong: 1` cho dòng chiết khấu gộp, nên
+ * đếm nó là mỗi đơn có chiết khấu tự cộng thêm một "sản phẩm" không hề bán
+ * ra. Cùng lý do `khopMaChoBangDon()` đã loại hai loại dòng ấy khỏi phép
+ * khớp mã.
+ *
+ * Dòng BTL thì CÓ đếm, và đếm cả số âm: `btl.mjs` đặt `so_luong` về 0 (ghép
+ * được) hoặc −1 (trả lại không ghép), nên phép cộng tự ra SỐ LƯỢNG THỰC BÁN.
+ * Bỏ dấu âm ở đây là nói công ty bán ra nhiều hơn thực tế.
+ *
+ * ── "Tỉ lệ tồn kho" — công thức chủ dự án chốt 12/09/2026 ──
+ *
+ *     tỉ lệ = doanh số thuần của những dòng XUẤT TỪ KHO ÷ doanh số thuần
+ *
+ * "Xuất từ kho" = cột `Nơi nhập` ghi đúng chữ `"Kho"` — KHÔNG phải một luật
+ * thứ hai dựng riêng ở đây. Chủ dự án chốt "chỉ lấy số liệu sẵn trong V2",
+ * và nhãn ấy đã do `chonNoiNhap()` của P4 đặt ra từ chính dữ liệu Tracking
+ * (kho có hàng hôm đó thì kho THẮNG mọi NCC). Nhờ định nghĩa bám đúng cột
+ * đang hiện, người đối chiếu tay chỉ việc lọc cột `Nơi nhập` = Kho rồi cộng
+ * cột `Tổng bán` — ra đúng tử số. Một công thức không kiểm tay được là một
+ * công thức không ai tin.
+ *
+ * Hệ quả cố ý: vận chuyển và lắp đặt cũng mang nhãn "Kho" (P4 — "công của
+ * chính nhà mình, xuất từ kho") nên chúng nằm trong tử số. Đúng như cột
+ * đang hiện, và đó là điều kiện để phép kiểm tay khớp.
+ *
+ * `ty_le_ton_kho_pt` để `null` khi KHÔNG MỘT DÒNG NÀO biết nơi nhập —
+ * nghĩa là kỳ trước `MOC_KHOP_MA`, hoặc Tracking hỏng. Hoá 0% ở đó là để
+ * một ô trống nói "line này không bán đồng nào từ kho", một câu sai hẳn.
+ * `doanh_so_chua_ro_nguon` đếm phần hàng CHƯA biết nguồn để màn hình dán
+ * được nhãn thiếu, đúng cách `don_thieu_quy_doi` đang làm.
+ *
+ * ── "Lợi nhuận" ──
+ *
+ * Cộng `loi_nhuan` của MỌI dòng biết được, kể cả chiết khấu và dòng âm —
+ * cùng luật với `doanh_so_quy_doi` ngay trên, và cùng lý do: P4 đã đặt
+ * `loi_nhuan` của từng loại dòng về đúng con số nghiệp vụ của nó.
+ */
+const laObjThuong = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+
+/** Tỉ lệ tồn kho của một bản kê line — phần trăm, hoặc `null` khi CHƯA BIẾT.
+ *
+ *  Hai lối ra `null`, hai câu khác nhau nhưng cùng một kết luận "không nói
+ *  được":
+ *    · không dòng nào biết nơi nhập (kỳ trước `MOC_KHOP_MA`, hay Tracking
+ *      hỏng) — mẫu số có số nhưng tử số hoàn toàn mù;
+ *    · doanh số thuần ≤ 0 (một tháng toàn trả hàng) — chia cho nó ra một
+ *      tỉ lệ âm hoặc vô cực, không có nghĩa nào để đọc. */
+function tyLeTonKho(o) {
+  if (!(o.doanh_so_ro_nguon > 0)) return null;
+  if (!(o.doanh_so > 0)) return null;
+  return lamTron(o.doanh_so_tu_kho * 100 / o.doanh_so);
+}
+
+/** Chênh phần trăm giữa tháng này và tháng trước — cột "Vs. Tháng trước".
+ *
+ *  Chủ dự án chốt 12/09/2026: so bằng DOANH SỐ THUẦN. Chọn đại lượng ấy có
+ *  một hệ quả tốt mà quy đổi/lợi nhuận không có — doanh số thuần có đủ từ
+ *  01/2025, nên cột này so được NGAY ở kỳ 09/2026, không phải chờ hai tháng
+ *  liên tiếp cùng nằm sau `MOC_KHOP_MA`.
+ *
+ *  `null` khi không có số tháng trước, hoặc tháng trước bằng 0 (chia cho 0
+ *  ra vô cực). Hai ca ấy KHÁC nhau với người đọc — "chưa có số để so" và
+ *  "tháng trước chưa bán gì, tháng này có" — nên `doanh_so_ky_truoc` đi kèm
+ *  để màn hình nói đúng câu, thay vì cùng hiện một dấu gạch cho cả hai. */
+function chenhPhanTram(nay, truoc) {
+  if (typeof truoc !== "number" || !Number.isFinite(truoc) || truoc <= 0) return null;
+  return lamTron(((Number(nay) || 0) - truoc) * 100 / truoc);
+}
+
+function oTrong() {
+  return {
+    doanh_so: 0, so_don: 0, so_dong: 0,
+    doanh_so_quy_doi: 0, don_thieu_quy_doi: 0,
+    so_san_pham: 0,
+    loi_nhuan: 0, don_thieu_loi_nhuan: 0,
+    doanh_so_tu_kho: 0, doanh_so_ro_nguon: 0, doanh_so_chua_ro_nguon: 0,
+  };
+}
+
+/** Một dòng góp gì vào bản kê của line. Tách khỏi vòng lặp chính để bốn luật
+ *  "dòng nào được tính" nằm CẠNH NHAU — rải chúng ra giữa thân vòng lặp là
+ *  cách chắc nhất để lượt sửa sau bỏ sót một luật. */
+function congThemVaoLine(o, d) {
+  const tien = Number(d.tong_ban) || 0;
+  const laHang = !d.la_chiet_khau && !d.la_phu_phi_co_dinh;
+
+  if (laHang) o.so_san_pham += Number(d.so_luong) || 0;
+
+  if (d.loi_nhuan !== null && d.loi_nhuan !== undefined) {
+    o.loi_nhuan = lamTron(o.loi_nhuan + (Number(d.loi_nhuan) || 0));
+  }
+
+  const noi = typeof d.noi_nhap === "string" ? d.noi_nhap.trim() : "";
+  if (noi) {
+    o.doanh_so_ro_nguon = lamTron(o.doanh_so_ro_nguon + tien);
+    if (noi === NHAN_TON_KHO) o.doanh_so_tu_kho = lamTron(o.doanh_so_tu_kho + tien);
+  } else if (laHang) {
+    /* Chỉ HÀNG mới bị kể là "chưa rõ nguồn". Chiết khấu và Chênh VAT vốn
+       KHÔNG có nơi nhập theo thiết kế của P4 — kể chúng vào đây là dán nhãn
+       thiếu lên một ô cố ý để trống. */
+    o.doanh_so_chua_ro_nguon = lamTron(o.doanh_so_chua_ro_nguon + tien);
+  }
+}
+
 /** Điền `doanh_so_quy_doi` cho từng dòng, từng đơn, từng ngày và cả bảng;
  *  cộng bản kê KPI theo line.
  *
@@ -299,8 +424,7 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
       const duQuyDoi = don.dong.every((d) => d.doanh_so_quy_doi !== null);
       don.doanh_so_quy_doi = duQuyDoi ? (quyDoiDon || 0) : null;
 
-      const o = theoLine.get(don.line)
-        || { doanh_so: 0, so_don: 0, so_dong: 0, doanh_so_quy_doi: 0, don_thieu_quy_doi: 0 };
+      const o = theoLine.get(don.line) || oTrong();
       o.doanh_so = lamTron(o.doanh_so + (Number(don.tong_ban) || 0));
       o.so_don++;
       o.so_dong += don.dong.length;
@@ -309,13 +433,21 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
          dùng đối chiếu KPI, và "bỏ cả đơn vì một dòng chưa có giá" làm nó
          tụt mà không ai biết tụt bao nhiêu. `don_thieu_quy_doi` đếm số đơn
          chưa đủ, để màn hình nói thẳng tổng này còn nợ bao nhiêu đơn. */
+      let duLoiNhuan = true;
       for (const d of don.dong) {
+        congThemVaoLine(o, d);
+        if (d.loi_nhuan === null || d.loi_nhuan === undefined) duLoiNhuan = false;
         if (d.doanh_so_quy_doi === null) continue;
         o.doanh_so_quy_doi = lamTron(o.doanh_so_quy_doi + d.doanh_so_quy_doi);
         quyDoiNgay = lamTron((quyDoiNgay || 0) + d.doanh_so_quy_doi);
         tongQuyDoi = lamTron((tongQuyDoi || 0) + d.doanh_so_quy_doi);
       }
       if (!duQuyDoi) o.don_thieu_quy_doi++;
+      /* Đếm RIÊNG khỏi `don_thieu_quy_doi`, không dùng lại con số kia. Hai
+         cột trống vì hai lý do khác nhau: quy đổi còn trống thêm khi line
+         chưa khai hệ số, mà lúc ấy lợi nhuận vẫn biết rõ. Dùng chung một bộ
+         đếm là dán nhãn "còn thiếu" lên một cột đã đủ. */
+      if (!duLoiNhuan) o.don_thieu_loi_nhuan++;
       theoLine.set(don.line, o);
     }
     ng.doanh_so_quy_doi = quyDoiNgay;
@@ -335,6 +467,7 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
       /* Đạt bao nhiêu phần trăm KPI. `null` khi line chưa đặt KPI — màn hình
          hiện "chưa đặt KPI", không hiện "0%" (hai câu khác nhau hẳn). */
       dat_pt: laSoDuong(h.kpi) ? lamTron(o.doanh_so_quy_doi * 100 / h.kpi) : null,
+      ty_le_ton_kho_pt: tyLeTonKho(o),
     };
   }
 
@@ -353,11 +486,12 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
  *  sách line CHÍNH THỨC, khai tường minh (xem `line.mjs`). Suy thứ tự từ
  *  những line có đơn thì một line chưa chạy tháng này sẽ biến khỏi bảng
  *  [Tổng hợp] thay vì hiện ra với số 0 và mức KPI của nó. */
-export function gopKpiToanCongTy(tomTatKpi, thuTu) {
+export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
   const cua = (tomTatKpi && tomTatKpi.line) || {};
   const ds = Array.isArray(thuTu) ? thuTu : Object.keys(cua);
 
   let kpi = 0, quy_doi = 0, doanh_so = 0, so_don = 0, co_kpi = false;
+  const g = oTrong();
   for (const ten of ds) {
     const o = cua[ten];
     if (!o) continue;
@@ -365,13 +499,99 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu) {
     quy_doi = lamTron(quy_doi + (o.doanh_so_quy_doi || 0));
     so_don += o.so_don || 0;
     if (laSoDuong(o.kpi)) { kpi = lamTron(kpi + o.kpi); co_kpi = true; }
+    /* Cộng lại từ bản kê từng line chứ không quét lại bảng đơn: quét hai lần
+       là hai phép cộng có thể lệch nhau, và lúc lệch thì không ai biết hàng
+       TỔNG hay hàng line mới là con số đúng. */
+    g.so_san_pham += o.so_san_pham || 0;
+    g.loi_nhuan = lamTron(g.loi_nhuan + (o.loi_nhuan || 0));
+    g.don_thieu_loi_nhuan += o.don_thieu_loi_nhuan || 0;
+    g.don_thieu_quy_doi += o.don_thieu_quy_doi || 0;
+    g.doanh_so_tu_kho = lamTron(g.doanh_so_tu_kho + (o.doanh_so_tu_kho || 0));
+    g.doanh_so_ro_nguon = lamTron(g.doanh_so_ro_nguon + (o.doanh_so_ro_nguon || 0));
+    g.doanh_so_chua_ro_nguon = lamTron(g.doanh_so_chua_ro_nguon + (o.doanh_so_chua_ro_nguon || 0));
   }
+  g.doanh_so = doanh_so;
+
+  /* Tháng trước của CẢ CÔNG TY cộng MỌI line trong bảng kỳ trước, kể cả line
+     tháng này không có đơn nào. Lọc theo line có mặt tháng này là so một
+     tháng đủ với một tháng đã bị cắt bớt — con số chênh sẽ dương lên một
+     cách giả tạo đúng bằng phần bị cắt. */
+  let truoc = null;
+  if (laObjThuong(doanhSoLineKyTruoc)) {
+    truoc = 0;
+    for (const v of Object.values(doanhSoLineKyTruoc)) {
+      if (typeof v === "number" && Number.isFinite(v)) truoc = lamTron(truoc + v);
+    }
+  }
+
   return {
     doanh_so, so_don,
     doanh_so_quy_doi: quy_doi,
     kpi: co_kpi ? kpi : null,
     dat_pt: co_kpi && kpi > 0 ? lamTron(quy_doi * 100 / kpi) : null,
+    so_san_pham: g.so_san_pham,
+    loi_nhuan: g.loi_nhuan,
+    don_thieu_loi_nhuan: g.don_thieu_loi_nhuan,
+    don_thieu_quy_doi: g.don_thieu_quy_doi,
+    doanh_so_tu_kho: g.doanh_so_tu_kho,
+    doanh_so_chua_ro_nguon: g.doanh_so_chua_ro_nguon,
+    ty_le_ton_kho_pt: tyLeTonKho(g),
+    doanh_so_ky_truoc: truoc,
+    vs_thang_truoc_pt: chenhPhanTram(doanh_so, truoc),
   };
+}
+
+/** Cột "Vs. Tháng trước" cho TỪNG line — bảng riêng, khoá theo tên line.
+ *
+ *  Tách khỏi `tom_tat_kpi.line` chứ không nhét thêm hai trường vào đó, và lý
+ *  do là một ca nghiệp vụ thật: một line bán 500 triệu tháng trước rồi tháng
+ *  này KHÔNG có đơn nào sẽ không có mục trong `line` (bản kê ấy chỉ gom line
+ *  có đơn). Nhét vào đó thì đúng con số đáng nhìn nhất — một line vừa sập
+ *  hẳn — lại là con số duy nhất không hiện ra. Bảng này phủ MỌI line chính
+ *  thức, nên line ấy hiện ra đúng −100%.
+ *
+ *  Không thể sửa bằng cách thêm mục rỗng vào `line`: `gopKpiToanCongTy()`
+ *  cộng KPI của mọi line CÓ MẶT trong `line`, nên thêm mục vào đó là tổng
+ *  KPI tự phình theo những line không chạy tháng này — đúng thứ `title` của
+ *  ô "Đạt" đang hứa là không xảy ra. */
+export function vsThangTruocTheoLine(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
+  const cua = (tomTatKpi && tomTatKpi.line) || {};
+  const truoc = laObjThuong(doanhSoLineKyTruoc) ? doanhSoLineKyTruoc : null;
+  /* Gộp cả hai nguồn tên: danh sách line chính thức, VÀ line thực sự có đơn
+     trong kỳ. Line thứ hai lọt ra ngoài danh sách chính thức là dấu hiệu
+     bảng line thiếu — nhưng nó vẫn hiện trên bảng, nên nó vẫn phải có ô. */
+  const ten = new Set([...(Array.isArray(thuTu) ? thuTu : []), ...Object.keys(cua)]);
+
+  const ra = {};
+  for (const t of ten) {
+    const nay = (cua[t] && cua[t].doanh_so) || 0;
+    const tr = truoc && typeof truoc[t] === "number" && Number.isFinite(truoc[t])
+      ? truoc[t] : null;
+    ra[t] = { doanh_so_ky_truoc: tr, vs_thang_truoc_pt: chenhPhanTram(nay, tr) };
+  }
+  return ra;
+}
+
+/** Thứ tự hiện line ở tab [Tổng hợp]: DOANH SỐ THUẦN giảm dần.
+ *
+ *  Chủ dự án chốt 12/09/2026, thay cho `thu_tu` cố định của bảng line. Thứ
+ *  tự cố định vẫn là DANH SÁCH line chính thức — nó quyết định line nào CÓ
+ *  MẶT trên bảng (một line chưa chạy tháng này vẫn phải hiện ra với số 0,
+ *  xem `line.mjs`); chỉ thứ tự sắp xếp là đổi.
+ *
+ *  Hoà thì giữ nguyên thứ tự khai — mọi line 0 đồng vì vậy xếp đúng thứ tự
+ *  quen thuộc ở cuối bảng, không xáo lại mỗi lượt mở.
+ *
+ *  Sắp ở Engine chứ không ở màn hình: "sắp theo cái gì" là một luật đọc số,
+ *  và hai màn hình sắp bằng hai bản của cùng một luật là hai bảng đọc ra hai
+ *  thứ hạng khác nhau (LUẬT SỐ 1). */
+export function sapLineTheoDoanhSo(tomTatKpi, thuTu) {
+  const cua = (tomTatKpi && tomTatKpi.line) || {};
+  const ds = Array.isArray(thuTu) && thuTu.length ? [...thuTu] : Object.keys(cua);
+  return ds
+    .map((ten, i) => ({ ten, i, ds: (cua[ten] && cua[ten].doanh_so) || 0 }))
+    .sort((a, b) => (b.ds - a.ds) || (a.i - b.i))
+    .map((x) => x.ten);
 }
 
 /* ─────────────── Một cửa cho vỏ Worker gọi ─────────────── */
@@ -389,7 +609,7 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu) {
  *  rỗng: `van_de`/`thieu_bang` đi kèm để màn hình nói thẳng vì sao cột ấy
  *  trống — đúng ba trạng thái tách bạch của CLAUDE.md ("có / không có /
  *  CHƯA BIẾT vì nguồn hỏng"). */
-export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu) {
+export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc) {
   /* Vắng hẳn bảng KPI và bảng KPI SAI là hai chuyện khác nhau, nên báo bằng
      hai trường khác nhau. Vắng là trạng thái bình thường trước lượt nạp hạt
      giống đầu tiên; sai là một nhánh dữ liệu có người sửa tay làm hỏng. */
@@ -398,7 +618,11 @@ export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu) {
   const dung = thieu_bang || van_de.length ? null : bangKpi;
 
   dienDoanhSoQuyDoi(bang, dung, ky, giaDung);
-  bang.tom_tat_kpi.tong = gopKpiToanCongTy(bang.tom_tat_kpi, thuTu);
+  bang.tom_tat_kpi.tong = gopKpiToanCongTy(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc);
+  /* Thứ tự line của tab [Tổng hợp] đi KÈM bản kê, không để màn hình tự sắp
+     (P6 — xem `sapLineTheoDoanhSo`). */
+  bang.tom_tat_kpi.thu_tu = sapLineTheoDoanhSo(bang.tom_tat_kpi, thuTu);
+  bang.tom_tat_kpi.vs_line = vsThangTruocTheoLine(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc);
   bang.tom_tat_kpi.thieu_bang = thieu_bang;
   bang.tom_tat_kpi.van_de = van_de;
   return bang;

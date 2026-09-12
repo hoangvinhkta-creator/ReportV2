@@ -91,12 +91,20 @@ console.log('\n2) Đúng hàm được gọi ở đúng chỗ');
      /nghinTron\(/.test(oGia ? oGia[0] : 'nghinTron('), false);
   ok('  · và có gọi nghin()', /nghin\(/.test(oGia ? oGia[0] : ''), true);
 
-  /* Bốn chỗ tổng: tổng kỳ/line, tổng của một ngày, cộng đơn, bảng Dashboard. */
+  /* Năm chỗ tổng: tổng kỳ/line, tổng của một ngày, cộng đơn, và hai cột tiền
+     của bảng [Tổng hợp].
+
+     Hai dòng cuối trước P6 là MỘT, bám `nghinTron(l.doanh_so)` — biến `l` lấy
+     từ `tom_tat_line`. P6 đổi nguồn của cả bảng sang `tom_tat_kpi.line` (biến
+     `k`) và thêm cột Lợi nhuận, nên phép canh đi theo sang đó. Canh cả hai cột
+     chứ không chỉ một: cột tiền mới mọc ra mà không ai canh cách viết đúng là
+     lớp lỗi bài kiểm này sinh ra để chặn. */
   const tong = [
     ['tổng của line trong tháng', /nghinTron\(b\.tom_tat\.doanh_so\)/],
     ['tổng của một ngày', /nghinTron\(ng\.doanh_so\)/],
     ['dòng cộng đơn', /nghinTron\(don\.tong_ban\)/],
-    ['bảng Dashboard theo line', /nghinTron\(l\.doanh_so\)/],
+    ['cột Doanh số thuần của [Tổng hợp]', /nghinTron\(k \? k\.doanh_so : 0\)/],
+    ['cột Lợi nhuận của [Tổng hợp]', /nghinTron\(k\.loi_nhuan\)/],
   ];
   for (const [ten, re] of tong) ok(ten + ' dùng nghinTron()', re.test(DON), true);
 }

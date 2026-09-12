@@ -161,7 +161,7 @@ export default class extends WorkerEntrypoint {
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
-                         ky, minNgay, quyetDinh, bangKpi, giaDung) {
+                         ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -180,8 +180,14 @@ export default class extends WorkerEntrypoint {
     /* DOANH SỐ QUY ĐỔI chạy CUỐI CÙNG, sau cả sửa tay — vì nó chia chính
        `loi_nhuan`, mà sửa tay thì đổi giá nhập, tức đổi lợi nhuận. Chạy trước
        sửa tay là quy đổi một con số đã bị người thay thế. */
+    /* `doanhSoLineKyTruoc` đứng CUỐI, cùng lý do `ky` đứng cuối ở hàm dưới:
+       hai Worker build SONG SONG khi merge (bẫy số 4 — ROADMAP.md), nên chèn
+       vào giữa là bản Gateway cũ gọi lệch chỗ mọi tham số sau đó. Ở đuôi thì
+       bản cũ vẫn gọi đúng, chỉ là chưa truyền — và cột "Vs. Tháng trước" để
+       trống đúng một khoảng giữa hai lượt deploy, không sai số nào. */
     apDungKpi(bang, bangKpi, ky, giaDung,
-      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null);
+      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
+      doanhSoLineKyTruoc);
     return bang;
   }
 
@@ -191,7 +197,7 @@ export default class extends WorkerEntrypoint {
    *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
-                          bangKpi, giaDung, ky) {
+                          bangKpi, giaDung, ky, doanhSoLineKyTruoc) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
@@ -209,7 +215,8 @@ export default class extends WorkerEntrypoint {
        cũ hiện được bảng thật kèm câu "chưa có quy đổi" — thay vì một ô trống
        không giải thích. */
     apDungKpi(bang, bangKpi, ky, giaDung,
-      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null);
+      bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
+      doanhSoLineKyTruoc);
     return bang;
   }
 

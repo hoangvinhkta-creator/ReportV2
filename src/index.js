@@ -307,6 +307,24 @@ const SO_BAN_LUU = 3;
 
 const laKy = k => typeof k === "string" && /^\d{4}-\d{2}$/.test(k);
 
+/** Kỳ liền trước một kỳ — `"2026-01"` → `"2025-12"`.
+ *
+ *  Ở Gateway chứ không ở Engine, và đây là ranh giới: "tháng trước tháng 1 là
+ *  tháng 12 năm ngoái" là phép LỊCH, không phải luật nghiệp vụ — cùng loại
+ *  với `k.slice(0, 4)` mà `/api/ky-co-don` ngay trên đang dùng để gom năm.
+ *  Thứ Engine giữ là công thức SO SÁNH hai tháng (`chenhPhanTram()` trong
+ *  `kpi.mjs`), và nó ở đúng bên kia (LUẬT SỐ 1).
+ *
+ *  Cố tình KHÔNG dùng `new Date()`: dựng một Date từ chuỗi rồi trừ tháng là
+ *  mời múi giờ và ngày-31 vào một phép tính không cần tới ngày nào cả. */
+function kyTruoc(ky) {
+  const nam = Number(ky.slice(0, 4)), thang = Number(ky.slice(5, 7));
+  if (!Number.isFinite(nam) || !Number.isFinite(thang)) return null;
+  const t = thang === 1 ? 12 : thang - 1;
+  const n = thang === 1 ? nam - 1 : nam;
+  return String(n).padStart(4, "0") + "-" + String(t).padStart(2, "0");
+}
+
 /** Hai nhánh của P5. Khai LẠI ở đây dưới dạng chuỗi, không import từ
  *  `engine/src/kpi.mjs` — hai Worker cố ý KHÔNG dùng chung đồ thị module
  *  (đó chính là điểm của Service Binding), và mọi đường `bc/…` khác trong
@@ -662,6 +680,51 @@ const layKyCoDon = boc(true, async ({ env }) => {
   return { ky, nam, thu_tu_nam: Object.keys(nam).sort() };
 });
 
+/** Doanh số thuần của TỪNG LINE ở kỳ liền trước — nguồn của cột
+ *  "Vs. Tháng trước" (P6). `null` khi không đọc được, hoặc kỳ trước chưa có
+ *  sổ nào.
+ *
+ *  `null` chứ không `{}`, và khác biệt ấy đi thẳng ra màn hình: `{}` nghĩa là
+ *  "đã đọc, kỳ trước không line nào bán gì" — một câu về nghiệp vụ; `null`
+ *  nghĩa là "chưa có số để so". Trả `{}` cho cả hai ca là để một ô trống nói
+ *  "tháng trước bán 0 đồng" thay người, đúng thứ CLAUDE.md cấm.
+ *
+ *  KHÔNG ném khi đọc hỏng — cùng kỷ luật với bảng KPI ngay dưới: đây là MỘT
+ *  cột, còn doanh số, số đơn, khách hàng, giá vốn đều đọc được mà không cần
+ *  nó. Chặn cả bảng đơn vì một nhánh phụ không trả lời là lấy đi nhiều hơn
+ *  phần bị mất.
+ *
+ *  Trừ phần XOÁ TAY trước khi cộng, y như Dashboard làm (`tinhTruXoaTay`):
+ *  không trừ thì tháng trước đọc ra một con số CAO HƠN thứ chính màn hình
+ *  ấy đang hiện khi mở tháng đó — và cột chênh lệch sai đúng bằng phần đã
+ *  xoá, im lặng.
+ */
+async function docDoanhSoLineKyTruoc(env, ky, bangLine, rid) {
+  const truoc = kyTruoc(ky);
+  if (!truoc) return null;
+  try {
+    const cayKy = await docDb("bc/ky/" + truoc, env);
+    if (!cayKy.ok) throw new Error("bc-ky:" + chiTietLoi(cayKy));
+    if (!cayKy.val) return null;
+
+    const mot = { [truoc]: cayKy.val };
+    const truTheoKy = await tinhTruXoaTay(env, mot);
+    const cay = truTheoKy ? await env.REPORT_ENGINE.truVaoCayKy(mot, truTheoKy) : mot;
+
+    /* `gopTheoLine` là hàm Engine ĐÃ CÓ từ P2 — cố ý không mở một hàm Engine
+       mới cho việc này. Hàm mới thì Gateway bản mới gọi vào Engine bản cũ sẽ
+       nổ 503 giữa hai lượt deploy song song (bẫy số 4), chứ không chỉ để
+       trống một cột. */
+    const gop = await env.REPORT_ENGINE.gopTheoLine(cay, bangLine);
+    const ra = {};
+    for (const ten of Object.keys(gop.line || {})) ra[ten] = gop.line[ten].doanh_so;
+    return ra;
+  } catch (e) {
+    nhatKy({ rid, duong: "/api/don-hang", canh_bao: "ky-truoc-hong:" + (e && e.message) });
+    return null;
+  }
+}
+
 /* =================== GET /api/don-hang?ky=&line= ===================
  * Bảng đơn hàng của một kỳ, lọc theo line. Mọi con số ĐÃ TÍNH SẴN ở Engine
  * — trình duyệt chỉ vẽ ra (LUẬT SỐ 1).
@@ -766,6 +829,14 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
   const kpiVal = bangKpi.ok ? (bangKpi.val || null) : null;
   const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
 
+  /* CHỈ tab [Tổng hợp] (`line === null`) mới cần số tháng trước — cột
+     "Vs. Tháng trước" không có mặt ở tab của một line. Lấy nó ở mọi lượt là
+     bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
+     con số không ai nhìn. */
+  const doanhSoKyTruoc = line
+    ? null
+    : await docDoanhSoLineKyTruoc(env, ky, bangLine.val, rid);
+
   try {
     const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
     /* Kỳ ngoài phạm vi hoặc Tracking hỏng thì vẫn phải áp sửa tay: một dòng
@@ -775,10 +846,10 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
     const bang = nguon
       ? await env.REPORT_ENGINE.dungBangDonKemMa(
         dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-        minNgay, quyetDinh.val || {}, kpiVal, gdVal)
+        minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc)
       : await env.REPORT_ENGINE.dungBangDonSuaTay(
         dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-        kpiVal, gdVal, ky);
+        kpiVal, gdVal, ky, doanhSoKyTruoc);
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
              trong_pham_vi_ma: trongPhamVi };
   } catch (e) {

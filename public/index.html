@@ -147,6 +147,30 @@
   .bangNho th, .bangNho td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangNho th { background: #f9fafb; }
 
+  /* ---- Bảng [Tổng hợp] 15 cột (P6, chủ dự án chốt 12/09/2026) ----
+     Số canh PHẢI: mười một trong mười lăm cột là số, và một cột số canh trái
+     thì mắt không so được độ lớn giữa các hàng — đúng việc người ta mở bảng
+     này ra để làm. `.bangNho` chung vẫn canh trái vì những bảng nhỏ khác
+     (bản lưu, đối chiếu) phần lớn là chữ. */
+  .bangNho .oSo { text-align: right; font-variant-numeric: tabular-nums; }
+  /* 15 cột không lọt bề ngang màn hình hẹp. Cho cuộn NGANG ở khung bọc chứ
+     không ép chữ xuống dòng: một bảng số mà mỗi ô cao hai dòng là mất nhịp
+     đọc theo hàng. Chỉ `overflow-x` — khung này không có trần chiều cao nên
+     không kéo theo thanh cuộn dọc như `.bocBang` của bảng đơn. */
+  .bocBangNho { overflow-x: auto; }
+  .bangTongHop { white-space: nowrap; min-width: 100%; width: auto; }
+  /* Cột "Doanh số quy đổi" — chủ dự án yêu cầu highlight. Tô NỀN chứ không
+     đổi màu chữ: màu chữ ở bảng này đã mang nghĩa khác (tăng/giảm ở cột
+     Vs. Tháng trước), chồng thêm một nghĩa nữa lên cùng một tín hiệu là chỗ
+     để người đọc hiểu nhầm. */
+  .bangTongHop th.oQuyDoi { background: #dbeafe; }
+  .bangTongHop td.oQuyDoi { background: #eff6ff; font-weight: 600; }
+  /* Năm cột lương còn chờ công thức: mờ đi để thấy ngay đây là chỗ xếp sẵn,
+     chưa phải số. Lý do đầy đủ nằm ở `title` của chính ô đó. */
+  .bangTongHop .oCho { color: #9ca3af; }
+  .bangTongHop td.vsTang { color: #047857; }
+  .bangTongHop td.vsGiam { color: #b91c1c; }
+
   /* Ghim đầu cột (chủ dự án chốt 12/09/2026): `overflow-x: auto` một mình
      đã ĐỦ để trình duyệt tự áp `overflow-y: auto` — luật phụ thuộc của CSS
      Overflow, hai trục không được lệch pha "một cái auto, một cái visible".
