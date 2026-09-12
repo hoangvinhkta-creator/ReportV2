@@ -34,6 +34,27 @@
    * cuối). Đơn vị hiểu ngầm là nghìn đồng, có ghi rõ ở chú giải để không ai
    * đọc nhầm thành đồng. */
   const lamGon = (v) => Math.round((Number(v) || 0) / 1000).toLocaleString("vi-VN");
+
+  /** Tiền viết GỌN cho nhãn trục và nhãn cuối ô nhỏ: `2.000.000` → `2B`.
+   *
+   *  Chủ dự án chốt 12/09/2026, và lý do là DIỆN TÍCH: một nhãn "2.000.000"
+   *  chiếm 64px bề ngang, tức lề trái của biểu đồ phải chừa chừng ấy cho mỗi
+   *  mốc trục — đổi sang "2B" lấy lại gần nửa chỗ đó cho chính hình vẽ.
+   *
+   *  Nhận số ĐỒNG (như mọi chỗ khác trong file), trả B = tỷ, M = triệu,
+   *  K = nghìn. Một chữ số thập phân là đủ để hai mốc liền nhau không trùng
+   *  nhãn, mà không dài thêm mấy. Số ĐẦY ĐỦ vẫn còn nguyên ở `<title>` rê
+   *  chuột — chỗ này chỉ gọn cách VIẾT, không bớt thông tin nào. */
+  function gonTien(v) {
+    const n = Number(v) || 0;
+    const am = n < 0 ? "-" : "";
+    const a = Math.abs(n);
+    const viet = (x, hau) => am + (Math.round(x * 10) / 10).toLocaleString("vi-VN") + hau;
+    if (a >= 1e9) return viet(a / 1e9, "B");
+    if (a >= 1e6) return viet(a / 1e6, "M");
+    if (a >= 1e3) return viet(a / 1e3, "K");
+    return am + Math.round(a).toLocaleString("vi-VN");
+  }
   const tienDay = (v) => (Number(v) || 0).toLocaleString("vi-VN") + " đ";
   const soDon = (v) => (Number(v) || 0).toLocaleString("vi-VN");
 
@@ -57,8 +78,18 @@
     }));
   }
 
-  const MAU_NAY = "#2563eb";    // kỳ đang xem — màu nhấn
-  const MAU_TRUOC = "#9ca3af";  // cùng kỳ năm trước — xám, không tranh màu nhấn
+  /* Kỳ đang xem = xanh nhấn của cả trang. Kỳ trước = CÙNG họ xanh, nhạt hơn
+   * — chủ dự án chốt 12/09/2026: liền nét, khác màu, mờ hơn, và "đồng bộ với
+   * trang chủ thay vì màu cam như ảnh [mẫu]".
+   *
+   * Cặp này đã chạy qua bộ đo của kỹ năng dataviz (`validate_palette.js`,
+   * chế độ light): đạt dải sáng, đạt sàn độ bão hoà, ΔE 19,9 ở mắt thường và
+   * 13,7 ở ca tritan — trên ngưỡng an toàn. Nó chỉ cảnh báo tương phản nền
+   * dưới 3:1 cho màu nhạt, và cảnh báo ấy được giải bằng CHÚ GIẢI luôn có
+   * mặt cộng nhãn trực tiếp, đúng lối "relief required" mà bộ đo chấp nhận.
+   * ĐỔI MÀU Ở ĐÂY THÌ ĐO LẠI — đừng chọn bằng mắt. */
+  const MAU_NAY = "#2563eb";
+  const MAU_TRUOC = "#7da2e3";
 
   /* `RONG` là bề rộng của HỆ TOẠ ĐỘ, không phải bề rộng trên màn: SVG khai
      `width: 100%` nên nó co giãn theo cột. `CAO_MAC_DINH` chỉ là bản lùi khi
@@ -66,7 +97,10 @@
      chạy trên DOM giả) — bình thường chiều cao được TÍNH theo chỗ còn lại
      của màn hình, xem `canhCaoKhoi()`. */
   const RONG = 640, CAO_MAC_DINH = 200;
-  const LE_TRAI = 64, LE_PHAI = 14, LE_TREN = 12, LE_DUOI = 30;
+  /* `LE_TRAI` 64 → 40: nhãn trục nay viết gọn ("2B" thay "2.000.000") nên
+     không cần chừa chỗ cho một chuỗi bảy ký tự nữa. 24 đơn vị lấy lại đi
+     thẳng vào bề ngang hình vẽ. */
+  const LE_TRAI = 40, LE_PHAI = 14, LE_TREN = 12, LE_DUOI = 26;
   /* Lane riêng bên phải cho hai chấm "TB" (trung bình) — xem lý do ở
      `veBieuDo`. RONG_VE (vùng vẽ chuỗi thời gian) nhường bớt chỗ cho nó. */
   const RONG_TB = 30, KHOANG_TB = 18;
@@ -113,18 +147,102 @@
    *  Có CHẤM ở từng điểm, không chỉ đường: chuỗi một điểm duy nhất (tab Quý
    *  đầu năm, hoặc một tháng mới có một ngày) mà chỉ vẽ đường thì không hiện
    *  ra gì cả — bản Dashboard đầu tiên đã vấp đúng lỗi đó. */
-  function veChuoi(diem, layGiaTri, x, y, mau, netDut, nhanDiem) {
+  /** Một ĐOẠN LIỀN (không có lỗ hổng) → đường cong trơn, dạng `C` của SVG.
+   *
+   *  Chủ dự án chốt 12/09/2026 (kèm một ảnh mẫu): đường phải "có độ cong nhất
+   *  định".
+   *
+   *  ── VÌ SAO LÀ NỘI SUY ĐƠN ĐIỆU, KHÔNG PHẢI CATMULL-ROM ──
+   *
+   *  Bản đầu dùng Catmull-Rom (tay nắm suy từ hai điểm kề). Nó trơn, nó đi
+   *  qua đúng mọi điểm — nhưng GIỮA hai điểm nó VỌT LỐ: đo trên chuỗi thử
+   *  [100, 60, 80, 20, 50], đáy thật là 20 mà tay nắm kéo đường xuống tới
+   *  15. Trên một biểu đồ tiền, đó là vẽ ra một con số KHÔNG CÓ TRONG SỔ —
+   *  người đọc thấy một ngày thấp hơn ngày thấp nhất, hay một đỉnh cao hơn
+   *  đỉnh thật, mà không có cách nào biết nó là do phép vẽ.
+   *
+   *  Fritsch–Carlson (nội suy Hermite ĐƠN ĐIỆU) sửa đúng chỗ ấy: nó kẹp độ
+   *  dốc tại mỗi điểm sao cho đoạn cong không bao giờ ra ngoài khoảng giá
+   *  trị của hai điểm đầu mút. Đường vẫn cong, chỉ là không bịa thêm.
+   *
+   *  Một đoạn chỉ có hai điểm thì không có gì để cong: nối thẳng. */
+  function duongCong(dsX, dsY) {
+    const n = dsX.length;
+    if (n === 1) return "M" + dsX[0].toFixed(1) + "," + dsY[0].toFixed(1);
+
+    /* Độ dốc của từng đoạn thẳng nối hai điểm liền nhau. */
+    const dd = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = dsX[i + 1] - dsX[i];
+      dd.push(dx === 0 ? 0 : (dsY[i + 1] - dsY[i]) / dx);
+    }
+
+    /* Độ dốc TẠI mỗi điểm: trung bình hai đoạn kề (hai đầu mút lấy luôn đoạn
+       duy nhất cạnh nó).
+       NGOẠI TRỪ điểm CỰC TRỊ — chỗ hai đoạn kề đổi chiều (một lên một xuống,
+       hay một trong hai phẳng). Ở đó độ dốc phải bằng 0. Bỏ luật này là bỏ
+       sót đúng cái ca đắt nhất: trên chuỗi thử [100,60,80,20,50], đáy thật
+       là 20 nhưng đường vẫn võng xuống 15 vì nó còn "đà" đi xuống khi chạm
+       đáy. Phép kẹp bên dưới KHÔNG cứu được ca ấy — nó chỉ co tay nắm khi
+       hai đoạn CÙNG chiều. */
+    const m = [dd[0]];
+    for (let i = 1; i < n - 1; i++) {
+      m.push(dd[i - 1] * dd[i] <= 0 ? 0 : (dd[i - 1] + dd[i]) / 2);
+    }
+    m.push(dd[n - 2]);
+
+    /* Phép kẹp của Fritsch–Carlson. Hai luật, và cả hai đều là "đừng bịa":
+       · đoạn phẳng (hai điểm bằng nhau) thì hai đầu phải phẳng theo, nếu
+         không đường sẽ nhấp nhô giữa hai giá trị bằng nhau;
+       · điểm nằm trong hình tròn bán kính 3 của (α, β) thì đường mới chắc
+         chắn đơn điệu — ngoài đó thì co tay nắm lại đúng tỉ lệ. */
+    for (let i = 0; i < n - 1; i++) {
+      if (dd[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      const a = m[i] / dd[i], b = m[i + 1] / dd[i];
+      const r = a * a + b * b;
+      if (r > 9) {
+        const t = 3 / Math.sqrt(r);
+        m[i] = t * a * dd[i];
+        m[i + 1] = t * b * dd[i];
+      }
+    }
+
+    let d = "M" + dsX[0].toFixed(1) + "," + dsY[0].toFixed(1);
+    for (let i = 0; i < n - 1; i++) {
+      const dx = (dsX[i + 1] - dsX[i]) / 3;
+      d += " C" + (dsX[i] + dx).toFixed(1) + "," + (dsY[i] + m[i] * dx).toFixed(1)
+        + " " + (dsX[i + 1] - dx).toFixed(1) + "," + (dsY[i + 1] - m[i + 1] * dx).toFixed(1)
+        + " " + dsX[i + 1].toFixed(1) + "," + dsY[i + 1].toFixed(1);
+    }
+    return d;
+  }
+
+  /** Một chuỗi thời gian. `phu` = chuỗi so sánh (kỳ trước): CÙNG dạng đường
+   *  liền, chỉ khác màu và mảnh hơn — chủ dự án chốt bỏ nét đứt 12/09/2026.
+   *
+   *  Bỏ nét đứt thì hai chuỗi chỉ còn phân biệt bằng MÀU, nên chú giải trở
+   *  thành bắt buộc (nó đã luôn có mặt) và hai màu phải cách nhau đủ xa: cặp
+   *  đang dùng đo được ΔE 19,9 ở mắt thường và 13,7 ở ca tritan — trên ngưỡng
+   *  an toàn. Đừng đổi màu ở đây mà không đo lại. */
+  function veChuoi(diem, layGiaTri, x, y, mau, phu, nhanDiem) {
     if (!diem.length) return "";
-    let d = "", vtTruoc = null, cham = "";
+    /* Cắt thành các ĐOẠN LIỀN trước khi làm cong: một lỗ hổng (ngày không
+       bán) phải ngắt đường, và phép cong chỉ được chạy trong lòng một đoạn —
+       cong vắt qua lỗ hổng là bịa ra dữ liệu cho những ngày không có. */
+    const doan = [];
+    let cur = null, vtTruoc = null, cham = "";
     for (const p of diem) {
       const px = x(p.vt), py = y(layGiaTri(p));
-      d += (vtTruoc === null || p.vt - vtTruoc > 1 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      if (vtTruoc === null || p.vt - vtTruoc > 1) { cur = { x: [], y: [] }; doan.push(cur); }
+      cur.x.push(px); cur.y.push(py);
       vtTruoc = p.vt;
-      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2.5" fill="' + mau + '">'
+      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="'
+        + (phu ? "1.8" : "2.2") + '" fill="' + mau + '">'
         + "<title>" + thoat(nhanDiem(p)) + "</title></circle>";
     }
-    return '<path d="' + d.trim() + '" fill="none" stroke="' + mau + '" stroke-width="'
-      + (netDut ? "2" : "2.5") + '"' + (netDut ? ' stroke-dasharray="5,4"' : "") + "/>" + cham;
+    return '<path d="' + doan.map((g) => duongCong(g.x, g.y)).join(" ")
+      + '" fill="none" stroke="' + mau + '" stroke-width="' + (phu ? "1.6" : "2")
+      + '" stroke-linecap="round" stroke-linejoin="round"/>' + cham;
   }
 
   /** Biểu đồ hai đường: kỳ đang xem chồng lên đúng kỳ đó của năm trước.
@@ -235,7 +353,7 @@
   function chuGiai(tenNay, tenTruoc, coTruoc) {
     return '<div class="chuGiaiSk">'
       + '<span><i style="background:' + MAU_NAY + '"></i>' + thoat(tenNay) + "</span>"
-      + (coTruoc ? '<span><i class="netDut" style="background:' + MAU_TRUOC + '"></i>' + thoat(tenTruoc) + "</span>" : "")
+      + (coTruoc ? '<span><i style="background:' + MAU_TRUOC + '"></i>' + thoat(tenTruoc) + "</span>" : "")
       + "</div>";
   }
 
@@ -246,7 +364,7 @@
     {
       ten: "Doanh số", donVi: "nghìn đồng",
       layGiaTri: (p) => p.doanh_so,
-      nhanDoc: lamGon,
+      nhanDoc: gonTien,
       /* Trung bình (tổng chia số ngày) hầu như luôn ra số lẻ — làm tròn về
          đồng trước khi viết ra: VND không có đơn vị nhỏ hơn đồng, một
          chấm "TB" ghi "…800,889 đ" chỉ gây khó đọc, không thêm thông tin. */
@@ -277,7 +395,6 @@
   const RONG_MINI = 148, CAO_MINI = 44;
   const LE_MINI_TRAI = 4, LE_MINI_PHAI = 4, LE_MINI_TREN = 13, LE_MINI_DUOI = 4;
   const RONG_VE_MINI = RONG_MINI - LE_MINI_TRAI - LE_MINI_PHAI;
-  const CAO_VE_MINI = CAO_MINI - LE_MINI_TREN - LE_MINI_DUOI;
 
   /** MỘT ô của lưới — đường xu hướng theo 12 tháng của một line, trục dọc
    *  RIÊNG theo giá trị lớn nhất của CHÍNH line đó (không theo line khác):
@@ -293,6 +410,9 @@
       return '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
         + '<p class="miniRong">Chưa có số ' + thoat(k.tenKyNgan) + "</p></div>";
     }
+    /* Chiều cao hệ toạ độ của ô do `canhCaoKhoi()` tính theo chỗ thật. */
+    const CAO_MINI = caoOMini;
+    const CAO_VE_MINI = CAO_MINI - LE_MINI_TREN - LE_MINI_DUOI;
     const yMax = Math.max(1, ...diem.map(bd.layGiaTri));
     /* Trục ngang lấy `vtMax` của KHUNG chứ không cứng 12 (P6): cùng một ô
        này giờ vẽ cả 12 tháng của một năm lẫn 28–31 ngày của một tháng, và
@@ -304,10 +424,14 @@
     const x = (vt) => LE_MINI_TRAI + ((vt - 1) / nhip) * RONG_VE_MINI;
     const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
 
-    let d = "", cham = "", vtTruoc = null;
+    const doan = [];
+    let cur = null, cham = "", vtTruoc = null;
     for (const p of diem) {
       const px = x(p.vt), py = y(bd.layGiaTri(p));
-      d += (vtTruoc === null || p.vt - vtTruoc > 1 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+      /* Cùng phép cắt đoạn + làm cong với biểu đồ lớn — hai khối nằm cạnh
+         nhau trên cùng màn hình thì phải cùng một ngôn ngữ hình. */
+      if (vtTruoc === null || p.vt - vtTruoc > 1) { cur = { x: [], y: [] }; doan.push(cur); }
+      cur.x.push(px); cur.y.push(py);
       vtTruoc = p.vt;
       cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="'
         + (k.vtMax > 15 ? "1.4" : "2") + '" fill="' + MAU_NAY + '">'
@@ -331,7 +455,8 @@
       + thoat(ten) + '">'
       + '<line x1="' + LE_MINI_TRAI + '" x2="' + (RONG_MINI - LE_MINI_PHAI) + '" y1="' + nenDuoi + '" y2="' + nenDuoi
       + '" stroke="#e5e7eb" stroke-width="1"/>'
-      + '<path d="' + d.trim() + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="1.75"/>'
+      + '<path d="' + doan.map((g) => duongCong(g.x, g.y)).join(" ")
+      + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="1.5" stroke-linecap="round"/>'
       + cham + nhanCuoi + "</svg>";
 
     return '<div class="oMini"><p class="tenMini">' + thoat(ten) + "</p>" + svg + "</div>";
@@ -428,6 +553,11 @@
 
     if (!diemNay.length && !diemTruoc.length) {
       oVe.innerHTML = '<p class="dangTai">' + thoat(k.tenKyCua(nam)) + " — chưa có số nào cho kỳ này.</p>";
+      /* Dọn luôn chú giải: nó nằm ngoài `#skVe` từ 12/09/2026 nên không tự
+         biến mất theo, và một chú giải kể tên hai đường không hề được vẽ là
+         mời người đọc đi tìm chúng. */
+      const oCgRong = $("skChuGiai");
+      if (oCgRong) oCgRong.innerHTML = "";
       return;
     }
     /* MỘT biểu đồ mỗi lúc, chọn bằng hai tab (chủ dự án chốt 12/09/2026:
@@ -446,8 +576,9 @@
         taDayDu: bd.taDayDu, donViDiem: k.donViDiem,
         tenKyNay: k.tenKyCua(nam), tenKyTruoc: k.tenKyCua(namTruoc),
         nhanKhung, cao: caoHeToaDo,
-      }) + "</div>"
-      + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
+      }) + "</div>";
+    const oCg = $("skChuGiai");
+    if (oCg) oCg.innerHTML = chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
   }
 
   /* ─────────── Cân chiều cao theo MÀN HÌNH THẬT ───────────
@@ -481,14 +612,27 @@
    *  điều họ yêu cầu là "thấy hết mà không phải cuộn", và một biểu đồ 600px
    *  không giúp gì cho việc ấy — nó chỉ đẩy mọi thứ khác đi.
    *
-   *  300px là chiều cao đủ đọc một chuỗi 31 ngày mà vẫn để cả bảng lẫn biểu
-   *  đồ lọt một màn 900px: 195 (đầu trang + hai hàng tab) + 295 (bảng 11
-   *  dòng) + 300 + ~105 (đệm và dải nút của khối) = 895. */
-  const TRAN_KHOI = 300;
+   *  Trần nới từ 300 lên 420 ở lượt dọn khoảng trống (12/09/2026): chú giải
+   *  dời lên dải nút và mấy thẻ `<p>` rỗng thôi chiếm lề, nên khối gọn lại
+   *  chừng 70px — chỗ ấy trả về cho chính hình vẽ thay vì nằm trống, đúng ý
+   *  "mở rộng độ cao xuống thay vì để trống trải". Vẫn có trần, vì bài học
+   *  của lượt trước còn nguyên: không trần thì trên màn cao nó lại ăn hết. */
+  const TRAN_KHOI = 420;
 
   /** Chiều cao hệ toạ độ của biểu đồ trái, tính từ lần đo gần nhất. */
   let caoHeToaDo = CAO_MAC_DINH;
+  /** Như trên, cho MỘT ô của lưới nhỏ — để cụm bên phải cũng lấp đầy cột thay
+   *  vì xếp sát mép trên rồi bỏ trống phần dưới. */
+  let caoOMini = CAO_MINI;
+  /** Số ô lưới đang vẽ — cần để tính ra lưới đang có mấy HÀNG. */
+  let soOMini = 0;
   let dangCanh = false;
+
+  /* Ba số phải KHỚP với CSS của `.luoiXuHuong` / `.oMini` (khe hở, bề rộng ô
+     tối thiểu, viền + đệm + dòng tên). Lệch một chút chỉ làm ô hơi thừa hoặc
+     hơi thiếu chỗ, không làm sai số nào — nên chép ở đây là đánh đổi chấp
+     nhận được, đổi lấy việc không phải đo từng ô một mỗi lượt vẽ. */
+  const KHE_O = 8, O_HEP_NHAT = 115, VIEN_O = 14, CAO_TEN_O = 16;
 
   /** Đo chỗ còn lại rồi ép hai cột cùng chiều cao.
    *
@@ -529,10 +673,34 @@
     if (!hopVe || !hopVe.clientHeight || !hopVe.clientWidth) return;
     /* viewBox phải CÙNG TỈ LỆ với khung, nếu không SVG tự chừa dải trắng. */
     const canCao = Math.round(RONG * hopVe.clientHeight / hopVe.clientWidth);
-    if (dangCanh || Math.abs(canCao - caoHeToaDo) < 6) return;
+    /* Ô lưới: chia chiều cao cột cho số HÀNG thật (số cột suy từ bề rộng đo
+       được), rồi quy sang chiều cao hệ toạ độ của một ô. Không làm bước này
+       thì ô giữ nguyên cỡ cũ và cụm phải xếp sát mép trên, bỏ trống phần
+       dưới — đúng chỗ chủ dự án khoanh đỏ. */
+    let canO = caoOMini;
+    const luoi = $("skLuoiGrid");
+    if (luoi && luoi.clientWidth && luoi.clientHeight && soOMini > 0) {
+      const cot = Math.max(1, Math.floor((luoi.clientWidth + KHE_O) / (O_HEP_NHAT + KHE_O)));
+      const hang = Math.ceil(soOMini / cot);
+      const rongO = (luoi.clientWidth - (cot - 1) * KHE_O) / cot - VIEN_O;
+      const caoO = (luoi.clientHeight - (hang - 1) * KHE_O) / hang - VIEN_O - CAO_TEN_O;
+      if (rongO > 0 && caoO > 0) {
+        /* Kẹp: quá dẹt thì đường thành một vạch, quá cao thì một ô nuốt cả
+           cụm khi chỉ có vài line. */
+        canO = Math.min(90, Math.max(30, Math.round(RONG_MINI * caoO / rongO)));
+      }
+    }
+
+    const lechVe = Math.abs(canCao - caoHeToaDo) >= 6;
+    const lechO = Math.abs(canO - caoOMini) >= 4;
+    if (dangCanh || (!lechVe && !lechO)) return;
     caoHeToaDo = canCao;
+    caoOMini = canO;
     dangCanh = true;
-    try { veBieuDoHienTai(); } finally { dangCanh = false; }
+    try {
+      if (lechVe) veBieuDoHienTai();
+      if (lechO) veKhoiLuoiNho();
+    } finally { dangCanh = false; }
   }
 
   /** Hàng tab chỉ số [Doanh số] [Số đơn] — dùng CHUNG cho cả hai khối. */
@@ -595,9 +763,10 @@
       return tong(b.diem) - tong(a.diem);
     });
 
+    soOMini = dsLine.length;
     o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · ' + thoat(k.duoi)
       + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-      + '<div class="luoiXuHuong">'
+      + '<div class="luoiXuHuong" id="skLuoiGrid">'
       + dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, k)).join("")
       + "</div>";
   }
@@ -645,6 +814,11 @@
     o.innerHTML = '<div class="daiDieuKhien">'
       + '<div class="tabDonVi" id="skTabDonVi"></div>'
       + '<div class="tabDonVi" id="skTabChiSo"></div>'
+      /* Chú giải nằm CÙNG hàng với hai dải nút, dồn sang mép phải (chủ dự án
+         chốt 12/09/2026: "dồn lên 1 góc hoặc 1 hàng thay vì để rải rác từng
+         dòng"). Trước đây nó là một hàng riêng dưới biểu đồ — tốn trọn một
+         dòng chiều cao, trong khi nửa phải của hàng nút thì bỏ không. */
+      + '<div class="chuGiaiSk" id="skChuGiai"></div>'
       + "</div>"
       + '<div class="haiCotBieuDo">'
       + '<div class="cotTrai" id="skVe"></div>'

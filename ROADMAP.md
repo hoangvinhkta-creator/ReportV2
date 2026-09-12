@@ -1639,6 +1639,43 @@ toàn riêng (`overflow-y: auto`) — nó cuộn trong chính nó thay vì đẩ
 trang dài ra. Ô nhỏ hạ từ 56 xuống 44 đơn vị: mười ô xếp 3–4 cột là 3–4
 HÀNG, nên mỗi ô cao thêm 12px là cả cụm cao thêm gần 50px.
 
+#### Hình thức biểu đồ — chủ dự án chốt 12/09/2026 (kèm ảnh mẫu)
+
+**Đường CONG, và cong bằng phép nội suy ĐƠN ĐIỆU (Fritsch–Carlson).** Bản
+đầu dùng Catmull-Rom: trơn, đi qua đúng mọi điểm, nhưng VỌT LỐ giữa hai
+điểm — đo trên chuỗi thử `[100,60,80,20,50]`, đáy thật là 20 mà đường võng
+xuống 15. Trên biểu đồ TIỀN đó là vẽ ra một con số không có trong sổ. Luật
+dễ sót nhất của phép đơn điệu: tại điểm CỰC TRỊ độ dốc phải bằng 0, nếu
+không đường còn "đà" đi xuống lúc đã chạm đáy — phép kẹp chuẩn không cứu
+được ca ấy vì nó chỉ co tay nắm khi hai đoạn cùng chiều.
+`kiem/dashboard-ve.js` mục 15 ghim tám chuỗi, canh cả TAY NẮM Bézier chứ
+không chỉ điểm mút.
+
+**Kỳ trước: liền nét, khác màu, mờ hơn** — bỏ nét đứt. Cặp màu
+`#2563eb` / `#7da2e3` (cùng họ xanh của trang, không cam như ảnh mẫu) đã
+chạy qua `validate_palette.js` của kỹ năng dataviz: đạt dải sáng, đạt sàn
+bão hoà, ΔE 19,9 mắt thường và 13,7 ca tritan. Bỏ nét đứt nghĩa là hai
+chuỗi chỉ còn phân biệt bằng MÀU, nên chú giải thành bắt buộc. **Đổi màu ở
+đây thì đo lại, đừng chọn bằng mắt.**
+
+Đường mảnh hơn (2 / 1,6), chấm nhỏ hơn (r 2,2 / 1,8).
+
+**Nhãn trục viết gọn: `2.000.000` → `2B`** (B tỷ, M triệu, K nghìn). Lý do
+là DIỆN TÍCH — nhãn cũ chiếm 64px lề trái, nhãn mới cho phép hạ `LE_TRAI`
+xuống 40. Số đầy đủ vẫn còn nguyên ở `<title>` rê chuột.
+
+**Dồn khoảng trống (chủ dự án khoanh đỏ ba chỗ):**
+- Ba thẻ `<p>` RỖNG (`#loiDonHang`, `#bangConNo`, `#skLoi`) vẫn chiếm trọn
+  lề trên + lề dưới ở trạng thái bình thường — cộng lại gần 70px giữa hàng
+  tab và bảng. `:empty { display: none }` thay vì bỏ thẻ: chúng phải còn
+  trong DOM để mã vá chữ vào tại chỗ.
+- Chú giải dời lên CÙNG hàng với hai dải nút, dồn sang mép phải — nửa phải
+  hàng nút vốn bỏ không, còn chú giải thì chiếm trọn một dòng riêng.
+- Lưới nhỏ: `grid-auto-rows: 1fr` + `align-content: stretch` nên các hàng
+  chia đều chiều cao cột, và `canhCaoKhoi()` tính luôn chiều cao hệ toạ độ
+  của MỘT ô theo số hàng thật — cụm lấp đầy thay vì xếp sát mép trên.
+- Trần khối nới 300 → 420: chỗ vừa dọn được trả về cho hình vẽ.
+
 #### Câu hỏi còn mở của P6 — hàng nút tháng
 
 Hai hàng nút tháng của app đọc **hai nguồn khác nhau**:

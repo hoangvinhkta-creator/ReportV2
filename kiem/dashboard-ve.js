@@ -212,7 +212,16 @@ const svgCua = (ten) => veHtml().split('<svg').slice(1)
   .find((s) => s.includes('aria-label="' + ten)) || '';
 
 const nhanDoc = (svg) => [...svg.matchAll(/text-anchor="end">([^<]*)</g)].map((m) => m[1]);
-const soTu = (s) => Number(String(s).replace(/\./g, '').replace(',', '.'));
+/* Đọc ngược nhãn trục thành số. Từ 12/09/2026 nhãn tiền viết GỌN ("2B" =
+   2 tỷ đồng, "500M" = 500 triệu) để lấy lại bề ngang cho hình vẽ — nên phép
+   đọc ngược phải biết ba hậu tố ấy, nếu không mọi bài canh đỉnh trục đọc ra
+   số 2 thay vì 2.000.000.000 và đỏ hàng loạt. */
+const soTu = (s) => {
+  const t = String(s).trim();
+  const he = { B: 1e9, M: 1e6, K: 1e3 }[t.slice(-1)] || 1;
+  const n = Number((he === 1 ? t : t.slice(0, -1)).replace(/\./g, '').replace(',', '.'));
+  return n * he;
+};
 const soCham = (svg) => (svg.match(/<circle/g) || []).length;
 
 function soiRac(nhan) {
@@ -317,7 +326,13 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('KHÔNG vẽ kèm Số đơn', !!svgCua('Số đơn'), false);
     ok('tiêu đề ghi rõ đơn vị',
        /Doanh số theo ngày[^<]*<span class="donViCua">\(nghìn đồng\)/.test(veHtml()), true);
-    ok('một chú giải', (veHtml().match(/chuGiaiSk/g) || []).length, 1);
+    /* Chú giải nay nằm ở dải điều khiển (mép phải), không còn là một hàng
+       riêng dưới biểu đồ — chủ dự án chốt 12/09/2026 để lấy lại một dòng
+       chiều cao. Nên nó KHÔNG còn trong `#skVe`. */
+    ok('chú giải KHÔNG còn nằm trong ô vẽ', /chuGiaiSk/.test(veHtml()), false);
+    ok('  · mà ở dải điều khiển, đúng một lần',
+       (CAY.skChuGiai.innerHTML.match(/chuGiaiSk/g) || []).length, 1);
+    ok('  · và kể đủ hai kỳ', /Năm 2026[\s\S]*Năm 2025/.test(CAY.skChuGiai.innerHTML), true);
 
     ok('hai nút chỉ số, Doanh số đang chọn',
        nutChiSo().map((n) => n.textContent + (n.className.includes('tabDang') ? '*' : '')),
@@ -328,13 +343,13 @@ function kiemMoc(ten, gtThat, doiSo) {
   {
     const that = dinhThat(duLieuGia(), 2026, 9);
     const dinhTien = soTu(nhanDoc(svgCua('Doanh số')).pop());
-    kiemMoc('Doanh số', that.tien, 1000);
+    kiemMoc('Doanh số', that.tien, 1);
 
     nutChiSo()[1].click();
     ok('giờ vẽ Số đơn', !!svgCua('Số đơn'), true);
     ok('  · và KHÔNG còn Doanh số', !!svgCua('Doanh số'), false);
     const dinhDon = soTu(nhanDoc(svgCua('Số đơn')).pop());
-    ok('đỉnh trục Doanh số là số lớn (nghìn đồng)', dinhTien > 100, true);
+    ok('đỉnh trục Doanh số là số lớn (đồng)', dinhTien > 1e6, true);
     ok('đỉnh trục Số đơn là số nhỏ (đơn)', dinhDon > 0 && dinhDon < 100, true);
     kiemMoc('Số đơn', that.don, 1);
     ok('mốc trục Số đơn đều là số nguyên',
@@ -382,7 +397,8 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('tiêu đề đổi sang 2025', /theo tháng · năm 2025/.test(veHtml()), true);
     /* Chú giải không được kể tên một đường không hề được vẽ — người xem sẽ
        đi tìm đường xám đó rồi tưởng biểu đồ hỏng. */
-    ok('năm trước không có số → chú giải KHÔNG kể Năm 2024', /Năm 2024/.test(veHtml()), false);
+    ok('năm trước không có số → chú giải KHÔNG kể Năm 2024',
+       /Năm 2024/.test(CAY.skChuGiai.innerHTML), false);
     ok('chỉ vẽ MỘT đường', (veHtml().match(/<path/g) || []).length, 1);
     nutTab()[0].click();
     ok('tab Ngày giữ nguyên kỳ 9/2025', /tháng 9\/2025/.test(veHtml()), true);
@@ -619,9 +635,54 @@ function kiemMoc(ten, gtThat, doiSo) {
     ctx.innerHeight = 1400;
     napLai();
     await nghi(); await nghi(); await nghi();
-    ok('màn cao → chặn ở TRẦN, KHÔNG ăn hết chỗ còn lại', CAY.skVe.style.height, '300px');
-    ok('  · và cột phải vẫn bằng đúng cột trái', CAY.skLuoiNho.style.height, '300px');
+    ok('màn cao → chặn ở TRẦN, KHÔNG ăn hết chỗ còn lại', CAY.skVe.style.height, '420px');
+    ok('  · và cột phải vẫn bằng đúng cột trái', CAY.skLuoiNho.style.height, '420px');
     ctx.innerHeight = 900;
+  }
+
+  console.log('\n15) Đường cong KHÔNG vọt lố ra ngoài giá trị THẬT');
+  {
+    /* Chủ dự án chốt 12/09/2026 (kèm ảnh mẫu): đường phải có độ cong. Nhưng
+       một phép làm cong bình thường (Catmull-Rom) VỌT LỐ giữa hai điểm — đo
+       được ngay ở bản đầu: chuỗi [100,60,80,20,50] có đáy thật là 20 mà
+       đường võng xuống 15.
+       Trên biểu đồ TIỀN đó là vẽ ra một con số không có trong sổ: người đọc
+       thấy một ngày thấp hơn ngày thấp nhất mà không cách nào biết nó là do
+       phép vẽ. Bài này ghim phép nội suy ĐƠN ĐIỆU đã thay vào. */
+    const nguon = doc('public/suc-khoe.js')
+      .match(/function duongCong\(dsX, dsY\)[\s\S]*?\n  \}\n/)[0].replace(/^  /gm, '');
+    const hop = vm.createContext({ Math, Number, String });
+    const duongCong = vm.runInContext('(' + nguon + ')', hop);
+    ok('cắt được hàm vẽ đường cong', typeof duongCong, 'function');
+
+    /* Mọi toạ độ trong `d` — kể cả TAY NẮM của Bézier — phải nằm trong
+       khoảng giá trị thật. Tay nắm vượt ra ngoài chính là chỗ đường võng
+       quá đà, nên canh cả chúng chứ không chỉ canh các điểm mút. */
+    const soi = (Y) => {
+      const d = duongCong(Y.map((_, i) => i * 10), Y);
+      const ys = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number).filter((_, i) => i % 2 === 1);
+      return [Math.min(...ys), Math.max(...ys)];
+    };
+    for (const Y of [[100, 60, 80, 20, 50], [10, 90, 10, 90, 10], [0, 0, 50, 50, 0],
+                     [5, 4, 3, 2, 1], [1, 2, 3, 4, 5], [7, 7, 7], [3, 9], [42]]) {
+      const [lo, hi] = soi(Y);
+      ok('không vọt lố trên chuỗi ' + JSON.stringify(Y),
+         lo >= Math.min(...Y) - 0.05 && hi <= Math.max(...Y) + 0.05, true);
+    }
+
+    /* Vẫn phải CONG thật, không lặng lẽ thành đường gấp khúc. */
+    ok('đường có lệnh cong `C` của SVG', /C/.test(duongCong([0, 10, 20], [0, 50, 10])), true);
+    ok('  · và đi qua ĐÚNG mọi điểm dữ liệu',
+       /^M0\.0,0\.0 C[\d.,\- ]*10\.0,50\.0 C[\d.,\- ]*20\.0,10\.0$/.test(
+         duongCong([0, 10, 20], [0, 50, 10])), true);
+
+    /* Hai chuỗi nay CÙNG là đường liền (chủ dự án bỏ nét đứt), nên chúng chỉ
+       còn phân biệt bằng MÀU — chú giải vì vậy là bắt buộc, và nét đứt cũ
+       không được sót lại ở đâu. */
+    const MA = doc('public/suc-khoe.js');
+    ok('không còn nét đứt ở chuỗi kỳ trước', /stroke-dasharray/.test(MA), false);
+    ok('màu kỳ trước cùng họ xanh với trang chủ (không cam)',
+       /MAU_TRUOC = "#7da2e3"/.test(MA), true);
   }
 
   xong();

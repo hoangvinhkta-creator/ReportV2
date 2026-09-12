@@ -71,7 +71,13 @@
   #manChu { max-width: none; }
 
   /* ---- Tab + Dashboard ---- */
-  .tabDonVi { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabDonVi { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  /* Một `<p>` RỖNG vẫn chiếm trọn lề trên + lề dưới của nó — ba thẻ như thế
+     (`#loiDonHang`, `#bangConNo`, `#skLoi`) đứng giữa hàng tab và bảng, cộng
+     lại gần 70px khoảng trắng ở trạng thái BÌNH THƯỜNG (không lỗi, không nợ
+     mã). Chủ dự án khoanh đỏ đúng chỗ ấy 12/09/2026. Giấu khi rỗng thay vì
+     bỏ thẻ đi: chúng phải còn sẵn trong DOM để mã vá chữ vào tại chỗ. */
+  .canhBao:empty, .bangConNo:empty, .chuGiaiSk:empty { display: none; }
   /* Năm và tháng nằm CÙNG một hàng, cách nhau một khoảng trống (chủ dự án
      chốt 11/09/2026). Hai nhóm là hai flex riêng để mỗi nhóm tự xuống dòng
      mà không trộn lẫn nút năm với nút tháng. */
@@ -91,7 +97,6 @@
   .chuGiaiSk { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: #4b5563; }
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
-  .chuGiaiSk i.netDut { height: 0; border-top: 3px dashed #9ca3af; background: none !important; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
 
   /* ---- Hai cột: biểu đồ lớn bên trái, lưới nhỏ bên phải (P6) ----
@@ -99,8 +104,12 @@
      ngày không dồn vào nhau, còn lưới nhỏ xếp được 2 ô mỗi hàng ở phần còn
      lại. Dưới 1000px thì xếp dọc: ép hai cột vào màn hẹp là cả hai cùng
      không đọc được. */
-  .daiDieuKhien { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
-  .daiDieuKhien .tabDonVi { margin-bottom: 10px; }
+  .daiDieuKhien { display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 6px; }
+  .daiDieuKhien .tabDonVi { margin-bottom: 0; }
+  /* Chú giải dồn sang mép PHẢI của cùng hàng ấy — nửa phải của hàng nút vốn
+     bỏ không, còn chú giải thì đang chiếm trọn một dòng riêng. */
+  .daiDieuKhien .chuGiaiSk { margin-left: auto; margin-top: 0; }
   /* `align-items: stretch` (mặc định của grid) là điều kiện để hai cột CÙNG
      chiều cao — chiều cao ấy do `canhCaoKhoi()` đo và gán, xem suc-khoe.js.
      Bản trước dùng `align-items: start` nên mỗi cột tự cao theo nội dung, và
@@ -122,15 +131,19 @@
   .khoiBieuDo svg { display: block; width: 100%; height: 100%; }
 
   /* ---- Lưới nhỏ — xu hướng theo Line ---- */
-  /* Ô nhỏ hơn (120px thay vì 130px) để cùng bề rộng cột xếp được nhiều cột
-     hơn, tức ít hàng hơn, tức cụm thấp xuống cho cân với biểu đồ bên trái.
-     `overflow-y: auto` là VAN AN TOÀN: màn quá thấp hay quá nhiều line thì
+  /* `overflow-y: auto` là VAN AN TOÀN: màn quá thấp hay quá nhiều line thì
      riêng cụm này cuộn, thay vì đẩy cả trang dài ra — chủ dự án chốt mở
      trang là thấy hết, không phải kéo thanh trượt. */
+  /* `grid-auto-rows: 1fr` + `align-content: stretch`: các HÀNG chia đều
+     chiều cao cột, nên cụm lấp đầy thay vì xếp sát mép trên rồi bỏ trống
+     phần dưới (chủ dự án khoanh đỏ 12/09/2026). Chiều cao hệ toạ độ của
+     từng ô do `canhCaoKhoi()` tính theo đúng số hàng ấy. */
   .luoiXuHuong { flex: 1 1 0; min-height: 0; overflow-y: auto;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
-    gap: 8px; margin-top: 8px; align-content: start; }
-  .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 6px; }
+    grid-auto-rows: 1fr; gap: 8px; margin-top: 6px; align-content: stretch; }
+  .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 6px;
+    display: flex; flex-direction: column; min-height: 0; }
+  .oMini svg { flex: 1 1 0; min-height: 0; width: 100%; height: 100%; display: block; }
   .tenMini { margin: 0 0 2px; font-size: 11px; line-height: 1.3; font-weight: 600; color: #4b5563;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .oMiniRong { display: flex; flex-direction: column; justify-content: center; min-height: 56px; }
@@ -465,7 +478,7 @@
      `max-width` như hồi nó là một màn riêng: nó phải rộng bằng bảng phía
      trên để hai khối đọc như một. */
   #o-dashboard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-    padding: 16px; margin-top: 18px; }
+    padding: 12px 16px; margin-top: 10px; }
 </style>
 </head>
 <body>
