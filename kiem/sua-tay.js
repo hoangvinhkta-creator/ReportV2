@@ -245,5 +245,52 @@ const GOC = path.resolve(__dirname, '..');
     ok('dòng không ai động vào thì giữ nguyên cờ', chua.noi_nhap_tu_kho, true);
   }
 
+  /* ─────────── Dòng LỖ — và ba loại âm THEO THIẾT KẾ phải đứng ngoài ─────────── */
+
+  console.log('\nY) Cờ dòng lỗ: chỉ bôi đỏ cái ĐÁNG bôi');
+  {
+    /* Chủ dự án chốt 12/09/2026: "dòng có chiết khấu hoặc giá bán thấp hơn
+       giá nhập khiến lợi nhuận âm thì bôi đỏ cả dòng".
+
+       Ba loại dòng dưới đây cũng âm, nhưng âm THEO THIẾT KẾ — bôi đỏ chúng
+       là biến một cảnh báo thành thứ tô đỏ nửa bảng rồi không ai nhìn nữa.
+       Đây là lý do cờ nằm ở Engine chứ không để màn hình tự xét `< 0`: việc
+       loại ba thứ này ra là phán đoán nghiệp vụ, không phải một phép so. */
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    const ds = moiDong(b);
+    for (const d of ds) d.gia_nhap = 20000000;   // bán dưới giá vốn → lỗ thật
+
+    ds[1].la_dong_0d = true;                      // quà tặng kèm
+    ds[2].btl_trang_thai = 'khong-khop';          // bán trả lại
+    S.apDungSuaTay(b, {});
+
+    const lai = moiDong(b);
+    ok('dòng bán dưới giá vốn: BÔI ĐỎ', lai[0].la_lo, true);
+    ok('  · và nó thật sự đang lỗ', lai[0].loi_nhuan < 0, true);
+    ok('dòng quà tặng 0đ: KHÔNG bôi (đã có nền đỏ riêng)', lai[1].la_lo, false);
+    ok('  · dù lợi nhuận cũng âm', lai[1].loi_nhuan < 0, true);
+    ok('dòng bán trả lại: KHÔNG bôi (trả hàng thì âm là đúng)', lai[2].la_lo, false);
+    ok('  · dù lợi nhuận cũng âm', lai[2].loi_nhuan < 0, true);
+  }
+
+  console.log('\nY2) Dòng chiết khấu gộp cũng đứng ngoài, và dòng có lãi thì không đỏ');
+  {
+    /* `BH1` có chiết khấu 300.000 → `dungBangDon()` gộp ra một dòng riêng
+       mang dấu âm. Nó âm ở MỌI đơn có chiết khấu, nên bôi đỏ nó là bôi đỏ
+       gần như mọi đơn. */
+    const dong = {};
+    dong[D.khoaDong('BH9', 'Tivi A', 0)] = dg({ ct: 'BH9', ten: 'Tivi A', tien: 10000000, ck: 300000 });
+    const b = D.dungBangDon(dong, {}, BANG_LINE, null);
+    for (const d of moiDong(b)) if (!d.la_chiet_khau) d.gia_nhap = 6000000;
+    S.apDungSuaTay(b, {});
+
+    const ck = moiDong(b).find((d) => d.la_chiet_khau);
+    const hang = moiDong(b).find((d) => !d.la_chiet_khau);
+    ok('dòng chiết khấu gộp: KHÔNG bôi đỏ', ck.la_lo, false);
+    ok('  · dù nó luôn mang dấu âm', ck.loi_nhuan < 0, true);
+    ok('dòng hàng còn lãi: KHÔNG bôi đỏ', hang.la_lo, false);
+    ok('  · và lãi là số dương', hang.loi_nhuan > 0, true);
+  }
+
   xong();
 })();

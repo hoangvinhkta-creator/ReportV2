@@ -243,6 +243,14 @@
   }
   .oSuaGia { text-align: right; }
 
+  /* DÒNG LỖ — chiết khấu kéo lợi nhuận xuống âm, hoặc bán dưới giá vốn (chủ
+     dự án chốt 12/09/2026). Cùng sắc đỏ với dòng 0 đồng nhưng KHÔNG cùng một
+     lớp: hai thứ là hai việc khác nhau, và gộp lớp thì sau này sửa màu của
+     cái này là lỡ tay đổi luôn cái kia. Vạch trái đỏ để phân biệt với dòng
+     0 đồng khi hai loại nằm cạnh nhau trong cùng một đơn. */
+  .bangDon tr.hangLo > td { background: #fef2f2; color: #b91c1c; }
+  .bangDon tr.hangLo > td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+
   .bangDon tr.hang0d > td { background: #fef2f2; color: #b91c1c; }
   .bangDon tr.hang0d > td.oChuaRo { color: #dc2626; font-weight: 600; }
 

@@ -101,8 +101,8 @@
      lợi nhuận, nơi nhập, hãng, ngành hàng. Hai cột icon cuối là Sửa/Xoá
      dòng, còn khoá cho tới P3 lượt 2. */
   const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
-    "Tổng bán", "Lợi nhuận", "Doanh số quy đổi", "Ghi chú",
-    "Tên khách hàng", "Số điện thoại", "Địa chỉ",
+    "Tổng bán", "Lợi nhuận", "Doanh số quy đổi",
+    "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ghi chú",
     "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
 
   /* Bề rộng CHỐT CỐ ĐỊNH cho từng cột, đi cùng `table-layout: fixed` (chủ dự
@@ -113,8 +113,8 @@
      không xê dịch một pixel.
 
      Phải đúng 19 số, đúng thứ tự `COT` — `kiem/bo-cuc-man-chu.js` canh cặp. */
-  const RONG_COT = [78, 78, 92, 240, 44, 82, 82, 90, 86, 96, 92,
-    132, 94, 152, 92, 112, 112, 34, 34];
+  const RONG_COT = [78, 78, 92, 240, 44, 82, 82, 90, 86, 96,
+    132, 94, 152, 92, 92, 112, 112, 34, 34];
 
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false };
 
@@ -315,9 +315,21 @@
         + (d.trang_thai_ngay_gia === "PROVISIONAL" ? " — ngày chưa chốt, giá còn có thể đổi" : "");
       return td;
     }
-    const td = el("td", "oSo oChuaGia", "—");
+    /* ĐÃ phân loại mà vẫn chưa có giá vốn thì bôi ĐỎ, không để mờ (chủ dự án
+       chốt 12/09/2026). Hai cảnh khác hẳn nhau về việc phải làm:
+
+         · chưa gán mã   — việc đã hiện ở ô Mã vàng bên cạnh, ô này mờ đi cho
+                           khỏi kêu hai lần cùng một chuyện
+         · đã có mã rồi  — gán thêm lần nữa KHÔNG chữa được gì; nguyên nhân
+                           nằm bên Tracking (ngày đó không quan sát được, hết
+                           hàng, chưa có mốc giá). Đây mới là ô đáng soi, và
+                           trước bản này nó mờ y như ô kia nên người dùng cứ
+                           đi gán lại mã cho một dòng đã có mã. */
+    const chuaGanMa = d.ly_do_chua_gia === "chua-co-ma" || !d.ly_do_chua_gia;
+    const td = el("td", "oSo " + (chuaGanMa ? "oChuaGia" : "oChuaRo"), "—");
     if (d.ly_do_chua_gia) td.title = "Chưa có giá vốn: " + (LY_DO_GIA[d.ly_do_chua_gia]
-      || d.ly_do_chua_gia);
+      || d.ly_do_chua_gia)
+      + (chuaGanMa ? "" : " — gán lại mã KHÔNG chữa được, nguyên nhân ở bên Tracking.");
     return td;
   }
 
@@ -670,7 +682,12 @@
             /* Dòng dính tới một lượt bán trả lại — CẢ dòng gốc lẫn dòng BTL.
                Nền riêng chứ không dùng lại nền đỏ của dòng 0 đồng: hai thứ
                đều "0 đồng" nhưng là hai nghiệp vụ khác hẳn nhau. */
-            d.btl_trang_thai ? "hangBTL" : null].filter(Boolean).join(" ");
+            d.btl_trang_thai ? "hangBTL" : null,
+            /* Dòng LỖ — chiết khấu kéo xuống âm, hay bán dưới giá vốn. Cờ do
+               Engine đặt: ba loại dòng âm THEO THIẾT KẾ (chiết khấu, quà tặng
+               0đ, bán trả lại) đã bị loại ra ở đó, và việc loại ấy là phán
+               đoán nghiệp vụ chứ không phải một phép so `< 0` (LUẬT SỐ 1). */
+            d.la_lo ? "hangLo" : null].filter(Boolean).join(" ");
           const tr = el("tr", lop || null);
           /* Ngày và số BH chỉ ghi ở DÒNG ĐẦU của đơn — cùng cách file tay
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
@@ -691,10 +708,10 @@
              đọc field. Chưa có nguồn thì để "—", không bao giờ tự nhân ở đây. */
           tr.appendChild(o(d.doanh_so_quy_doi === null || d.doanh_so_quy_doi === undefined
             ? null : nghin(d.doanh_so_quy_doi), "oSo"));
-          tr.appendChild(o(d.ghi_chu));
           tr.appendChild(oHep(dauDon ? don.ten_khach : "", "oKhach"));
           tr.appendChild(oHep(dauDon ? don.dien_thoai : "", "oDienThoai"));
           tr.appendChild(oHep(dauDon ? don.dia_chi : "", "oDiaChi"));
+          tr.appendChild(o(d.ghi_chu));
           const tdHang = o(d.hang); tdHang.dataset.o = "hang";
           const tdNganh = o(d.nganh_hang); tdNganh.dataset.o = "nganh";
           tr.appendChild(tdHang);
@@ -739,8 +756,18 @@
       if (!td || !tbody.contains(td)) return;
       const khoa = td.dataset.khoa;
       if (!khoa) return;
-      window.GanMa.moChonMa(td.dataset.ten, td.dataset.ma || null,
-        (ma, muc) => vaDongTheoKhoa(khoa, ma, muc));
+      window.GanMa.moChonMa(td.dataset.ten, td.dataset.ma || null, (ma, muc) => {
+        /* Vá TẠI CHỖ trước — mã, hãng, ngành hàng đổi ngay dưới con trỏ, không
+           chờ mạng. Đây là phần giữ lời hứa "không nhảy dòng". */
+        vaDongTheoKhoa(khoa, ma, muc);
+        /* Rồi lấy GIÁ VỐN của mã vừa gán (chủ dự án chốt 12/09/2026: "phân
+           loại xong quét Tracking và hiện giá nhập luôn thay vì phải F5").
+           Bắt buộc phải hỏi lại máy chủ: giá theo ngày bán nằm ở
+           `POST /api/min-ngay` của Tracking, mà mã vừa gán thì lượt tải trước
+           chưa hề hỏi tới (LUẬT SỐ 1 — trình duyệt không tự tra giá).
+           `imLang`: không chớp "Đang tải…", giữ nguyên vị trí cuộn. */
+        taiKy({ imLang: true });
+      });
     });
 
     bang.appendChild(tbody);
@@ -810,29 +837,10 @@
       khung.appendChild(p);
     }
 
-    /* Chú giải MÀU nằm ngay dưới bảng, không giấu trong tooltip: ba màu là ba
-       việc khác nhau, và người đọc không nên phải rê chuột mới biết đỏ nghĩa
-       là gì. */
-    khung.appendChild(el("p", "viDu", "Tiền hiện theo nghìn đồng (6.450 = 6.450.000 đ). "
-      + "Giá nhập và nơi nhập lấy từ Tracking theo ĐÚNG NGÀY BÁN của từng dòng. "
-      + "Nơi nhập ưu tiên Kho: hàng có sẵn trong kho thì xuất từ kho, dù hôm ấy "
-      + "có nhà cung cấp báo giá rẻ hơn — nhưng giá nhập vẫn lấy theo giá Min. "
-      + "Ô vàng: chưa có mã bảng giá — bấm vào để gán, quyết định ghi sang Tracking "
-      + "và áp cho mọi dòng cùng tên hàng ở mọi kỳ. "
-      + "Dòng đỏ: bán 0 đồng (quà tặng kèm) — vẫn có giá vốn nên vẫn trừ vào lợi nhuận. "
-      + "Nơi nhập đỏ: chưa tra được giá Min của ngày đó. "
-      + "Chiết khấu của cả đơn gộp thành một dòng mang dấu âm. "
-      + "Dòng nền xanh: có giá nhập hoặc nơi nhập do bạn tự sửa — sửa tay luôn "
-      + "thắng số máy tính, và sống qua mỗi lần nhập lại sổ. "
-      + "Bấm ✏️ để mở hai ô Giá nhập và Nơi nhập (bình thường chúng khoá); "
-      + "bấm ra chỗ khác hoặc Enter để lưu, Esc để huỷ. Bấm 🗑 để xoá dòng khỏi "
-      + "báo cáo — doanh số của nó bị trừ khỏi cả biểu đồ, sổ gốc không đổi. "
-      + "Dòng nền xám: liên quan tới một lượt bán trả lại — rê chuột vào ô SL để "
-      + "biết đơn gốc nằm trong kỳ này (cả hai dòng về 0) hay ở tháng khác (trừ −1). "
-      + "Ghi chú lấy từ cột Diễn giải của sổ — tải lại sổ thì cột này mới có chữ. "
-      + "Chi phí vận chuyển / lắp đặt / Chênh VAT tự nhận ra từ tên hàng, không "
-      + "cần gán mã — giá nhập tự điền bằng đúng giá bán. "
-      + "Doanh số quy đổi chờ chốt công thức."));
+    /* KHÔNG còn chú giải màu dưới bảng (chủ dự án chốt 12/09/2026: "bỏ đi
+       không cần"). Nó đã dài thành một đoạn văn mà không ai đọc tới lần thứ
+       hai; ý nghĩa từng màu và từng nút nay nằm ở `title` của đúng ô mang
+       màu ấy, tức đọc được ngay tại chỗ đang thắc mắc. */
   }
 
   /* ---- Tab con: Tổng hợp + từng line ---- */

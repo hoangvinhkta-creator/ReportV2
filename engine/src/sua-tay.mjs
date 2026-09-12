@@ -130,7 +130,14 @@ function tinhLaiTong(bang) {
       let tong = 0, loi = 0, duLoi = true;
       for (const d of don.dong) {
         tong = lamTron(tong + (Number(d.tong_ban) || 0));
-        if (d.la_chiet_khau) { loi = lamTron(loi + (Number(d.loi_nhuan) || 0)); continue; }
+        if (d.la_chiet_khau) {
+          loi = lamTron(loi + (Number(d.loi_nhuan) || 0));
+          /* Khai tường minh `false` chứ không để trường vắng mặt: cùng MỘT
+             hình dạng dòng cho mọi loại, màn hình đọc một bộ trường chứ không
+             phải nhớ dòng nào có trường nào. */
+          d.la_lo = false;
+          continue;
+        }
         /* Sửa tay giá nhập xong thì lợi nhuận dòng phải tính lại — nó là
            hàm của giá nhập, không phải một con số độc lập. */
         /* Cặp BTL đã triệt tiêu nhau: SL 0 và tiền 0 nên lợi nhuận là 0 dù
@@ -144,6 +151,24 @@ function tinhLaiTong(bang) {
         else d.loi_nhuan = lamTron(Number(d.tong_ban) - d.gia_nhap * (Number(d.so_luong) || 0));
         if (d.loi_nhuan === null) duLoi = false;
         else loi = lamTron(loi + d.loi_nhuan);
+
+        /* DÒNG LỖ — chủ dự án chốt 12/09/2026: "dòng có chiết khấu hoặc giá
+           bán thấp hơn giá nhập khiến lợi nhuận âm thì bôi đỏ cả dòng".
+
+           Cờ đặt ở ĐÂY chứ không để trình duyệt tự xét `loi_nhuan < 0`, vì
+           ba ngoại lệ dưới đây là PHÁN ĐOÁN NGHIỆP VỤ, không phải một phép
+           so sánh: cả ba loại ấy âm THEO THIẾT KẾ, bôi đỏ chúng là biến một
+           cảnh báo thành thứ tô đỏ nửa bảng rồi không ai nhìn nữa.
+
+             · dòng chiết khấu  — do Engine gộp ra, luôn mang dấu âm
+             · dòng 0 đồng      — quà tặng kèm, đã có nền đỏ riêng
+             · dòng bán trả lại — trả hàng thì âm là đúng, đã có nền xám riêng
+
+           Tính ở đây (cuối chuỗi) chứ không ở `dienGiaNhap()` vì hàm này là
+           nơi lợi nhuận có con số CUỐI CÙNG — sửa tay giá nhập xong mới biết
+           dòng ấy lỗ hay không. */
+        d.la_lo = typeof d.loi_nhuan === "number" && d.loi_nhuan < 0
+          && !d.la_chiet_khau && !d.la_dong_0d && !d.btl_trang_thai;
       }
       don.tong_ban = tong;
       don.loi_nhuan = duLoi ? loi : null;

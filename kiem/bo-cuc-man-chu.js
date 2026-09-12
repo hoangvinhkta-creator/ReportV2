@@ -63,12 +63,17 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
     .replace(/^const COT = /, '').replace(/;$/, '').replace(/,(\s*\])/, '$1'));
 
   ok('đủ 19 cột', COT.length, 19);
-  /* Chủ dự án chốt: [Doanh số quy đổi][Ghi chú] chen vào giữa [Tổng bán] và
-     [Tên khách hàng]; hai cột icon ở CUỐI cùng. */
-  ok('“Doanh số quy đổi” và “Ghi chú” nằm sau “Tổng bán”, trước “Tên khách hàng”',
+  /* Chủ dự án chốt LẠI 12/09/2026: [Doanh số quy đổi] vẫn chen giữa [Tổng
+     bán] và [Tên khách hàng], nhưng [Ghi chú] DỜI ra SAU [Địa chỉ] — ghi chú
+     là chữ đọc kèm thông tin khách, không phải một cột tiền, để nó chen vào
+     giữa khối tiền là cắt đôi mạch đọc. Hai cột icon vẫn ở CUỐI cùng. */
+  ok('“Doanh số quy đổi” nằm sau “Tổng bán”, trước “Tên khách hàng”',
      COT.indexOf('Tổng bán') < COT.indexOf('Doanh số quy đổi')
-     && COT.indexOf('Doanh số quy đổi') < COT.indexOf('Ghi chú')
-     && COT.indexOf('Ghi chú') < COT.indexOf('Tên khách hàng'), true);
+     && COT.indexOf('Doanh số quy đổi') < COT.indexOf('Tên khách hàng'), true);
+  ok('“Ghi chú” nằm ngay SAU “Địa chỉ”',
+     COT.indexOf('Ghi chú'), COT.indexOf('Địa chỉ') + 1);
+  ok('  · và KHÔNG còn nằm trong khối tiền',
+     COT.indexOf('Ghi chú') > COT.indexOf('Tên khách hàng'), true);
   ok('“Ghi chú” chỉ có MỘT cột (dời chỗ, không nhân đôi)',
      COT.filter((c) => c === 'Ghi chú').length, 1);
   ok('hai cột cuối là Sửa và Xoá', COT.slice(-2), ['Sửa', 'Xoá']);
@@ -208,8 +213,12 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
   ok('taiKy() nhận được tuỳ chọn gọi ÊM (không chớp "Đang tải…")',
      /async function taiKy\(tuyChon\)/.test(JS), true);
-  ok('  · và lượt sửa/xoá một dòng đều gọi nó với tuỳ chọn ấy, không gọi taiKy() trần',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 2);
+  /* BA chỗ gọi: sửa một dòng, xoá một dòng, và gán mã xong. Cái thứ ba thêm
+     12/09/2026 — gán mã xong phải lấy GIÁ VỐN của mã vừa gán ngay, không bắt
+     người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc hỏi lại
+     máy chủ (LUẬT SỐ 1 — trình duyệt không tự tra giá). */
+  ok('  · và cả ba lượt (sửa, xoá, gán mã) đều gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 3);
   ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }
@@ -269,6 +278,38 @@ console.log('\n11) Quyết định mồ côi — CLAUDE.md đòi "kèm danh sác
   ok('  · và liệt kê ĐỦ khoá, không cắt bớt',
      /tst\.mo_coi\.map\(\(x\) => x\.khoa\)\.join/.test(JS), true);
   ok('  · không có phép cắt danh sách nào lén vào', /mo_coi\.slice\(/.test(JS), false);
+}
+
+console.log('\n12) Ba luật hiển thị chốt 12/09/2026');
+{
+  const cssSach = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  /* Đã phân loại mà vẫn chưa có giá vốn thì ô Giá nhập bôi ĐỎ, không để mờ.
+     Trước bản này hai cảnh mờ y như nhau, nên người dùng cứ đi gán lại mã
+     cho một dòng ĐÃ CÓ mã — một việc không chữa được gì. */
+  ok('ô Giá nhập phân biệt "chưa gán mã" với "đã có mã mà thiếu giá"',
+     /chuaGanMa \? "oChuaGia" : "oChuaRo"/.test(JS), true);
+  ok('  · và nói thẳng rằng gán lại mã không chữa được',
+     /gán lại mã KHÔNG chữa được/.test(JS), true);
+
+  /* Dòng lỗ bôi đỏ cả dòng. Cờ do ENGINE đặt: ba loại dòng âm theo thiết kế
+     (chiết khấu, quà tặng 0đ, bán trả lại) bị loại ra ở đó, và việc loại ấy
+     là phán đoán nghiệp vụ chứ không phải một phép so `< 0`. */
+  ok('dòng lỗ đọc cờ Engine, không tự xét loi_nhuan < 0',
+     /d\.la_lo \? "hangLo" : null/.test(JS), true);
+  ok('  · màn hình KHÔNG tự so lợi nhuận với 0', /loi_nhuan\s*<\s*0/.test(JS), false);
+  ok('  · và có nền riêng, không dùng lại lớp của dòng 0 đồng',
+     /\.bangDon tr\.hangLo > td \{/.test(cssSach), true);
+
+  /* Chú giải màu dưới bảng đã BỎ (chủ dự án chốt "bỏ đi không cần"). */
+  /* Bắt theo một câu CHỈ có trong chú giải ấy, không bắt theo "Tiền hiện
+     theo nghìn đồng" — chuỗi đó còn nằm trong chú thích giải thích `nghin()`
+     ở đầu file, và bắt trúng nó là bài kiểm đỏ vì một lời giải thích cho
+     người đọc mã. */
+  ok('không còn đoạn chú giải màu dưới bảng',
+     /Ô vàng: chưa có mã bảng giá/.test(JS), false);
+  ok('  · và cũng không còn câu chú giải về nút sửa/xoá',
+     /Enter lưu, Esc huỷ|bấm ra chỗ khác hoặc Enter/.test(JS), false);
 }
 
 xong();
