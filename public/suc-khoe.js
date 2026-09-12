@@ -362,7 +362,10 @@
      người đọc so hai đường không so được với nhau. */
   const BIEU_DO = [
     {
-      ten: "Doanh số", donVi: "nghìn đồng",
+      /* `donVi: null` — chú giải "(nghìn đồng)" cạnh tiêu đề đã BỎ (chủ
+         dự án chốt 12/09/2026, bỏ trên toàn hệ thống). Biểu đồ Số đơn giữ
+         "(đơn)": nó nói LOẠI của con số, không phải bội số của tiền. */
+      ten: "Doanh số", donVi: null,
       layGiaTri: (p) => p.doanh_so,
       nhanDoc: gonTien,
       /* Trung bình (tổng chia số ngày) hầu như luôn ra số lẻ — làm tròn về
@@ -696,8 +699,10 @@
        trong khi nửa phải của hàng nút thì bỏ không. */
     const oTd = $("skTieuDe");
     if (oTd) {
+      /* `donVi` rỗng thì KHÔNG in một cặp ngoặc trống — biểu đồ Doanh số bỏ
+         chú giải đơn vị từ 12/09/2026, còn Số đơn vẫn có "(đơn)". */
       oTd.innerHTML = thoat(nhanKhung)
-        + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>";
+        + (bd.donVi ? ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>" : "");
     }
     oVe.innerHTML = '<div class="khoiBieuDo" id="skHopVe">'
       + veBieuDo({
@@ -955,7 +960,7 @@
     const kO = Object.assign({}, k, { vtMaxMini: Math.max(2, vtCuoi) });
 
     tieuDeLuoi("Xu hướng theo Line · " + thoat(k.duoi)
-      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>");
+      + (bd.donVi ? ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>" : ""));
 
     /* Toạ độ điểm của từng ô được giữ lại để lượt rê chuột tra ra điểm gần
        nhất — tính lại từ đầu trong lúc rê thì mỗi lượt `mousemove` phải dựng

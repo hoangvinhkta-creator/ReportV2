@@ -72,8 +72,17 @@ quyết định về MỘT MẶT HÀNG khoá = tên hàng đã chuẩn hoá
                            → áp cho MỌI kỳ, kể cả kỳ chưa nhập
 ```
 
-Sau mỗi lần đè, màn hình phải nói rõ có bao nhiêu quyết định cũ không còn
-dòng nào để áp, kèm danh sách. Không im lặng bỏ qua.
+Quyết định cũ không còn dòng nào để áp ("mồ côi") phải được ĐẾM và GIỮ, và
+Engine vẫn làm đúng thế: `tom_tat_sua_tay.mo_coi` liệt kê đủ từng khoá, quyết
+định không bị xoá, và nó tự áp trở lại lúc dòng xuất hiện lại
+(`kiem/sua-tay.js` canh). Không im lặng bỏ qua ở tầng số liệu.
+
+**Nhưng KHÔNG in danh sách ấy dưới bảng nữa** — chủ dự án chốt 12/09/2026,
+sau khi nhìn nó ngoài đời: 22 khoá dòng in liền một mạch thành sáu dòng chữ
+dày đặc dưới mỗi bảng, ngày nào cũng thế, không ai đọc tới lần thứ hai. Bản
+trước của đoạn này bắt màn hình phải in ra; chốt mới đè lên đúng câu ấy, và
+được ghi vào đây thay vì để code chạy ngược một luật vẫn còn nằm trong file
+luật. Cần xem lại thì hỏi Engine — số liệu chưa mất đi đâu cả.
 
 ## Khớp mã hàng — dùng lại của Tracking, đừng viết mới
 

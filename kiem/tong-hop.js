@@ -273,7 +273,7 @@ const GOC = path.resolve(__dirname, '..');
     ok('đúng 16 cột', ten.length, 16);
     ok('đúng thứ tự, đúng tên', ten, [
       'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần',
-      'Lợi nhuận', 'Doanh số quy đổi', 'Tỉ lệ tồn kho',
+      'Lợi nhuận', 'Quy đổi', 'Tỉ lệ tồn kho',
       'KPI', 'Đạt', 'Vs. Tháng trước',
       'Thưởng', 'Ngày công', 'Lương cứng',
       'Phụ cấp', 'Tổng lương', 'Ghi chú',
@@ -283,7 +283,7 @@ const GOC = path.resolve(__dirname, '..');
        đầu `title` của chính cột tiền ấy. Mất nó là bảng không còn nói đơn vị
        ở đâu cả, và một cột tiền không đơn vị là một cột đọc sai 1.000 lần. */
     const kh2 = kh ? kh[1] : '';
-    for (const c of ['Doanh số thuần', 'Lợi nhuận', 'Doanh số quy đổi', 'KPI',
+    for (const c of ['Doanh số thuần', 'Lợi nhuận', 'Quy đổi', 'KPI',
                      'Thưởng', 'Lương cứng', 'Phụ cấp', 'Tổng lương']) {
       ok('cột "' + c + '" nói đơn vị ở title',
          new RegExp('ten: "' + c + '"[\\s\\S]{0,80}?gt: "Nghìn đồng\\.').test(kh2), true);
@@ -295,7 +295,7 @@ const GOC = path.resolve(__dirname, '..');
     ok('cột "Hệ số" đã bỏ khỏi [Tổng hợp]', ten.includes('Hệ số'), false);
     ok('  · nhưng dải setup của tab line vẫn còn', /function veDaiKpi/.test(UI), true);
 
-    ok('cột Doanh số quy đổi có highlight (CSS)',
+    ok('cột Quy đổi có highlight (CSS)',
        /\.bangTongHop td\.oQuyDoi/.test(CSS), true);
     ok('  · và ô của nó mang đúng lớp ấy', /"oSo oQuyDoi"/.test(UI), true);
   }
