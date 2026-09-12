@@ -574,6 +574,56 @@ const oEmail = $('oEmail'), oMatKhau = $('oMatKhau');
 const loiDangNhap = $('loiDangNhap'), hopLoi = $('hopLoi');
 const nutDangNhap = $('nutDangNhap');
 
+/* Câu nói cho từng lý do Firebase từ chối. Chỉ những lý do THẬT SỰ là "sai
+ * email/mật khẩu" mới được nói câu đó.
+ *
+ * Vì sao cần bảng này, giá đã trả 12/09/2026: lượt chuyển sang
+ * `reports.tinphatcrm.com` (P7) không đăng nhập được, màn hình nói "kiểm tra
+ * lại email/mật khẩu" — nên mật khẩu bị gõ lại nhiều lần trong khi lỗi thật
+ * là một cái 403 của Google, không liên quan gì tới mật khẩu. Lý do thật chỉ
+ * đọc được bằng cách mở DevTools. Một màn đăng nhập đổ lỗi cho người dùng về
+ * một sự cố cấu hình là màn đăng nhập nói dối; đây đúng là bài học `S156` bên
+ * V1 (`docs/audit/...` F-08: thao tác bắt buộc mà giao diện không nói ra).
+ *
+ * KHÔNG có bí mật nào trong mấy câu này: chúng là lỗi phía client của Google,
+ * và `apiKey` Firebase vốn đã công khai trong `FB_CONFIG` ngay trên. */
+const LOI_DANG_NHAP = {
+  'auth/invalid-email': 'Email không đúng định dạng.',
+  'auth/user-disabled': 'Tài khoản này đã bị khoá.',
+  'auth/user-not-found': 'Sai email hoặc mật khẩu.',
+  'auth/wrong-password': 'Sai email hoặc mật khẩu.',
+  'auth/invalid-credential': 'Sai email hoặc mật khẩu.',
+  'auth/invalid-login-credentials': 'Sai email hoặc mật khẩu.',
+  'auth/too-many-requests': 'Google tạm khoá vì thử sai quá nhiều lần. Chờ ít phút rồi thử lại.',
+  'auth/network-request-failed': 'Không nối được tới Google. Kiểm tra mạng rồi thử lại.',
+  'auth/operation-not-allowed': 'Firebase chưa bật đăng nhập bằng email/mật khẩu cho project này.',
+  'auth/unauthorized-domain': 'Tên miền này chưa được phép đăng nhập. Firebase Console → '
+    + 'Authentication → Settings → Authorized domains → thêm ' + location.hostname + '.',
+};
+
+/** Lý do Firebase từ chối, nói bằng tiếng người. Trả về `[câu, mã]`. */
+function cauLoiDangNhap(e) {
+  const ma = (e && e.code) || 'khong-ro';
+  const tho = String((e && e.message) || '');
+
+  /* Ca KHÔNG có mã riêng, và cũng là ca dễ mất nhiều giờ nhất: khoá API của
+     Firebase bị giới hạn theo tên miền gọi (Google Cloud Console → APIs &
+     Services → Credentials → khoá Browser → Website restrictions). Tên miền
+     mới không nằm trong danh sách thì Google trả 403 ngay ở
+     `identitytoolkit.googleapis.com`, và SDK gói nó thành
+     `auth/internal-error` — một cái tên không nói được gì cho ai. Nhận ra nó
+     bằng chính câu Google viết trong thân lỗi. */
+  if (/referer|referrer|API key|API_KEY|PERMISSION_DENIED|blocked/i.test(tho)) {
+    return ['Google chặn lượt đăng nhập từ tên miền ' + location.hostname
+      + '. Khoá API Firebase đang giới hạn theo tên miền: Google Cloud Console → '
+      + 'APIs & Services → Credentials → khoá Browser của project tinphattracking → '
+      + 'Website restrictions → thêm ' + location.hostname + '. '
+      + '(Đây KHÔNG phải lỗi mật khẩu, và cũng khác mục Authorized domains bên Firebase.)', ma];
+  }
+
+  return [LOI_DANG_NHAP[ma] || 'Đăng nhập không thành công.', ma];
+}
+
 async function doDangNhap() {
   const email = oEmail.value.trim(), mk = oMatKhau.value;
   loiDangNhap.textContent = '';
@@ -582,7 +632,11 @@ async function doDangNhap() {
   try {
     await firebase.auth().signInWithEmailAndPassword(email, mk);
   } catch (e) {
-    loiDangNhap.textContent = 'Đăng nhập không thành công — kiểm tra lại email/mật khẩu.';
+    const [cau, ma] = cauLoiDangNhap(e);
+    /* Kèm mã kỹ thuật ở cuối, luôn luôn: câu tiếng Việt để người dùng biết
+       phải làm gì, mã để lần sau gặp một lý do chưa có trong bảng thì vẫn tra
+       được ngay trên màn hình, không phải mở DevTools. */
+    loiDangNhap.textContent = cau + ' [' + ma + ']';
   } finally {
     nutDangNhap.disabled = false;
   }
