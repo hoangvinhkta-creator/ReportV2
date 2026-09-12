@@ -20,303 +20,26 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 
 ## Trạng thái hiện tại
 
-**P1 XONG. P2 ĐÃ ĐÓNG (11/09/2026) — chủ dự án đã tự mở Dashboard mới
-bằng máy thật và nghiệm thu.** Cả hai phần:
+**P1 XONG. P2 ĐÃ ĐÓNG (11/09/2026), P3 ĐÃ ĐÓNG (12/09/2026), P4 ĐÃ ĐÓNG
+(12/09/2026).** Chi tiết lịch sử đầy đủ của P2/P3 (LINE, đối chiếu, bố
+cục) vẫn nằm nguyên bên dưới mục này — phần trên đây chỉ tóm lại đúng
+trạng thái ĐANG ĐÚNG hôm nay, không phải nhật ký từng lượt.
 
-- **Phần (a) — trích + nạp:** dữ liệu 20 tháng (01/2025–08/2026) ĐÃ NẰM
-  TRÊN FIREBASE, đã đọc ngược xác nhận khớp từng kỳ. Tầng LINE đã chốt,
-  đã code, bảng ánh xạ đã nạp.
-- **Phần (b) — biểu đồ:** Dashboard sức khoẻ kinh doanh — 2 biểu đồ
-  Doanh số/Số đơn kèm chấm trung bình, vòng cơ cấu theo Line lồng hai kỳ,
-  lưới nhỏ xu hướng theo Line + nút chuyển chỉ số. Toàn bộ merge qua PR
-  #22, #23, #27, #28, #31, #34, #35, #37, #41, #42; dọn ba field cũ của
-  Engine (`theo_ngay`, `theo_nam`, `hai_nam`) sau khi nghiệm thu ở PR #43.
+- **P2 — dữ liệu gốc + biểu đồ.** 20 tháng (01/2025–08/2026) đã nằm trên
+  Firebase, Dashboard sức khoẻ kinh doanh (2 biểu đồ, vòng cơ cấu Line,
+  lưới xu hướng) đọc đúng dữ liệu đó. Chủ dự án đã nghiệm thu.
+- **P3 — tải sổ qua UI.** Nối dài chuỗi P2 bằng đường tải file thật
+  (không script), đối chiếu khớp Excel hai lượt (08/2026 và cả năm
+  2025), không đứt ở mốc legacy → sống.
+- **P4 — phân tích giá vốn.** Khớp mã sản phẩm với bảng giá Tracking,
+  giá vốn theo ĐÚNG ngày bán, sửa tay + audit trail, xử BTL (bán trả
+  lại), nơi nhập ưu tiên Tồn Kho, phụ phí cố định (vận chuyển/lắp
+  đặt/Chênh VAT), và một lượt rà soát bắt được bốn lỗi hiển thị trước khi
+  đóng phase. **Bàn giao đầy đủ: `docs/handoff/2026-09-12-P4-dong.md`**
+  — session P5 đọc file đó trước khi gõ dòng code đầu tiên.
 
-**P3 ĐÃ ĐÓNG (12/09/2026).** Điều kiện ra khỏi phase — *"một kỳ tải qua
-UI đối chiếu khớp Excel, nối đúng vào chuỗi thời gian đã có từ P2"* — đã
-chứng minh hai lượt, cả hai đi trọn đường dây thật không script nào chen
-vào:
-
-- Sổ **08/2026** tải qua UI ra **15.818.470.000 đ · 1.150 đơn**, trùng
-  KHÍT `bc/ky/2026-08` mà P2 nạp bằng script. Cùng một sổ, hai đường nạp
-  khác hẳn nhau, ra cùng một con số tới từng đồng.
-- Sổ **cả năm 2025** tải lại qua UI tái lập đúng cả 12 con số tháng đã
-  ghi trong file này.
-- Sổ **09/2026** (file mẫu sống) nối liền vào chuỗi, biểu đồ không đứt ở
-  mốc chuyển legacy → sống.
-
-Chủ dự án đã tự mở bằng máy thật và nghiệm thu. Merge qua PR #24, #25,
-#26, #29, #30, #32, #33, #36, #38, #39, #40, #44, cộng lượt bố cục và
-lượt đóng phase.
-
-**Bàn giao đầy đủ: `docs/handoff/2026-09-12-P3-dong.md`** — đường API,
-hàm Engine, nhánh Firebase, ba cửa an toàn của `taiSo`, năm giới hạn cố ý
-để lại, và hai món đang treo. Session P4 đọc file đó trước.
-
-**ĐANG LÀM: P4 — lát cắt 4 (bán trả lại + cột Ghi chú). Lát 1, 2, 3 và
-lát P5-1 đã xong; chờ chủ dự án mở bản đã deploy và đối chiếu với file
-làm tay.** Phần dưới ghi lại từng lát theo thứ tự đã làm.
-
-**Lát cắt 1 — khớp mã sản phẩm với bảng giá Tracking.**
-
-Lát cắt này cố ý CHƯA đụng tiền. Khớp mã là điều kiện cần của giá vốn;
-xong nó thì lát cắt giá vốn chỉ còn là tra `min-ngay` theo mã đã khớp.
-
-| Lượt | Repo | Trạng thái |
-|---|---|---|
-| PR-A — `POST /api/inv-map`, đường ghi quyết định phân loại | Tracking | ✅ merge 12/09/2026 (PR #34) |
-| PR-B — `engine/src/khop-ma.mjs` + hai RPC Engine | ReportV2 | ✅ merge 12/09/2026 (PR #47) |
-| PR-C — Gateway gọi Tracking + giao diện gán tại chỗ | ReportV2 | ✅ lượt này |
-
-**Một lỗi CHỈ trình duyệt thật bắt được, ghi lại để đừng vấp lại:**
-`table-layout: fixed` + `<colgroup>` là CHƯA ĐỦ. Bảng không khai bề rộng
-thì trình duyệt vẫn co nó cho vừa khung bọc rồi chia lại theo TỈ LỆ, mà tỉ
-lệ phụ thuộc nội dung — đo trên Chromium: cột "Hãng" nhảy 47px → 49px ngay
-sau một lượt gán mã. Phải khai `bang.style.width` bằng đúng tổng
-`RONG_COT`. Không một bài kiểm tĩnh nào trong repo thấy chuyện này; nó lộ
-ra vì lượt kiểm chạy thật trên trình duyệt đo bề rộng trước/sau.
-
-**Thứ tự này BẮT BUỘC** (bẫy số 4): hàm Engine và đường Tracking phải
-deploy xong TRƯỚC lượt Gateway gọi tới chúng.
-
-**Bốn câu hỏi nghiệp vụ chủ dự án đã chốt 12/09/2026:**
-
-1. **Khớp tự động = hai cách**, không có cách thứ ba: tra quyết định đã
-   có trong `inv/map`, CỘNG khớp cụm từ liên tiếp trọn vẹn ra đúng một
-   mã. Chi tiết và lý do vượt dòng "không rút mã từ tên": CLAUDE.md, mục
-   "Khớp mã hàng". Ca ghim: `65C6K` ≠ `65C6KS`.
-2. **Ghi ngược về Tracking** qua `POST /api/inv-map` — Tracking tự giữ
-   ba chốt (mã có thật, mã còn dùng, NB-2), không để V2 chép luật.
-3. **Hiển thị**: mã đã phân loại giữ nguyên như hiện tại; mã CHƯA phân
-   loại mới hiện khác đi.
-4. **Bề rộng cột chốt cố định** (`table-layout: fixed`) — điền dữ liệu
-   P4 vào bảng cột co giãn sẽ làm bố cục nống ra.
-
-**LÁT CẮT 2 — giá nhập theo đúng ngày bán — ĐÃ XONG 12/09/2026** (PR-D
-Engine, PR-E Gateway + màn hình):
-
-- Khớp mã và giá vốn chỉ áp dụng **từ kỳ 09/2026** (`MOC_KHOP_MA`). Kỳ
-  trước mốc: phép khớp KHÔNG chạy, không băng cảnh báo, chỉ một câu xám
-  nói rõ "ngoài phạm vi dữ liệu giá của Tracking".
-- Giá nhập đọc `POST /api/min-ngay` theo ĐÚNG ngày bán của từng dòng —
-  đơn ngày 01/09 lấy mốc 01/09, không lấy giá của ngày tải file.
-- **Bẫy đơn vị tiền:** `min_price` đếm bằng NGHÌN đồng
-  (`currency_unit: VND_THOUSAND`), Báo cáo đếm bằng ĐỒNG. Nhân 1.000, và
-  đơn vị được KIỂM chứ không tin — Tracking đổi đơn vị thì Engine ném
-  lỗi chứ không lặng lẽ nhân nhầm.
-- Lợi nhuận dòng = `tổng bán − giá nhập × SL`. Lợi nhuận ĐƠN chỉ tính
-  khi mọi dòng hàng của đơn đã có giá; thiếu một dòng thì để `null`.
-- Mỗi dòng thiếu giá mang theo LÝ DO (`chua-co-ma`, `SOURCE_UNAVAILABLE`,
-  `NO_DATA`, `INVALID_PRODUCT_CODE`), hiện ở tooltip ô Giá nhập.
-
-**LÁT P5 — SỬA TAY + AUDIT TRAIL — ĐÃ XONG 12/09/2026:**
-
-- Hai nút `[Sửa dòng]` `[Xoá dòng]` ĐÃ MỞ. Hai ô Giá nhập và Nơi nhập
-  KHOÁ cho tới khi bấm ✏️ (chủ dự án chốt) — Enter lưu, Esc huỷ.
-- Quyết định ghi `bc/quyetdinh/dong/<kỳ>/<khoá dòng>` kèm `boi` + `luc`.
-  Nhánh RIÊNG nên lượt nhập sổ không đè được; hợp nhất lúc ĐỌC.
-- **Sửa tay luôn thắng** số máy tính, vĩnh viễn tới khi chính người ấy
-  xoá. Dòng đã sửa hiện NỀN XANH.
-- Dòng biến mất khỏi file mới thì biến khỏi bảng, nhưng quyết định vẫn
-  nằm đó — lúc nào dòng quay lại thì giá đã nhập TỰ ÁP trở lại.
-- **Xoá dòng trừ ở CẢ HAI** (chủ dự án chốt): bảng đơn và biểu đồ. `bc/ky`
-  không bị nạp lại; Gateway tính phần phải TRỪ rồi trừ lúc đọc. Số đơn chỉ
-  giảm khi MỌI dòng của chứng từ ấy đều bị xoá.
-- Dòng 0 đồng (quà tặng kèm) bôi ĐỎ; chứng từ `BTL` KHÔNG gộp chung —
-  nghiệp vụ khác, đã xử ở lát 4 dưới đây.
-- Nơi nhập lấy từ `min_sources` của bản ghi ngày bán, chọn theo thứ tự
-  **Việt Hải → Điện tử 179 → Thăng Long → Trung Xuân → Văn Quân → còn
-  lại**. "Việt Hải" và "Việt Hàn" là HAI NCC khác nhau — so cả chuỗi,
-  không gần đúng.
-
-**Một bẫy đã trả giá, ghi lại:** ô sửa giá từng seed từ CHỮ ĐANG HIỆN
-(đã qua `nghin()` — một phép làm tròn để ĐỌC). Khi ấy chỉ cần mở ô sửa
-rồi bấm lưu là tiền đã khác, và không có gì đỏ lên. Nay seed từ giá trị
-THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
-
-**LÁT P4-4 — BÁN TRẢ LẠI (BTL) + CỘT GHI CHÚ — ĐÃ XONG 12/09/2026:**
-
-- Chứng từ `BTL` của sổ ghi 0 đồng, nên tới lát này một lượt khách trả
-  hàng KHÔNG trừ đi đồng doanh số nào. `engine/src/btl.mjs` ghép mỗi dòng
-  BTL với đơn đã bán trước đó — **cùng khách** (SĐT trước, tên là lựa
-  chọn sau), **cùng tên hàng**, **bán không sau ngày trả** — rồi:
-  - ghép được → đơn gốc cũng đang trong bảng, trừ thêm là trừ hai lần.
-    Cả hai dòng về **SL 0 / tiền 0**, "coi như 2 dòng thông báo".
-  - không ghép → đơn gốc ở tháng khác, doanh số đã tính ở tháng ấy. Dòng
-    BTL nhận **SL −1** và tổng bán ÂM, lấy theo Đơn giá của sổ.
-  - không truy ra được tiền (cả Doanh số bán lẫn Đơn giá đều 0) → KHÔNG
-    bịa một khoản trừ 0 đồng. Ô SL bôi ĐỎ, lợi nhuận để trống.
-- SL −1 chạy thẳng vào công thức chung `tổng bán − giá nhập × SL` và ra
-  đúng phần lãi phải nhả lại — không có nhánh tính tiền riêng nào.
-- Phép ghép chạy trên **TOÀN kỳ** (`bc/dong` chưa lọc line), không trên
-  bảng đã lọc: nếu không, đơn gốc của line A và chứng từ BTL của line B
-  chỉ tìm thấy nhau ở tab Tổng hợp, và cùng một tháng ra hai con số khác
-  nhau tuỳ tab đang mở.
-- Dòng 0 đồng nay chỉ bôi đỏ khi **SL > 0** — cặp BTL đã triệt tiêu cũng
-  hiện "0" ở mọi cột tiền, và đọc nhầm nó thành quà tặng là đi tìm một
-  khoản giá vốn không hề có.
-- Cột **Ghi chú** đã có nguồn: cột `Diễn giải` của sổ, ô ghi chú duy nhất
-  người nhập liệu gõ tay. Nó lưu ở `bc/dong` LÚC NHẬP, nên **phải tải lại
-  sổ** thì cột mới có chữ.
-
-**LÁT P4-5 — NƠI NHẬP ƯU TIÊN TỒN KHO — ĐÃ XONG 12/09/2026** (hai repo):
-
-- Chủ dự án chốt: "ưu tiên cao nhất sẽ là Tồn Kho, sau đó mới đến các nhà
-  cung cấp khác" — hàng đã nằm trong kho thì bắt buộc xuất từ kho, kể cả
-  khi hôm ấy một NCC chào giá rẻ hơn. **Nhưng giá nhập VẪN lấy theo giá
-  Min**, không lấy giá kho: "lấy hàng ở đâu" và "giá vốn bao nhiêu" là hai
-  câu hỏi khác nhau.
-- **Lát 5a — sửa một lỗi thật, không phải thêm ưu tiên cho đẹp.** Hợp đồng
-  trả nguồn kho là `{source_type:"INVENTORY", source_id:"TON_KHO"}`, mà
-  `chonNoiNhap()` xếp hạng theo `source_id` đối chiếu `NCC_UU_TIEN`.
-  `TON_KHO` không có trong danh sách ấy nên nó rơi vào nhánh "ngoài danh
-  sách" — xếp SAU mọi NCC có tên; cộng với việc Tracking luôn đẩy kho xuống
-  CUỐI mảng, Kho gần như không bao giờ được hiện, và lúc được hiện thì hiện
-  ra đúng chữ `TON_KHO`. Nay nhận theo `source_type` (enum ĐÓNG của hợp
-  đồng) và hiện chữ "Kho".
-- **Lát 5b — mở đường cho ca chính.** `min_sources` chỉ kể tên kho khi giá
-  kho ĐÚNG BẰNG Min, vì nó trả lời "ai giữ giá rẻ nhất". Ca chủ dự án nêu
-  đích danh — *kho còn hàng nhưng giá kho CAO HƠN Min* — không đi ra được
-  bằng đường ấy. Tracking mở trường riêng `inventory_unit_cost` (R8,
-  `PHIEN_BAN_MIN` → `min-2`), Báo cáo đọc nó.
-- Giữ CẢ HAI đường nhận dạng: bản ghi ghi trước lượt deploy `min-2` không
-  có trường mới, nhưng nếu hôm ấy kho giữ Min thì nó vẫn có tên trong
-  `min_sources`. Bỏ đường cũ là làm ngày cũ tệ hơn cả trước khi có luật.
-- Giá kho đi kèm ra màn hình (`gia_ton_kho`) và hiện ở tooltip cột Nơi
-  nhập khi nó khác giá nhập — "Kho" đứng cạnh một con số không phải giá
-  kho trông y như một lỗi.
-
-**RÀ SOÁT P4 — 12/09/2026.** Soi lại toàn phase theo đúng mục "Bạn nhìn
-thấy gì" của nó, cộng một lượt chạy cả đường ống trên một kỳ có đủ mọi
-loại dòng (hàng thường, phụ phí cố định, chiết khấu, BTL ghép được, BTL
-không ghép được, sửa tay). Bốn thứ tìm ra, đã sửa hết:
-
-1. **Một câu SAI trên màn hình tiền** (do chính lát 5b gây ra): gõ đè nơi
-   nhập xong thì ô ghi "Tuấn Ngoan" nhưng tooltip vẫn nói "hàng có sẵn
-   trong kho nên xuất từ kho… giá nhập vẫn lấy giá Min". Nay lời giải
-   thích đi theo một CỜ do Engine đặt (`noi_nhap_tu_kho`), và
-   `apDungSuaTay()` tắt cờ khi người dùng gõ đè.
-2. **Thiếu hẳn vế thứ hai của "Bạn nhìn thấy gì"** — *"danh sách rõ ràng
-   N dòng chưa có giá vốn, vì lý do gì"*. Engine tính `tom_tat_gia` từ
-   lát 2 nhưng con số ấy chưa bao giờ ra tới màn hình; lý do chỉ nằm ở
-   `title` từng ô, muốn biết cả kỳ còn nợ bao nhiêu thì phải rê chuột
-   từng dòng. Nay có băng dưới bảng.
-3. **`OUT_OF_STOCK` không có trong bảng dịch** dù là một trong BA trạng
-   thái của hợp đồng `daily-min-v1` — màn hình hiện nguyên chữ tiếng Anh
-   cho một cảnh rất thường gặp. Kèm theo: bảng dịch ấy có tới BA bản, bản
-   trong `khop-ma.mjs` chưa ai import lần nào. Đã bỏ bản chết, bài kiểm
-   giữ cho nó không quay lại và canh hai bản còn lại phủ đủ tập trạng
-   thái.
-4. **Một yêu cầu CỨNG của CLAUDE.md chưa ai làm**: *"phải nói rõ có bao
-   nhiêu quyết định cũ không còn dòng nào để áp, kèm danh sách"*.
-   `tom_tat_sua_tay.mo_coi` cũng tính rồi bỏ đó. Nay có băng, liệt kê đủ
-   khoá, không cắt bớt.
-
-Cùng một lớp lỗi ở ba trong bốn ca: **Engine tính đúng, rồi không ai
-hiện ra**. Đáng nhớ khi mở phase sau — một con số chỉ tồn tại trong
-`tom_tat_*` thì với người dùng nó chưa tồn tại.
-
-Đã kiểm và KHÔNG phải lỗi: Gateway chuyển nguyên bản ghi `min-ngay`
-(`records.push(...)`, không lọc trường) nên `inventory_unit_cost` đi tới
-Engine được thật; `tom_tat_ma` không được hiện là CỐ Ý (băng gán mã đếm
-trên DOM, và bản thân những ô vàng chính là danh sách việc).
-
-**LÁT P4-6 — KHỚP NGUYÊN CÂU — 12/09/2026.** Chủ dự án báo "nhiều mã đã
-có trên bảng giá mà Báo cáo không đọc được giá". Soi ra HAI lỗi khác hẳn
-nhau, cùng hiện ra một dấu gạch đỏ nên trông như một:
-
-- **Thiếu MÃ** (`GIÁ TREO TIVI ĐA NĂNG ERGOTEK E66 32 - 80 INCH`). Bảng
-  giá CÓ mục ấy, nhưng mã của nó là nguyên câu mười từ — vượt trần
-  `CUM_TOI_DA` (8) nên không hề vào từ điển khớp. Xuống hàng chờ, rồi ở
-  hàng chờ gán tay cũng bị chốt NB-2 của Tracking từ chối vì chính mặt
-  hàng ấy đang là dòng tồn kho hoạt động. Kẹt hẳn. Đã sửa bằng một bậc
-  khớp mới: **nguyên câu bằng sạch, không trần độ dài** (xem CLAUDE.md,
-  cách 2 nay có hai dạng). Mục dài vẫn KHÔNG được làm cụm con trong câu
-  dài hơn — có bài kiểm ghim đúng tính chất ấy.
-- **Thiếu GIÁ** (`Tủ lạnh Hitachi HRTN6408SUVN`). Mã khớp hoàn hảo
-  (`tu-dong`) — bằng chứng là cột Hãng/Ngành hàng đã điền, hai cột ấy chỉ
-  điền khi có mã. Dấu gạch đỏ ở đây là "chưa tra được giá Min của ngày
-  đó", một chuyện hoàn toàn khác. Băng "còn N dòng chưa có giá vốn" vừa
-  dựng ở lượt rà soát chính là chỗ phân biệt hai ca này mà không phải rê
-  chuột từng dòng.
-
-**LÁT P4-7 — SÁU VIỆC HIỂN THỊ TRƯỚC KHI ĐÓNG PHASE (12/09/2026):**
-
-1. **Gán mã xong là có giá ngay**, không phải F5. Vá tại chỗ trước (mã,
-   hãng, ngành hàng đổi ngay dưới con trỏ), rồi `taiKy({imLang:true})` lấy
-   giá vốn của mã vừa gán — bắt buộc hỏi lại máy chủ vì giá theo ngày bán
-   nằm bên Tracking và lượt tải trước chưa hề hỏi tới mã ấy.
-2. **Ô Giá nhập đỏ khi ĐÃ có mã mà vẫn thiếu giá**, mờ khi chưa gán mã.
-   Trước đây hai cảnh mờ y như nhau nên người dùng cứ đi gán lại mã cho
-   một dòng đã có mã — một việc không chữa được gì; `title` nay nói thẳng
-   điều đó.
-3. **Dòng lỗ bôi đỏ cả dòng** (`la_lo`, cờ do Engine đặt). Ba loại âm
-   THEO THIẾT KẾ đứng ngoài: chiết khấu gộp, quà tặng 0đ, bán trả lại —
-   bôi đỏ chúng là tô đỏ nửa bảng rồi không ai nhìn nữa. Việc loại ba thứ
-   ấy là phán đoán nghiệp vụ nên cờ ở Engine, không để màn hình tự xét
-   `< 0`.
-4. **Chi phí vận chuyển / lắp đặt: nơi nhập mặc định là Kho** — công của
-   chính nhà mình, không mua của NCC nào. `Chênh VAT` thì KHÔNG: không có
-   hàng nào rời kho, gán nơi nhập cho nó là bịa một sự kiện kho.
-5. **Cột Ghi chú dời ra sau Địa chỉ** — nó là chữ đọc kèm thông tin
-   khách, để chen giữa khối tiền là cắt đôi mạch đọc. Đo lại bằng
-   Playwright sau khi dời: 0 cột lệch.
-6. **Bỏ đoạn chú giải màu dưới bảng.** Nó đã dài thành một đoạn văn không
-   ai đọc tới lần thứ hai; ý nghĩa từng màu nay nằm ở `title` của đúng ô
-   mang màu ấy.
-
-**Còn treo sau lát này:**
-
-1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính
-   sẵn lúc nạp sổ), bảng đơn đọc `bc/dong` + luật BTL lúc đọc — nên một
-   tháng có lượt trả hàng sẽ lệch giữa hai màn. Cùng lớp việc với "xoá
-   dòng" đã giải ở `sua-tay.mjs` (`tinhTruDaXoa` / `truVaoCayKy`), khác
-   ở chỗ phép ghép cần cả `bc/khach` của kỳ.
-2. **Ba giả định của luật BTL cần chủ dự án xác nhận trên sổ thật:**
-   (a) ghép phải cùng TÊN HÀNG, không chỉ cùng khách — một khách mua ba
-   món rồi trả một món là chuyện thường; (b) phạm vi tìm đơn gốc là CHÍNH
-   KỲ đang xem, không tìm ngược sang kỳ khác; (c) khi không ghép được thì
-   số tiền phải trừ lấy từ cột **Đơn giá** của chính dòng BTL — cần mở
-   một chứng từ BTL thật xem ô ấy có số hay không.
-3. **Ngày TRƯỚC lượt deploy `min-2` chưa có giá tồn kho.** Bản ghi cũ không
-   mang `inventory_unit_cost`, nên Báo cáo hiểu là "kho không có hàng" rồi
-   quay về thứ tự NCC — an toàn đúng hướng, nhưng chưa đúng sự thật. Chữa
-   bằng đúng một lượt chạy `POST /api/min-ngay/dung-lai` bên Tracking cho
-   khoảng ngày ấy (đường R7, admin) — cùng một thao tác đang cần cho việc
-   giá nhập trống ở đầu tháng 9.
-4. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống. KHÔNG
-   chặn điều kiện ra khỏi P4: mục "Bạn nhìn thấy gì" của phase chỉ đòi
-   lợi nhuận và danh sách dòng thiếu giá vốn, không đòi cột này.
-5. **`maCanGiaVon()` chưa bỏ qua dòng phụ phí cố định** như
-   `khopMaChoBangDon()` đã bỏ. Hệ quả duy nhất: nếu một tên phụ phí tình
-   cờ chứa một mã bảng giá thì mã ấy bị hỏi Tracking một cách thừa. Không
-   sai tiền, không sai nhãn — ghi lại vì đó là chỗ hai hàm nhìn cùng một
-   dòng mà kết luận khác nhau.
-6. **`ncc_uu_tien_khong_gap` không được hiện ở đâu.** Cố ý: nó là phép tự
-   chẩn cho người sửa mã (một tên NCC gõ sai làm luật ưu tiên im lặng
-   không chạy), còn với người dùng thì "tháng này Thăng Long không giữ
-   Min lần nào" là chuyện bình thường, hiện ra chỉ thành nhiễu.
-7. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
-   thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô — đã dùng
-   đúng như vậy ở lát 3, ghi lại đây để không ai đi dựng lại.
-
-**Việc của chủ dự án trước khi PR-C chạy thật:** đặt Secret
-`REPORT_API_KEY` trên Gateway V2 (`wrangler secret put REPORT_API_KEY`),
-đúng chuỗi Tracking đang dùng. Thiếu nó thì đường khớp mã trả 503 —
-fail closed, đúng thiết kế. **Cloudflare Access KHÔNG phải sửa gì:**
-policy `price-api-cho-CRM` bắt theo Path `api` chứ không liệt kê từng
-đường, nên `/api/inv-map` tự nằm trong (xem `BAO-MAT-TRIEN-KHAI.md` bên
-Tracking).
-
-Bốn việc trước ghi là "P3 lượt 2" (nút sửa/xoá dòng, khoá chống đè, audit
-trail, giữ dòng đã sửa tay khi nó biến mất) **đã chuyển sang P5** —
-chúng đúng nguyên văn phạm vi "Chỉnh sửa tay + audit trail" của P5, giữ
-một lượt 2 lơ lửng ở P3 chỉ làm hai chỗ cùng nhận một việc.
-
-**BỐ CỤC MÀN HÌNH ĐÃ CHỐT LẠI LẦN 2 (11/09/2026, PR #28 rồi dựng lại ở
-lượt bố cục) — đọc trước khi sửa `public/index.html`:** không còn lưới
-thẻ. Đăng nhập xong ra THẲNG tab [Báo cáo doanh số]; biểu đồ nay nằm sau
-tab [Biểu đồ] và **không tự hiện ra lúc đăng nhập nữa**.
+**BỐ CỤC MÀN HÌNH HIỆN TẠI (đúng tới 12/09/2026, sau lượt đóng P4) —
+đọc trước khi sửa `public/index.html` hay `don-hang.js`:**
 
 ```
 Báo cáo bán hàng                    [Nhập sổ] [Đăng xuất]
@@ -325,7 +48,8 @@ Báo cáo bán hàng                    [Nhập sổ] [Đăng xuất]
 ├─ #manBaoCao                                                     (P3)
 │    [2025][2026]      [T1][T2]…[T12]               ← CÙNG một hàng
 │    [Tổng hợp][Tín Phát][Tổng kho]…[Ẩn/hiện line 0đ]
-│    bảng đơn hàng 19 cột của line đang chọn
+│    bảng đơn hàng 19 cột của line đang chọn — khung TỰ CUỘN dọc bên
+│    trong (`.bocBang`, chiều cao tính bằng JS), đầu cột ghim khi cuộn
 │
 └─ #manBieuDo (hidden sẵn)                                        (P2b)
      ┌─ #o-dashboard ────────────────────────┐
@@ -335,43 +59,39 @@ Báo cáo bán hàng                    [Nhập sổ] [Đăng xuất]
      └───────────────────────────────────────┘
 ```
 
+**19 cột của bảng đơn hàng, đúng thứ tự hiện tại** (chốt lại lần cuối ở
+lượt đóng P4 — `kiem/bo-cuc-man-chu.js` canh cả thứ tự lẫn bề rộng):
+
+```
+Ngày · Số BH · Nơi nhập · Mã sản phẩm · SL · Giá nhập · Giá bán ·
+Tổng bán · Lợi nhuận · Doanh số quy đổi ·
+Tên khách hàng · Số điện thoại · Địa chỉ · Ghi chú ·
+Hãng · Ngành hàng · IMEI · [Sửa] · [Xoá]
+```
+
+"Ghi chú" đứng NGAY SAU "Địa chỉ" (không còn chen giữa khối tiền như bản
+trước 12/09/2026) — nó là chữ đọc kèm thông tin khách, không phải một
+cột tiền. **KHÔNG còn đoạn chú giải màu dưới bảng** — ý nghĩa từng màu và
+từng nút nay nằm ở `title` của đúng ô mang màu ấy.
+
 Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
 
-- Đủ 12 nút tháng; tháng chưa có dữ liệu thì `disabled`. Vẽ thiếu tháng
-  làm người dùng không phân biệt được "chưa tải lên" với "không có đơn".
+- Đủ 12 nút tháng; tháng chưa có dữ liệu thì `disabled`.
 - Line bị giấu khi **không đơn nào VÀ không dòng nào** — cố ý KHÔNG lấy
-  `doanh_so === 0`: Shopee T09/2026 có 2 đơn mà 0 đ, đó là dữ liệu thật
-  cần soi. Nút cuối hàng bật/tắt các line bị giấu.
-- Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase. Muốn đổi thứ
-  tự hiển thị thì sửa `thu_tu` (là DỮ LIỆU), không sửa mã.
+  `doanh_so === 0`.
+- Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase (DỮ LIỆU).
 
-Tab đầu là **[Tổng hợp]** — đích cuối là chép lại sheet "Summary" của file
-báo cáo tay (tổng đơn, tổng SP, doanh thu quy đổi, tỉ suất lợi nhuận,
-target, thưởng, ngày công, lương). Lượt này mới **xếp chỗ** cho tab, vẫn
-hiện bảng line như cũ: phần lớn cột ấy chưa có nguồn (giá vốn ở P5,
-target/lương chưa có nhánh nào lưu).
+Tab đầu **[Tổng hợp]** vẫn chỉ xếp CHỖ — đích cuối là chép sheet
+"Summary" của file báo cáo tay (tổng đơn, tổng SP, **doanh thu quy đổi**,
+tỉ suất lợi nhuận, target, thưởng, ngày công, lương). Giá vốn (P4) đã
+xong; **doanh thu quy đổi và các cột lương/target/KPI là việc của P5** —
+xem phần "P5" bên dưới.
 
-Bảng đơn hàng nay **19 cột**: `[Doanh số quy đổi][Ghi chú]` chen giữa
-`[Tổng bán]`/`[Lợi nhuận]` và `[Tên khách hàng]` ("Ghi chú" DỜI từ cuối
-lên, không nhân đôi), hai cột icon `[Sửa dòng][Xoá dòng]` ở cuối cùng —
-còn `disabled` cho tới P3 lượt 2. Bốn cột `[Tên khách hàng][Số điện
-thoại][Địa chỉ][IMEI]` thu hẹp và **cắt** chữ thừa (`…`), không xuống
-dòng; chữ đầy đủ giữ ở `title`. Vì bố cục bảng tự động bỏ qua `max-width`
-đặt thẳng lên `<td>`, nội dung phải bọc trong một `<span>` khối — đó là
-hàm `oHep()` trong `don-hang.js`.
+**ĐANG LÀM: P5 — Doanh số quy đổi + KPI nhân viên.** Đọc
+`docs/handoff/2026-09-12-P4-dong.md` trước khi bắt đầu — mục 6 của file
+đó liệt kê chính xác những gì P5 cần hỏi chủ dự án trước khi viết dòng
+code đầu tiên (chưa có công thức nào được chốt).
 
-"Nhập sổ" vẫn mở màn riêng `#manTaiLen` như cũ, chỉ khác chỗ bấm — màn đó
-nay có thêm mục "Các kỳ đã có" (chọn kỳ, xoá kỳ) — xem "P3" dưới.
-
-**Hai việc tay đã xong** (rules đã publish, `nap-line.mjs` đã chạy lại) —
-xem lịch sử ở "P3 — lượt 1" nếu cần tra lại.
-
-**Việc TRƯỚC MẶT tiếp theo: P4 — giá vốn / lợi nhuận.** P2 và P3 đều đã
-đóng và đã được chủ dự án nghiệm thu trên bản chạy thật.
-
-Đường dây đã chạy thật đầu-đến-cuối: mở `*.workers.dev` → qua Cloudflare
-Access → đăng nhập Firebase → Gateway xác minh token, tra vai, gọi Engine
-qua Service Binding → màn chủ hiện tên người dùng và sáu thẻ xám.
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
 
@@ -955,12 +675,14 @@ hàng. `kiem/doc-xlsx-trinh-duyet.js` dựng một .xlsx thật trong bộ nhớ
 (ZIP + deflate + SpreadsheetML) rồi so từng ô giữa hai bộ, và ghim luôn
 LUẬT SỐ 1: file đó không được biết "cột 12 là nhân viên".
 
-#### P3 — bốn việc "lượt 2" ĐÃ CHUYỂN SANG P5 (12/09/2026)
+#### P3 — bốn việc "lượt 2" ĐÃ CHUYỂN SANG P5 (12/09/2026), RỒI LÀM XONG TRONG P4
 
 Bốn việc dưới đây trước ghi là "P3 lượt 2". Chúng đúng nguyên văn phạm vi
-**P5 — Chỉnh sửa tay + audit trail**, nên chuyển hẳn sang đó; giữ một
-lượt 2 lơ lửng ở P3 chỉ làm hai chỗ trong file này cùng nhận một việc.
-Giữ nguyên mô tả ở đây vì nó là bối cảnh P5 cần đọc.
+**P5 — Chỉnh sửa tay + audit trail** (tên gọi CŨ của slot P5, trước khi
+slot đó được định nghĩa lại thành "Doanh số quy đổi + KPI nhân viên" lúc
+đóng P4), nên chuyển hẳn sang đó lúc đầu; rồi cả bốn việc thật sự được
+LÀM trong P4 (lát "P5-1") vì giá vốn sửa tay cần chúng. Giữ nguyên mô tả
+ở đây làm bối cảnh lịch sử, không phải việc còn phải làm.
 
 Chủ dự án đã chốt nội dung, chưa code:
 
@@ -1169,14 +891,19 @@ theo đúng ba khối việc lớn, không tách nhỏ theo kỹ thuật nữa:
 Các phase còn lại giữ nguyên nội dung, đổi số: chỉnh sửa tay (P5), sản
 phẩm/thương hiệu tuỳ chọn (P6), khai tử V1 (P7).
 
+*(Cập nhật 12/09/2026, lúc đóng P4: nội dung "chỉnh sửa tay" của P5 đã
+làm xong bên trong P4 — xem lát "P5-1". Slot số P5 được TÁI SỬ DỤNG cho
+nội dung mới, "Doanh số quy đổi + KPI nhân viên", thay vì chèn thêm một
+số phase mới và đẩy P6/P7 lùi lại — ít xáo trộn tham chiếu cũ hơn.)*
+
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
 | P1 | Nền móng rỗng, chạy thật | 1 tuần | ✅ Xong — 11/09 |
 | P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | ✅ Xong — 11/09, chủ dự án đã nghiệm thu |
-| P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | 🟨 Lượt 1 đã merge — còn lượt 2 (sửa/xoá + audit) |
-| P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ⬜ Chưa bắt đầu |
-| P5 | Chỉnh sửa tay + audit trail | 1 tuần | ⬜ Chưa bắt đầu |
+| P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | ✅ Xong — 12/09, chủ dự án đã nghiệm thu |
+| P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ✅ Đóng — 12/09 (gồm cả "Chỉnh sửa tay + audit trail" cũ của P5, xem lát P5-1) |
+| P5 | Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026 — nội dung cũ đã làm xong trong P4)* | chưa ước lượng — chờ chốt công thức | ⬜ Đang mở |
 | P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
 | P7 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
 
@@ -1340,7 +1067,12 @@ bàn giao đầy đủ ở `docs/handoff/2026-09-12-P3-dong.md`.
 
 ---
 
-### P4 — Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026)
+### P4 — Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) ✅ ĐÃ ĐÓNG 12/09/2026
+
+**Bàn giao đầy đủ: `docs/handoff/2026-09-12-P4-dong.md`.** Mô tả gốc của
+phase giữ nguyên bên dưới để khỏi mất bối cảnh vì sao phase được xây thế
+này; chi tiết những gì THẬT SỰ đã chạy, quyết định nghiệp vụ đã chốt, lỗi
+đã sửa, và việc còn treo — đọc ở file handoff, không lặp lại ở đây.
 
 Chủ dự án xác nhận vẫn cần giá vốn/lợi nhuận, nhưng xây dựa trên đúng dữ
 liệu SỐNG của P3 — không phải dữ liệu legacy của P2. Đây khớp đúng một
@@ -1368,30 +1100,43 @@ tay.
 
 ---
 
-### P5 — Chỉnh sửa tay + audit trail
+### P5 — Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026)*
 
-**Nhận thêm bốn việc từ P3 (12/09/2026)** — nút sửa/xoá DÒNG trên bảng
-đơn hàng, ghi `bc/quyetdinh/dong/<kỳ>`, audit trail, và giữ-lại-cảnh-báo
-khi một dòng đã sửa tay biến mất khỏi file mới. Máy khoá đã dựng xong và
-có bài kiểm từ P3: `doiChieuKy()` nhận tập khoá đã sửa tay, dòng nào
-trong tập đó thì GIỮ BẢN CŨ và trả về ở nhánh `bi_khoa` thay vì bị đè —
-P5 chỉ còn phải GHI vào nhánh quyết định và dựng giao diện. Khoá đặt ở
-mức DÒNG, cảnh báo gom theo ĐƠN. Hai cột icon `[Sửa dòng][Xoá dòng]` đã
-chừa sẵn ở cuối bảng, đang `disabled`. Chi tiết: mục "P3 — bốn việc
-lượt 2 đã chuyển sang P5" ở trên.
+**Đọc `docs/handoff/2026-09-12-P4-dong.md` trước khi gõ dòng code đầu
+tiên** — mục 6 của file đó liệt kê chính xác câu hỏi cần hỏi chủ dự án.
 
-Sửa tay khi cột nhân viên trên sổ sai/thiếu (ghi nhầm người, để trống),
-áp dụng cho cả dữ liệu legacy (P2) lẫn dữ liệu sống (P3). Mọi lần sửa ghi
-kèm người sửa + thời điểm vào `bc/quyetdinh`, hợp nhất lúc đọc — đúng cơ
-chế đè-không-mất ở mục 8 của audit. Đây là audit trail thật đầu tiên của
-V2 (F-05 của V1 không có ai để ghi).
+Nội dung CŨ của slot P5 này — "Chỉnh sửa tay + audit trail" (sửa/xoá
+dòng, `bc/quyetdinh/dong/<kỳ>`, giữ-lại-cảnh-báo khi dòng sửa tay biến
+mất) — **đã làm xong, gộp vào P4** dưới tên "lát P5-1" (PR-D/PR-E,
+`engine/src/sua-tay.mjs`), vì đó đúng nguyên văn việc P4 cần để giá vốn
+sửa tay được. Không mất — chỉ đổi chỗ ghi.
 
-**Bạn nhìn thấy gì:** sửa một dòng gán sai nhân viên (kể cả trong dữ liệu
-legacy), số liệu cập nhật ngay trên biểu đồ P2, và lịch sử ai sửa gì lúc
-nào.
+Slot P5 nay mang nội dung MỚI theo yêu cầu chủ dự án 12/09/2026: hai cột
+còn trống của tab **[Tổng hợp]** (đích cuối là sheet "Summary" của file
+báo cáo tay) —
 
-**Ra khỏi phase khi:** có ít nhất một sửa tay thật, sống qua một lần nhập
-lại kỳ đó (không bị đè mất).
+1. **Doanh số quy đổi.** Công thức CHƯA CHỐT. Cột đã có chỗ đứng trên
+   bảng đơn hàng (`d.doanh_so_quy_doi`, Engine trả `null`, màn hình hiện
+   "—") từ P4 nhưng chưa ai tính. Cần hỏi: quy đổi theo gì (loại hàng?
+   hãng? một hệ số cố định theo nhóm?), áp ở mức DÒNG hay chỉ ở mức TỔNG
+   đơn/ngày, và có cần với cả BTL/chiết khấu/phụ phí cố định hay chỉ hàng
+   thật.
+2. **KPI nhân viên.** Chưa có nhánh Firebase nào lưu target/thưởng/ngày
+   công/lương — audit F-0x đã ghi rõ đây là dữ liệu KHÔNG nằm trong sổ
+   bán hàng. Cần hỏi: KPI tính trên LINE (đơn vị đã có, xem mục "LINE" ở
+   trên) hay trên từng NHÂN VIÊN; công thức target/thưởng nguồn từ đâu
+   (nhập tay qua Gateway mới, hay một nhánh dữ liệu chủ dự án đã giữ sẵn
+   ở chỗ khác); kỳ tính KPI có trùng kỳ báo cáo (theo tháng) không.
+
+Cả hai đều là **công thức tính tiền/chỉ số** — LUẬT SỐ 1 áp y hệt P4: nằm
+ở Engine, trình duyệt chỉ hiện số đã tính sẵn.
+
+**Bạn nhìn thấy gì:** tab [Tổng hợp] hiện đúng số cho ít nhất một kỳ đã
+tải qua P3 — doanh thu quy đổi, và một chỉ số KPI đã chốt công thức, thay
+vì bảng line trần như hiện tại.
+
+**Ra khỏi phase khi:** công thức đã chốt VÀ chạy thật trên ít nhất một kỳ
+sống, chủ dự án đối chiếu khớp tay.
 
 ---
 
