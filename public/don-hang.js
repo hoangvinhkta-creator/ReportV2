@@ -172,7 +172,15 @@
     const user = firebase.auth().currentUser;
     if (!user) throw new Error("Chưa đăng nhập.");
     const token = await user.getIdToken();
-    const r = await fetch(duong, { headers: { Authorization: "Bearer " + token } });
+    /* `cache: "no-store"` dù Gateway đã trả `Cache-Control: no-store`, và đây
+       KHÔNG phải dư thừa: header mới chỉ chặn những lượt cache TỪ NAY: những
+       bản đã nằm trong cache của trình duyệt TRƯỚC lượt sửa ấy vẫn còn đó và
+       vẫn được dùng lại. Tuỳ chọn này bỏ qua chúng, nên máy chủ dự án không
+       phải xoá cache bằng tay mới thấy số đúng. */
+    const r = await fetch(duong, {
+      cache: "no-store",
+      headers: { Authorization: "Bearer " + token },
+    });
     const than = await r.json().catch(() => ({}));
     /* Kèm `rid` — cầu nối an toàn tới đúng dòng log của lượt gọi này, xem
        chú thích đầy đủ ở hàm cùng tên trong tai-len.js. */
@@ -199,14 +207,25 @@
 
   /* ---- Vẽ bảng đơn hàng của một (kỳ, line) ---- */
 
-  /** Ô "Mã sản phẩm" — vẫn hiện NGUYÊN câu tên hàng như trước (chủ dự án
-   *  chốt: dòng đã phân loại giữ y như cũ). Khác biệt duy nhất nằm ở dòng
-   *  CHƯA phân loại: chữ mờ đi, gạch chân nhạt, con trỏ bàn tay — lướt mắt
-   *  là thấy đúng chỗ còn nợ, không phải dò từng dòng.
+  /** Ô "Mã sản phẩm".
+   *
+   *  ĐÃ KHỚP MÃ thì hiện MÃ NGẮN của bảng giá, không hiện câu tên kế toán
+   *  (chủ dự án chốt 12/09/2026: `"Tivi Samsung 65U8500F"` đã khớp `65U8500F`
+   *  thì chỉ hiện `65U8500F`). Lý do nó tốt hơn: cột này rộng 240px mà câu
+   *  tên kế toán thường dài hơn thế nên bị cắt đuôi — đúng đoạn đuôi mang
+   *  model, tức phần duy nhất phân biệt hai dòng với nhau. Mã ngắn thì vừa
+   *  trọn, và nó là cùng một thứ chữ người dùng đang đọc bên Tracking.
+   *
+   *  CHƯA KHỚP thì vẫn hiện nguyên câu tên — đó là tất cả những gì ta biết về
+   *  dòng ấy, và cũng là chữ người dùng cần đọc để gán tay.
+   *
+   *  Câu tên đầy đủ KHÔNG mất: nó ở `title` (rê chuột là thấy) và ở
+   *  `dataset.ten`. Chỗ thứ hai là BẮT BUỘC, không phải để dự phòng — màn gán
+   *  mã khoá theo TÊN HÀNG, nên gửi mã ngắn thay cho tên là ghi quyết định
+   *  vào một ô khác ô Engine sẽ đọc.
    *
    *  Dòng đã có mã vẫn bấm được: một lượt khớp TỰ ĐỘNG có thể sai, và không
-   *  cho sửa thì cái sai ấy nằm lại vĩnh viễn. Mã đang gán để ở `title`, chỗ
-   *  duy nhất thêm được thông tin mà không đổi thứ đang hiện. */
+   *  cho sửa thì cái sai ấy nằm lại vĩnh viễn. */
   /** Ô tick "gia dụng" của MỘT MẶT HÀNG, chèn vào đầu ô Mã sản phẩm.
    *
    *  Chỉ dựng khi line đang xem CÓ hệ số gia dụng — và điều đó do Engine nói
@@ -247,12 +266,17 @@
       td.appendChild(tickGiaDung(d));
       if (d.la_gia_dung) td.classList.add("laGiaDung");
     }
-    const s = el("span", null, d.ma_san_pham);
+    /* Chữ HIỆN RA: mã ngắn nếu đã khớp, nguyên câu tên nếu chưa.
+       Dựng sau ô tick và trước mọi nhánh trả về sớm, để nhánh nào cũng có
+       đúng một <span> chữ — ô rỗng là một dòng không đọc được. */
+    const s = el("span", null, d.ma_bang_gia || d.ma_san_pham);
+    if (d.ma_bang_gia) s.classList.add("maNgan");
     td.appendChild(s);
 
     /* Phụ phí cố định (Chi phí vận chuyển / lắp đặt / Chênh VAT) cùng một
        lối với chiết khấu: không phải mặt hàng, không cần phân loại, nên ô
-       hiện phẳng — không vàng, không bấm được. */
+       hiện phẳng — không vàng, không bấm được. Hai loại này không bao giờ có
+       `ma_bang_gia` nên vẫn hiện nguyên câu, đúng như cần. */
     if (d.la_chiet_khau || d.la_phu_phi_co_dinh) { td.className = "oTen"; return td; }
 
     /* Kỳ ngoài phạm vi: ô hiện y như một ô chữ thường, không tô, không bấm
@@ -267,7 +291,10 @@
 
     if (d.ma_bang_gia) {
       td.dataset.ma = d.ma_bang_gia;
-      td.title = "Mã bảng giá: " + d.ma_bang_gia
+      /* `title` nay mang CÂU TÊN ĐẦY ĐỦ — thứ vừa thôi hiện ra. Trước đây nó
+         mang chính cái mã, mà mã thì đã nằm ngay trước mắt rồi; nhắc lại một
+         thứ đang đọc được và bỏ mất thứ không đọc được là đúng chiều ngược. */
+      td.title = d.ma_san_pham + "\n\nMã bảng giá: " + d.ma_bang_gia
         + (d.nguon_ma === "tu-dong" ? " (máy tự khớp — bấm để sửa)" : " (đã gán tay — bấm để đổi)");
     } else if (d.nguon_ma === "bo-qua") {
       td.classList.add("maBoQua");
@@ -431,12 +458,28 @@
     const cacO = document.querySelectorAll('#veDonHang td[data-khoa="' + CSS.escape(khoa) + '"]');
     for (const td of cacO) {
       td.classList.remove("maChuaCo", "maBoQua");
+      /* Chữ trong ô phải đổi theo Ở ĐÂY, không chờ lượt tải lại. Cả điểm của
+         `vaDongTheoKhoa()` là giữ lời hứa "không nhảy dòng": người vừa gán mã
+         phải thấy ngay ô đổi sang mã ngắn dưới con trỏ. Chờ mạng thì có một
+         khoảng ô vẫn hiện câu tên dài trong khi quyết định đã xong rồi.
+         `nhan` là <span> duy nhất của ô — ô tick gia dụng là <input>. */
+      const nhan = td.querySelector("span");
       if (ma) {
         td.dataset.ma = ma;
-        td.title = "Mã bảng giá: " + ma + " (đã gán tay — bấm để đổi)";
+        if (nhan) { nhan.textContent = ma; nhan.classList.add("maNgan"); }
+        /* `dataset.ten` KHÔNG đổi — nó giữ câu tên đầy đủ, và màn gán mã khoá
+           theo tên hàng nên đổi nó là ghi quyết định kế tiếp vào sai ô. */
+        td.title = (td.dataset.ten || "") + "\n\nMã bảng giá: " + ma
+          + " (đã gán tay — bấm để đổi)";
       } else {
         delete td.dataset.ma;
         td.classList.add("maBoQua");
+        /* "Bỏ qua" là không có mã nào, nên ô về lại câu tên đầy đủ — đó lại là
+           tất cả những gì ta biết về dòng ấy. */
+        if (nhan && td.dataset.ten) {
+          nhan.textContent = td.dataset.ten;
+          nhan.classList.remove("maNgan");
+        }
         td.title = "Đã đánh dấu không phải sản phẩm cần gán mã — bấm để đổi.";
       }
       const tr = td.parentElement;
@@ -606,7 +649,14 @@
   async function xoaDongHang(tr) {
     const khoa = tr.dataset.khoaDong;
     if (!khoa) return;
-    const ten = (tr.querySelector('td[data-o="ma"]') || {}).textContent || "dòng này";
+    /* Câu hỏi xác nhận XOÁ dùng TÊN ĐẦY ĐỦ (`dataset.ten`), không dùng chữ
+       đang hiện trong ô — từ 12/09/2026 ô ấy hiện mã ngắn. Hai câu tên kế
+       toán khác nhau có thể cùng khớp về MỘT mã (`"Tivi Samsung 65U8500F"` và
+       `"TV Samsung 65U8500F chính hãng"`), nên một câu hỏi "Xoá 65U8500F?" là
+       câu hỏi không chỉ đúng vào dòng nào. Đây là lượt xoá tiền khỏi báo cáo —
+       chỗ duy nhất trong app đáng dài dòng. */
+    const oMa = tr.querySelector('td[data-o="ma"]');
+    const ten = (oMa && (oMa.dataset.ten || oMa.textContent)) || "dòng này";
     if (!window.confirm("Xoá " + ten + " khỏi báo cáo?\n\n"
       + "Dòng sẽ biến khỏi bảng, và doanh số của nó bị trừ khỏi cả biểu đồ. "
       + "Sổ gốc không đổi — bấm lại nút này trên dòng đó sau khi nhập lại sổ "

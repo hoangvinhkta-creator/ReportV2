@@ -39,6 +39,9 @@
     const token = await user.getIdToken();
     const r = await fetch(duong, {
       ...tuyChon,
+      /* Sau `...tuyChon` để luôn thắng: không đường nào của app này cache
+         được (xem `withSecurityHeaders` bên Gateway). */
+      cache: "no-store",
       headers: {
         Authorization: "Bearer " + token,
         ...(tuyChon && tuyChon.body ? { "Content-Type": "application/json" } : {}),

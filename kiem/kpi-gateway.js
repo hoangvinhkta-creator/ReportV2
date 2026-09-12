@@ -468,5 +468,113 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · và vẫn không đóng cứng tên "Nội thành"', /"Nội thành"/.test(UI), false);
   }
 
+  /* ─────────── M. Không đường nào cache được ─────────── */
+
+  console.log('\nM) Cache — mọi phản hồi /api/ phải là no-store');
+  {
+    /* LỖI THẬT, chủ dự án gặp 12/09/2026: tick "gia dụng" xong thì số trên
+       DÒNG đổi mà một con số TỔNG thì không.
+       Engine KHÔNG sai — có phép thử chạy cả hai trạng thái tick, mọi tổng
+       (dòng, đơn, ngày, line, bảng, toàn công ty) khớp tuyệt đối với tổng cộng
+       tay của từng dòng.
+       Chỗ hỏng: `withSecurityHeaders()` chỉ đặt `Cache-Control` cho
+       `text/html`, nên mọi phản hồi `/api/` đi ra KHÔNG MANG HEADER CACHE NÀO
+       — và không header thì trình duyệt được phép tự đoán thời gian còn tươi.
+       Hai URL khác nhau (`?ky=…&line=Nội thành` cho tab line, `?ky=…` cho tab
+       Tổng hợp) có hai ô cache RIÊNG, nên chúng cũ đi ở hai thời điểm khác
+       nhau và nói hai con số khác nhau cho cùng một sự thật. */
+    ok('Gateway đặt no-store cho JSON, không chỉ cho HTML',
+       /application\/json[\s\S]{0,120}?Cache-Control", "no-store/.test(GW)
+       || /text\/html"\)\s*\|\|[\s\S]{0,80}?application\/json/.test(GW), true);
+    /* Nhánh HTML KHÔNG được mất — trang tĩnh vẫn phải no-store như cũ. */
+    ok('  · và vẫn còn no-store cho HTML', /text\/html/.test(GW), true);
+
+    /* Header mới chỉ chặn những lượt cache TỪ NAY. Bản đã nằm trong cache của
+       trình duyệt TRƯỚC lượt sửa vẫn còn đó và vẫn được dùng lại — nên phía
+       client cũng phải bỏ qua cache, nếu không chủ dự án phải xoá cache bằng
+       tay mới thấy số đúng. BỐN nơi gọi, cả bốn phải có. */
+    for (const f of ['public/don-hang.js', 'public/suc-khoe.js',
+                     'public/gan-ma.js', 'public/tai-len.js']) {
+      ok(f.replace('public/', '') + ' gọi với cache no-store',
+         /cache: "no-store"|\.cache = "no-store"/.test(doc(f)), true);
+    }
+    /* Và không có lượt gọi nào mọc thêm mà không ai xét. GHIM ĐẾM, không quét
+       bằng regex: một lời gọi `fetch(` nhiều dòng thì regex không biết đâu là
+       hết tham số, nên phép quét đọc sai — bản đầu của bài này đã đỏ oan đúng
+       vì vậy, báo ba file "bỏ sót" trong khi cả ba đã có `no-store`.
+       Đếm thì thô nhưng không bao giờ nói sai: thêm một lời gọi là bài đỏ, và
+       người thêm phải tự xét nó cần `no-store` hay không rồi sửa con số này. */
+    const soGoi = ['public/don-hang.js', 'public/suc-khoe.js', 'public/gan-ma.js',
+                   'public/tai-len.js', 'public/index.html', 'public/doc-xlsx.js']
+      .reduce((t, f) => t + (doc(f).match(/await fetch\(/g) || []).length, 0);
+    /* SÁU lượt gọi, và vì sao từng lượt đúng như đang là:
+         don-hang.js  goi()     GET  → no-store (bảng đơn, đổi sau mỗi lượt sửa)
+         don-hang.js  goiGhi()  POST → không cần: POST không bao giờ được cache
+         suc-khoe.js            GET  → no-store (Dashboard, cùng nguồn bc/ky)
+         gan-ma.js    goi()     cả hai → no-store
+         tai-len.js   goi()     cả hai → no-store
+         index.html   /api/me   GET  → một lượt lúc đăng nhập; vai và tên người
+                                       dùng không đổi trong một phiên nên cache
+                                       ở đây vô hại. Ngoại lệ DUY NHẤT. */
+    ok('đúng sáu lượt gọi fetch trong public/ — thêm lượt nào phải xét lại',
+       soGoi, 6);
+  }
+
+  /* ─────────── N. Ô Mã sản phẩm — mã ngắn thay câu tên kế toán ─────────── */
+
+  console.log('\nN) Ô Mã sản phẩm — dòng đã khớp hiện MÃ NGẮN');
+  {
+    /* Chủ dự án chốt 12/09/2026: `"Tivi Samsung 65U8500F"` đã khớp `65U8500F`
+       thì chỉ hiện `65U8500F`. Cột rộng 240px mà câu tên kế toán thường dài
+       hơn nên bị cắt đuôi — đúng đoạn đuôi mang model, tức phần duy nhất phân
+       biệt hai dòng với nhau. */
+    ok('chữ hiện ra là mã ngắn khi đã khớp, câu tên khi chưa',
+       /el\("span", null, d\.ma_bang_gia \|\| d\.ma_san_pham\)/.test(UI), true);
+
+    /* BẮT BUỘC giữ câu tên đầy đủ ở `dataset.ten`: màn gán mã khoá theo TÊN
+       HÀNG, nên gửi mã ngắn thay cho tên là ghi quyết định vào một ô KHÁC ô
+       Engine sẽ đọc — và triệu chứng duy nhất là "gán rồi mà vẫn hiện chưa
+       gán". Đây là chỗ đắt nhất của lượt sửa này. */
+    ok('câu tên đầy đủ vẫn ở dataset.ten',
+       /td\.dataset\.ten = d\.ma_san_pham/.test(UI), true);
+    /* Đo đúng BẤT BIẾN, không đo một dòng chú thích: thân `vaDongTheoKhoa()`
+       không được GHI vào `dataset.ten` bao giờ. Bản đầu của bài này dò chính
+       câu chú thích "dataset.ten KHÔNG đổi" — một phép đo vô nghĩa, vì xoá
+       chú thích thì bài đỏ còn xoá chính dòng bảo vệ thì bài vẫn xanh. */
+    const thanVa = UI.slice(UI.indexOf('function vaDongTheoKhoa'),
+                            UI.indexOf('function demLaiConNo'));
+    ok('  · và lượt vá tại chỗ KHÔNG GHI vào dataset.ten',
+       /dataset\.ten\s*=/.test(thanVa), false);
+    ok('  · nhưng có ĐỌC nó để dựng lại câu tên khi bỏ qua',
+       /dataset\.ten/.test(thanVa), true);
+    /* Câu tên cũng phải còn đọc được bằng mắt — rê chuột. */
+    ok('title mang câu tên đầy đủ',
+       /td\.title = d\.ma_san_pham \+ "\\n\\nMã bảng giá: "/.test(UI), true);
+
+    /* Vá TẠI CHỖ sau khi gán tay phải đổi cả chữ trong ô, không chờ mạng —
+       cả điểm của `vaDongTheoKhoa()` là lời hứa "không nhảy dòng". */
+    ok('gán tay xong thì ô đổi sang mã ngắn ngay tại chỗ',
+       /nhan\.textContent = ma;/.test(UI), true);
+    ok('  · và "bỏ qua" thì ô về lại câu tên đầy đủ',
+       /nhan\.textContent = td\.dataset\.ten/.test(UI), true);
+
+    /* Câu hỏi xác nhận XOÁ phải dùng tên ĐẦY ĐỦ: hai câu tên kế toán khác nhau
+       có thể cùng khớp về MỘT mã, nên "Xoá 65U8500F?" là câu hỏi không chỉ
+       đúng vào dòng nào — mà đây là lượt xoá tiền khỏi báo cáo. */
+    ok('câu hỏi xoá dòng dùng tên đầy đủ, không dùng mã ngắn',
+       /oMa\.dataset\.ten \|\| oMa\.textContent/.test(UI), true);
+
+    /* Chiết khấu và phụ phí cố định không bao giờ có `ma_bang_gia`, nên chúng
+       vẫn hiện nguyên câu — không cần luật riêng, nhưng phải đúng vậy. */
+    ok('chiết khấu/phụ phí vẫn hiện nguyên câu (không có ma_bang_gia)',
+       /la_chiet_khau \|\| d\.la_phu_phi_co_dinh\) \{ td\.className = "oTen"/.test(UI), true);
+
+    /* Bảng vẫn 19 cột, bề rộng không đổi: cột này còn phải chứa câu tên dài
+       cho những dòng CHƯA khớp, nên không hẹp lại được. */
+    const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
+    ok('bề rộng cột Mã sản phẩm không đổi (dòng chưa khớp vẫn cần 240px)',
+       /240/.test(mRong ? mRong[1] : ''), true);
+  }
+
   xong();
 })();

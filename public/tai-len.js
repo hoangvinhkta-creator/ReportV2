@@ -230,6 +230,9 @@
     const token = await user.getIdToken();
     const o = Object.assign({ headers: {} }, tuyChon || {});
     o.headers = Object.assign({}, o.headers, { Authorization: "Bearer " + token });
+    /* Không đường nào của app này cache được — xem `withSecurityHeaders` bên
+       Gateway. Gán SAU khi trộn `tuyChon` để luôn thắng. */
+    o.cache = "no-store";
     const r = await fetch(duong, o);
     const than = await r.json().catch(() => ({}));
     /* Kèm `rid` vào câu lỗi hiện cho người dùng — Gateway ghi một dòng log
