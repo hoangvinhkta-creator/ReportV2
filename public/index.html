@@ -204,6 +204,18 @@
      nằm ở `title`. Không tô vàng như ô chưa gán mã — phần lớn những ô này
      người dùng không tự làm gì được. */
   .bangDon td.oChuaGia { color: #9ca3af; }
+  /* Ô chưa rõ thông tin (nơi nhập chưa tra được): chữ ĐỎ. Chủ dự án chốt
+     12/09/2026 — khác ô Giá nhập chỉ mờ đi, vì nơi nhập trống là dấu hiệu
+     dòng đó chưa nối được vào hệ giá, đáng soi hơn. */
+  .bangDon td.oChuaRo { color: #dc2626; }
+
+  /* Dòng 0 đồng — quà tặng kèm cho khách. Bôi đỏ cả dòng để lướt mắt là
+     thấy: chúng không có doanh thu nhưng VẪN có giá vốn, nên chúng kéo lợi
+     nhuận xuống đúng như một dòng chiết khấu. Nền nhạt thôi, vì một tháng có
+     thể có vài chục dòng như vậy và tô đậm cả dòng thì bảng thành đỏ rực.
+     Chứng từ BTL cũng 0 đồng nhưng KHÔNG mang lớp này (xem `khop-ma.mjs`). */
+  .bangDon tr.hang0d > td { background: #fef2f2; color: #b91c1c; }
+  .bangDon tr.hang0d > td.oChuaRo { color: #dc2626; font-weight: 600; }
   .bangConNo.xong { color: #15803d; }
   .bangNguonHong {
     font-size: 13px; color: #991b1b; background: #fef2f2;
