@@ -225,5 +225,25 @@ const GOC = path.resolve(__dirname, '..');
     ok('không có quyết định nào thì trả đúng cây cũ', S.truVaoCayKy(CAY, {}), CAY);
   }
 
+  /* ─────────── Sửa tay nơi nhập phải tắt lời giải thích của máy ─────────── */
+
+  console.log('\nX) Gõ đè nơi nhập thì lời giải thích "máy chọn Kho" phải tắt theo');
+  {
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    const dong = moiDong(b);
+    /* Dựng đúng trạng thái `dienGiaNhap()` để lại khi kho còn hàng: ô ghi
+       "Kho" kèm cờ nói chữ ấy do MÁY chọn. */
+    for (const d of dong) { d.noi_nhap = 'Kho'; d.noi_nhap_tu_kho = true; d.gia_ton_kho = 9000000; }
+    S.apDungSuaTay(b, { [KA]: { noi_nhap: 'Tuấn Ngoan' } });
+
+    const da = moiDong(b).find((d) => d.khoa === KA);
+    const chua = moiDong(b).find((d) => d.khoa === KB);
+    ok('dòng bị gõ đè: ô ghi tên NCC người gõ', da.noi_nhap, 'Tuấn Ngoan');
+    /* Để nguyên cờ là màn hình nói "hàng có sẵn trong kho nên xuất từ kho"
+       ngay cạnh một ô ghi "Tuấn Ngoan" — một câu SAI trên màn hình tiền. */
+    ok('  · và cờ "máy chọn Kho" TẮT theo', da.noi_nhap_tu_kho, false);
+    ok('dòng không ai động vào thì giữ nguyên cờ', chua.noi_nhap_tu_kho, true);
+  }
+
   xong();
 })();
