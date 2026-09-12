@@ -259,4 +259,16 @@ console.log('\n10) Băng "còn N dòng chưa có giá vốn" — câu ROADMAP đ
   ok('Engine KHÔNG giữ một bản bảng dịch thứ ba', /export const LY_DO_GIA/.test(ENG), false);
 }
 
+console.log('\n11) Quyết định mồ côi — CLAUDE.md đòi "kèm danh sách, không im lặng bỏ qua"');
+{
+  ok('băng dựng từ bản kê Engine trả', /const tst = b\.tom_tat_sua_tay;/.test(JS), true);
+  ok('  · nói rõ quyết định vẫn được GIỮ, không phải đã mất',
+     /tự áp[\s\S]{0,20}trở lại/.test(JS), true);
+  /* "Kèm danh sách" là chữ của CLAUDE.md, không phải gợi ý: chỉ một con số
+     thì người dùng không biết quyết định nào đang treo để mà đi tìm. */
+  ok('  · và liệt kê ĐỦ khoá, không cắt bớt',
+     /tst\.mo_coi\.map\(\(x\) => x\.khoa\)\.join/.test(JS), true);
+  ok('  · không có phép cắt danh sách nào lén vào', /mo_coi\.slice\(/.test(JS), false);
+}
+
 xong();
