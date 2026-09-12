@@ -37,6 +37,9 @@ trạng thái ĐANG ĐÚNG hôm nay, không phải nhật ký từng lượt.
   đặt/Chênh VAT), và một lượt rà soát bắt được bốn lỗi hiển thị trước khi
   đóng phase. **Bàn giao đầy đủ: `docs/handoff/2026-09-12-P4-dong.md`**
   — session P5 đọc file đó trước khi gõ dòng code đầu tiên.
+- **P5 — doanh số quy đổi + KPI theo line.** CODE ĐÃ XONG VÀ ĐÃ MERGE
+  (12/09/2026, PR #68 + #69). **Chưa đóng phase** — còn đúng hai việc,
+  cả hai là việc của chủ dự án, xem mục "P5" bên dưới.
 
 **BỐ CỤC MÀN HÌNH HIỆN TẠI (đúng tới 12/09/2026, sau lượt đóng P4) —
 đọc trước khi sửa `public/index.html` hay `don-hang.js`:**
@@ -48,8 +51,11 @@ Báo cáo bán hàng                    [Nhập sổ] [Đăng xuất]
 ├─ #manBaoCao                                                     (P3)
 │    [2025][2026]      [T1][T2]…[T12]               ← CÙNG một hàng
 │    [Tổng hợp][Tín Phát][Tổng kho]…[Ẩn/hiện line 0đ]
+│    ┌ dải setup: KPI · Hệ số quy đổi · (Hệ số gia dụng) · Đạt %   (P5)
+│    └ chỉ ở tab LINE, không ở [Tổng hợp]; ô khoá nếu vai ≠ quantri
 │    bảng đơn hàng 19 cột của line đang chọn — khung TỰ CUỘN dọc bên
 │    trong (`.bocBang`, chiều cao tính bằng JS), đầu cột ghim khi cuộn
+│    (tab Nội thành: thêm ô tick gia dụng TRONG ô Mã sản phẩm)     (P5)
 │
 └─ #manBieuDo (hidden sẵn)                                        (P2b)
      ┌─ #o-dashboard ────────────────────────┐
@@ -71,7 +77,10 @@ Hãng · Ngành hàng · IMEI · [Sửa] · [Xoá]
 
 "Ghi chú" đứng NGAY SAU "Địa chỉ" (không còn chen giữa khối tiền như bản
 trước 12/09/2026) — nó là chữ đọc kèm thông tin khách, không phải một
-cột tiền. **KHÔNG còn đoạn chú giải màu dưới bảng** — ý nghĩa từng màu và
+cột tiền. **P5 KHÔNG nới thành 20 cột**: ô tick gia dụng nằm TRONG ô Mã
+sản phẩm, vì một cột chỉ có mặt ở một tab sẽ buộc `COT`/`RONG_COT` đổi
+theo tab đang xem — tức bề rộng cố định hết cố định, đúng thứ đã phải
+sửa ở P4. **KHÔNG còn đoạn chú giải màu dưới bảng** — ý nghĩa từng màu và
 từng nút nay nằm ở `title` của đúng ô mang màu ấy.
 
 Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
@@ -81,16 +90,41 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
   `doanh_so === 0`.
 - Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase (DỮ LIỆU).
 
-Tab đầu **[Tổng hợp]** vẫn chỉ xếp CHỖ — đích cuối là chép sheet
-"Summary" của file báo cáo tay (tổng đơn, tổng SP, **doanh thu quy đổi**,
-tỉ suất lợi nhuận, target, thưởng, ngày công, lương). Giá vốn (P4) đã
-xong; **doanh thu quy đổi và các cột lương/target/KPI là việc của P5** —
-xem phần "P5" bên dưới.
+Tab đầu **[Tổng hợp]** nay có số thật (P5, 12/09/2026) — 8 cột
+`Line · Doanh số · Số đơn · Dòng hàng · Hệ số · Doanh số quy đổi · KPI ·
+Đạt`, cộng hàng TỔNG do Engine cộng. So với sheet "Summary" của file báo
+cáo tay thì còn thiếu **target thưởng, ngày công, lương** — bốn cột chưa
+có nhánh dữ liệu nào lưu và chưa chốt nguồn, nên cố ý để trống chứ không
+bịa cột rỗng cho đủ hình (xem mục "P5").
 
-**ĐANG LÀM: P5 — Doanh số quy đổi + KPI nhân viên.** Đọc
-`docs/handoff/2026-09-12-P4-dong.md` trước khi bắt đầu — mục 6 của file
-đó liệt kê chính xác những gì P5 cần hỏi chủ dự án trước khi viết dòng
-code đầu tiên (chưa có công thức nào được chốt).
+**ĐANG LÀM: P5 — đã deploy, CHỜ HAI VIỆC CỦA CHỦ DỰ ÁN.**
+
+Công thức đã chốt (12/09/2026) và code đã merge. Hai việc còn lại, theo
+đúng thứ tự:
+
+1. **Nạp bộ số hạt giống lên Firebase — một lượt, chạy tay.** Session
+   không làm được: nó không có `FB_SA_EMAIL`/`FB_SA_KEY`.
+
+   ```
+   export FB_SA_EMAIL='firebase-adminsdk-...@tinphattracking.iam.gserviceaccount.com'
+   export FB_SA_KEY="$(cat duong-dan-khoa.pem)"
+   node bin/nap-kpi.mjs                  # xem trước, không ghi gì
+   node bin/nap-kpi.mjs --ghi --doc-lai  # ghi thật
+   ```
+
+   Chưa nạp thì tab [Tổng hợp] NÓI ĐÚNG câu đó ("chưa nạp bảng KPI…"),
+   không để ô trống tự nói thay. Sau lượt này không phải chạy script nữa:
+   sửa thẳng trên dải setup của từng tab line.
+
+2. **Mở kỳ 09/2026, đối chiếu tay.** Đó là kỳ DUY NHẤT có số quy đổi —
+   xem "Phạm vi" ở mục P5 bên dưới.
+
+**Một điều phải kiểm ngay ở lượt mở đầu tiên:** hai đường ghi
+(`/api/dat-kpi`, `/api/gia-dung`) chỉ cho vai **`quantri`**. Nếu tài
+khoản chủ dự án đang là `quanly` thì ô trên dải setup sẽ KHOÁ SẴN kèm
+câu "Chỉ Quản trị đặt được" — không phải lỗi, là chốt an toàn cố ý (đặt
+KPI là đổi mọi báo cáo của mọi tháng). Muốn nới cho cả hai vai thì nói,
+sửa đúng một chữ ở `src/index.js`.
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -1100,43 +1134,175 @@ tay.
 
 ---
 
-### P5 — Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026)*
-
-**Đọc `docs/handoff/2026-09-12-P4-dong.md` trước khi gõ dòng code đầu
-tiên** — mục 6 của file đó liệt kê chính xác câu hỏi cần hỏi chủ dự án.
+### P5 — Doanh số quy đổi + KPI theo line *(công thức chốt 12/09/2026)*
 
 Nội dung CŨ của slot P5 này — "Chỉnh sửa tay + audit trail" (sửa/xoá
 dòng, `bc/quyetdinh/dong/<kỳ>`, giữ-lại-cảnh-báo khi dòng sửa tay biến
 mất) — **đã làm xong, gộp vào P4** dưới tên "lát P5-1" (PR-D/PR-E,
-`engine/src/sua-tay.mjs`), vì đó đúng nguyên văn việc P4 cần để giá vốn
-sửa tay được. Không mất — chỉ đổi chỗ ghi.
+`engine/src/sua-tay.mjs`). Không mất — chỉ đổi chỗ ghi.
 
-Slot P5 nay mang nội dung MỚI theo yêu cầu chủ dự án 12/09/2026: hai cột
-còn trống của tab **[Tổng hợp]** (đích cuối là sheet "Summary" của file
-báo cáo tay) —
+**Trạng thái: CODE XONG, ĐÃ MERGE, CHƯA ĐÓNG PHASE.** PR #68 (Engine) +
+PR #69 (Gateway & màn hình), 12/09/2026. Còn hai việc của chủ dự án —
+xem "Trạng thái hiện tại" ở đầu file.
 
-1. **Doanh số quy đổi.** Công thức CHƯA CHỐT. Cột đã có chỗ đứng trên
-   bảng đơn hàng (`d.doanh_so_quy_doi`, Engine trả `null`, màn hình hiện
-   "—") từ P4 nhưng chưa ai tính. Cần hỏi: quy đổi theo gì (loại hàng?
-   hãng? một hệ số cố định theo nhóm?), áp ở mức DÒNG hay chỉ ở mức TỔNG
-   đơn/ngày, và có cần với cả BTL/chiết khấu/phụ phí cố định hay chỉ hàng
-   thật.
-2. **KPI nhân viên.** Chưa có nhánh Firebase nào lưu target/thưởng/ngày
-   công/lương — audit F-0x đã ghi rõ đây là dữ liệu KHÔNG nằm trong sổ
-   bán hàng. Cần hỏi: KPI tính trên LINE (đơn vị đã có, xem mục "LINE" ở
-   trên) hay trên từng NHÂN VIÊN; công thức target/thưởng nguồn từ đâu
-   (nhập tay qua Gateway mới, hay một nhánh dữ liệu chủ dự án đã giữ sẵn
-   ở chỗ khác); kỳ tính KPI có trùng kỳ báo cáo (theo tháng) không.
+#### Công thức — chủ dự án chốt 12/09/2026
 
-Cả hai đều là **công thức tính tiền/chỉ số** — LUẬT SỐ 1 áp y hệt P4: nằm
-ở Engine, trình duyệt chỉ hiện số đã tính sẵn.
+```
+doanh số quy đổi = lợi nhuận TỪNG DÒNG ÷ hệ số quy đổi của line
+```
 
-**Bạn nhìn thấy gì:** tab [Tổng hợp] hiện đúng số cho ít nhất một kỳ đã
-tải qua P3 — doanh thu quy đổi, và một chỉ số KPI đã chốt công thức, thay
-vì bảng line trần như hiện tại.
+Hệ số ấy là **tỉ suất lợi nhuận mục tiêu** của line, và đó là cách đọc
+con số ra nghĩa:
 
-**Ra khỏi phase khi:** công thức đã chốt VÀ chạy thật trên ít nhất một kỳ
-sống, chủ dự án đối chiếu khớp tay.
+| nếu line bán | thì quy đổi |
+|---|---|
+| đúng tỉ suất mục tiêu | **bằng đúng** doanh số thuần |
+| lãi dày hơn mục tiêu | vượt lên trên doanh số thật |
+| hạ giá để chạy số | tụt xuống dưới |
+
+Lý do nghiệp vụ (nguyên văn ý chủ dự án): một tủ lạnh 30 triệu lãi 1
+triệu và một máy giặt 10 triệu cũng lãi 1 triệu — máy giặt cho tỉ suất
+lớn hơn hẳn. Chấm theo doanh số thuần thì nhân viên chỉ chạy hàng giá
+trị lớn, và còn được phép HẠ lợi nhuận để về số cho nhanh. Chia cho hệ
+số bỏ hẳn đường đó.
+
+Ví dụ tính tay chủ dự án đưa, đã ghim thành bài kiểm (`kiem/kpi.js`):
+lợi nhuận 1 triệu của Tín Phát ÷ 7,5% = **13.333** nghìn đ.
+
+**KPI tính theo doanh số quy đổi, và tính theo LINE** (không theo từng
+nhân viên) — chủ dự án chốt điểm 3.
+
+**Biểu đồ vẫn vẽ bằng doanh số THUẦN** — chủ dự án chốt điểm 4, cố ý
+không kéo nguồn doanh số thứ hai vào đó. Nên 20 tháng lịch sử ở tab
+[Biểu đồ] không bị ảnh hưởng gì.
+
+#### Bộ số hạt giống (`BANG_KPI_HAT_GIONG`, `engine/src/kpi.mjs`)
+
+| Line | KPI (nghìn đ) | Hệ số | Gia dụng |
+|---|---|---|---|
+| Nội thành | 15.000.000 | 2% | 8% |
+| Tín Phát | 2.700.000 | 7,5% | — |
+| 8 line còn lại | 1.300.000 | 5,5% | — |
+
+Tám line còn lại gồm cả **Khác** (gộp 5 tên) và **Shopee** (chưa có dòng
+nào tới 08/2026) — chủ dự án chốt "mỗi line 1,3 tỷ, đủ cả 8". Tổng KPI
+công ty = **28,1 tỷ/tháng**.
+
+Phép thử xác nhận bộ số đọc đúng chiều: Tín Phát doanh số thuần
+54,0 tỷ ÷ 20 tháng = **2,70 tỷ/tháng**, KPI đặt **2,7 tỷ**. Nội thành
+237,8 tỷ ÷ 20 = **11,89 tỷ/tháng**, KPI đặt **15 tỷ**. KPI nằm ngay cạnh
+doanh số thuần đang chạy — đúng như dự đoán nếu hệ số là tỉ suất mục
+tiêu.
+
+**ĐƠN VỊ — chỗ dễ sai 1.000 lần.** `kpi` lưu bằng **ĐỒNG**; ô nhập và
+mọi cột trên màn hình nói **NGHÌN đồng**; Gateway nhân 1.000 ở lượt ghi.
+`he_so_pt` lưu bằng **PHẦN TRĂM** (`7.5`, KHÔNG phải `0.075`) — hậu tố
+`_pt` không để cho đẹp: hai dạng đều là số dương hợp lệ nên lẫn dạng thì
+phép chia vẫn chạy và vẫn ra một con số trông bình thường.
+
+#### Tick "gia dụng" — quyết định về MỘT MẶT HÀNG
+
+Chủ dự án chốt: **không** đọc nhãn ngành hàng của Tracking, mà **người
+tick từng sản phẩm**. Ô tick nằm TRONG ô Mã sản phẩm, chỉ ở line có khai
+`he_so_gia_dung_pt` (hiện chỉ Nội thành). Tick = ăn 8%, không tick = 2%.
+
+Khoá là `khoa_ten` — đúng công thức CLAUDE.md quy định cho loại quyết
+định này, nên nó **áp cho MỌI kỳ, kể cả kỳ chưa nhập**: tick một lần,
+tháng sau không phải tick lại. Một tick chưa khớp dòng nào KHÔNG phải
+"quyết định mồ côi" và KHÔNG sinh cảnh báo — băng mồ côi của P4 chỉ dành
+cho quyết định về MỘT DÒNG.
+
+Quyết định này đã xoá luôn bài toán khó nhất: không cần đọc
+`category_label`, nên không có chuyện "dòng chưa khớp mã thì không biết
+nhóm", và không phải dính vào từ điển 21 nhóm của Tracking.
+
+#### MỘT công thức cho mọi dòng — không luật riêng
+
+P4 đã đặt `loi_nhuan` của từng loại dòng về đúng con số nghiệp vụ của
+nó, nên phép chia tự ra đúng mà không cần ai phân loại lại:
+
+| loại dòng | lợi nhuận | → quy đổi |
+|---|---|---|
+| hàng thật có giá vốn | dương | dương |
+| phụ phí cố định | 0 (giá nhập = giá bán) | **0** |
+| BTL ghép được | 0 | **0** |
+| BTL không ghép | âm | **âm** → trừ |
+| chiết khấu gộp | âm | **âm** → trừ |
+| dòng 0 đồng (quà tặng) | âm (có giá vốn) | **âm** → trừ |
+| chưa có giá vốn | `null` | **`null`**, hiện "—" |
+
+Ba dòng âm **trừ** vào quy đổi của line, và đó là chủ ý: quà tặng kèm và
+hàng trả lại là chi phí thật, chúng hạ tỉ suất thật. Thêm luật lọc là
+dựng bản luật thứ hai về "dòng nào tính tiền", cạnh bản P4 đã có.
+
+Đáng soi khi đối chiếu tay: dòng gia dụng (÷8%) quy đổi ra **nhỏ hơn**
+dòng thường (÷2%) cho cùng một đồng lãi — 1 triệu lãi ra 12,5 triệu ở
+gia dụng so với 50 triệu ở hàng thường. Đó là hệ quả tất yếu của phép
+chia, và nó đúng nghiệp vụ: gia dụng được kỳ vọng lãi dày, nên lãi 1
+triệu ở đó ít đáng kể hơn lãi 1 triệu trên một chiếc tivi mỏng lãi.
+
+#### KPI: mặc định chung + ghi đè từng kỳ
+
+Chủ dự án chốt. Hai tầng (`mac_dinh/<line>` và `ky/<kỳ>/<line>`) hợp
+nhất lúc ĐỌC và hợp nhất **theo TỪNG TRƯỜNG** — đặt riêng KPI tháng 9
+thì hệ số vẫn là mặc định, không biến mất. Ô mang viền xanh khi con số
+là riêng của kỳ đang xem.
+
+Nút "Đặt riêng tháng này" tự TẮT mỗi lần đổi năm/tháng/line (cửa
+`doiCho()`): bật ở tab này rồi bấm sang tab khác mà nó còn bật là đặt
+một bản ghi đè người dùng không hề muốn, ở đúng một tháng, lặng lẽ.
+
+#### Hai nhánh Firebase MỚI
+
+```
+bc/quyetdinh/kpi/mac_dinh/<line>     { kpi, he_so_pt, he_so_gia_dung_pt?, boi, luc }
+bc/quyetdinh/kpi/ky/<kỳ>/<line>      như trên, chỉ áp cho kỳ đó
+bc/quyetdinh/gia-dung/<khoa_ten>     { gia_dung: true, boi, luc }
+```
+
+Cả hai nằm dưới `bc/quyetdinh` nên **THỪA HƯỞNG rules đang chạy**
+(`.read: quantri|quanly`, `.write: false`, ghi qua Gateway) — không phải
+sửa rules rồi publish tay trên Console, bớt đúng một bước có thể quên.
+Cùng lý do `bc/quyetdinh/line` đã chọn.
+
+Ba đường Gateway:
+
+```
+POST /api/dat-kpi     KPI/hệ số cho một line — mặc định hoặc riêng kỳ   (CHỈ quantri)
+POST /api/gia-dung    đánh dấu/rút lại một mặt hàng là gia dụng         (CHỈ quantri)
+GET  /api/don-hang    (mở rộng) kèm quy đổi + bản kê KPI theo line
+```
+
+#### PHẠM VI — đọc trước khi ngạc nhiên vì ô trống
+
+Chuỗi phụ thuộc `quy đổi ← lợi nhuận ← giá vốn ← khớp mã`, mà
+`MOC_KHOP_MA = "2026-09"`. Nên **kỳ 09/2026 là kỳ DUY NHẤT có số quy đổi
+và số KPI**; 20 tháng 01/2025–08/2026 hiện "—" ở cột quy đổi và ở KPI.
+Đây là giới hạn dữ liệu giá của Tracking, không phải việc chưa làm. Tab
+[Tổng hợp] nói thẳng câu đó khi chọn một kỳ trước mốc.
+
+#### Bạn nhìn thấy gì
+
+- Tab line: dải setup `KPI · Hệ số quy đổi · (Hệ số gia dụng) · Đạt %`
+  trên đầu bảng đơn; cột thứ 10 "Doanh số quy đổi" có số thật.
+- Tab Nội thành: thêm một ô tick trong mỗi ô Mã sản phẩm.
+- Tab [Tổng hợp]: 8 cột `Line · Doanh số · Số đơn · Dòng hàng · Hệ số ·
+  Doanh số quy đổi · KPI · Đạt` + hàng TỔNG.
+- Bảng đơn **vẫn đúng 19 cột** (ô tick nằm trong ô Mã, không thành cột
+  thứ 20 — một cột chỉ có ở một tab sẽ phá bề rộng cố định của P4).
+
+#### Ra khỏi phase khi
+
+Chủ dự án đã nạp hạt giống, mở kỳ 09/2026 và **đối chiếu tay khớp**.
+Công thức thì đã chốt và đã chạy — phần còn lại là phép nghiệm thu.
+
+#### Chưa làm, và cố ý chưa làm
+
+Bốn cột còn lại của sheet "Summary" — **target thưởng, ngày công,
+lương** — chưa có nhánh dữ liệu nào lưu. Chủ dự án chưa chốt nguồn cho
+chúng (nhập tay qua một màn hình mới? tải .xlsx theo kỳ? nối vào một hệ
+thống khác?) và chưa chốt có cần app TÍNH lương hay chỉ HIỆN LẠI con số
+nhập vào. Không bịa cột rỗng cho đủ hình.
 
 ---
 
