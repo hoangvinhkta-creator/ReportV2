@@ -437,10 +437,16 @@ const GOC = path.resolve(__dirname, '..');
 
   console.log('\nH) Nơi nhập');
 
+  /* Một mục `min_sources`: chuỗi trần = NCC (ca thường), còn `{t, id}` để
+     dựng được nguồn TỒN KHO — hợp đồng `daily-min-v1` phân biệt hai loại
+     bằng `source_type`, không bằng tên. */
+  const nguonHd = (x) => (typeof x === 'string'
+    ? { source_type: 'SUPPLIER', source_id: x }
+    : { source_type: x.t, source_id: x.id });
   const bgN = (nguon, gia) => ({ product_code: '65C6K', effective_date: '2026-09-08',
     min_price: gia === undefined ? 5250 : gia, price_status: 'AVAILABLE',
     day_status: 'FINAL', observed_on: '2026-09-08', carried_from: null,
-    min_sources: nguon.map((id) => ({ source_type: 'SUPPLIER', source_id: id })) });
+    min_sources: nguon.map(nguonHd) });
 
   const noiNhapCua = (nguon, gia) => {
     const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
@@ -493,6 +499,32 @@ const GOC = path.resolve(__dirname, '..');
       if (y.ma_san_pham === 'Tivi TCL 65C6K') x = y;
     ok('không có giá Min → không có nơi nhập', x.noi_nhap, null);
   }
+
+  /* ── TỒN KHO THẮNG MỌI NCC (chủ dự án chốt 12/09/2026) ──
+     Hàng đã nằm trong kho thì bắt buộc xuất từ kho, kể cả khi hôm ấy có NCC
+     báo giá rẻ hơn: giá thị trường giảm không làm số hàng trong kho biến mất.
+     Trước bản này `TON_KHO` rơi vào nhánh "ngoài danh sách" nên nó xếp SAU
+     mọi NCC có tên — tức Kho gần như không bao giờ được hiện, và khi được
+     hiện thì hiện ra đúng chữ `TON_KHO`. */
+  const KHO = { t: 'INVENTORY', id: 'TON_KHO' };
+  ok('tồn kho thắng cả NCC ưu tiên cao nhất',
+    noiNhapCua([KHO, 'Việt Hải']).o.noi_nhap, 'Kho');
+  ok('  · thắng cả khi Tracking trả nó ở CUỐI danh sách',
+    noiNhapCua(['Việt Hải', 'Trung Xuân', KHO]).o.noi_nhap, 'Kho');
+  ok('  · và hiện chữ cho người đọc, không phải mã TON_KHO của Tracking',
+    noiNhapCua([KHO]).o.noi_nhap, 'Kho');
+  /* Nhận theo `source_type` — một NCC vô tình được đặt tên "TON_KHO" vẫn chỉ
+     là một NCC, và một nguồn INVENTORY đổi `source_id` vẫn là tồn kho. */
+  ok('một NCC tên trùng "TON_KHO" KHÔNG được hưởng ưu tiên của tồn kho',
+    noiNhapCua(['TON_KHO', 'Việt Hải']).o.noi_nhap, 'Việt Hải');
+  ok('  · còn nguồn INVENTORY đổi tên vẫn là tồn kho',
+    noiNhapCua([{ t: 'INVENTORY', id: 'KHO-TP' }, 'Việt Hải']).o.noi_nhap, 'Kho');
+
+  /* Nhãn "Kho" KHÔNG được lọt vào phép đếm NCC ưu tiên — nó không phải một
+     nhà cung cấp, và đếm nó vào đó là làm hỏng đúng tín hiệu "tên nào khai
+     trong danh sách mà cả kỳ không gặp lần nào". */
+  ok('Kho không bị đếm như một NCC ưu tiên',
+    noiNhapCua([KHO]).bang.tom_tat_gia.ncc_uu_tien_khong_gap.length, 5);
 
   /* Luật ưu tiên im lặng không chạy là lỗi không ai thấy — bản kê phải nói
      tên nào cả kỳ không gặp lần nào. */
