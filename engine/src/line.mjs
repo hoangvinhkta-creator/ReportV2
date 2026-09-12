@@ -36,7 +36,9 @@
  * được CLAUDE.md kể tên tường minh trong danh sách CẤM ở frontend).
  */
 
-import { gopCayKyThanhChuoiNgay, gopMotChuoiNgay } from "./gop-theo-thoi-gian.mjs";
+import {
+  gopCayKyThanhChuoiNgay, gopMotChuoiNgay, gopNgayTheoThang,
+} from "./gop-theo-thoi-gian.mjs";
 
 /** Line hứng mọi tên chưa được xếp. Chủ dự án chốt: "line khác — dồn các
  *  nhân viên còn lại vào đây". */
@@ -305,8 +307,22 @@ export function gopTheoLine(cayKy, bang) {
  *  công ty, để bảng xếp hạng so được kỳ đang xem với ĐÚNG kỳ đó của năm
  *  trước. Hai hình dạng khác nhau nên không gộp làm một.
  *
- *  CHỈ tháng và năm, KHÔNG có ngày: xếp hạng theo ngày không ai đọc, mà chuỗi
- *  ngày × 10 line là gấp mười lần dữ liệu phải kéo về cho mỗi lượt mở.
+ *  Tháng, năm, VÀ NGÀY-CHIA-THEO-THÁNG (`theo_ngay_thang`, thêm 12/09/2026).
+ *
+ *  Dòng này trước đây ghi "CHỈ tháng và năm, KHÔNG có ngày: xếp hạng theo
+ *  ngày không ai đọc, mà chuỗi ngày × 10 line là gấp mười lần dữ liệu phải
+ *  kéo về cho mỗi lượt mở". Cả hai vế đều từng đúng, và cả hai đều đổi ở P6:
+ *
+ *    · "không ai đọc" — chủ dự án chốt 12/09/2026 đưa cụm "Xu hướng theo
+ *      Line" ra nằm CẠNH biểu đồ chính trên màn báo cáo, và yêu cầu hai bên
+ *      đồng bộ khung thời gian. Biểu đồ chính mặc định xem THEO NGÀY của
+ *      tháng đang mở, nên không có mức ngày thì cụm bên cạnh không có gì để
+ *      vẽ — tức nửa bố cục mới trống.
+ *    · "gấp mười lần dữ liệu" — vẫn đúng về bản chất, nhưng chuỗi này THƯA:
+ *      chỉ (line, ngày) nào có bán mới có ô, nên nó không nhân đúng mười.
+ *
+ *  Chủ dự án chốt "xu hướng line chỉ làm theo ngày + tháng" — nên KHÔNG thêm
+ *  mức quý, dù `theo_nam` vẫn ở lại (bất biến khớp tổng đang dựa vào nó).
  *
  *  Line KHÔNG có nhân viên nào vẫn có mặt với cây rỗng — `thu_tu` là danh
  *  sách khai tường minh, và một line mới mở (Shopee trước 09/2026) phải hiện
@@ -340,12 +356,17 @@ export function gopLineTheoThoiGian(cayKy, bang) {
     }
   }
 
-  const theo_thang = {}, theo_nam = {};
+  const theo_thang = {}, theo_nam = {}, theo_ngay_thang = {};
   let ds_line = 0, don_line = 0;
   for (const ten of bang.thu_tu) {
     const ds = nvCuaLine.get(ten);
     const chuoi = ds ? gopCayKyThanhChuoiNgay(cayKy, [...ds]) : {};
     theo_thang[ten] = gopMotChuoiNgay(chuoi, "thang");
+    /* Dùng lại ĐÚNG hàm chia ngày-theo-tháng mà biểu đồ toàn công ty đang
+       dùng (`gopSucKhoeCongTy`), không viết phép chia thứ hai: "ngày nào
+       thuộc tháng nào" chỉ được có một bản, nếu không hai khối cạnh nhau
+       trên cùng màn hình sẽ xếp cùng một ngày vào hai tháng khác nhau. */
+    theo_ngay_thang[ten] = gopNgayTheoThang(chuoi);
 
     /* Theo năm chỉ có MỘT vị trí nên bỏ luôn tầng vị trí — bên vẽ đọc
        `theo_nam[line][2026]` chứ không phải `[line][2026][1]`. */
@@ -373,6 +394,7 @@ export function gopLineTheoThoiGian(cayKy, bang) {
   return {
     thu_tu: [...bang.thu_tu],
     theo_thang,
+    theo_ngay_thang,
     theo_nam,
     tom_tat: {
       doanh_so_tong: ds_tong,

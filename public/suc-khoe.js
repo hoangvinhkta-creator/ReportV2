@@ -273,13 +273,20 @@
    *  một KHOẢNG TRỐNG THẬT, không phải số 0 — ngắt đoạn giống mọi biểu đồ
    *  khác trong file này, để một line đã dừng bán không vẽ liền thành một
    *  đường phẳng ở đáy như thể vẫn đang bán với giá 0. */
-  function veMiniDuong(ten, diem, bd, nam) {
+  function veMiniDuong(ten, diem, bd, k) {
     if (!diem.length) {
       return '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
-        + '<p class="miniRong">Chưa có số năm ' + nam + "</p></div>";
+        + '<p class="miniRong">Chưa có số ' + thoat(k.tenKyNgan) + "</p></div>";
     }
     const yMax = Math.max(1, ...diem.map(bd.layGiaTri));
-    const x = (vt) => LE_MINI_TRAI + ((vt - 1) / 11) * RONG_VE_MINI;   // luôn 1..12, cố định
+    /* Trục ngang lấy `vtMax` của KHUNG chứ không cứng 12 (P6): cùng một ô
+       này giờ vẽ cả 12 tháng của một năm lẫn 28–31 ngày của một tháng, và
+       nó phải trải đúng bề rộng ấy — chia cho 11 khi đang vẽ 30 ngày là dồn
+       cả tháng vào một phần ba khung. Mẫu số là `vtMax - 1` (khoảng cách
+       giữa điểm đầu và điểm cuối), và chặn sàn 1 để một khung chỉ có đúng
+       một vị trí không chia cho 0. */
+    const nhip = Math.max(1, k.vtMax - 1);
+    const x = (vt) => LE_MINI_TRAI + ((vt - 1) / nhip) * RONG_VE_MINI;
     const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
 
     let d = "", cham = "", vtTruoc = null;
@@ -287,12 +294,14 @@
       const px = x(p.vt), py = y(bd.layGiaTri(p));
       d += (vtTruoc === null || p.vt - vtTruoc > 1 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
       vtTruoc = p.vt;
-      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="2" fill="' + MAU_NAY + '">'
-        + "<title>" + thoat(ten + " · Tháng " + p.vt + "/" + nam + ": " + bd.taDayDu(bd.layGiaTri(p))) + "</title></circle>";
+      cham += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="'
+        + (k.vtMax > 15 ? "1.4" : "2") + '" fill="' + MAU_NAY + '">'
+        + "<title>" + thoat(ten + " · " + k.moTaNgan(p.vt) + ": " + bd.taDayDu(bd.layGiaTri(p)))
+        + "</title></circle>";
     }
 
-    /* Nhãn giá trị tháng CUỐI CÙNG có số — "Lines -> value at the end"
-       (dataviz skill), chọn lọc một nhãn chứ không ghi số lên từng tháng.
+    /* Nhãn giá trị vị trí CUỐI CÙNG có số — "Lines -> value at the end"
+       (dataviz skill), chọn lọc một nhãn chứ không ghi số lên từng điểm.
        Neo chữ theo NỬA nào của khung mà điểm cuối rơi vào, không thì
        tháng 11-12 sẽ đẩy nhãn tràn ra ngoài viewBox. */
     const cuoi = diem[diem.length - 1];
@@ -313,151 +322,28 @@
     return '<div class="oMini"><p class="tenMini">' + thoat(ten) + "</p>" + svg + "</div>";
   }
 
-  /* ─────────── Cơ cấu theo Line — hai vòng khuyên lồng nhau ─────────── */
-
-  /* Tám hue categorical đã qua kiểm CVD (kỹ năng dataviz, palette chuẩn) —
-   * thứ tự SLOT CỐ ĐỊNH theo đúng vị trí khai trong `thu_tu`, KHÔNG theo
-   * doanh số hiện tại: đổi rank tháng này qua tháng khác không được đổi
-   * màu một line, không thì màu hết còn nghĩa để nhận ra "đây luôn là Tín
-   * Phát". Bảng line có tới 10 line (kể cả "Khác") mà categorical chỉ an
-   * toàn tới 8 — đúng luật "quá ~8 lớp thì gộp phần đuôi": line thứ 9 trở
-   * đi (kể cả "Khác") dùng chung một màu xám trung tính.
-   */
-  const MAU_COCAU = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
-  const MAU_COCAU_KHAC = "#b6b4ab";
-
-  function mauCuaLine(ten, thuTu) {
-    const idx = thuTu.indexOf(ten);
-    return (idx >= 0 && idx < MAU_COCAU.length) ? MAU_COCAU[idx] : MAU_COCAU_KHAC;
-  }
-
-  /** Chữ trắng hay chữ đậm trên một nền màu — theo độ sáng tương đối, để
-   *  nhãn % ghi ngay trên lát màu nào cũng đọc được. */
-  function mauChuTrenNen(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    const doSang = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return doSang > 0.6 ? "#0b0b0b" : "#ffffff";
-  }
-
-  const RONG_CC = 260, CAO_CC = 260, CX_CC = 130, CY_CC = 130;
-  const R_NGOAI = 118, DAY_VONG = 32, KHE_VONG = 5;
-  const R_TRONG_NGOAI = R_NGOAI - DAY_VONG;          // bán kính TRONG của vòng ngoài (kỳ này)
-  const R_TRONG = R_TRONG_NGOAI - KHE_VONG;          // bán kính NGOÀI của vòng trong (kỳ trước)
-  const R_TRONG_TRONG = R_TRONG - DAY_VONG;
-  const KHE_GOC_PX = 2;   // khoảng trống giữa hai lát, tính bằng px cạnh nhau ở bán kính ngoài vòng đó
-
-  /** Điểm trên vòng tròn tại bán kính `r`, góc `gocDo` ĐO THEO CHIỀU KIM
-   *  ĐỒNG HỒ TỪ 12 GIỜ — đúng cách chủ dự án tả bố cục (11/09/2026). */
-  function toaDoTron(r, gocDo) {
-    const rad = (gocDo * Math.PI) / 180;
-    return [CX_CC + r * Math.sin(rad), CY_CC - r * Math.cos(rad)];
-  }
-
-  /** Đường viền một lát hình khuyên, từ góc a0 tới a1 (độ). */
-  function duongLatTron(rTrong, rNgoai, a0, a1) {
-    const lonHon = a1 - a0 > 180 ? 1 : 0;
-    const [x0, y0] = toaDoTron(rNgoai, a0), [x1, y1] = toaDoTron(rNgoai, a1);
-    const [x2, y2] = toaDoTron(rTrong, a1), [x3, y3] = toaDoTron(rTrong, a0);
-    return "M" + x0.toFixed(2) + "," + y0.toFixed(2)
-      + " A" + rNgoai.toFixed(2) + "," + rNgoai.toFixed(2) + " 0 " + lonHon + " 1 " + x1.toFixed(2) + "," + y1.toFixed(2)
-      + " L" + x2.toFixed(2) + "," + y2.toFixed(2)
-      + " A" + rTrong.toFixed(2) + "," + rTrong.toFixed(2) + " 0 " + lonHon + " 0 " + x3.toFixed(2) + "," + y3.toFixed(2)
-      + " Z";
-  }
-
-  /** MỘT vòng khuyên (một kỳ) — xếp các line theo chiều kim đồng hồ, GIẢM
-   *  DẦN từ 12 giờ (chủ dự án chốt 11/09/2026), line cuối bảng ("Khác")
-   *  luôn ở cuối dù doanh số bao nhiêu — cùng luật "Line khác xếp cuối"
-   *  đã áp cho bảng xếp hạng cũ. Line = 0đ ở kỳ này không vẽ lát nào (một
-   *  lát 0 độ không có gì để nhìn), nhưng vẫn có mặt trong chú giải.
+  /* CƠ CẤU THEO LINE (hai vòng khuyên lồng nhau) ĐÃ BỎ — chủ dự án chốt
+   * 12/09/2026, cùng lượt dời biểu đồ sang màn báo cáo. Xoá hẳn chứ không
+   * giữ lại sau một cờ: một khối 140 dòng không ai gọi sẽ mục đi trong im
+   * lặng, và lượt sửa sau phải đọc nó để biết có được đụng vào không. Lịch
+   * sử git giữ bản cũ nếu cần dựng lại.
    *
-   *  `layGiaTri(h)` đọc doanh_so của MỘT kỳ trên một dòng `hang`; dùng
-   *  chung hàm này cho cả vòng ngoài (nay) và vòng trong (truoc), chỉ đổi
-   *  cái đọc số — hai vòng không phải hai đường tính khác nhau. */
-  function veMotVongTron(hang, layGiaTri, layMoTa, rTrong, rNgoai, thuTu, tenCuoi) {
-    const cacDong = hang.filter((h) => layGiaTri(h) > 0);
-    if (!cacDong.length) {
-      // Không có số kỳ này — vẽ viền rỗng để biết "có vòng nhưng trống",
-      // không phải một khoảng trắng vô nghĩa không rõ là thiếu hay hỏng.
-      return '<circle cx="' + CX_CC + '" cy="' + CY_CC + '" r="' + ((rTrong + rNgoai) / 2).toFixed(1)
-        + '" fill="none" stroke="#e5e7eb" stroke-width="' + (rNgoai - rTrong).toFixed(1) + '"/>';
-    }
-    cacDong.sort((a, b) => {
-      if (a.ten === tenCuoi) return 1;
-      if (b.ten === tenCuoi) return -1;
-      return layGiaTri(b) - layGiaTri(a);
-    });
-    const tong = cacDong.reduce((t, h) => t + layGiaTri(h), 0);
-    const kheDo = (KHE_GOC_PX / (2 * Math.PI * rNgoai)) * 360;
-
-    let goc = 0, than = "";
-    for (const h of cacDong) {
-      const rong = (layGiaTri(h) / tong) * 360;
-      const a0 = goc + kheDo / 2, a1 = goc + rong - kheDo / 2;
-      if (a1 > a0) {
-        const mau = mauCuaLine(h.ten, thuTu);
-        const phanTram = Math.round((layGiaTri(h) / tong) * 100);
-        than += '<path d="' + duongLatTron(rTrong, rNgoai, a0, a1) + '" fill="' + mau + '">'
-          + "<title>" + thoat(layMoTa(h) + " · " + phanTram + "%") + "</title></path>";
-        /* Nhãn % trực tiếp — CHỌN LỌC: chỉ lát đủ lớn (>=10%) mới ghi số
-           ngay trên đó, lát nhỏ nhường chỗ cho chú giải + rê chuột (không
-           ghi số lên từng lát — dataviz skill). */
-        if (rong >= 36) {
-          const [xg, yg] = toaDoTron((rTrong + rNgoai) / 2, goc + rong / 2);
-          than += '<text x="' + xg.toFixed(1) + '" y="' + (yg + 4).toFixed(1)
-            + '" font-size="11" font-weight="600" text-anchor="middle" fill="' + mauChuTrenNen(mau) + '">'
-            + phanTram + "%</text>";
-        }
-      }
-      goc += rong;
-    }
-    return than;
-  }
-
-  /** Hai vòng khuyên lồng nhau: kỳ này (ngoài, to) — kỳ trước (trong, nhỏ)
-   *  — chủ dự án chốt 11/09/2026, thay cho bảng xếp hạng cột ngang cũ.
-   *  Cùng MỘT bảng màu cho cả hai vòng (màu theo line, không theo kỳ) để
-   *  so được cơ cấu kỳ này lệch cơ cấu kỳ trước ở đúng line nào. */
-  function veCoCau(hang, thuTu) {
-    const tenCuoi = thuTu[thuTu.length - 1];
-
-    const vongTrong = veMotVongTron(hang, (h) => h.truoc.doanh_so, (h) => h.moTaTruoc,
-      R_TRONG_TRONG, R_TRONG, thuTu, tenCuoi);
-    const vongNgoai = veMotVongTron(hang, (h) => h.nay.doanh_so, (h) => h.moTaNay,
-      R_TRONG_NGOAI, R_NGOAI, thuTu, tenCuoi);
-
-    const svg = '<svg viewBox="0 0 ' + RONG_CC + " " + CAO_CC + '" width="240" height="240" role="img"'
-      + ' aria-label="Cơ cấu doanh số theo line — vòng ngoài kỳ này, vòng trong kỳ trước">'
-      + vongTrong + vongNgoai + "</svg>";
-
-    /* Chú giải — CÙNG thứ tự với vòng ngoài (giảm dần, "Khác" cuối), để đọc
-       từ trên xuống khớp với đọc vòng tròn theo chiều kim đồng hồ. Liệt kê
-       CẢ line chưa có số kỳ này (0%) — biến mất khỏi chú giải thì người
-       xem tưởng công ty không còn kênh đó, đúng lỗi "Shopee" đã sửa ở bảng
-       xếp hạng cũ. */
-    const tongNay = hang.reduce((t, h) => t + h.nay.doanh_so, 0);
-    const tongTruoc = hang.reduce((t, h) => t + h.truoc.doanh_so, 0);
-    const daXep = [...hang].sort((a, b) => {
-      if (a.ten === tenCuoi) return 1;
-      if (b.ten === tenCuoi) return -1;
-      return b.nay.doanh_so - a.nay.doanh_so;
-    });
-    let chuGiai = '<div class="chuGiaiCoCau">';
-    for (const h of daXep) {
-      const ptNay = tongNay > 0 ? Math.round((h.nay.doanh_so / tongNay) * 100) : 0;
-      const ptTruoc = tongTruoc > 0 ? Math.round((h.truoc.doanh_so / tongTruoc) * 100) : 0;
-      chuGiai += '<span><i style="background:' + mauCuaLine(h.ten, thuTu) + '"></i>'
-        + thoat(h.ten) + '<b>' + ptNay + '%</b><span class="ptTruocCc">(' + ptTruoc + '%)</span></span>';
-    }
-    chuGiai += "</div>";
-
-    return '<div class="khoiCoCau">' + svg + chuGiai + "</div>";
-  }
+   * Bảng màu categorical theo line đi theo nó — nó chỉ sinh ra cho hai vòng
+   * khuyên ấy; lưới nhỏ bên phải vẽ bằng một màu nhấn duy nhất. */
 
   /* ─────────── Điều phối ─────────── */
 
-  const trangThai = { donVi: "ngay", nam: null, thang: null, luoiChiSo: 0 };
+  /* `chiSo` DÙNG CHUNG cho biểu đồ lớn bên trái và lưới nhỏ bên phải — chủ
+     dự án chốt 12/09/2026: "cụm này cũng thể hiện khung thời gian, kiểu biểu
+     đồ đồng bộ với biểu đồ trên". Trước đây lưới có bộ chọn RIÊNG
+     (`luoiChiSo`), nên hai khối cạnh nhau nói hai chỉ số khác nhau mà không
+     có gì báo — chuyện chấp nhận được khi chúng ở hai chỗ xa nhau, không
+     chấp nhận được khi chúng nằm sát cạnh nhau.
+
+     `nam`/`thang` KHÔNG còn do file này chọn: chúng đến từ hàng nút năm/tháng
+     của màn báo cáo, qua `window.SucKhoe.datKy()`. Một màn hình có HAI bộ
+     chọn kỳ là chỗ chắc chắn có lúc chúng lệch nhau. */
+  const trangThai = { donVi: "ngay", nam: null, thang: null, chiSo: 0 };
   let duLieu = null;     // kết quả /api/bao-cao/suc-khoe, nhớ lại để đổi tab không gọi lại
   let dangTai = false;
 
@@ -478,6 +364,9 @@
         duoi: "theo tháng · năm " + nam,
         tenKyCua: (n) => "Năm " + n,
         donViDiem: "tháng",
+        tenKyNgan: "năm " + nam,
+        moTaNgan: (vt) => "Tháng " + vt + "/" + nam,
+        layLine: (L, ten) => layDiem(((L.theo_thang || {})[ten] || {})[nam]),
       };
     }
     if (dv === "quy") {
@@ -489,6 +378,13 @@
         duoi: "theo quý · năm " + nam,
         tenKyCua: (n) => "Năm " + n,
         donViDiem: "quý",
+        tenKyNgan: "năm " + nam,
+        moTaNgan: (vt) => "Quý " + vt + "/" + nam,
+        /* Chủ dự án chốt "xu hướng line chỉ làm theo ngày + tháng" — nên ở
+           đơn vị Quý cụm bên phải KHÔNG vẽ. `null` là tín hiệu ấy, và khối
+           kia nói thẳng một câu thay vì lặng lẽ hiện lưới của một khung thời
+           gian khác với biểu đồ bên trái. */
+        layLine: null,
       };
     }
     const th = trangThai.thang;
@@ -502,6 +398,9 @@
       duoi: "theo ngày · tháng " + th + "/" + nam,
       tenKyCua: (n) => "Tháng " + th + "/" + n,
       donViDiem: "ngày",
+      tenKyNgan: "tháng " + th + "/" + nam,
+      moTaNgan: (vt) => vt + "/" + String(th).padStart(2, "0") + "/" + nam,
+      layLine: (L, ten) => layDiem((((L.theo_ngay_thang || {})[ten] || {})[nam] || {})[th]),
     };
   }
 
@@ -516,100 +415,78 @@
       oVe.innerHTML = '<p class="dangTai">' + thoat(k.tenKyCua(nam)) + " — chưa có số nào cho kỳ này.</p>";
       return;
     }
-    let html = "";
-    for (const bd of BIEU_DO) {
-      const nhanKhung = bd.ten + " " + k.duoi;
-      html += '<div class="khoiBieuDo"><p class="tieuDeSk">' + thoat(nhanKhung)
-        + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-        + veBieuDo({
-          diemNay, diemTruoc, namNay: nam, namTruoc,
-          vtMin: k.vtMin, vtMax: k.vtMax, nhanTruc: k.nhanTruc, moTa: k.moTa,
-          layGiaTri: bd.layGiaTri, nhanDoc: bd.nhanDoc, sanGiaTri: bd.sanGiaTri,
-          taDayDu: bd.taDayDu, donViDiem: k.donViDiem,
-          tenKyNay: k.tenKyCua(nam), tenKyTruoc: k.tenKyCua(namTruoc),
-          nhanKhung,
-        }) + "</div>";
-    }
-    oVe.innerHTML = html + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
+    /* MỘT biểu đồ mỗi lúc, chọn bằng hai tab (chủ dự án chốt 12/09/2026:
+       "gộp biểu đồ doanh số và số đơn vào 1 khung, có 2 tab chuyển đổi như
+       biểu đồ Xu hướng theo Line đang làm"). Trước đây vẽ cả hai chồng dọc,
+       nên khối biểu đồ cao gấp đôi và đẩy mọi thứ khác xuống dưới màn hình. */
+    const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
+    const nhanKhung = bd.ten + " " + k.duoi;
+    oVe.innerHTML = '<div class="khoiBieuDo"><p class="tieuDeSk">' + thoat(nhanKhung)
+      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
+      + veBieuDo({
+        diemNay, diemTruoc, namNay: nam, namTruoc,
+        vtMin: k.vtMin, vtMax: k.vtMax, nhanTruc: k.nhanTruc, moTa: k.moTa,
+        layGiaTri: bd.layGiaTri, nhanDoc: bd.nhanDoc, sanGiaTri: bd.sanGiaTri,
+        taDayDu: bd.taDayDu, donViDiem: k.donViDiem,
+        tenKyNay: k.tenKyCua(nam), tenKyTruoc: k.tenKyCua(namTruoc),
+        nhanKhung,
+      }) + "</div>"
+      + chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
   }
 
-  /** Cơ cấu theo Line cho ĐÚNG kỳ mà hai biểu đồ trên đang vẽ.
-   *
-   *  Tab Ngày đang xem tháng nào thì cơ cấu tháng đó; tab Tháng và tab Quý
-   *  đang xem cả năm thì cơ cấu cả năm. Cùng một kỳ với biểu đồ ngay trên
-   *  nó — nếu lệch kỳ thì người đọc so hai khối với nhau là ra kết luận sai.
-   *
-   *  Không vẽ gì nếu `line` chưa có trong dữ liệu: giữa hai lượt deploy
-   *  (bẫy số 4) bản Gateway cũ còn đang chạy và chưa trả khối này. Thà thiếu
-   *  một khối còn hơn cả Dashboard nổ. */
-  function veKhoiCoCau() {
-    const o = $("skCoCau");
-    if (!o) return;
-    if (!duLieu || !duLieu.line) { o.innerHTML = ""; return; }
-
-    const L = duLieu.line;
-    const nam = trangThai.nam, namTruoc = nam - 1;
-    const theoNgay = trangThai.donVi === "ngay";
-    const th = trangThai.thang;
-
-    const layO = (ten, n) => {
-      const c = theoNgay
-        ? (((L.theo_thang || {})[ten] || {})[n] || {})[th]
-        : ((L.theo_nam || {})[ten] || {})[n];
-      return c ? { doanh_so: c.doanh_so, so_don: c.so_don } : { doanh_so: 0, so_don: 0 };
-    };
-    const tenKy = (n) => (theoNgay ? "tháng " + th + "/" + n : "năm " + n);
-
-    const hang = (L.thu_tu || []).map((ten) => {
-      const nay = layO(ten, nam), truoc = layO(ten, namTruoc);
-      return {
-        ten, nay, truoc,
-        moTaNay: ten + " · " + tenKy(nam) + " · " + tienDay(nay.doanh_so) + " · " + soDon(nay.so_don) + " đơn",
-        moTaTruoc: ten + " · " + tenKy(namTruoc) + " · " + tienDay(truoc.doanh_so) + " · " + soDon(truoc.so_don) + " đơn",
-      };
+  /** Hàng tab chỉ số [Doanh số] [Số đơn] — dùng CHUNG cho cả hai khối. */
+  function veTabChiSo() {
+    const hang = $("skTabChiSo");
+    if (!hang) return;
+    hang.innerHTML = "";
+    BIEU_DO.forEach((m, i) => {
+      const nut = document.createElement("button");
+      nut.type = "button";
+      nut.className = "tabNut" + (i === trangThai.chiSo ? " tabDang" : "");
+      nut.textContent = m.ten;
+      nut.addEventListener("click", () => { trangThai.chiSo = i; veLai(); });
+      hang.appendChild(nut);
     });
-    if (!hang.length) { o.innerHTML = ""; return; }
-
-    /* Sắp xếp (giảm dần theo doanh số, "Khác" luôn cuối) nằm TRONG
-       `veCoCau()` — vòng ngoài và vòng trong có thể ra hai thứ tự khác
-       nhau (kỳ này bán khác kỳ trước), nên mỗi vòng phải tự sắp lấy theo
-       đúng số của chính nó. */
-    o.innerHTML = '<p class="tieuDeSk">Cơ cấu theo Line · ' + thoat(tenKy(nam))
-      + " so với " + thoat(tenKy(namTruoc)) + "</p>"
-      + veCoCau(hang, L.thu_tu);
   }
 
-  /** Lưới nhỏ — xu hướng theo THÁNG của TỪNG line trong năm đang xem, cạnh
-   *  nhau để so hình dạng: line nào đang lên, đang xuống, đứt gãy đột ngột
-   *  (nhân viên nghỉ), hay chỉ mới xuất hiện. Vòng cơ cấu ở trên đã trả lời
-   *  "ai to ai nhỏ Ở MỘT KỲ" — lưới này trả lời "line đó đang đi về đâu",
-   *  việc vòng cơ cấu không nói được.
-   *
-   *  Luôn dùng NĂM ĐANG XEM (`trangThai.nam`), KHÔNG theo tab đơn vị: xu
-   *  hướng cả năm là một khái niệm riêng, không ăn theo "đang xem theo
-   *  ngày/tháng/quý" của hai biểu đồ phía trên.
-   *
-   *  Có nút chuyển Doanh số/Số đơn — CẢ LƯỚI đổi theo, không phải mỗi ô tự
-   *  chọn: 10 line × 2 chỉ số cùng lúc là 20 ô, không ai đọc hết được. */
   function veKhoiLuoiNho() {
     const o = $("skLuoiNho");
     if (!o) return;
     if (!duLieu || !duLieu.line) { o.innerHTML = ""; return; }
 
     const L = duLieu.line;
-    const nam = trangThai.nam;
-    const bd = BIEU_DO[trangThai.luoiChiSo] || BIEU_DO[0];
+    const k = dungKhung(trangThai.nam);
+    const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
     const thuTu = L.thu_tu || [];
     if (!thuTu.length) { o.innerHTML = ""; return; }
     const tenCuoi = thuTu[thuTu.length - 1];
 
-    const dsLine = thuTu.map((ten) => ({
-      ten, diem: layDiem(((L.theo_thang || {})[ten] || {})[nam]),
-    }));
+    /* Chủ dự án chốt "xu hướng line chỉ làm theo ngày + tháng". Ở đơn vị Quý
+       thì NÓI RA một câu thay vì (a) hiện lưới theo tháng — hai khối cạnh
+       nhau nói hai khung thời gian khác nhau, người đọc so chúng là ra kết
+       luận sai — hay (b) để trống trơn, thứ trông y như một lỗi. */
+    if (!k.layLine) {
+      o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line</p>'
+        + '<p class="miniRong">Cụm này chỉ vẽ theo ngày và theo tháng. '
+        + 'Chuyển biểu đồ bên trái về [Ngày] hoặc [Tháng] để xem.</p>';
+      return;
+    }
 
-    /* Sắp GIẢM DẦN theo tổng cả năm của CHÍNH chỉ số đang xem, "Khác" luôn
-       cuối — cùng luật đã áp cho vòng cơ cấu, để đổi chỉ số không làm lưới
-       xáo trộn lộn xộn ngoài dự đoán. */
+    /* Dữ liệu ngày × line là trường MỚI của Engine (P6). Giữa hai lượt deploy
+       song song (bẫy số 4) bản Engine cũ còn đang chạy và chưa trả nó — nói
+       thẳng một câu thay vì hiện mười ô trống trông như mười line đã ngừng
+       bán. */
+    if (trangThai.donVi === "ngay" && !L.theo_ngay_thang) {
+      o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line</p>'
+        + '<p class="miniRong">Máy chủ chưa trả số theo ngày cho từng line '
+        + '(bản vừa cập nhật đang lên). Thử lại sau ít phút.</p>';
+      return;
+    }
+
+    const dsLine = thuTu.map((ten) => ({ ten, diem: k.layLine(L, ten) }));
+
+    /* Sắp GIẢM DẦN theo tổng của CHÍNH chỉ số đang xem, "Khác" luôn cuối —
+       đổi chỉ số không làm lưới xáo trộn ngoài dự đoán. */
     dsLine.sort((a, b) => {
       if (a.ten === tenCuoi) return 1;
       if (b.ten === tenCuoi) return -1;
@@ -617,63 +494,18 @@
       return tong(b.diem) - tong(a.diem);
     });
 
-    o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · năm ' + nam
+    o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · ' + thoat(k.duoi)
       + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-      + '<div class="tabDonVi" id="skLuoiChiSo"></div>'
-      + '<div class="luoiXuHuong" id="skLuoiGrid"></div>';
-
-    const oChiSo = $("skLuoiChiSo");
-    oChiSo.innerHTML = "";   // đề phòng trình duyệt không coi id trong innerHTML mới là một phần tử khác hẳn
-    BIEU_DO.forEach((m, i) => {
-      const nut = document.createElement("button");
-      nut.type = "button";
-      nut.className = "tabNut" + (i === trangThai.luoiChiSo ? " tabDang" : "");
-      nut.textContent = m.ten;
-      nut.addEventListener("click", () => { trangThai.luoiChiSo = i; veKhoiLuoiNho(); });
-      oChiSo.appendChild(nut);
-    });
-
-    const oGrid = $("skLuoiGrid");
-    oGrid.innerHTML = dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, nam)).join("");
+      + '<div class="luoiXuHuong">'
+      + dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, k)).join("")
+      + "</div>";
   }
 
-  /** Dải nút phụ dưới biểu đồ — nội dung ĐỔI THEO TAB. */
-  function veDaiPhu() {
-    const hang = $("skDaiPhu");
-    if (!hang) return;
-    hang.innerHTML = "";
-    if (trangThai.donVi === "quy") return;   // quý chưa cần chọn gì
-
-    if (trangThai.donVi === "thang") {
-      for (const nam of duLieu.cac_nam) {
-        hang.appendChild(nutPhu(String(nam), nam === trangThai.nam, false, () => {
-          trangThai.nam = nam; veLai();
-        }));
-      }
-      return;
-    }
-    const cuaNam = (duLieu.theo_ngay_thang || {})[trangThai.nam] || {};
-    for (let th = 1; th <= 12; th++) {
-      const coSo = !!cuaNam[th];
-      hang.appendChild(nutPhu("T" + th, th === trangThai.thang, !coSo, () => {
-        trangThai.thang = th; veLai();
-      }));
-    }
-  }
-
-  function nutPhu(chu, dangChon, tat, khiBam) {
-    const nut = document.createElement("button");
-    nut.type = "button";
-    nut.className = "tabNut tabNho" + (dangChon ? " tabDang" : "");
-    nut.textContent = chu;
-    /* Tháng không có số vẫn HIỆN nhưng bấm không được: ẩn hẳn thì người xem
-       tưởng báo cáo thiếu tháng, còn bấm vào một tháng rỗng thì chỉ tổ mở ra
-       một biểu đồ trắng. */
-    if (tat) nut.disabled = true;
-    else nut.addEventListener("click", khiBam);
-    return nut;
-  }
-
+  /** Hàng tab đơn vị thời gian [Ngày] [Tháng] [Quý].
+   *
+   *  Ngày = tháng đang chọn ở hàng nút của màn báo cáo; Tháng và Quý = cả
+   *  NĂM đang chọn (lúc đó nút tháng chỉ còn điều khiển bảng, không điều
+   *  khiển biểu đồ — chủ dự án chốt 12/09/2026). */
   function veTabDonVi() {
     const hang = $("skTabDonVi");
     if (!hang) return;
@@ -689,10 +521,10 @@
   }
 
   function veLai() {
+    if (trangThai.nam === null) return;   // chưa ai báo kỳ sang — chưa vẽ gì
     veTabDonVi();
-    veDaiPhu();
+    veTabChiSo();
     veBieuDoHienTai();
-    veKhoiCoCau();
     veKhoiLuoiNho();
   }
 
@@ -704,24 +536,20 @@
   function dungKhungHtml() {
     const o = $("o-dashboard");
     if (!o) return false;
-    o.innerHTML = '<div class="tabDonVi" id="skTabDonVi"></div>'
-      + '<div id="skVe"></div>'
-      + '<div class="tabDonVi daiPhu" id="skDaiPhu"></div>'
-      + '<div id="skCoCau" class="khoiCoCauBoc"></div>'
-      + '<div id="skLuoiNho" class="khoiLuoiNhoBoc"></div>'
+    /* Hai cột: biểu đồ lớn bên TRÁI, cụm lưới nhỏ bên PHẢI (chủ dự án chốt
+       12/09/2026). Hai hàng tab đứng chung một dải trên cùng vì cả hai điều
+       khiển CẢ HAI cột — để chúng nằm trong cột trái thì người đọc tưởng
+       chúng chỉ đổi cột ấy. */
+    o.innerHTML = '<div class="daiDieuKhien">'
+      + '<div class="tabDonVi" id="skTabDonVi"></div>'
+      + '<div class="tabDonVi" id="skTabChiSo"></div>'
+      + "</div>"
+      + '<div class="haiCotBieuDo">'
+      + '<div class="cotTrai" id="skVe"></div>'
+      + '<div class="cotPhai" id="skLuoiNho"></div>'
+      + "</div>"
       + '<p class="canhBao" id="skLoi"></p>';
     return true;
-  }
-
-  /** Mặc định: đúng NĂM và THÁNG của hôm nay (chủ dự án chốt 11/09/2026).
-   *  Năm hiện tại chưa có số thì mới lùi về năm mới nhất có số — không thì
-   *  màn hình mở ra trống trơn mà không có cách nào bấm sang năm có số. */
-  function datMacDinh() {
-    const homNay = new Date();
-    const namNay = homNay.getFullYear();
-    const cacNam = duLieu.cac_nam || [];
-    trangThai.nam = cacNam.includes(namNay) ? namNay : (cacNam[0] || namNay);
-    trangThai.thang = trangThai.nam === namNay ? homNay.getMonth() + 1 : 12;
   }
 
   async function tai(user) {
@@ -744,12 +572,9 @@
       const than = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(than.loi || "HTTP " + r.status);
       duLieu = than;
-      datMacDinh();
       veLai();
     } catch (e) {
       oVe.innerHTML = "";
-      $("skDaiPhu").innerHTML = "";
-      $("skCoCau").innerHTML = "";
       $("skLuoiNho").innerHTML = "";
       oLoi.textContent = "Không lấy được số liệu biểu đồ: " + e.message;
     } finally {
@@ -757,32 +582,45 @@
     }
   }
 
-  /* Vẽ LẦN ĐẦU khi người dùng mở tab [Biểu đồ], không phải lúc đăng nhập.
+  /* ─────────── Cửa vào: màn báo cáo điều khiển khối này ───────────
    *
-   * Trước đây khối này gọi thẳng `tai(user)` trong `onAuthStateChanged`, vì
-   * hồi đó Dashboard LÀ thứ đầu tiên người dùng thấy. Từ lúc bố cục đổi
-   * (11/09/2026) biểu đồ nằm sau tab [Biểu đồ] và ẩn sẵn, nên lượt gọi
-   * `/api/bao-cao/suc-khoe` ngay lúc đăng nhập là một lượt đọc `bc/ky` của
-   * cả hai năm mà phần lớn lần đăng nhập không ai xem tới.
+   * Tab [Biểu đồ] ĐÃ BỎ (chủ dự án chốt 12/09/2026) — biểu đồ nay nằm ngay
+   * dưới bảng [Tổng hợp] của màn báo cáo. Nên `moTab()` cũ, thứ hoãn lượt
+   * gọi `/api/bao-cao/suc-khoe` tới khi người dùng bấm sang tab, không còn
+   * nghĩa: không còn tab nào để bấm.
    *
-   * `don-hang.js` (chủ của khung tab) gọi `window.SucKhoe.moTab()` mỗi lần
-   * mở tab. Cửa vào duy nhất là hàm đó — file này không tự đoán trạng thái
-   * tab bằng cách soi `hidden` của một id ở ngoài, để hai nhánh không buộc
-   * chặt vào nhau qua tên phần tử.
+   * Thay vào đó `don-hang.js` gọi `datKy(nam, thang)` mỗi lần kỳ đang xem
+   * đổi — và chính lượt gọi đầu tiên mở màn ra là lượt kích hoạt tải. Cửa
+   * vào vẫn là MỘT hàm: file này không tự đoán kỳ bằng cách soi nút nào đang
+   * sáng ở ngoài, để hai nhánh không buộc chặt vào nhau qua tên phần tử.
+   *
+   * KHÔNG còn `datMacDinh()`: kỳ mặc định là việc của màn báo cáo (nó đã tự
+   * chọn năm/tháng mới nhất có sổ), và hai chỗ cùng đoán một mặc định là hai
+   * chỗ sẽ đoán lệch nhau.
    */
-  let daMoTab = false;       // tab [Biểu đồ] đã từng được mở trong phiên này chưa
   let nguoiDung = null;
 
-  /* Chỉ tải khi ĐỦ ba điều: tab đã mở, đã có người đăng nhập, và chưa có số.
-     `duLieu` vừa là bộ nhớ đệm vừa là cái chặn — `onAuthStateChanged` còn
-     nổ lại mỗi lần token tự làm mới, không có nó là mỗi giờ thêm một lượt
-     gọi thừa. */
   function taiNeuCan() {
-    if (daMoTab && nguoiDung && !duLieu) tai(nguoiDung);
+    if (nguoiDung && !duLieu && trangThai.nam !== null) tai(nguoiDung);
   }
 
   window.SucKhoe = {
-    moTab: function () { daMoTab = true; taiNeuCan(); },
+    /** Màn báo cáo báo sang: đang xem kỳ nào. `ky` dạng "2026-09". */
+    datKy: function (ky) {
+      if (typeof ky !== "string" || !/^\d{4}-\d{2}$/.test(ky)) return;
+      const nam = Number(ky.slice(0, 4)), thang = Number(ky.slice(5, 7));
+      if (trangThai.nam === nam && trangThai.thang === thang) return;
+      trangThai.nam = nam;
+      trangThai.thang = thang;
+      if (duLieu) veLai(); else taiNeuCan();
+    },
+    /** Hiện/ẩn cả khối — chỉ tab [Tổng hợp] mới có biểu đồ (chủ dự án chốt
+     *  12/09/2026). Ở tab của một line, bảng đơn 19 cột đã rất dài; thêm
+     *  biểu đồ bên dưới là phải cuộn qua hàng trăm dòng mới thấy. */
+    hien: function (co) {
+      const o = $("o-dashboard");
+      if (o) o.hidden = !co;
+    },
   };
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -790,7 +628,7 @@
       nguoiDung = user || null;
       /* Đăng xuất thì quên sạch: người sau đăng nhập vào cùng trình duyệt
          không được thấy số của người trước. */
-      if (!user) { duLieu = null; daMoTab = false; return; }
+      if (!user) { duLieu = null; trangThai.nam = null; return; }
       taiNeuCan();
     });
   });
