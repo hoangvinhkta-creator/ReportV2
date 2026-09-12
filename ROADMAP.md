@@ -221,6 +221,25 @@ hiện ra**. Đáng nhớ khi mở phase sau — một con số chỉ tồn tạ
 Engine được thật; `tom_tat_ma` không được hiện là CỐ Ý (băng gán mã đếm
 trên DOM, và bản thân những ô vàng chính là danh sách việc).
 
+**LÁT P4-6 — KHỚP NGUYÊN CÂU — 12/09/2026.** Chủ dự án báo "nhiều mã đã
+có trên bảng giá mà Báo cáo không đọc được giá". Soi ra HAI lỗi khác hẳn
+nhau, cùng hiện ra một dấu gạch đỏ nên trông như một:
+
+- **Thiếu MÃ** (`GIÁ TREO TIVI ĐA NĂNG ERGOTEK E66 32 - 80 INCH`). Bảng
+  giá CÓ mục ấy, nhưng mã của nó là nguyên câu mười từ — vượt trần
+  `CUM_TOI_DA` (8) nên không hề vào từ điển khớp. Xuống hàng chờ, rồi ở
+  hàng chờ gán tay cũng bị chốt NB-2 của Tracking từ chối vì chính mặt
+  hàng ấy đang là dòng tồn kho hoạt động. Kẹt hẳn. Đã sửa bằng một bậc
+  khớp mới: **nguyên câu bằng sạch, không trần độ dài** (xem CLAUDE.md,
+  cách 2 nay có hai dạng). Mục dài vẫn KHÔNG được làm cụm con trong câu
+  dài hơn — có bài kiểm ghim đúng tính chất ấy.
+- **Thiếu GIÁ** (`Tủ lạnh Hitachi HRTN6408SUVN`). Mã khớp hoàn hảo
+  (`tu-dong`) — bằng chứng là cột Hãng/Ngành hàng đã điền, hai cột ấy chỉ
+  điền khi có mã. Dấu gạch đỏ ở đây là "chưa tra được giá Min của ngày
+  đó", một chuyện hoàn toàn khác. Băng "còn N dòng chưa có giá vốn" vừa
+  dựng ở lượt rà soát chính là chỗ phân biệt hai ca này mà không phải rê
+  chuột từng dòng.
+
 **Còn treo sau lát này:**
 
 1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính
