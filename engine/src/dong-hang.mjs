@@ -94,7 +94,7 @@ export function khoaDong(so_ct, ten_hang, lan) {
  *  nghìn dòng vừa thay đổi". */
 export const TRUONG_SO_SANH = [
   "ngay", "so_ct", "ten_hang", "so_luong", "don_gia",
-  "doanh_so", "chiet_khau", "nhan_vien", "imei",
+  "doanh_so", "chiet_khau", "nhan_vien", "imei", "ghi_chu",
 ];
 
 /** Sổ chi tiết bán hàng (ma trận ô thô) → từng dòng hàng, khách, IMEI.
@@ -145,6 +145,11 @@ export function trichDongHang(bang) {
     const dg = doiSo(h[COT.don_gia]);
     const nv_tho = chuanHoaChu(h[COT.nhan_vien]);
     const ma_imei = chuanHoaChu(h[COT.imei]);
+    /* Cột `Diễn giải` của sổ là ô ghi chú duy nhất người nhập liệu gõ tay
+       (chủ dự án chốt 12/09/2026: "ghi chú dựa theo dòng ghi chú trong file
+       tải lên"). Nó KHÔNG phải dữ liệu cá nhân — tên/SĐT/địa chỉ có cột
+       riêng và đã ở nhánh đóng `bc/khach`. */
+    const ghi_chu = chuanHoaChu(h[COT.dien_giai]);
 
     const ban_ghi = {
       ngay: t.ngay,
@@ -161,6 +166,9 @@ export function trichDongHang(bang) {
       nhan_vien: khoaNhanVien(nv_tho),
     };
     if (ma_imei) ban_ghi.imei = ma_imei;
+    /* Chỉ ghi khi CÓ chữ: một trường `null` nhân với hàng chục nghìn dòng là
+       vài trăm KB Firebase không nói thêm điều gì. */
+    if (ghi_chu) ban_ghi.ghi_chu = ghi_chu;
 
     (dong[t.ky] ||= {})[khoaDong(so_ct, ten_hang, lan)] = ban_ghi;
 
@@ -380,7 +388,10 @@ export function doiChieuKy(dongCu, dongMoi, khoaDaSua) {
  *  một mặt hàng thật trên bảng giá — P4 không được đem nó đi khớp mã. */
 export const MA_CHIET_KHAU = "Chiết khấu";
 
-/** Sáu cột chưa có nguồn ở P3. Trả `null` tường minh thay vì bỏ trường:
+/** Năm cột chưa có nguồn ở P3 (`ghi_chu` đã có nguồn từ 12/09/2026 — cột
+ *  `Diễn giải` của sổ — nhưng vẫn khai ở đây làm giá trị mặc định cho dòng
+ *  chiết khấu gộp, thứ không đến từ một dòng nào của sổ).
+ *  Trả `null` tường minh thay vì bỏ trường:
  *  màn hình phải hiện "—" chứ không hiện 0, vì 0 đồng và "chưa biết" là hai
  *  chuyện khác nhau (ROADMAP.md P4 — "không hiện số 0 gây hiểu nhầm"). */
 function oChuaCo() {
@@ -427,6 +438,10 @@ export function dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem) {
       imei: d.imei ?? null,
       la_chiet_khau: false,
       ...oChuaCo(),
+      /* SAU `oChuaCo()`: cột Ghi chú đã có nguồn thật (cột `Diễn giải` của
+         sổ) nên nó không còn là một ô "chưa có". Dòng nào sổ để trống thì
+         vẫn `null` và màn hình hiện "—". */
+      ghi_chu: d.ghi_chu ?? null,
     });
   }
 

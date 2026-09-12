@@ -14,11 +14,12 @@ import {
   khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon,
 } from "./khop-ma.mjs";
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
+import { ghepBTL, apDungBTL } from "./btl.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.8.0-p5-sua-tay";
+const PHIEN_BAN = "0.9.0-btl-ghi-chu";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -162,6 +163,11 @@ export default class extends WorkerEntrypoint {
                          ky, minNgay, quyetDinh) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
+    /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
+       mà giá vốn thì nhân với số lượng. Phép ghép tự chạy trên TOÀN kỳ
+       (`dongCuaKy`, chưa lọc line) để tab line nào cũng ra cùng một kết quả —
+       xem `btl.mjs`. */
+    apDungBTL(bang, ghepBTL(dongCuaKy, khachCuaKy));
     /* Giá vốn chỉ có nghĩa sau khi đã khớp mã, nên hai việc đi liền trong một
        lượt. `minNgay` vắng mặt (Gateway chưa lấy được, hoặc kỳ ngoài phạm vi)
        thì bỏ qua — cột Giá nhập ở lại "—", KHÔNG thành 0. */
@@ -179,8 +185,12 @@ export default class extends WorkerEntrypoint {
    *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh) {
-    return apDungSuaTay(
-      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), quyetDinh);
+    /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
+       Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
+    const bang = apDungBTL(
+      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem),
+      ghepBTL(dongCuaKy, khachCuaKy));
+    return apDungSuaTay(bang, quyetDinh);
   }
 
   /** Phần doanh số / số đơn phải trừ khỏi `bc/ky/<kỳ>` vì đã xoá tay.

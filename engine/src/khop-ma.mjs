@@ -461,8 +461,18 @@ export function dienGiaNhap(bang, minNgay) {
            chung `tổng bán − giá nhập × SL` tự cho ra một số ÂM — đúng "phép
            tính như dòng chiết khấu" mà chủ dự án mô tả, không cần nhánh
            riêng. Cờ này chỉ để màn hình bôi đỏ cho dễ soi. */
-        d.la_dong_0d = !laBTL && Number(d.tong_ban) === 0;
+        /* `so_luong > 0` là điều kiện THỨ BA, thêm 12/09/2026 cùng lượt xử
+           BTL: một dòng bị lượt trả hàng triệt tiêu về SL 0 / tiền 0 cũng
+           "0 đồng" theo đúng nghĩa đen, nhưng nó không phải quà tặng và bôi
+           đỏ nó là nói sai với người đọc. Quà tặng thật luôn có SL ≥ 1. */
+        d.la_dong_0d = !laBTL && Number(d.tong_ban) === 0 && Number(d.so_luong) > 0;
         if (d.la_dong_0d) soDong0d++;
+
+        /* Cặp "đơn mua ↔ bán trả lại" đã triệt tiêu nhau (`btl.mjs`): SL 0,
+           tiền 0. Lợi nhuận bằng 0 dù có biết giá vốn hay không — nên dòng
+           này KHÔNG được đếm vào "thiếu giá". Đếm nó là để một lượt trả hàng
+           xoá mất lợi nhuận của CẢ ĐƠN chỉ vì một dòng đã về 0. */
+        if (d.btl_thong_bao) { d.loi_nhuan = 0; continue; }
 
         if (!d.ma_bang_gia) {
           d.ly_do_chua_gia = "chua-co-ma";
@@ -488,10 +498,18 @@ export function dienGiaNhap(bang, minNgay) {
            trong tay, không cần một lượt gọi thứ hai. */
         d.noi_nhap = chonNoiNhap(g.nguon);
         if (d.noi_nhap && HANG_UU_TIEN.has(chuanNcc(d.noi_nhap))) nccDaThay.add(chuanNcc(d.noi_nhap));
-        d.loi_nhuan = lamTronDong(Number(d.tong_ban) - g.dong * (Number(d.so_luong) || 0));
         d.ly_do_chua_gia = null;
-        loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
         coGia++;
+        if (d.btl_chua_ro_tien) {
+          /* Dòng trả lại mà không truy ra được số tiền khách đã trả. Áp công
+             thức chung ở đây cho ra `0 − giá vốn × (−1)` = một số DƯƠNG: một
+             lượt trả hàng làm TĂNG lãi. Để trống và báo thiếu. */
+          d.loi_nhuan = null;
+          duGia = false;
+          continue;
+        }
+        d.loi_nhuan = lamTronDong(Number(d.tong_ban) - g.dong * (Number(d.so_luong) || 0));
+        loiNhuanDon = lamTronDong(loiNhuanDon + d.loi_nhuan);
       }
       /* Lợi nhuận của ĐƠN chỉ có nghĩa khi MỌI dòng hàng của nó đã có giá
          vốn. Thiếu một dòng mà vẫn cộng là đưa ra một con số nhỏ hơn sự thật
