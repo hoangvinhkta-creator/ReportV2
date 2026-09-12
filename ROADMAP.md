@@ -53,7 +53,45 @@ lượt đóng phase.
 hàm Engine, nhánh Firebase, ba cửa an toàn của `taiSo`, năm giới hạn cố ý
 để lại, và hai món đang treo. Session P4 đọc file đó trước.
 
-**Việc tiếp theo: P4 — giá vốn / lợi nhuận.**
+**ĐANG LÀM: P4 — lát cắt 1 (khớp mã sản phẩm với bảng giá Tracking).**
+
+Lát cắt này cố ý CHƯA đụng tiền. Khớp mã là điều kiện cần của giá vốn;
+xong nó thì lát cắt giá vốn chỉ còn là tra `min-ngay` theo mã đã khớp.
+
+| Lượt | Repo | Trạng thái |
+|---|---|---|
+| PR-A — `POST /api/inv-map`, đường ghi quyết định phân loại | Tracking | ✅ merge 12/09/2026 (PR #34) |
+| PR-B — `engine/src/khop-ma.mjs` + hai RPC Engine | ReportV2 | ✅ lượt này |
+| PR-C — Gateway gọi Tracking + giao diện gán tại chỗ | ReportV2 | ⬜ |
+
+**Thứ tự này BẮT BUỘC** (bẫy số 4): hàm Engine và đường Tracking phải
+deploy xong TRƯỚC lượt Gateway gọi tới chúng.
+
+**Bốn câu hỏi nghiệp vụ chủ dự án đã chốt 12/09/2026:**
+
+1. **Khớp tự động = hai cách**, không có cách thứ ba: tra quyết định đã
+   có trong `inv/map`, CỘNG khớp cụm từ liên tiếp trọn vẹn ra đúng một
+   mã. Chi tiết và lý do vượt dòng "không rút mã từ tên": CLAUDE.md, mục
+   "Khớp mã hàng". Ca ghim: `65C6K` ≠ `65C6KS`.
+2. **Ghi ngược về Tracking** qua `POST /api/inv-map` — Tracking tự giữ
+   ba chốt (mã có thật, mã còn dùng, NB-2), không để V2 chép luật.
+3. **Hiển thị**: mã đã phân loại giữ nguyên như hiện tại; mã CHƯA phân
+   loại mới hiện khác đi.
+4. **Bề rộng cột chốt cố định** (`table-layout: fixed`) — điền dữ liệu
+   P4 vào bảng cột co giãn sẽ làm bố cục nống ra.
+
+**Ba câu còn treo, CHƯA hỏi được, chặn lát cắt 2:** công thức "Doanh số
+quy đổi"; dòng 0đ (quà tặng/phụ kiện) và chứng từ `BTL` có giá vốn
+không; và "Nơi nhập" — bên Tracking nó là NCC đang giữ giá Min của một
+MÃ tại một thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô.
+
+**Việc của chủ dự án trước khi PR-C chạy thật:** đặt Secret
+`REPORT_API_KEY` trên Gateway V2 (`wrangler secret put REPORT_API_KEY`),
+đúng chuỗi Tracking đang dùng. Thiếu nó thì đường khớp mã trả 503 —
+fail closed, đúng thiết kế. **Cloudflare Access KHÔNG phải sửa gì:**
+policy `price-api-cho-CRM` bắt theo Path `api` chứ không liệt kê từng
+đường, nên `/api/inv-map` tự nằm trong (xem `BAO-MAT-TRIEN-KHAI.md` bên
+Tracking).
 
 Bốn việc trước ghi là "P3 lượt 2" (nút sửa/xoá dòng, khoá chống đè, audit
 trail, giữ dòng đã sửa tay khi nó biến mất) **đã chuyển sang P5** —

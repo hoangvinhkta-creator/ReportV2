@@ -83,7 +83,32 @@ số đơn theo nhân viên/ngày (P2, P3, P5, P7) lấy thẳng từ sổ thô,
 khớp mã hàng — đừng kéo cơ chế này vào sớm hơn P4.
 
 Tên hàng trên sổ bán không khớp mã bảng giá thì ĐƯA VÀO HÀNG CHỜ cho người
-gán tay. KHÔNG đoán, không so gần đúng, không rút mã từ tên.
+gán tay. KHÔNG đoán, không so gần đúng, không Levenshtein, không "chắc là
+cái này".
+
+**Máy được khớp tự động đúng hai cách, không có cách thứ ba** (chủ dự án
+chốt 12/09/2026, sau khi được hỏi thẳng giữa hai phương án):
+
+1. Khoá tên hàng đã có quyết định trong `inv/map` của Tracking — đó là
+   quyết định của NGƯỜI, không phải máy đoán. Luôn thắng cách 2.
+2. Một mã bảng giá xuất hiện trong tên như một **cụm từ liên tiếp trọn
+   vẹn**, và ra ĐÚNG MỘT mã. Tìm được 0 mã hoặc ≥2 mã thì xuống hàng chờ.
+
+Dòng này trước đây ghi "không rút mã từ tên". Bản đó đúng chữ nhưng vô
+dụng trên dữ liệu thật: tên trên sổ MISA là văn xuôi (`"Chân máy giặt Đa
+Năng - chiều"`), không bao giờ bằng một mã trần (`"SJ-X198V-DG"`), nên
+so cả câu thì gần như mọi dòng đều phải gán tay. Chủ dự án duyệt việc
+vượt; phần còn lại của kỷ luật KHÔNG đổi.
+
+**Cách 2 chạy trên BIÊN TỪ, không bao giờ trên chuỗi con.** `65C6K` và
+`65C6KS` là hai model khác nhau. Dò chuỗi con thì `"65C6KS"` chứa
+`"65C6K"` — một chiếc tivi bị gán sang model khác, im lặng, và sai tiền.
+Câu phải được cắt thành từ trước rồi mới so cả token. Có bài kiểm ghim
+đúng ca này (`kiem/khop-ma.js`), kể cả ca hiểm nhất: mã dài KHÔNG có
+trên bảng giá, lúc đó không có phép "nhiều mã" nào cứu.
+
+Kèm một rào: cụm khớp phải có ít nhất một CHỮ SỐ. Mất một khớp đúng thì
+dòng xuống gán tay; khớp sai thì sai tiền.
 
 Màn gán đã có sẵn bên Tracking và được dựng đúng cho việc này. Hai lựa
 chọn, không có lựa chọn thứ ba: một mã ĐÃ CÓ trên bảng giá, hoặc "bỏ qua".

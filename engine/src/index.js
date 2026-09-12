@@ -10,10 +10,11 @@ import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
 import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
 } from "./dong-hang.mjs";
+import { khoaTenHang, khopMaChoBangDon } from "./khop-ma.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.5.0-p2b";
+const PHIEN_BAN = "0.6.0-p4";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -129,5 +130,42 @@ export default class extends WorkerEntrypoint {
   /** Kỳ này có những line nào, mỗi line bao nhiêu đơn — để dựng tab con. */
   async tomTatLine(dongCuaKy, bangLine) {
     return tomTatLine(dongCuaKy, bangLine);
+  }
+
+  /* ─────────── P4 — khớp mã sản phẩm với bảng giá Tracking ───────────
+   *
+   * Hai hàm dưới đây lên TRƯỚC lượt Gateway gọi chúng (bẫy số 4). Lượt này
+   * là lượt "lên trước"; Gateway nối vào ở lượt merge sau.
+   */
+
+  /** Bảng đơn hàng ĐÃ ĐIỀN mã bảng giá, hãng, ngành hàng — cộng bản kê "còn
+   *  bao nhiêu tên chưa có mã, vì lý do gì". Xem `khop-ma.mjs` cho bốn bậc
+   *  khớp và lý do khớp theo biên từ.
+   *
+   *  `nguonTracking` = ba nhánh `/api/xuat/` đã chiếu ra (`board`, `alias`,
+   *  `inv_map`) — Gateway đi lấy, Engine chỉ tính. Khoá `X-Report-Key` vì vậy
+   *  không bao giờ có mặt trong Worker này.
+   *
+   *  GỘP với `dungBangDon()` thay vì thêm một hàm nhận lại bảng vừa dựng:
+   *  đổi chữ ký một hàm Gateway đang gọi thật là tự chuốc bẫy số 4, còn bắn
+   *  cả bảng qua Service Binding hai lượt là trả giá băng thông cho đúng một
+   *  phép gộp. `dungBangDon()` cũ KHÔNG đổi một dòng nào.
+   *
+   *  Ném lỗi khi bảng giá Tracking rỗng hay sai kiểu — Gateway phải trả lỗi
+   *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
+   *  "Nguồn hỏng thì BÁO LỖI"). */
+  async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking) {
+    return khopMaChoBangDon(
+      dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking);
+  }
+
+  /** Khoá `inv/map` của một câu tên hàng.
+   *
+   *  Gateway hỏi Engine thay vì tự tính: công thức khoá là một LUẬT KHỚP MÃ,
+   *  và luật thì ở Engine (LUẬT SỐ 1). Gateway dùng nó để đối chiếu với khoá
+   *  mà `POST /api/inv-map` của Tracking dội lại — hai bên lệch công thức thì
+   *  lộ ra ngay ở lượt ghi đầu tiên, không phải lúc giá vốn đã sai. */
+  async khoaTenHang(ten) {
+    return khoaTenHang(ten);
   }
 }

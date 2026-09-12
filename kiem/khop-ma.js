@@ -1,0 +1,283 @@
+/* KHỚP TÊN HÀNG → MÃ BẢNG GIÁ (engine/src/khop-ma.mjs).
+ *
+ * Bộ này canh bốn thứ, xếp theo mức đắt nếu hỏng:
+ *
+ *  A. KHOÁ LỆCH VỚI TRACKING. Công thức khoá `inv/map` phải giống HỆT bản
+ *     của Tracking. Lệch một ký tự là quyết định gán tay của hai app rơi vào
+ *     hai ô khác nhau — không ai thấy cho tới lúc giá vốn sai. Chạy CHÍNH mã
+ *     của Tracking cạnh mã của repo này, cộng một loạt giá trị ghim tuyệt
+ *     đối cho trường hợp không có repo Tracking bên cạnh.
+ *
+ *  B. KHỚP SAI MÃ. `65C6K` và `65C6KS` là hai model khác nhau — chủ dự án
+ *     nêu đích danh ca này. Dò chuỗi con thì `"65C6KS"` chứa `"65C6K"` và
+ *     một chiếc tivi bị gán sang model khác, sai tiền và im lặng. Bộ này
+ *     dựng đúng cảnh ấy.
+ *
+ *  C. ĐOÁN THAY NGƯỜI. Hai mã trong một câu, một cụm bị hai mã cùng nhận,
+ *     một mục từ điển toàn chữ — cả ba phải xuống HÀNG CHỜ, không được đoán.
+ *     Và quyết định của người phải thắng mọi phép khớp của máy, kể cả `"-"`.
+ *
+ *  D. TRẢ RỖNG THAY VÌ BÁO LỖI. Bảng giá Tracking hỏng mà trả một bảng "mọi
+ *     dòng đều chưa khớp" là để một sự cố mạng nói một KẾT LUẬN NGHIỆP VỤ
+ *     thay người (CLAUDE.md). Phải NÉM LỖI.
+ */
+const path = require('path');
+const { ok, xong, cat, coTracking, docTracking, TRK } = require('./khung');
+const GOC = path.resolve(__dirname, '..');
+
+(async () => {
+  const K = await import('file://' + path.join(GOC, 'engine/src/khop-ma.mjs'));
+
+  /* ─────────── A. Khoá phải khớp Tracking ─────────── */
+
+  console.log('\nA) Công thức khoá inv/map');
+
+  /* Ghim TUYỆT ĐỐI — chạy cả khi không có repo Tracking bên cạnh. Đây đúng
+     những giá trị `kiem/phan-loai-ten-hang.js` bên Tracking đang canh. */
+  ok('dấu tiếng Việt bị XOÁ, không quy về chữ không dấu',
+    K.khoaTenHang('Tủ lạnh Sharp SJ-X198V-DG'), 'N_TLNHSHARPSJX198VDG');
+  ok('bỏ mọi ký tự ngoài A-Z0-9',
+    K.khoaTenHang('Tivi 75" Q6FA, model 2026'), 'N_TIVI75Q6FAMODEL2026');
+  ok('câu rỗng ra khoá trần', K.khoaTenHang(''), 'N_');
+  ok('cắt ở 80 ký tự', K.khoaTenHang('A'.repeat(200)).length, 82);
+  ok('null ra khoá trần', K.khoaTenHang(null), 'N_');
+
+  /* Phép chéo hai repo — chạy CHÍNH `invKeyOfName()` của Tracking. */
+  if (!coTracking()) {
+    console.log('  – BỎ QUA phép chéo với Tracking: không thấy repo ở ' + TRK);
+  } else {
+    console.log('  (đối chiếu với repo Tracking ở ' + TRK + ')');
+    const js = docTracking('public/index.html')
+      .match(/<script>([\s\S]*?)<\/script>/)[1];
+    const banTracking = eval('(function(){\n'
+      + cat(js, /function normCode\(c\)\{[^\n]*\n/)
+      + cat(js, /const invKeyOfName = [^\n]*\n/)
+      + 'return invKeyOfName;\n})()');
+
+    const CAU = [
+      'Tủ lạnh Sharp SJ-X198V-DG',
+      'Chân máy giặt Đa Năng - chiều',
+      'Tivi TCL 65C6K', 'Tivi TCL 65C6KS',
+      'Điều hoà Daikin FTKB35YVMV / RKB35YVMV',
+      'Tivi 75" Q6FA, model 2026',
+      '  khoảng trắng hai đầu  ', 'A'.repeat(200), '', '---',
+    ];
+    for (const c of CAU)
+      ok('khoá khớp Tracking: ' + (c.length > 26 ? c.slice(0, 26) + '…' : c || '(rỗng)'),
+        K.khoaTenHang(c), banTracking(c));
+  }
+
+  /* ─────────── Bảng giá giả, dựng đúng hình dạng /api/xuat/ ─────────── */
+
+  /* `alt` là MẢNG ở đầu ra `/api/xuat/board` (Tracking cắt chuỗi ngăn phẩy
+     trước khi trả). Dựng sai hình dạng này là bài kiểm chạy trên một thế giới
+     không có thật. */
+  const BOARD = {
+    '65C6K':      { name: '65C6K', alt: [], brand: 'TCL', category_label: 'Tivi' },
+    '65C6KS':     { name: '65C6KS', alt: [], brand: 'TCL', category_label: 'Tivi' },
+    'X198VDGEN':  { name: 'SJ-X198V-DG', alt: ['X198V'], brand: 'Sharp', category_label: 'Tủ lạnh' },
+    'K65S20M2':   { name: 'K-65S20M2', alt: [], brand: 'Sony', category_label: 'Tivi' },
+    'K55S20M2':   { name: 'K-55S20M2', alt: [], brand: 'Sony', category_label: 'Tivi' },
+    'QUAT':       { name: 'Quạt', alt: [], brand: null, category_label: 'Quạt' },
+    'MACU':       { name: 'NR-BX471', alt: [], brand: 'Panasonic', category_label: 'Tủ lạnh' },
+    'MAMOI':      { name: 'NR-BX999', alt: [], brand: 'Panasonic', category_label: 'Tủ lạnh' },
+  };
+  const ALIAS = { MACU: 'MAMOI' };
+  const bo = (invMap) => K.dungBoKhop({ board: BOARD, alias: ALIAS, inv_map: invMap || {} });
+
+  /* ─────────── B. Khớp tự động, và chỗ nó phải KHÔNG khớp ─────────── */
+
+  console.log('\nB) Khớp cụm trọn trong tên');
+
+  let b = bo();
+  ok('khớp mã đứng riêng thành một từ',
+    K.khopTenHang('Tivi TCL 65C6K', b), { ma: '65C6K', nguon: 'tu-dong', khoa: 'N_TIVITCL65C6K', ly_do: null });
+
+  /* Ca chủ dự án nêu đích danh. Dò chuỗi con là gán nhầm ở đúng đây. */
+  ok('65C6KS KHÔNG bị nuốt thành 65C6K',
+    K.khopTenHang('Tivi TCL 65C6KS', b).ma, '65C6KS');
+  ok('65C6K KHÔNG khớp sang 65C6KS',
+    K.khopTenHang('Tivi TCL 65C6K', b).ma, '65C6K');
+
+  /* Ca NGUY HIỂM NHẤT, và là lý do phép khớp chạy trên biên từ: bảng giá có
+     `65C6K` nhưng KHÔNG có `65C6KS`. Dò chuỗi con thì `"65C6KS"` chứa
+     `"65C6K"`, chỉ khớp được đúng một mã, nên không có phép "nhiều mã" nào
+     cứu — máy gán thẳng chiếc tivi sang model khác, im lặng, và tiền sai.
+     Khớp theo token thì `65C6KS` đơn giản không phải `65C6K`. */
+  {
+    const chiCoMaNgan = { '65C6K': BOARD['65C6K'] };
+    const bn = K.dungBoKhop({ board: chiCoMaNgan, alias: {}, inv_map: {} });
+    ok('mã dài KHÔNG có trên bảng giá thì xuống gán tay, KHÔNG gán sang mã ngắn',
+      K.khopTenHang('Tivi TCL 65C6KS', bn),
+      { ma: null, nguon: null, khoa: 'N_TIVITCL65C6KS', ly_do: 'chua-khop' });
+    ok('cùng bảng giá ấy, mã ngắn vẫn khớp đúng',
+      K.khopTenHang('Tivi TCL 65C6K', bn).ma, '65C6K');
+  }
+
+  ok('khớp mã nhiều từ (gạch nối tách thành ba từ)',
+    K.khopTenHang('Tủ lạnh Sharp SJ-X198V-DG', b).ma, 'X198VDGEN');
+  ok('name và alt cùng trỏ một mã vẫn là MỘT mã',
+    K.khopTenHang('Tủ lạnh SJ-X198V-DG (X198V)', b).ma, 'X198VDGEN');
+  ok('khớp được qua alt',
+    K.khopTenHang('Tủ lạnh Sharp X198V', b).ma, 'X198VDGEN');
+
+  ok('mã dính liền trong câu vẫn khớp (khoá board là một từ)',
+    K.khopTenHang('Tu lanh X198VDGEN', b).ma, 'X198VDGEN');
+
+  /* Mã bị cắt rời bởi khoảng trắng KHÔNG còn là token ấy nữa — bỏ sót, và
+     bỏ sót là đúng: dòng xuống gán tay chứ không gán bừa. */
+  ok('mã bị gõ tách làm đôi thì KHÔNG khớp',
+    K.khopTenHang('Tivi TCL 65 C6K', b).ly_do, 'chua-khop');
+
+  ok('không có mã nào trong câu → chưa khớp',
+    K.khopTenHang('Chân máy giặt Đa Năng - chiều', b),
+    { ma: null, nguon: null, khoa: 'N_CHNMYGITANNGCHIU', ly_do: 'chua-khop' });
+
+  /* ─────────── C. Không đoán thay người ─────────── */
+
+  console.log('\nC) Chỗ máy phải im và nhường cho người');
+
+  ok('hai mã trong một câu → hàng chờ, không chọn bên nào',
+    K.khopTenHang('Tivi Sony K-65S20M2 (thay thế K-55S20M2)', b).ly_do, 'nhieu-ma');
+  ok('hai mã trong một câu thì KHÔNG ra mã nào',
+    K.khopTenHang('Tivi Sony K-65S20M2 (thay thế K-55S20M2)', b).ma, null);
+
+  /* Rào an toàn: mục từ điển toàn chữ không được vào từ điển, nếu không nó
+     nuốt đúng những từ thường gặp trong câu văn xuôi của sổ. */
+  ok('mã toàn chữ ("Quạt") không tự khớp',
+    K.khopTenHang('Quạt Panasonic để bàn', b).ly_do, 'chua-khop');
+
+  /* Alias: quyết định gộp mã là của người, dòng phải chảy theo. */
+  ok('khớp tự động đi qua alias về mã chính',
+    K.khopTenHang('Tủ lạnh Panasonic NR-BX471', b).ma, 'MAMOI');
+
+  /* Bậc 1 & 2 — quyết định của người thắng máy. */
+  let bq = bo({ N_TIVITCL65C6K: '65C6KS' });
+  ok('quyết định của người ĐÈ phép khớp của máy',
+    K.khopTenHang('Tivi TCL 65C6K', bq), { ma: '65C6KS', nguon: 'quyet-dinh', khoa: 'N_TIVITCL65C6K', ly_do: null });
+
+  bq = bo({ N_TIVITCL65C6K: '-' });
+  ok('"-" là một quyết định, không phải giá trị rỗng',
+    K.khopTenHang('Tivi TCL 65C6K', bq), { ma: null, nguon: 'bo-qua', khoa: 'N_TIVITCL65C6K', ly_do: null });
+  ok('"bỏ qua" KHÔNG rơi xuống khớp tự động',
+    K.khopTenHang('Tivi TCL 65C6K', bq).nguon, 'bo-qua');
+
+  bq = bo({ N_CHNMYGITANNGCHIU: 'X198VDGEN' });
+  ok('gán tay cứu được câu máy chịu thua',
+    K.khopTenHang('Chân máy giặt Đa Năng - chiều', bq).ma, 'X198VDGEN');
+
+  bq = bo({ N_TIVITCL65C6K: 'MACU' });
+  ok('quyết định trỏ mã phụ vẫn quy về mã chính',
+    K.khopTenHang('Tivi TCL 65C6K', bq).ma, 'MAMOI');
+
+  /* Mã bị xoá khỏi bảng giá sau khi người ta gán: không hiện mã chết, và
+     cũng không lặng lẽ tự khớp lại. */
+  bq = bo({ N_TIVITCL65C6K: 'DA-BI-XOA' });
+  ok('quyết định trỏ mã đã xoá → nói ra, không tự khớp lại',
+    K.khopTenHang('Tivi TCL 65C6K', bq), { ma: null, nguon: null, khoa: 'N_TIVITCL65C6K', ly_do: 'ma-da-xoa' });
+
+  /* ─────────── D. Nguồn hỏng phải NÉM LỖI ─────────── */
+
+  console.log('\nD) Nguồn hỏng thì báo lỗi, không trả rỗng');
+
+  const nem = (f) => { try { f(); return false; } catch (e) { return true; } };
+  ok('bảng giá rỗng → ném lỗi', nem(() => K.dungBoKhop({ board: {} })), true);
+  ok('không có bảng giá → ném lỗi', nem(() => K.dungBoKhop({})), true);
+  ok('bảng giá sai kiểu → ném lỗi', nem(() => K.dungBoKhop({ board: [] })), true);
+  ok('nguồn là null → ném lỗi', nem(() => K.dungBoKhop(null)), true);
+  /* `inv_map` rỗng thì KHÁC — "chưa ai phân loại dòng nào" là trạng thái
+     thật của một hệ vừa triển khai, không phải nguồn hỏng. */
+  ok('inv_map rỗng KHÔNG phải nguồn hỏng',
+    nem(() => K.dungBoKhop({ board: BOARD, inv_map: {} })), false);
+
+  /* ─────────── Bảng đơn: điền mã, hãng, ngành hàng, và bản kê còn nợ ─────────── */
+
+  console.log('\nE) Điền vào bảng đơn hàng');
+
+  const D = await import('file://' + path.join(GOC, 'engine/src/dong-hang.mjs'));
+  const dg = (o) => ({
+    ngay: o.ngay || '2026-09-08', so_ct: o.ct, ten_hang: o.ten,
+    so_luong: 1, don_gia: o.tien, doanh_so: o.tien,
+    chiet_khau: o.ck || 0, nhan_vien: 'Tín Phát 0869931931', imei: null,
+  });
+  const DONG = {
+    a: dg({ ct: 'BH1', ten: 'Tivi TCL 65C6K', tien: 9000000 }),
+    b: dg({ ct: 'BH1', ten: 'Chân máy giặt Đa Năng - chiều', tien: 200000, ck: 50000 }),
+    c: dg({ ct: 'BH2', ten: 'Chân máy giặt Đa Năng - chiều', tien: 200000 }),
+    d: dg({ ct: 'BH2', ten: 'Tủ lạnh Sharp SJ-X198V-DG', tien: 12000000 }),
+  };
+  const BANG_LINE = { 'Tín Phát': { thu_tu: 1, nguon: ['Tín Phát 0869931931'] } };
+
+  const bang = D.dungBangDon(DONG, {}, BANG_LINE, null);
+  K.khopMaChoBangDon(bang, { board: BOARD, alias: ALIAS, inv_map: {} });
+
+  const moiDong = [];
+  for (const ng of bang.ngay) for (const don of ng.don) for (const d of don.dong) moiDong.push(d);
+  const tim = (ten) => moiDong.find(d => d.ma_san_pham === ten);
+
+  ok('dòng khớp được có mã', tim('Tivi TCL 65C6K').ma_bang_gia, '65C6K');
+  ok('dòng khớp được ghi rõ nguồn là máy', tim('Tivi TCL 65C6K').nguon_ma, 'tu-dong');
+  /* Hãng và ngành hàng tra THẲNG từ bảng giá — không dựng bộ phân loại
+     thương hiệu thứ hai (CLAUDE.md). */
+  ok('hãng lấy từ bảng giá', tim('Tivi TCL 65C6K').hang, 'TCL');
+  ok('ngành hàng lấy từ bảng giá', tim('Tivi TCL 65C6K').nganh_hang, 'Tivi');
+  ok('Tracking không dám khẳng định hãng thì để null, không đoán',
+    tim('Tủ lạnh Sharp SJ-X198V-DG').hang, 'Sharp');
+
+  ok('dòng chưa khớp không có mã', tim('Chân máy giặt Đa Năng - chiều').ma_bang_gia, null);
+  ok('dòng chưa khớp nói rõ lý do', tim('Chân máy giặt Đa Năng - chiều').ly_do_chua_ma, 'chua-khop');
+  ok('dòng chưa khớp vẫn mang khoá để gán tay',
+    tim('Chân máy giặt Đa Năng - chiều').khoa_ten, 'N_CHNMYGITANNGCHIU');
+
+  /* Giá vốn/lợi nhuận thuộc lát cắt sau — lát này không được chạm vào. */
+  ok('giá nhập vẫn để trống ở lát cắt này', tim('Tivi TCL 65C6K').gia_nhap, null);
+  ok('lợi nhuận vẫn để trống ở lát cắt này', tim('Tivi TCL 65C6K').loi_nhuan, null);
+
+  /* Dòng chiết khấu là một phép trừ của cả đơn, không phải mặt hàng — đưa nó
+     vào hàng chờ gán mã là mời người dùng phân loại một con số. */
+  const ck = moiDong.find(d => d.la_chiet_khau);
+  ok('có dòng chiết khấu để soi', !!ck, true);
+  ok('dòng chiết khấu không vào hàng chờ', ck.nguon_ma, 'khong-phai-hang');
+  ok('dòng chiết khấu không mang khoá tên', ck.khoa_ten, null);
+  /* Cùng một hình dạng dòng cho cả hai loại — màn hình đọc một bộ trường,
+     không phải nhớ dòng nào có trường nào. */
+  ok('dòng chiết khấu vẫn đủ trường như dòng hàng',
+    [ck.ma_bang_gia, ck.ly_do_chua_ma], [null, null]);
+
+  const tt = bang.tom_tat_ma;
+  ok('đếm đúng số dòng hàng thật (không tính chiết khấu)', tt.tong_dong, 4);
+  ok('đếm đúng số dòng đã có mã', tt.da_co_ma, 2);
+  ok('đếm đúng số dòng máy tự khớp', tt.tu_dong, 2);
+  ok('đếm đúng số dòng còn nợ mã', tt.chua_co_ma, 2);
+
+  /* Hàng chờ gom theo TÊN chứ không theo dòng: gán một tên là xong mọi dòng
+     mang tên đó. Hai dòng cùng tên ở hai đơn khác nhau ⟹ MỘT mục. */
+  ok('hàng chờ gom theo tên, không theo dòng', tt.chua_khop.length, 1);
+  ok('mục hàng chờ nói rõ có bao nhiêu dòng chịu ảnh hưởng',
+    tt.chua_khop[0], { ten: 'Chân máy giặt Đa Năng - chiều',
+      khoa: 'N_CHNMYGITANNGCHIU', ly_do: 'chua-khop', so_dong: 2 });
+
+  /* Gán một tên rồi dựng lại: cả hai dòng phải cùng khỏi. */
+  const bang2 = D.dungBangDon(DONG, {}, BANG_LINE, null);
+  K.khopMaChoBangDon(bang2, { board: BOARD, alias: ALIAS,
+    inv_map: { N_CHNMYGITANNGCHIU: 'X198VDGEN' } });
+  ok('gán MỘT tên là xong MỌI dòng mang tên đó', bang2.tom_tat_ma.chua_co_ma, 0);
+  ok('hàng chờ sạch sau khi gán', bang2.tom_tat_ma.chua_khop.length, 0);
+  ok('đếm đúng số dòng do người quyết định', bang2.tom_tat_ma.quyet_dinh, 2);
+
+  /* "-" không phải "đã có mã", cũng không phải "còn nợ" — nó là một cột
+     riêng, và gộp nó vào bên nào cũng làm bản kê nói sai. */
+  const bang3 = D.dungBangDon(DONG, {}, BANG_LINE, null);
+  K.khopMaChoBangDon(bang3, { board: BOARD, alias: ALIAS,
+    inv_map: { N_CHNMYGITANNGCHIU: '-' } });
+  ok('"bỏ qua" đếm riêng, không lẫn vào đã-có-mã', bang3.tom_tat_ma.bo_qua, 2);
+  ok('"bỏ qua" không còn nằm ở hàng chờ', bang3.tom_tat_ma.chua_co_ma, 0);
+  ok('"bỏ qua" không được đếm là đã có mã', bang3.tom_tat_ma.da_co_ma, 2);
+
+  /* Bảng giá hỏng phải nổ TRƯỚC khi trả ra một bảng "mọi dòng chưa khớp". */
+  const bang4 = D.dungBangDon(DONG, {}, BANG_LINE, null);
+  ok('bảng giá hỏng → cả lượt dựng bảng ném lỗi',
+    nem(() => K.khopMaChoBangDon(bang4, { board: {} })), true);
+
+  xong();
+})();
