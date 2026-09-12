@@ -660,5 +660,51 @@ const GOC = path.resolve(__dirname, '..');
     ok('đếm đúng số dòng 0 đồng, không tính BTL', b.tom_tat_gia.so_dong_0d, 1);
   }
 
+  /* ─────── CÁCH VIẾT của mã — hiện đúng như Tracking hiện ─────── */
+
+  console.log('\nZ) cachVietMa — mã thật là khoá, cách viết là thứ hiện ra');
+  {
+    /* Tracking lưu `board/<normCode(mã)>`: hoa hết, bỏ mọi ký tự không phải
+       chữ-số. Nên KHOÁ là `RT268WEPMV68` còn mã người ta đọc và gõ là
+       `RT268WE-PMV(68)`, và cách viết ấy nằm ở `board[k].name`. V2 hiện khoá
+       nên cùng một mặt hàng đọc ra hai kiểu ở hai màn hình — chủ dự án bắt
+       được 12/09/2026. */
+    const board = {
+      RT268WEPMV68: { name: 'RT268WE-PMV(68)', brand: 'Samsung' },
+      SJX198VDG: { name: 'SJ-X198V-DG' },
+      TIVI: { name: 'Giá treo Tivi' },
+      '65S30': {},
+      QUAT: { name: '   ' },
+      LG10KG: { name: 'lg-10kg' },
+    };
+    ok('trả về cách viết khi `name` là một cách viết của chính mã ấy',
+       K.cachVietMa('RT268WEPMV68', board), 'RT268WE-PMV(68)');
+    ok('  · ca thứ hai, dấu gạch ở giữa', K.cachVietMa('SJX198VDG', board), 'SJ-X198V-DG');
+    ok('  · khác hoa/thường vẫn là cùng một mã', K.cachVietMa('LG10KG', board), 'lg-10kg');
+
+    /* Rào quan trọng nhất. `name` KHÔNG phải lúc nào cũng là một mã: nhánh
+       "thêm mã mới" bên Tracking đẻ ra được những dòng mà `name` là cả một
+       câu tên hàng. Cột này rộng 240px và vừa được chốt hiện MÃ NGẮN thay câu
+       tên kế toán ở P5 — thả `name` vào vô điều kiện là lôi đúng mấy câu văn
+       xuôi ấy quay lại, tức phá chính chốt vừa làm. */
+    ok('KHÔNG lấy `name` khi nó là một câu tên hàng, không phải cách viết',
+       K.cachVietMa('TIVI', board), 'TIVI');
+    ok('không có `name` thì hiện mã thật', K.cachVietMa('65S30', board), '65S30');
+    ok('`name` chỉ có khoảng trắng cũng hiện mã thật', K.cachVietMa('QUAT', board), 'QUAT');
+    ok('mã không có trên bảng giá thì hiện chính nó',
+       K.cachVietMa('KHONGCOTRENBANG', board), 'KHONGCOTRENBANG');
+
+    /* Không được chết vì dữ liệu thiếu — hàm này chạy cho MỌI dòng của bảng. */
+    ok('mã rỗng → null', K.cachVietMa(null, board), null);
+    ok('board rỗng → chính mã', K.cachVietMa('65S30', null), '65S30');
+
+    /* Và nó là CÁCH VIẾT, không phải danh tính: mọi phép khớp vẫn phải ra
+       KHOÁ. Nếu `khopTenHang` bắt đầu trả cách viết thì tra giá theo mã sẽ
+       trượt sạch — nên ghim luôn chiều ngược lại. */
+    const bo = K.dungBoKhop({ board, alias: {}, inv_map: {} });
+    ok('khopTenHang vẫn trả KHOÁ, không trả cách viết',
+       K.khopTenHang('Tủ lạnh Samsung RT268WE-PMV(68)', bo).ma, 'RT268WEPMV68');
+  }
+
   xong();
 })();

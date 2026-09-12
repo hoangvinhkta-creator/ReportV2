@@ -144,6 +144,33 @@ export function quyAlias(ma, bangAlias) {
   return cur;
 }
 
+/** CÁCH VIẾT của một mã, đúng như Tracking đang hiện nó ra.
+ *
+ *  Tracking lưu `board/<normCode(mã)>` — hoa hết, bỏ mọi ký tự không phải
+ *  chữ-số — nên KHOÁ là `RT268WEPMV68` trong khi mã người ta đọc và gõ là
+ *  `RT268WE-PMV(68)`. Cách viết ấy nằm ở `board[k].name`, và màn Bảng giá bên
+ *  Tracking hiện đúng `row.name || k` (`editCode()` gọi thẳng nó là "cách
+ *  viết", đối lại với "mã thật" là khoá).
+ *
+ *  Bản trước của V2 hiện KHOÁ, nên cùng một mặt hàng đọc ra hai kiểu ở hai
+ *  màn hình — chủ dự án bắt được 12/09/2026.
+ *
+ *  Chỉ nhận `name` khi nó là MỘT CÁCH VIẾT CỦA CHÍNH MÃ ẤY (`normCode(name)`
+ *  ra đúng khoá). Vì sao phải có rào đó: `name` không phải lúc nào cũng là
+ *  một mã — nhánh "thêm mã mới" bên Tracking đẻ ra được những dòng mà `name`
+ *  là cả một câu tên hàng (khoá `TIVI`, `name` = `"Giá treo Tivi"`). Cột này
+ *  rộng 240px và vừa được chốt hiện MÃ NGẮN thay câu tên kế toán ở P5; thả
+ *  `name` vào vô điều kiện là lôi đúng mấy câu văn xuôi ấy quay lại.
+ *
+ *  Đây là CÁCH VIẾT, không phải danh tính: mọi phép khớp, tra giá, gom nhóm
+ *  vẫn chạy trên khoá. Nó chỉ đi ra ngoài để hiện lên màn hình. */
+export function cachVietMa(ma, board) {
+  if (!ma) return null;
+  const row = laObj(board) ? board[ma] : null;
+  const ten = row && typeof row.name === "string" ? row.name.trim() : "";
+  return ten && maHoa(ten) === ma ? ten : ma;
+}
+
 /** Bộ khớp dựng MỘT LẦN cho mỗi lượt đọc, rồi dùng lại cho mọi dòng.
  *
  *  `nguon` là ba nhánh Tracking đã chiếu ra, đúng hình dạng `/api/xuat/` trả:
@@ -360,6 +387,7 @@ export function khopMaChoBangDon(bang, nguon, ky) {
 
         if (kq.ma) {
           const row = bo.board[kq.ma];
+          d.ma_hien = cachVietMa(kq.ma, bo.board);
           d.hang = row.brand ?? null;
           d.nganh_hang = row.category_label ?? null;
           if (kq.nguon === "tu-dong") tu_dong++; else quyet_dinh++;

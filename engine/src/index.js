@@ -11,7 +11,7 @@ import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
 } from "./dong-hang.mjs";
 import {
-  khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon,
+  khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon, cachVietMa,
 } from "./khop-ma.mjs";
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
@@ -254,6 +254,28 @@ export default class extends WorkerEntrypoint {
    *  vụ nên nó ở Engine. */
   async maCanGiaVon(dongCuaKy, nguonTracking, ky) {
     return maCanGiaVon(dongCuaKy, nguonTracking, ky);
+  }
+
+  /** Điền CÁCH VIẾT cho danh sách mã của màn gán tay.
+   *
+   *  Gateway đã có sẵn `board` trong tay và chỉ cần thêm một chuỗi cho mỗi
+   *  mục, nên trông như nó tự tính được. Nó KHÔNG được tự tính: phép quyết
+   *  "chuỗi này có phải một cách viết của chính mã ấy không" chạy trên
+   *  `maHoa()` — đúng công thức khoá `inv/map`, một LUẬT KHỚP MÃ. Chép nó
+   *  sang Gateway là dựng bản thứ hai của một công thức mà cả hệ thống đang
+   *  dựa vào để không gán nhầm mặt hàng (LUẬT SỐ 1, và cùng lý do
+   *  `khoaTenHang` cũng phải hỏi qua đây).
+   *
+   *  Nhận `{ ma, ten }` chứ không nhận cả `board`: bảng giá ~400 KB, mà thứ
+   *  hàm này cần chỉ là hai chuỗi mỗi dòng — và danh sách ấy Gateway vốn
+   *  đang dựng sẵn để trả cho trình duyệt. */
+  async cachVietDsMa(ds) {
+    if (!Array.isArray(ds)) return [];
+    return ds.map((m) => {
+      const ma = m && m.ma;
+      const gia = { [ma]: { name: m && m.ten } };
+      return Object.assign({}, m, { hien: cachVietMa(ma, gia) });
+    });
   }
 
   /** Khoá `inv/map` của một câu tên hàng.
