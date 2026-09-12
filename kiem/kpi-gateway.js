@@ -211,9 +211,9 @@ const GOC = path.resolve(__dirname, '..');
     /* Gateway phải TRUYỀN hai nhánh xuống Engine — đọc rồi mà không truyền là
        đúng lớp lỗi này, ở tầng dưới một bậc. */
     ok('Gateway truyền bảng KPI + tick vào dungBangDonKemMa',
-       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal\)/.test(GW), true);
+       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal\)/.test(GW), true);
     ok('  · và vào cả đường ngoài phạm vi khớp mã (dungBangDonSuaTay)',
-       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal\)/.test(GW), true);
+       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal\)/.test(GW), true);
   }
 
   /* ─────────── G. Ô tick không mở oan màn gán mã ─────────── */
@@ -622,9 +622,19 @@ const GOC = path.resolve(__dirname, '..');
        /async function dungBangDonHang\(env, ky, line, rid\)/.test(GW), true);
     ok('  · GET /api/don-hang đi qua chính nó',
        /return dungBangDonHang\(env, ky, line, rid\);/.test(GW), true);
+    /* Từ lượt bonus (12/09/2026) phần ghép bảng mới nằm ở MỘT hàm dùng chung
+       (`kemBangMoi`) cho cả `sua-dong` lẫn `bonus` — hai đường ghi mà mỗi
+       lượt bấm đều làm đổi số trên đúng cái bảng đang mở. Hai bản chép là
+       hai bản trôi khỏi nhau, và chỗ trôi ở đây là một đường ghi lặng lẽ
+       thôi trả bảng rồi màn hình chờ thêm một vòng mạng mà không ai biết. */
     ok('  · và lượt ghi cũng vậy',
-       /bang = await dungBangDonHang\(env, ky, than\.line, rid\);/.test(GW), true);
-    ok('  · trả về dưới tên `bang_moi`', /bang_moi: bang/.test(GW), true);
+       /await dungBangDonHang\(env, ky, than\.line, rid\)/.test(GW), true);
+    ok('  · trả về dưới tên `bang_moi`', /bang_moi: await dungBangDonHang/.test(GW), true);
+    /* Đếm LỜI GỌI (`return kemBangMoi(...`), không đếm cả dòng khai hàm —
+       cùng cái bẫy đã dính một lần với `apBangMoi`. Ba chỗ: sửa dòng, đặt
+       bonus, xoá bonus. */
+    ok('  · cả sua-dong lẫn bonus đều đi qua đúng một hàm ghép',
+       (GW.match(/return kemBangMoi\(env, ky, than, rid,/g) || []).length, 3);
 
     /* `line` từ THÂN request là dữ liệu người dùng gửi lên — phải kiểm hình
        dạng như mọi tham số khác, đúng luật đang áp cho `line` của query. Bỏ
@@ -634,13 +644,13 @@ const GOC = path.resolve(__dirname, '..');
     /* Chỉ dựng lại khi màn hình NÓI nó đang xem chỗ nào. Không có `line` thì
        không đoán — Gateway bản mới phục vụ trình duyệt bản cũ vẫn phải chạy. */
     ok('  · không có `line` thì không dựng, không đoán',
-       /typeof than\.line === "string" \|\| than\.line === null/.test(GW), true);
+       /typeof than\.line !== "string" && than\.line !== null\)\) return ketQua/.test(GW), true);
 
     /* Ca quan trọng nhất của cả khối: lượt GHI đã xong rồi. Dựng lại bảng
        hỏng mà ném ra ngoài là biến một lượt ghi THÀNH CÔNG thành một thông
        báo lỗi đỏ — nói dối về thứ vừa xảy ra, và người dùng sẽ bấm lại. */
     ok('dựng lại hỏng thì lượt GHI vẫn báo thành công, chỉ khuyết bảng',
-       /return bang \? \{ ghi: true, ky, khoa, bang_moi: bang \} : \{ ghi: true, ky, khoa \};/.test(GW), true);
+       /catch \(e\) \{[\s\S]{0,220}?return ketQua;/.test(GW), true);
     ok('  · và ghi một dòng cảnh báo để còn truy được',
        /canh_bao: "dung-lai-bang-hong:"/.test(GW), true);
   }

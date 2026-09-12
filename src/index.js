@@ -344,6 +344,11 @@ const DUONG_GIA_DUNG = "bc/quyetdinh/gia-dung";
    nhánh con thừa hưởng sẵn — không phải sửa rules rồi publish tay. */
 const DUONG_NGAY_CONG = "bc/quyetdinh/cong";
 
+/* Bonus lợi nhuận theo ĐƠN (chủ dự án chốt 12/09/2026). Nhánh RIÊNG như mọi
+   quyết định của người, khoá theo SỐ CHỨNG TỪ — xem `engine/src/bonus.mjs`
+   cho toàn bộ lý do. */
+const DUONG_BONUS = "bc/quyetdinh/bonus";
+
 /** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
  *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
  *  gạch ngang. Vẫn sắp xếp đúng thứ tự thời gian khi so chuỗi.
@@ -817,7 +822,7 @@ async function dungBangDonHang(env, ky, line, rid) {
      "Vs. Tháng trước" không có mặt ở tab của một line. Lấy nó ở mọi lượt là
      bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
      con số không ai nhìn. */
-  const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong,
+  const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong, bonus,
          kqNguon, doanhSoKyTruoc] = await Promise.all([
     docDb("bc/dong/" + ky, env),
     huaBangLine,
@@ -839,6 +844,10 @@ async function dungBangDonHang(env, ky, line, rid) {
        của một tháng cụ thể, và đọc cả nhánh là con số cộng dồn mãi mãi
        (đúng bài học `bc/khach` của P3). */
     docDb(DUONG_NGAY_CONG + "/" + ky, env),
+    /* Bonus đọc theo ĐÚNG kỳ đang xem, không đọc cả nhánh — nó là quyết định
+       về một ĐƠN của một tháng cụ thể, và đọc cả nhánh là con số cộng dồn
+       mãi mãi (đúng bài học `bc/khach` của P3). */
+    docDb(DUONG_BONUS + "/" + ky, env),
     huaNguon,
     line ? null : docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid),
   ]);
@@ -864,10 +873,12 @@ async function dungBangDonHang(env, ky, line, rid) {
   if (!bangKpi.ok) loi_nguon_kpi = "kpi:" + chiTietLoi(bangKpi);
   else if (!giaDung.ok) loi_nguon_kpi = "gia-dung:" + chiTietLoi(giaDung);
   else if (!bangCong.ok) loi_nguon_kpi = "ngay-cong:" + chiTietLoi(bangCong);
+  else if (!bonus.ok) loi_nguon_kpi = "bonus:" + chiTietLoi(bonus);
   if (loi_nguon_kpi) nhatKy({ rid, duong: "/api/don-hang", canh_bao: loi_nguon_kpi });
   const kpiVal = bangKpi.ok ? (bangKpi.val || null) : null;
   const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
   const congVal = bangCong.ok ? (bangCong.val || {}) : {};
+  const bonusVal = bonus.ok ? (bonus.val || {}) : {};
 
   /* ── Đợt 2 — giá vốn theo NGÀY BÁN. Phải chờ đợt 1 thật: hỏi Engine mã nào
      có mặt trong kỳ (cần `dong` + bảng giá), rồi mới hỏi Tracking giá của
@@ -899,10 +910,10 @@ async function dungBangDonHang(env, ky, line, rid) {
       nguon
         ? env.REPORT_ENGINE.dungBangDonKemMa(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal)
+          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal)
         : env.REPORT_ENGINE.dungBangDonSuaTay(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal),
+          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal),
     ]);
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ
@@ -926,6 +937,30 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
   }
   return dungBangDonHang(env, ky, line, rid);
 });
+
+/** Ghép BẢNG ĐÃ TÍNH LẠI vào phản hồi của một lượt GHI.
+ *
+ *  Máy chủ vừa ghi xong đang đứng cạnh mọi nguyên liệu để dựng lại bảng ấy;
+ *  bắt trình duyệt gọi thêm một `GET /api/don-hang` nữa là trả tiền hai vòng
+ *  mạng cho cùng một phép tính. Dùng chung cho `sua-dong` và `bonus` — hai
+ *  đường ghi mà mỗi lượt bấm đều làm đổi số trên đúng cái bảng đang mở.
+ *
+ *  Dựng lại HỎNG thì lượt ghi vẫn báo thành công — nó đã ghi rồi. Trả kết quả
+ *  ghi mà khuyết `bang_moi`, và màn hình rơi về đường cũ (tự gọi lại GET).
+ *  Ném ở đây là biến một lượt ghi ĐÃ XONG thành một thông báo lỗi đỏ, tức nói
+ *  dối về thứ vừa xảy ra — và người dùng sẽ bấm lại. */
+async function kemBangMoi(env, ky, than, rid, ketQua) {
+  if (!than || (typeof than.line !== "string" && than.line !== null)) return ketQua;
+  if (typeof than.line === "string" && than.line.length > 60)
+    throw new LoiXacThuc(400, "line-khong-hop-le");
+  try {
+    return { ...ketQua, bang_moi: await dungBangDonHang(env, ky, than.line, rid) };
+  } catch (e) {
+    nhatKy({ rid, canh_bao: "dung-lai-bang-hong:"
+      + ((e && (e.ly || e.message)) || "khong-ro") });
+    return ketQua;
+  }
+}
 
 /* =================== POST /api/sua-dong ===================
  * Sửa tay giá nhập / nơi nhập của một dòng, hoặc xoá dòng.
@@ -1001,19 +1036,7 @@ const suaDong = boc(true, async ({ nguoi, request, env, rid }) => {
    * true` mà khuyết `bang`, và màn hình rơi về đường cũ (tự gọi lại GET).
    * Ném ở đây là biến một lượt ghi ĐÃ XONG thành một thông báo lỗi đỏ, tức
    * nói dối về thứ vừa xảy ra. */
-  let bang = null;
-  if (than && (typeof than.line === "string" || than.line === null)) {
-    if (typeof than.line === "string" && than.line.length > 60)
-      throw new LoiXacThuc(400, "line-khong-hop-le");
-    try {
-      bang = await dungBangDonHang(env, ky, than.line, rid);
-    } catch (e) {
-      bang = null;
-      nhatKy({ rid, duong: "/api/sua-dong", canh_bao: "dung-lai-bang-hong:"
-        + ((e && (e.ly || e.message)) || "khong-ro") });
-    }
-  }
-  return bang ? { ghi: true, ky, khoa, bang_moi: bang } : { ghi: true, ky, khoa };
+  return kemBangMoi(env, ky, than, rid, { ghi: true, ky, khoa });
 });
 
 /* =================== POST /api/dat-kpi ===================
@@ -1342,6 +1365,64 @@ const ganMa = boc(true, async ({ nguoi, request, env, rid }) => {
   return { ghi: true, khoa: kq.khoa, ma: kq.ma };
 });
 
+/* =================== POST /api/bonus ===================
+ * Bonus lợi nhuận cho MỘT ĐƠN — chủ dự án chốt 12/09/2026.
+ *
+ * Khoá là SỐ CHỨNG TỪ (bền qua lần nhập lại; xem `engine/src/bonus.mjs`).
+ * Chỉ vai `quantri`: đây là tiền cộng thẳng vào lợi nhuận rồi vào doanh số
+ * quy đổi, tức vào bảng lương — cùng mức khoá với `/api/dat-kpi`.
+ *
+ * LÝ DO LÀ BẮT BUỘC, và chặn ở CẢ HAI đầu (màn hình và ở đây). Một khoản
+ * tiền cộng thêm mà không nói vì sao thì tháng sau không ai đối chiếu lại
+ * được, kể cả chính người đã gõ nó. Engine cũng bỏ qua bản ghi thiếu lý do —
+ * ba lớp, vì mất một khoản này là mất tiền lương của người thật.
+ */
+const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const ky = than && than.ky;
+  const so_ct = than && typeof than.so_ct === "string" ? than.so_ct.trim() : "";
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  /* Số chứng từ đi thẳng vào ĐƯỜNG DẪN Firebase, nên khuôn phải hẹp. MISA
+     cấp dạng `BH73891`; chấp nhận chữ-số-gạch để không từ chối một biến thể
+     hợp lệ, nhưng KHÔNG bao giờ chấp nhận `.`, `#`, `$`, `[`, `]`, `/` —
+     Firebase cấm chúng trong khoá, và một khoá lọt qua đây là một lượt ghi
+     hỏng ở tận tầng dưới với thông báo không ai đọc được. */
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(so_ct)) throw new LoiXacThuc(400, "so-ct-khong-hop-le");
+
+  /* Xoá bonus: gửi `tien: null`. Xoá HẲN bản ghi chứ không ghi `tien: 0` —
+     cùng lý do `gia-dung` xoá hẳn: một bản ghi "bonus bằng 0" làm "có mặt
+     trong nhánh" hết còn nghĩa, và nhánh phình theo số lần bấm thử. */
+  if (than.tien === null) {
+    const r = await xoaDb(DUONG_BONUS + "/" + ky + "/" + so_ct, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-bonus:" + chiTietLoi(r));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/bonus", ky, so_ct, viec: "xoa" });
+    return kemBangMoi(env, ky, than, rid, { ghi: true, ky, so_ct });
+  }
+
+  const tien = Number(than.tien);
+  if (!Number.isFinite(tien) || tien <= 0) throw new LoiXacThuc(400, "tien-khong-hop-le");
+  /* Trần 100 triệu: bonus là khoản cộng thêm vài chục nghìn tới vài trăm
+     nghìn. Một con số lớn hơn thế gần như chắc chắn là gõ thừa số 0 — và nó
+     đi thẳng vào doanh số quy đổi rồi vào lương, nên thà chặn một ca thật
+     hiếm còn hơn trả một bảng lương sai mà không ai soi lại. */
+  if (tien > 100000000) throw new LoiXacThuc(400, "tien-qua-lon");
+
+  const ly_do = typeof than.ly_do === "string"
+    ? than.ly_do.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim() : "";
+  if (!ly_do) throw new LoiXacThuc(400, "thieu-ly-do");
+  if (ly_do.length > 120) throw new LoiXacThuc(400, "ly-do-qua-dai");
+
+  /* Dấu vết người sửa đi CÙNG lượt ghi, không phải một lượt ghi thứ hai:
+     hai lượt ghi thì có một khoảng mà quyết định đã có mà chưa biết của ai. */
+  const r = await vaDb(DUONG_BONUS + "/" + ky + "/" + so_ct,
+    { tien: Math.round(tien), ly_do,
+      boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-bonus:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bonus", ky, so_ct, tien: Math.round(tien) });
+  return kemBangMoi(env, ky, than, rid, { ghi: true, ky, so_ct });
+});
+
 const API_ROUTES = new Map([
   ["GET /api/me", layMe],
   ["GET /api/bao-cao/suc-khoe", laySucKhoeCongTy],
@@ -1358,6 +1439,7 @@ const API_ROUTES = new Map([
   ["POST /api/dat-cong", datCong],
   ["POST /api/gia-dung", datGiaDung],
   ["POST /api/nap-kpi", napKpi],
+  ["POST /api/bonus", datBonus],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn

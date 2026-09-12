@@ -152,6 +152,17 @@ tự ở mục "P7" bên dưới; bước 1 (thêm `reports.tinphatcrm.com` vào
 Authorized domains của Firebase) làm TRƯỚC, thiếu nó là app không còn
 đường đăng nhập nào.
 
+- **Lượt 5 XONG (12/09/2026)** — một loạt góp ý UI của chủ dự án sau khi mở
+  thật: bỏ hai băng cảnh báo dưới bảng (chúng đọc `tom_tat_gia` tính TRƯỚC
+  lượt áp sửa tay nên đếm sai vĩnh viễn) và thay bằng BÔI ĐỎ TÊN CỘT; ba nút
+  lọc trên đầu cột (chưa phân loại · chưa có giá nhập · lỗ); cảnh báo và bộ
+  lọc chỉ cho vai `quantri`; mã sản phẩm hiện đúng CÁCH VIẾT của Tracking;
+  ngày còn DD/MM; bỏ chú giải "nghìn đ"; và **BONUS LỢI NHUẬN THEO ĐƠN** —
+  nhánh mới `bc/quyetdinh/bonus`, khoá theo số chứng từ, lý do bắt buộc ở cả
+  ba lớp, cộng vào lợi nhuận rồi vào doanh số quy đổi theo hệ số THƯỜNG của
+  line (không phải hệ số gia dụng — bonus là tiền của cả đơn, không thuộc
+  mặt hàng nào). Xem `engine/src/bonus.mjs` và `kiem/bonus.js`.
+
 - **Còn lại của P6:** một câu hỏi chưa chốt — hàng nút tháng của màn báo
   cáo chỉ liệt kê kỳ CÓ DÒNG HÀNG (`bc/dong`, từ 08/2026), trong khi
   biểu đồ đọc `bc/ky` (đủ 20 tháng từ 01/2025). Nên hiện tại **biểu đồ

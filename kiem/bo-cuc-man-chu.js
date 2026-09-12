@@ -105,7 +105,15 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
   /* `hangTongDon` nhảy cóc bằng colSpan tính từ COT.length — nếu ai đó đổi
      số cột mà quên chỗ này thì hàng tổng lệch sang cột khác. */
   ok('hàng tổng đơn đặt số dưới đúng cột “Tổng bán”', COT.indexOf('Tổng bán'), 7);
-  ok('  · và colSpan sau đó tính từ COT.length', /COT\.length - 8/.test(JS), true);
+  /* Hàng tổng đơn nay có BA ô, không phải hai: [trống ×7] [Tổng bán]
+     [Lợi nhuận — chỗ của nút bonus] [phần còn lại mang câu lý do]. Nên
+     colSpan đuôi là `COT.length - 9`, không còn `- 8`. Vẫn phải tính TỪ
+     `COT.length`: gõ cứng một con số là lần thêm cột kế tiếp hàng tổng lệch
+     sang cột khác mà không có gì đỏ lên. */
+  ok('  · và colSpan sau đó tính từ COT.length', /COT\.length - 9/.test(JS), true);
+  ok('  · ô bonus đứng dưới đúng cột “Lợi nhuận”',
+     /trTong\.appendChild\(el\("td", "oSo", nghinTron\(don\.tong_ban\)\)\);\s*\n[\s\S]{0,320}?trTong\.appendChild\(oBonus\(don\)\);/.test(JS), true);
+  ok('  · ba ô cộng lại phủ đủ 19 cột', 7 + 1 + 1 + (COT.length - 9), COT.length);
 
   /* Bề rộng cột chốt cố định (P4) — `<colgroup>` chỉ đúng khi số <col> khớp
      số cột. Thiếu một số thì cột cuối mất bề rộng và bảng lại co giãn theo
