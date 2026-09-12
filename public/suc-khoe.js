@@ -392,9 +392,12 @@
      ô cao thêm 12px là cả cụm cao thêm gần 50px — đúng phần làm cột phải
      vượt hẳn cột trái. Một đường xu hướng 32px vẫn đọc được hình dạng; đó
      là cả điểm của small multiples. */
-  const RONG_MINI = 148, CAO_MINI = 44;
+  /* Kích thước MẶC ĐỊNH của hệ toạ độ một ô — chỉ dùng khi chưa đo được ô
+     thật (trước lượt bố cục đầu tiên, hay trong bộ kiểm chạy trên DOM giả).
+     Bình thường cả hai chiều được đặt bằng đúng số PIXEL của ô, xem
+     `canhCaoKhoi()`. */
+  const RONG_MINI_MAC_DINH = 148, CAO_MINI_MAC_DINH = 44;
   const LE_MINI_TRAI = 4, LE_MINI_PHAI = 4, LE_MINI_TREN = 13, LE_MINI_DUOI = 4;
-  const RONG_VE_MINI = RONG_MINI - LE_MINI_TRAI - LE_MINI_PHAI;
 
   /** MỘT ô của lưới — đường xu hướng theo 12 tháng của một line, trục dọc
    *  RIÊNG theo giá trị lớn nhất của CHÍNH line đó (không theo line khác):
@@ -410,8 +413,13 @@
       return '<div class="oMini oMiniRong"><p class="tenMini">' + thoat(ten) + "</p>"
         + '<p class="miniRong">Chưa có số ' + thoat(k.tenKyNgan) + "</p></div>";
     }
-    /* Chiều cao hệ toạ độ của ô do `canhCaoKhoi()` tính theo chỗ thật. */
-    const CAO_MINI = caoOMini;
+    /* Hệ toạ độ của ô bằng ĐÚNG số pixel của ô (do `canhCaoKhoi()` đo).
+       Giữ bề rộng cố định 148 như bản trước là sai ở chỗ trông thấy ngay khi
+       chụp ảnh thật 12/09/2026: ô rộng ~290px thì mọi thứ trong hệ toạ độ bị
+       phóng gần gấp đôi — nét đậm gấp đôi, và nhãn giá trị 9 đơn vị hiện ra
+       to như tiêu đề. Một-đổi-một thì cỡ chữ trong ô là cỡ chữ thật. */
+    const RONG_MINI = rongOMini, CAO_MINI = caoOMini;
+    const RONG_VE_MINI = RONG_MINI - LE_MINI_TRAI - LE_MINI_PHAI;
     const CAO_VE_MINI = CAO_MINI - LE_MINI_TREN - LE_MINI_DUOI;
     const yMax = Math.max(1, ...diem.map(bd.layGiaTri));
     /* Trục ngang lấy `vtMax` của KHUNG chứ không cứng 12 (P6): cùng một ô
@@ -420,7 +428,14 @@
        cả tháng vào một phần ba khung. Mẫu số là `vtMax - 1` (khoảng cách
        giữa điểm đầu và điểm cuối), và chặn sàn 1 để một khung chỉ có đúng
        một vị trí không chia cho 0. */
-    const nhip = Math.max(1, k.vtMax - 1);
+    /* Trục ngang của ô nhỏ dừng ở vị trí CUỐI CÙNG CÓ SỐ của cả cụm, không
+       kéo hết tháng như biểu đồ lớn. Đo trên ảnh chụp thật 12/09/2026: sổ
+       mới có số tới ngày 13 mà trục kéo tới 30, nên đường chỉ chiếm 40% bề
+       ngang ô và 60% còn lại bỏ trắng.
+       Lấy vị trí cuối của CẢ CỤM (không phải của riêng từng ô) để mười ô vẫn
+       chung một trục — đó là cả điểm của small multiples, mỗi ô một trục thì
+       hình dạng hết so được với nhau. */
+    const nhip = Math.max(1, (k.vtMaxMini || k.vtMax) - 1);
     const x = (vt) => LE_MINI_TRAI + ((vt - 1) / nhip) * RONG_VE_MINI;
     const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
 
@@ -558,6 +573,8 @@
          mời người đọc đi tìm chúng. */
       const oCgRong = $("skChuGiai");
       if (oCgRong) oCgRong.innerHTML = "";
+      const oTdRong = $("skTieuDe");
+      if (oTdRong) oTdRong.innerHTML = "";
       return;
     }
     /* MỘT biểu đồ mỗi lúc, chọn bằng hai tab (chủ dự án chốt 12/09/2026:
@@ -566,9 +583,15 @@
        nên khối biểu đồ cao gấp đôi và đẩy mọi thứ khác xuống dưới màn hình. */
     const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
     const nhanKhung = bd.ten + " " + k.duoi;
-    oVe.innerHTML = '<p class="tieuDeSk">' + thoat(nhanKhung)
-      + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-      + '<div class="khoiBieuDo" id="skHopVe">'
+    /* Tiêu đề nằm ở DẢI ĐIỀU KHIỂN, ngang hàng với [Ngày][Tháng][Quý] (chủ
+       dự án chốt 12/09/2026) — nó vốn chiếm riêng một dòng ngay trên hình,
+       trong khi nửa phải của hàng nút thì bỏ không. */
+    const oTd = $("skTieuDe");
+    if (oTd) {
+      oTd.innerHTML = thoat(nhanKhung)
+        + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>";
+    }
+    oVe.innerHTML = '<div class="khoiBieuDo" id="skHopVe">'
       + veBieuDo({
         diemNay, diemTruoc, namNay: nam, namTruoc,
         vtMin: k.vtMin, vtMax: k.vtMax, nhanTruc: k.nhanTruc, moTa: k.moTa,
@@ -623,16 +646,53 @@
   let caoHeToaDo = CAO_MAC_DINH;
   /** Như trên, cho MỘT ô của lưới nhỏ — để cụm bên phải cũng lấp đầy cột thay
    *  vì xếp sát mép trên rồi bỏ trống phần dưới. */
-  let caoOMini = CAO_MINI;
+  let caoOMini = CAO_MINI_MAC_DINH;
+  /** Bề rộng hệ toạ độ một ô — xem `caoOMini`. */
+  let rongOMini = RONG_MINI_MAC_DINH;
   /** Số ô lưới đang vẽ — cần để tính ra lưới đang có mấy HÀNG. */
   let soOMini = 0;
+  /** Số CỘT lưới đang vẽ — `canhCaoKhoi()` chia chiều cao theo đúng số hàng
+   *  mà con số này sinh ra, không tự đoán lại từ bề rộng. */
+  let soCotMini = 3;
   let dangCanh = false;
 
   /* Ba số phải KHỚP với CSS của `.luoiXuHuong` / `.oMini` (khe hở, bề rộng ô
      tối thiểu, viền + đệm + dòng tên). Lệch một chút chỉ làm ô hơi thừa hoặc
      hơi thiếu chỗ, không làm sai số nào — nên chép ở đây là đánh đổi chấp
      nhận được, đổi lấy việc không phải đo từng ô một mỗi lượt vẽ. */
-  const KHE_O = 8, O_HEP_NHAT = 115, VIEN_O = 14, CAO_TEN_O = 16;
+  const KHE_O = 8, VIEN_O = 14, CAO_TEN_O = 16;
+
+  /** Khoảng phải chừa DƯỚI khối: lề dưới của chính nó, cộng đệm/viền/lề dưới
+   *  của mọi phần tử chứa nó cho tới `<body>`.
+   *
+   *  Bản trước đo bằng `documentElement.scrollHeight - đáy khối`, và đó là
+   *  một VÒNG LẶP TỰ QUY CHIẾU — đo trên Chromium 12/09/2026 mới thấy: khi
+   *  trang KHÔNG tràn màn hình thì `scrollHeight` bằng đúng chiều cao màn
+   *  hình, nên khoảng trống do CHÍNH KHỐI để lại bị tính thành "chỗ của
+   *  người khác". Khối co lại → trang ngắn đi → `scrollHeight` vẫn bằng màn
+   *  hình → phép đo vẫn thấy chừng ấy chỗ trống → khối lại co. Nó hội tụ về
+   *  SÀN 200px và để lại 177px trắng ở đáy, đúng chỗ chủ dự án khoanh đỏ.
+   *
+   *  Cộng các thuộc tính CSS thay vì lấy hiệu hình học: một tổ tiên bị kéo
+   *  cao (ở đây `body { min-height: 100vh }`) sẽ lại nuốt trọn phần trống
+   *  vào hiệu ấy, tức quay về đúng vòng lặp cũ. Đệm và lề thì không co giãn
+   *  theo nội dung, nên chúng là con số thật sự độc lập. */
+  function choDuoiKhoi(khoi) {
+    if (!window.getComputedStyle) return LE_DAY;
+    let tong = 0, n = khoi;
+    while (n && n !== document.body) {
+      const st = window.getComputedStyle(n);
+      if (!st) break;
+      tong += parseFloat(st.marginBottom) || 0;
+      /* Đệm và viền của CHÍNH khối nằm BÊN TRONG nó — đã tính vào chiều cao
+         rồi, cộng lần nữa là trừ hai lần. Chỉ tổ tiên mới góp. */
+      if (n !== khoi) {
+        tong += (parseFloat(st.paddingBottom) || 0) + (parseFloat(st.borderBottomWidth) || 0);
+      }
+      n = n.parentElement;
+    }
+    return tong;
+  }
 
   /** Đo chỗ còn lại rồi ép hai cột cùng chiều cao.
    *
@@ -647,14 +707,7 @@
     const hop = khoi.getBoundingClientRect ? khoi.getBoundingClientRect() : null;
     if (!hop || !window.innerHeight || !hop.height) return;
 
-    /* Phần nằm DƯỚI khối (đệm đáy của khung trang) — đo thật thay vì đoán
-       bằng `LE_DAY`: không trừ nó ra thì khối tính ra vừa khít đáy màn hình,
-       nhưng đệm của khung trang vẫn đẩy trang dài thêm và người dùng VẪN
-       phải cuộn. `LE_DAY` chỉ còn là bản lùi khi không đọc được tài liệu. */
-    const gocTrang = document.documentElement;
-    const duoiKhoi = gocTrang && gocTrang.scrollHeight
-      ? Math.max(0, gocTrang.scrollHeight - (hop.top + (window.scrollY || 0)) - hop.height)
-      : LE_DAY;
+    const duoiKhoi = choDuoiKhoi(khoi);
 
     /* Chỗ còn lại của màn hình cho khối, trừ tiếp phần đệm + dải nút của
        chính nó (đo bằng hiệu chiều cao, không cộng tay các hằng số CSS —
@@ -677,25 +730,24 @@
        được), rồi quy sang chiều cao hệ toạ độ của một ô. Không làm bước này
        thì ô giữ nguyên cỡ cũ và cụm phải xếp sát mép trên, bỏ trống phần
        dưới — đúng chỗ chủ dự án khoanh đỏ. */
-    let canO = caoOMini;
+    let canO = caoOMini, canRongO = rongOMini;
     const luoi = $("skLuoiGrid");
     if (luoi && luoi.clientWidth && luoi.clientHeight && soOMini > 0) {
-      const cot = Math.max(1, Math.floor((luoi.clientWidth + KHE_O) / (O_HEP_NHAT + KHE_O)));
+      const cot = soCotMini;
       const hang = Math.ceil(soOMini / cot);
       const rongO = (luoi.clientWidth - (cot - 1) * KHE_O) / cot - VIEN_O;
       const caoO = (luoi.clientHeight - (hang - 1) * KHE_O) / hang - VIEN_O - CAO_TEN_O;
-      if (rongO > 0 && caoO > 0) {
-        /* Kẹp: quá dẹt thì đường thành một vạch, quá cao thì một ô nuốt cả
-           cụm khi chỉ có vài line. */
-        canO = Math.min(90, Math.max(30, Math.round(RONG_MINI * caoO / rongO)));
-      }
+      /* Sàn 24px cho chiều cao: dưới ngưỡng ấy đường xu hướng thành một
+         vạch, không còn hình dạng để đọc. */
+      if (rongO > 20 && caoO > 24) { canRongO = Math.round(rongO); canO = Math.round(caoO); }
     }
 
     const lechVe = Math.abs(canCao - caoHeToaDo) >= 6;
-    const lechO = Math.abs(canO - caoOMini) >= 4;
+    const lechO = Math.abs(canO - caoOMini) >= 4 || Math.abs(canRongO - rongOMini) >= 8;
     if (dangCanh || (!lechVe && !lechO)) return;
     caoHeToaDo = canCao;
     caoOMini = canO;
+    rongOMini = canRongO;
     dangCanh = true;
     try {
       if (lechVe) veBieuDoHienTai();
@@ -752,22 +804,45 @@
       return;
     }
 
-    const dsLine = thuTu.map((ten) => ({ ten, diem: k.layLine(L, ten) }));
+    /* Bỏ hai nhóm khỏi cụm ô nhỏ (chủ dự án chốt 12/09/2026):
+       · line KHÔNG có số nào trong kỳ — một ô ghi "chưa có số" không phải
+         một xu hướng, nó chỉ chiếm chỗ của ô có số thật;
+       · line GOM (đứng CUỐI bảng line, hiện là "Khác") — nó là một rổ gộp
+         nhiều tên rời rạc nên đường xu hướng của nó không nói lên điều gì,
+         và bỏ nó ra làm số ô còn lại chẵn, chia lưới dễ hơn.
+       Bảng [Tổng hợp] vẫn giữ "Khác": ở đó nó là một dòng TIỀN có thật. */
+    const dsLine = thuTu
+      .filter((ten) => ten !== tenCuoi)
+      .map((ten) => ({ ten, diem: k.layLine(L, ten) }))
+      .filter((x) => x.diem.length);
+    if (!dsLine.length) { o.innerHTML = ""; return; }
 
-    /* Sắp GIẢM DẦN theo tổng của CHÍNH chỉ số đang xem, "Khác" luôn cuối —
-       đổi chỉ số không làm lưới xáo trộn ngoài dự đoán. */
-    dsLine.sort((a, b) => {
-      if (a.ten === tenCuoi) return 1;
-      if (b.ten === tenCuoi) return -1;
-      const tong = (arr) => arr.reduce((t, p) => t + bd.layGiaTri(p), 0);
-      return tong(b.diem) - tong(a.diem);
-    });
+    /* Sắp GIẢM DẦN theo tổng của CHÍNH chỉ số đang xem — đổi chỉ số không làm
+       lưới xáo trộn ngoài dự đoán. */
+    const tongCua = (arr) => arr.reduce((t, p) => t + bd.layGiaTri(p), 0);
+    dsLine.sort((a, b) => tongCua(b.diem) - tongCua(a.diem));
+
+    /* Số CỘT chọn sao cho lưới chia thành ít hàng mà ô không quá hẹp: sáu ô
+       trên một cột rộng thì 3×2 đọc tốt hơn 6×1 (ô dẹt) hay 2×3 (ô cao mà
+       hẹp). Trần 150px giữ cho ô không mỏng tới mức đường thành một vạch. */
+    const rongCot = o.clientWidth || 0;
+    const cotVua = rongCot ? Math.max(1, Math.floor(rongCot / 150)) : 3;
+    const soCot = Math.max(1, Math.min(cotVua, Math.ceil(dsLine.length / 2)));
 
     soOMini = dsLine.length;
+    soCotMini = soCot;
+    /* Vị trí cuối cùng có số của CẢ CỤM — xem `veMiniDuong`. */
+    let vtCuoi = 0;
+    for (const { diem } of dsLine) {
+      for (const p of diem) if (p.vt > vtCuoi) vtCuoi = p.vt;
+    }
+    const kO = Object.assign({}, k, { vtMaxMini: Math.max(2, vtCuoi) });
+
     o.innerHTML = '<p class="tieuDeSk">Xu hướng theo Line · ' + thoat(k.duoi)
       + ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span></p>"
-      + '<div class="luoiXuHuong" id="skLuoiGrid">'
-      + dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, k)).join("")
+      + '<div class="luoiXuHuong" id="skLuoiGrid" style="grid-template-columns:repeat('
+      + soCot + ',1fr)">'
+      + dsLine.map(({ ten, diem }) => veMiniDuong(ten, diem, bd, kO)).join("")
       + "</div>";
   }
 
@@ -818,6 +893,7 @@
          chốt 12/09/2026: "dồn lên 1 góc hoặc 1 hàng thay vì để rải rác từng
          dòng"). Trước đây nó là một hàng riêng dưới biểu đồ — tốn trọn một
          dòng chiều cao, trong khi nửa phải của hàng nút thì bỏ không. */
+      + '<p class="tieuDeSk" id="skTieuDe"></p>'
       + '<div class="chuGiaiSk" id="skChuGiai"></div>'
       + "</div>"
       + '<div class="haiCotBieuDo">'
@@ -890,6 +966,15 @@
       trangThai.thang = thang;
       if (duLieu) veLai(); else taiNeuCan();
     },
+    /** Đo lại chỗ còn lại. Màn báo cáo gọi SAU khi vẽ xong bảng.
+     *
+     *  Bắt buộc phải có, và đây là lỗi đo được trên Chromium 12/09/2026:
+     *  `taiKy()` báo kỳ sang ĐÂY trước khi nó gọi máy chủ lấy bảng (cố ý —
+     *  hai khối tự tải phần của mình, không khối nào chờ khối kia). Nên lượt
+     *  đo đầu tiên thấy khối biểu đồ đang ở y≈200, trong khi bảng vẽ xong sẽ
+     *  đẩy nó xuống y≈462. Chênh 260px ấy làm biểu đồ tính ra cao gấp rưỡi
+     *  chỗ thật sự có, và trang lại phải cuộn. */
+    canhLai: function () { canhCaoKhoi(); },
     /** Hiện/ẩn cả khối — chỉ tab [Tổng hợp] mới có biểu đồ (chủ dự án chốt
      *  12/09/2026). Ở tab của một line, bảng đơn 19 cột đã rất dài; thêm
      *  biểu đồ bên dưới là phải cuộn qua hàng trăm dòng mới thấy. */

@@ -109,12 +109,17 @@
   .daiDieuKhien .tabDonVi { margin-bottom: 0; }
   /* Chú giải dồn sang mép PHẢI của cùng hàng ấy — nửa phải của hàng nút vốn
      bỏ không, còn chú giải thì đang chiếm trọn một dòng riêng. */
-  .daiDieuKhien .chuGiaiSk { margin-left: auto; margin-top: 0; }
+  .daiDieuKhien .chuGiaiSk { margin-top: 0; }
+  /* Tiêu đề biểu đồ dồn sang mép PHẢI của hàng nút, chú giải bám ngay sau. */
+  .daiDieuKhien .tieuDeSk { margin: 0 0 0 auto; font-weight: 500; color: #4b5563; }
   /* `align-items: stretch` (mặc định của grid) là điều kiện để hai cột CÙNG
      chiều cao — chiều cao ấy do `canhCaoKhoi()` đo và gán, xem suc-khoe.js.
      Bản trước dùng `align-items: start` nên mỗi cột tự cao theo nội dung, và
      lưới 10 ô bên phải cao gần gấp đôi biểu đồ bên trái. */
-  .haiCotBieuDo { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+  /* Hai cột BẰNG NHAU (chủ dự án chốt 12/09/2026, đổi từ 3fr:2fr). Cột phải
+     hẹp làm các ô nhỏ co cụm lại và phải xếp nhiều hàng; chia đôi thì mỗi ô
+     rộng ra và cụm chia được thành lưới vuông vắn. */
+  .haiCotBieuDo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 1000px) { .haiCotBieuDo { grid-template-columns: 1fr; } }
   /* Cả hai cột là flex dọc: tiêu đề/chú giải cao bao nhiêu tuỳ chữ, phần
      CÒN LẠI (`flex: 1`) mới là khung vẽ. Nhờ vậy JS không phải cộng tay
@@ -138,9 +143,10 @@
      chiều cao cột, nên cụm lấp đầy thay vì xếp sát mép trên rồi bỏ trống
      phần dưới (chủ dự án khoanh đỏ 12/09/2026). Chiều cao hệ toạ độ của
      từng ô do `canhCaoKhoi()` tính theo đúng số hàng ấy. */
+  /* `grid-template-columns` do JS gán (`veKhoiLuoiNho` chọn số cột theo bề
+     rộng thật và số ô, để lưới chia thành ít hàng mà ô không quá hẹp). */
   .luoiXuHuong { flex: 1 1 0; min-height: 0; overflow-y: auto;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
-    grid-auto-rows: 1fr; gap: 8px; margin-top: 6px; align-content: stretch; }
+    display: grid; grid-auto-rows: 1fr; gap: 8px; margin-top: 6px; align-content: stretch; }
   .oMini { background: #fafafa; border: 1px solid #f0efec; border-radius: 8px; padding: 6px;
     display: flex; flex-direction: column; min-height: 0; }
   .oMini svg { flex: 1 1 0; min-height: 0; width: 100%; height: 100%; display: block; }

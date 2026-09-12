@@ -1218,6 +1218,15 @@
     const vsCua = (tkpi && tkpi.vs_line) || {};
 
     for (const ten of thuTu) {
+      /* Line KHÔNG có đơn nào và KHÔNG có dòng nào thì giấu — cùng luật và
+         cùng công tắc ("Hiện thêm N line chưa có đơn") với hàng tab ngay
+         trên bảng. Chủ dự án chốt 12/09/2026: ba line đang 0 đồng chỉ chiếm
+         chỗ, và giấu chúng ở hàng tab mà vẫn để trong bảng là hai màn hình
+         nói hai chuyện. Không chôn tên line nào: vắng mặt trong
+         `tom_tat_kpi.line` ĐÃ LÀ "không có đơn nào" — bản kê ấy chỉ gom line
+         thực sự có đơn. Đọc từ đó chứ không từ `tom_tat_line` để cả bảng
+         vẫn chỉ có MỘT nguồn số. */
+      if (!trangThai.hienLine0 && !cua[ten]) continue;
       /* MỌI con số của hàng này đọc từ `tom_tat_kpi.line` — nguồn DUY NHẤT
          của tab [Tổng hợp]. Bản trước P6 lấy doanh số/số đơn từ
          `tom_tat_line`, thứ cộng thẳng `bc/dong` THÔ: một dòng đã xoá tay vẫn
@@ -1922,6 +1931,10 @@
       ve.innerHTML = "";
       loi.textContent = "Không lấy được đơn hàng: " + e.message;
     }
+    /* Bảng vừa đổi chiều cao → chỗ còn lại cho biểu đồ cũng đổi. Lượt đo
+       TRƯỚC lượt gọi máy chủ (trong `baoBieuDo`) nhìn thấy một trang chưa
+       có bảng, nên nó luôn rộng tay quá mức — đây là lượt đo ĐÚNG. */
+    if (window.SucKhoe && window.SucKhoe.canhLai) window.SucKhoe.canhLai();
   }
 
   async function moMan() {

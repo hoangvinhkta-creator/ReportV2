@@ -1676,6 +1676,49 @@ xuống 40. Số đầy đủ vẫn còn nguyên ở `<title>` rê chuột.
   của MỘT ô theo số hàng thật — cụm lấp đầy thay vì xếp sát mép trên.
 - Trần khối nới 300 → 420: chỗ vừa dọn được trả về cho hình vẽ.
 
+#### Bố cục — ba lượt sửa trượt, và vì sao (12/09/2026)
+
+Bố cục khối biểu đồ tính bằng phép ĐO lúc chạy. Bộ kiểm trong `kiem/` chạy
+trên DOM giả KHÔNG có bộ dựng flex/grid, nên nó canh được phép tính mà
+không thấy được kết quả — **ba lượt sửa liên tiếp đều trượt vì lý do đó**,
+và chỉ lộ ra khi chủ dự án mở bằng máy thật. Hai lỗi thật, cả hai chỉ tìm
+ra khi CHỤP ẢNH:
+
+1. **Đo lúc bảng chưa vẽ xong.** `taiKy()` báo kỳ sang khối biểu đồ TRƯỚC
+   khi nó gọi máy chủ lấy bảng (cố ý — hai khối tự tải phần của mình). Nên
+   lượt đo đầu thấy khối đang ở y≈200 trong khi bảng vẽ xong sẽ đẩy nó
+   xuống y≈460. Chênh 260px ấy làm biểu đồ tính ra cao gấp rưỡi chỗ thật
+   sự có. Sửa: màn báo cáo gọi `SucKhoe.canhLai()` SAU khi vẽ bảng.
+2. **Phép đo tự quy chiếu.** "Chỗ trống dưới khối" đo bằng
+   `documentElement.scrollHeight − đáy khối`. Khi trang KHÔNG tràn màn hình
+   thì `scrollHeight` bằng đúng chiều cao màn hình, nên khoảng trống do
+   CHÍNH KHỐI để lại bị tính thành "chỗ của người khác": khối co lại →
+   trang ngắn đi → phép đo vẫn thấy chừng ấy chỗ trống → khối lại co. Nó
+   hội tụ về SÀN 200px và để lại 177px trắng ở đáy. Sửa: cộng
+   `padding-bottom`/`margin-bottom` của khối và các tổ tiên theo CSS, vì
+   đệm và lề không co giãn theo nội dung.
+
+**`bin/chup-man.mjs` ra đời từ đây** — chạy màn báo cáo thật trong Chromium
+với dữ liệu bịa, in bảng số đo và chụp ảnh. KHÔNG nằm trong `npm test` và
+`playwright` KHÔNG phải dependency (repo cố ý 0 dependency, mà Cloudflare
+chạy `npm test` mỗi lượt build). Cài tạm khi cần — cách dùng ghi ở đầu file.
+
+Đo được sau khi sửa (màn 900px): bảng 163→383, khối 393→852, hai cột cùng
+398px, trang cao đúng 900 — lọt trọn một màn. Màn 768 và 1440 cũng lọt.
+
+**Các chỉnh hiển thị cùng lượt:** hai cột BẰNG NHAU (1fr:1fr, trước là
+3fr:2fr — cột phải hẹp làm ô nhỏ co cụm); tiêu đề biểu đồ dời lên dải nút,
+ngang hàng với [Ngày][Tháng][Quý]; bảng [Tổng hợp] GIẤU line không có đơn
+nào, cùng luật và cùng công tắc "Hiện thêm N line chưa có đơn" với hàng
+tab (giấu ở hàng tab mà vẫn để trong bảng là hai màn hình nói hai chuyện);
+cụm ô nhỏ bỏ line không có số VÀ bỏ line gom "Khác" (một rổ nhiều tên rời
+rạc thì đường xu hướng không nói lên gì, và bỏ ra thì số ô còn lại chẵn) —
+bảng vẫn giữ "Khác" vì ở đó nó là một dòng tiền có thật; số cột lưới do JS
+chọn theo bề rộng thật; hệ toạ độ ô nhỏ đặt bằng ĐÚNG số pixel của ô (giữ
+bề rộng cố định 148 trong một ô 290px làm nét đậm gấp đôi và nhãn giá trị
+to như tiêu đề); trục ngang ô nhỏ dừng ở ngày cuối CÓ SỐ của cả cụm thay
+vì kéo hết tháng.
+
 #### Câu hỏi còn mở của P6 — hàng nút tháng
 
 Hai hàng nút tháng của app đọc **hai nguồn khác nhau**:

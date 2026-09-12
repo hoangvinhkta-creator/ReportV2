@@ -324,8 +324,12 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('chỉ MỘT <svg> trong cột trái', (veHtml().match(/<svg/g) || []).length, 1);
     ok('mặc định là Doanh số', !!svgCua('Doanh số'), true);
     ok('KHÔNG vẽ kèm Số đơn', !!svgCua('Số đơn'), false);
-    ok('tiêu đề ghi rõ đơn vị',
-       /Doanh số theo ngày[^<]*<span class="donViCua">\(nghìn đồng\)/.test(veHtml()), true);
+    /* Tiêu đề nay ở DẢI ĐIỀU KHIỂN, ngang hàng với [Ngày][Tháng][Quý] (chủ
+       dự án chốt 12/09/2026) — nó vốn chiếm riêng một dòng ngay trên hình. */
+    ok('tiêu đề KHÔNG còn nằm trong ô vẽ', /tieuDeSk/.test(veHtml()), false);
+    ok('  · mà ở dải điều khiển, ghi rõ đơn vị',
+       /Doanh số theo ngày[^<]*<span class="donViCua">\(nghìn đồng\)/.test(
+         CAY.skTieuDe.innerHTML), true);
     /* Chú giải nay nằm ở dải điều khiển (mép phải), không còn là một hàng
        riêng dưới biểu đồ — chủ dự án chốt 12/09/2026 để lấy lại một dòng
        chiều cao. Nên nó KHÔNG còn trong `#skVe`. */
@@ -478,7 +482,18 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('tiêu đề nói đúng khung thời gian của biểu đồ trái (theo ngày · tháng 9/2026)',
        /Xu hướng theo Line · theo ngày · tháng 9\/2026/.test(tieuDe()), true);
     ok('  · và đúng đơn vị đang xem', /<span class="donViCua">\(nghìn đồng\)/.test(tieuDe()), true);
-    ok('đúng 4 ô, một cho mỗi line', tenTheoThuTu().length, 4);
+    /* Từ 12/09/2026 cụm bỏ hai nhóm: line KHÔNG có số nào trong kỳ (một ô
+       ghi "chưa có số" không phải một xu hướng, nó chỉ chiếm chỗ của ô có số
+       thật) và line GOM đứng cuối bảng ("Khác" — một rổ nhiều tên rời rạc
+       nên đường của nó không nói lên gì, và bỏ ra thì số ô còn lại chẵn).
+       Bảng [Tổng hợp] VẪN giữ "Khác": ở đó nó là một dòng tiền có thật. */
+    ok('chỉ còn ô của line CÓ số', tenTheoThuTu().slice().sort(), ['Nội thành', 'Tín Phát']);
+    ok('  · Shopee (chưa có số) bị bỏ', tenTheoThuTu().includes('Shopee'), false);
+    ok('  · "Khác" (line gom, cuối bảng) cũng bị bỏ', tenTheoThuTu().includes('Khác'), false);
+    ok('  · và KHÔNG còn ô rỗng nào', /oMiniRong/.test(luoi()), false);
+    /* Số cột do JS chốt, để lưới chia ít hàng mà ô không quá hẹp. */
+    ok('lưới được gán số cột tường minh',
+       /grid-template-columns:repeat\(\d+,1fr\)/.test(luoi()), true);
     ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(luoi()), false);
 
     /* KHÔNG còn bộ chọn chỉ số RIÊNG của lưới — nó dùng chung hàng tab với
@@ -498,19 +513,12 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('rê chuột đọc được tên line, ngày/tháng/năm và tiền đầy đủ',
        /<title>Tín Phát · 5\/09\/2026: [\d.]+ đ<\/title>/.test(miniCua('Tín Phát')), true);
 
-    console.log('    (Shopee chưa có số — hiện câu nói rõ, không vẽ SVG rỗng)');
-    const shopee = luoi().split(/(?=<div class="oMini)/).find((s) => s.includes('>Shopee<'));
-    ok('Shopee hiện "Chưa có số tháng 9/2026", KHÔNG có <svg>',
-       !!shopee && shopee.includes('Chưa có số tháng 9/2026') && !shopee.includes('<svg'), true);
-
     /* ── Đổi CHỈ SỐ ở hàng tab CHUNG: cả hai khối phải đổi theo. */
     console.log('    (đổi qua "Số đơn" — Nội thành (50 đơn) vượt Tín Phát (15 đơn))');
     nutChiSo()[1].click();
     ok('biểu đồ TRÁI đổi sang Số đơn', !!svgCua('Số đơn'), true);
     ok('  · lưới PHẢI cũng đổi theo', /<span class="donViCua">\(đơn\)/.test(tieuDe()), true);
-    /* "Khác" vẫn CUỐI dù 99 đơn — luật cũ, không được mất theo lượt dựng lại. */
-    ok('  · và thứ hạng đổi theo chỉ số ("Khác" vẫn cuối)',
-       tenTheoThuTu(), ['Nội thành', 'Tín Phát', 'Shopee', 'Khác']);
+    ok('  · và thứ hạng đổi theo chỉ số', tenTheoThuTu(), ['Nội thành', 'Tín Phát']);
     nutChiSo()[0].click();
 
     /* ── Đổi ĐƠN VỊ sang [Tháng]: lưới chuyển sang 12 tháng của năm. */
@@ -521,10 +529,8 @@ function kiemMoc(ten, gtThat, doiSo) {
        (dCua(miniCua('Nội thành')).match(/M/g) || []).length, 3);
     ok('rê chuột ở mức tháng đọc đúng nhãn tháng',
        /<title>Tín Phát · Tháng 9\/2026: [\d.]+ đ<\/title>/.test(miniCua('Tín Phát')), true);
-    /* "Khác" chỉ có MỘT tháng — vẫn phải hiện chấm, và vẫn xếp CUỐI dù số
-       to nhất (luật cũ, không được mất theo lượt dựng lại). */
-    ok('Khác có đúng 1 chấm, không nét path nào', (miniCua('Khác').match(/<circle/g) || []).length, 1);
-    ok('Khác vẫn xếp cuối dù doanh số to nhất', tenTheoThuTu()[3], 'Khác');
+    ok('ở mức tháng cũng chỉ còn line CÓ số, không có "Khác"',
+       tenTheoThuTu(), ['Tín Phát', 'Nội thành']);
 
     /* ── Đơn vị [Quý]: chủ dự án chốt lưới CHỈ làm theo ngày + tháng. */
     console.log('    (đơn vị [Quý] — lưới nói thẳng một câu, không vẽ khung thời gian khác)');
