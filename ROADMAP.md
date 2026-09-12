@@ -104,9 +104,10 @@ Doanh số quy đổi (tô nền) · Tỉ lệ tồn kho · KPI · Đạt · Vs.
 Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương
 ```
 
-Năm cột cuối còn **xếp chỗ** ("—", chờ công thức chủ dự án cho sau). Cột
-**Hệ số đã bỏ** khỏi bảng này theo chốt 12/09/2026 — vẫn xem và sửa được
-trên dải setup của từng tab line, nên không mất đường vào.
+Lượt 2 (cùng ngày) thêm cột thứ **16 — Ghi chú**, và năm cột lương đã có
+công thức thật. Cột **Hệ số đã bỏ** khỏi bảng này theo chốt 12/09/2026 —
+vẫn xem và sửa được trên dải setup của từng tab line, nên không mất
+đường vào.
 
 Một lỗi im lặng được sửa nhân lượt dựng lại này: bảng cũ lấy Doanh số /
 Số đơn từ `tom_tat_line`, thứ cộng thẳng `bc/dong` THÔ — một dòng đã xoá
@@ -132,12 +133,13 @@ Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/d
 đọc chúng trước khi sửa tiếp.
 
 - **Lượt 1 XONG** — tab [Tổng hợp] 15 cột, sắp theo doanh số thuần giảm
-  dần, hai cột mới có số thật (Tỉ lệ tồn kho, Vs. Tháng trước). Chờ chủ
-  dự án mở thật để nghiệm thu.
-- **Còn lại của P6:** (a) công thức + nguồn cho năm cột lương, chủ dự án
-  sẽ cho khi thấy layout; (b) tab Biểu đồ — chủ dự án chốt "làm sau khi
-  xong các việc trên", **vẫn chưa có đặc tả nội dung**, phải hỏi lại
-  trước khi bắt tay.
+  dần, hai cột mới có số thật (Tỉ lệ tồn kho, Vs. Tháng trước).
+- **Lượt 2 XONG** — thưởng, ngày công, lương cứng, phụ cấp, tổng lương,
+  cộng cột Ghi chú (16 cột) và highlight ba mức khi vượt KPI. Xem
+  "Công thức lương" bên dưới.
+- **Còn lại của P6:** tab Biểu đồ — chủ dự án chốt "làm sau khi xong các
+  việc trên", **vẫn chưa có đặc tả nội dung**, phải hỏi lại trước khi
+  bắt tay.
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -1429,19 +1431,97 @@ cắt bớt, và con số chênh sẽ dương lên giả tạo đúng bằng ph�
 Tôi không cần theo dõi hệ số này ở tổng hợp." Vẫn xem và sửa được trên
 dải setup của từng tab line, nên không mất đường vào.
 
-**5. Năm cột Thưởng/Ngày công/Lương cứng/Phụ cấp/Tổng lương — lượt này
-CHỈ XẾP CHỖ**, đúng như handoff đề nghị. Giữ "—" và nói thẳng ở `title`
-rằng đó là "CHƯA CÓ công thức", không phải "bằng 0".
-
-Khi tới lúc gán công thức, ba câu CHƯA hỏi được (handoff mục 6.5) vẫn
-còn nguyên và phải hỏi lúc đó: nguồn ngày công / lương cứng / phụ cấp ở
-đâu; các cột này theo LINE hay theo NHÂN VIÊN (một line gộp nhiều
-người); "Tổng lương" có bằng Lương cứng + Phụ cấp + Thưởng không.
+**5. Năm cột Thưởng/Ngày công/Lương cứng/Phụ cấp/Tổng lương — lượt 1 chỉ
+xếp chỗ, lượt 2 (cùng ngày 12/09/2026) đã có công thức đầy đủ.** Xem
+mục "Công thức lương" ngay bên dưới.
 
 **6. Tab Biểu đồ — làm SAU.** Nguyên văn: "Sau khi làm xong các việc
 trên sẽ làm." Vẫn **chưa có mô tả nội dung nào** — session làm phần đó
 PHẢI hỏi thẳng trước khi bắt tay, và nhắc lại chốt P5 ở ngay dưới đây
 (biểu đồ vẫn vẽ bằng doanh số THUẦN).
+
+#### Công thức lương — chủ dự án chốt 12/09/2026 (lượt 2)
+
+**PHÂN LOẠI THEO HỆ SỐ QUY ĐỔI, KHÔNG THEO TÊN LINE.** Đây là chốt quan
+trọng nhất, và là một lần chủ dự án ĐỔI Ý có chủ đích. Yêu cầu đầu tiên
+là một danh sách tên ("tính cho mọi nhân viên trừ Nội thành, Fanpage,
+Shopee") — rồi chính chủ dự án đổi sang:
+
+> *"Thay vì phân biệt kiểu A và B thì hãy để thế này cho dễ phân loại
+> hơn: nhân viên hệ số 7,5% tính lương theo cách A, hệ số 5,5% tính theo
+> cách B. Riêng Nội thành không nằm ở 2 cách trên thì tạm thời không
+> tính. Áp dụng cho toàn bộ, để nếu sau này có nhân viên mới tôi chỉ cần
+> nhập hệ số là hệ thống tự động hiểu được cách tính lương cho nhân viên
+> mới luôn, không phải code lại."*
+
+Nên `engine/src/luong.mjs` **không chứa một tên line nào**, và
+`kiem/luong.js` canh đúng điều đó bằng một bài kiểm riêng. Hệ quả phải
+biết: **Fanpage và Shopee đang mang hệ số 5,5% nên chúng CÓ lương** —
+khác bản đầu của yêu cầu. Muốn một line thôi tính lương thì **đổi hệ số
+của nó** trên dải setup; đó là công tắc đúng chỗ, không phải sửa repo.
+
+**Bậc thưởng** — theo cột Đạt (= doanh số quy đổi ÷ KPI):
+
+| Đạt | Cách A (hệ số 7,5%) | Cách B (hệ số 5,5%) |
+|---|---|---|
+| < 100% | 0,15% | 0,30% |
+| ≥ 100% | 0,20% | 0,40% |
+| ≥ 110% | 0,25% | 0,45% |
+| ≥ 120% | 0,30% | 0,50% |
+
+`Thưởng = doanh số quy đổi × hệ số bậc + thưởng nóng`. Line chưa đặt KPI
+ăn bậc NỀN (không mất thưởng — "chưa đặt mục tiêu" khác "không bán được
+gì").
+
+**Thưởng nóng — mốc CỐ ĐỊNH** (chủ dự án chọn phương án (a) khi được hỏi
+thẳng giữa "cố định" và "tỉ lệ theo KPI"). Cách B: quy đổi ≥ 1,5 tỷ →
++500 nghìn; ≥ 2 tỷ → **tổng** 1 triệu (KHÔNG cộng dồn thành 1,5 triệu).
+Mốc của cách A suy MỘT LẦN từ tỉ lệ hai con số ấy so với KPI của B, rồi
+đóng băng:
+
+```
+1,5 tỷ ÷ 1,3 tỷ = 115,38%  →  A: 2,7 tỷ × 115,38% = 3.115.384.615 đ
+2,0 tỷ ÷ 1,3 tỷ = 153,85%  →  A: 2,7 tỷ × 153,85% = 4.153.846.154 đ
+```
+
+Cố định chứ không tính lại theo KPI đang áp — KPI sửa được từng kỳ, nên
+buộc mốc chạy theo KPI là hạ KPI một tháng thì mốc thưởng nóng tự tụt
+theo, một khoản tiền đổi mà không ai bấm gì. `kiem/luong.js` ghim CẢ tỉ
+lệ lẫn con số tuyệt đối.
+
+**Ngày công** — Quản trị gõ tay, riêng từng tháng. Ô nhập nằm ngay trong
+bảng [Tổng hợp]; ghi `bc/quyetdinh/cong/<kỳ>/<line>` qua
+`POST /api/dat-cong` (**chỉ `quantri`**, cùng mức `dat-kpi` vì nó là vế
+nhân của lương cứng và phụ cấp). KHÔNG có tầng "mặc định chung" như KPI:
+một tháng có bao nhiêu ngày công là chuyện của đúng tháng ấy, nên `ky`
+bắt buộc. Ô trống = XOÁ hẳn (về "chưa nhập"), khác hẳn gõ số 0.
+
+**Lương cứng** = `4.500 × ngày công ÷ 26`, **chia đều CẢ HAI CHIỀU**
+(chủ dự án chọn phương án (a)): thiếu ngày thì trừ theo tỉ lệ, vượt thì
+cộng theo tỉ lệ.
+
+**Phụ cấp** = `30 × min(ngày công, 26)` — có TRẦN. Đây là chỗ phụ cấp
+khác lương cứng: làm thêm ngày được thêm lương, không được thêm phụ cấp.
+
+**Tổng lương** = Thưởng + Lương cứng + Phụ cấp. Chỉ có số khi cả ba
+khoản đều biết — cộng một tổng còn thiếu khoản rồi gọi nó là "Tổng
+lương" là đưa ra con số nhỏ hơn sự thật mà không dán nhãn thiếu.
+
+**Highlight ba mức** ở ô "Đạt" khi vượt KPI (100 / 110 / 120%), xanh đậm
+dần. Tô ở ô đó chứ không tô cả hàng — cột Doanh số quy đổi đã có nền
+riêng, tô cả hàng là đè lên nó. Ba mốc cũng đúng ba mốc đổi bậc thưởng
+nên màu đọc được thành "line vừa lên một bậc".
+
+**Cột Ghi chú** (thứ 16) ghi hệ số thưởng THỰC được áp và phần thưởng
+nóng đã cộng sẵn vào cột Thưởng — ví dụ `Cách B · 0,45% · đã gồm 500
+thưởng mốc 1,5 tỷ`. Không chạm mốc thì không ghi gì về mốc. Engine trả
+từng mảnh rời (`cach`, `he_so_thuong_pt`, `moc_nong`, `nguong_nong`,
+`thuong_nong`); ghép thành câu là việc của màn hình.
+
+**Ba lối ra "—", ba câu khác nhau** — không lối nào được thành số 0:
+hệ số không thuộc cách nào (cả nhóm trống); kỳ chưa có quy đổi (thưởng
+trống, lương cứng và phụ cấp vẫn có); chưa nhập ngày công (lương cứng và
+phụ cấp trống, thưởng vẫn có).
 
 #### Lượt 1 đã làm gì (12/09/2026)
 
@@ -1499,7 +1579,10 @@ Thưởng→Tổng lương có thể còn "—" nếu công thức chưa đượ
 không thuộc nhóm "chờ công thức sau" mà chủ dự án nêu — nghĩa là công
 thức hai cột này phải hỏi và chốt NGAY ở lượt này (xem handoff mục 6).
 
-**Lượt 1 đã đủ điều kiện này** — trừ một chỗ cần biết trước khi mở:
+Lượt 2 mở rộng thành 16 cột (thêm Ghi chú) và thay năm ô "—" bằng công
+thức thật — xem "Công thức lương" ở trên.
+
+**Hai lượt đã đủ điều kiện này** — trừ một chỗ cần biết trước khi mở:
 "Tỉ lệ tồn kho" chỉ có số ở kỳ **từ 09/2026 trở đi**. Trước mốc đó không
 có giá vốn nên không dòng nào biết nơi nhập, và ô hiện "—" kèm câu giải
 thích. Đó là giới hạn dữ liệu Tracking, không phải cột chưa làm.
@@ -1507,13 +1590,13 @@ thích. Đó là giới hạn dữ liệu Tracking, không phải cột chưa l�
 #### Ra khỏi phase khi
 
 Mọi câu hỏi ở `docs/handoff/2026-09-12-P5-dong.md` mục 6 đã có câu trả
-lời và đã áp dụng đúng ✅; chủ dự án mở tab [Tổng hợp] thật, xác nhận
-đúng thứ tự Line/cột, đối chiếu được ít nhất "Tỉ lệ tồn kho" và
-"Vs. Tháng trước" khớp tay; **năm cột lương đã có công thức và chạy
-thật**; tab Biểu đồ có đặc tả, chạy thật và được xác nhận.
+lời và đã áp dụng đúng ✅; năm cột lương đã có công thức và chạy thật ✅;
+chủ dự án mở tab [Tổng hợp] thật, xác nhận đúng thứ tự Line/cột, đối
+chiếu được ít nhất "Tỉ lệ tồn kho", "Vs. Tháng trước" và một dòng lương
+khớp tay; tab Biểu đồ có đặc tả, chạy thật và được xác nhận.
 
-Ba việc cuối còn lại — chưa xong, và hai trong ba đang CHỜ chủ dự án cho
-đầu bài, không phải chờ code.
+**Còn đúng một việc: tab Biểu đồ** — và nó đang chờ chủ dự án cho đầu
+bài, không phải chờ code.
 
 ---
 

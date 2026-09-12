@@ -165,11 +165,33 @@
      để người đọc hiểu nhầm. */
   .bangTongHop th.oQuyDoi { background: #dbeafe; }
   .bangTongHop td.oQuyDoi { background: #eff6ff; font-weight: 600; }
-  /* Năm cột lương còn chờ công thức: mờ đi để thấy ngay đây là chỗ xếp sẵn,
-     chưa phải số. Lý do đầy đủ nằm ở `title` của chính ô đó. */
-  .bangTongHop .oCho { color: #9ca3af; }
   .bangTongHop td.vsTang { color: #047857; }
   .bangTongHop td.vsGiam { color: #b91c1c; }
+
+  /* ---- Vượt KPI: ba mức, ba màu (chủ dự án chốt 12/09/2026) ----
+     Tô ở ô "Đạt" chứ không tô cả hàng — cột Doanh số quy đổi đã có nền riêng,
+     tô cả hàng là đè lên nó và xoá mất tín hiệu cũ. Ba mốc cũng đúng ba mốc
+     đổi bậc thưởng, nên màu ở đây đọc được thành "line vừa lên một bậc".
+     Đậm dần chứ không đổi tông: ba màu rời rạc thì phải học bảng màu mới
+     đọc được thứ tự, còn đậm dần thì nhìn là biết cái nào hơn. */
+  .bangTongHop td.dat100 { background: #dcfce7; color: #14532d; font-weight: 600; }
+  .bangTongHop td.dat110 { background: #86efac; color: #14532d; font-weight: 600; }
+  .bangTongHop td.dat120 { background: #22c55e; color: #052e16; font-weight: 700; }
+
+  /* Ô nhập ngày công nằm TRONG ô bảng, không phải một cột riêng — cùng lối ô
+     tick gia dụng của P5 nằm trong ô Mã sản phẩm. */
+  .bangTongHop td.oCong { padding: 2px 4px; }
+  .bangTongHop input.oNgayCong {
+    width: 58px; padding: 2px 4px; font-size: 12px; text-align: right;
+    border: 1px solid #d1d5db; border-radius: 4px;
+  }
+  .bangTongHop input.oNgayCong:focus { outline: 2px solid #2563eb; outline-offset: -1px; }
+  /* Đang gửi: mờ cả bảng và chặn bấm tiếp, để hai lượt ghi không chồng nhau
+     lên cùng một ô. Cùng lối `.daiKpi.dangGui`. */
+  .bangTongHop.dangGui { opacity: .55; pointer-events: none; }
+  /* Ghi chú là cột CHỮ duy nhất của bảng — cho nó xuống dòng được, còn lại
+     giữ `nowrap` như cũ. */
+  .bangTongHop td.oGhiChuLuong { white-space: normal; min-width: 200px; color: #4b5563; }
 
   /* Ghim đầu cột (chủ dự án chốt 12/09/2026): `overflow-x: auto` một mình
      đã ĐỦ để trình duyệt tự áp `overflow-y: auto` — luật phụ thuộc của CSS

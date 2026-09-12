@@ -68,6 +68,17 @@
   /** Phần trăm, một chữ số thập phân — cho "đạt bao nhiêu % KPI". Engine đã
    *  làm tròn tới hai số; một số thập phân là đủ để đọc và đủ để thấy chuyển
    *  động giữa hai lượt xem. */
+  /** Hai chữ số thập phân — cho hệ số thưởng (0,15% và 0,45% chỉ khác nhau ở
+   *  chữ số thứ hai, nên `so1` sẽ làm hai bậc trông giống hệt nhau). */
+  const so2 = (v) => (Number(v) || 0).toLocaleString("vi-VN", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+  /** Một mốc tiền lớn, viết theo TỈ để đọc được bằng mắt: 1.500.000.000 đ →
+   *  "1,5 tỷ". Mốc thưởng nóng của cách A là một số lẻ (3.115.384.615 đ) nên
+   *  giữ tới 3 chữ số thập phân — "3,115 tỷ" vẫn đọc được, còn "3 tỷ" thì sai
+   *  hẳn con số. */
+  const tyDong = (v) => (Number(v) || 0) / 1e9 === 0 ? "0"
+    : ((Number(v) || 0) / 1e9).toLocaleString("vi-VN", { maximumFractionDigits: 3 }) + " tỷ";
   const so1 = (v) => (Number(v) || 0).toLocaleString("vi-VN", {
     minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -970,6 +981,36 @@
     dai.dataset.canVeLai = "1";
   }
 
+  /** Gửi ngày công của MỘT line trong kỳ đang xem.
+   *
+   *  Ô trống = XOÁ hẳn con số (`null`), về lại "chưa nhập" — KHÔNG phải gõ số
+   *  0 ("tháng này không đi làm ngày nào"). Hai câu khác nhau và cột Lương
+   *  cứng hiện hai thứ khác nhau ("—" so với "0"), nên Gateway đọc theo KIỂU
+   *  đúng như vậy. Cùng quy ước `guiKpi` ở trên.
+   *
+   *  Ghi ngay, VẼ LẠI MUỘN — cờ trên `dataset` của bảng, lượt rời bảng mới
+   *  dựng lại. Xem `focusout` ở `veTongHop()` cho lý do đầy đủ. */
+  async function guiCong(b, o) {
+    const tho = o.value.trim();
+    b.classList.add("dangGui");
+    try {
+      await goiGhi("/api/dat-cong", {
+        line: o.dataset.line,
+        ky: trangThai.ky,
+        ngay_cong: tho === "" ? null : Number(tho),
+      });
+    } catch (e) {
+      b.classList.remove("dangGui");
+      $("loiDonHang").textContent = "Không lưu được ngày công: " + e.message;
+      return;
+    }
+    b.classList.remove("dangGui");
+    /* Đổi ngày công là đổi lương cứng, phụ cấp, tổng lương của line ấy CỘNG
+       cả ba con số của hàng TỔNG — sáu con số do Engine tính, nên phải tải
+       lại chứ không tự nhân ở trình duyệt (LUẬT SỐ 1). */
+    b.dataset.canVeLai = "1";
+  }
+
   /** Xoá bản ghi đè của kỳ đang xem — line quay về dùng mặc định. */
   async function boRiengKy(dai) {
     dai.classList.add("dangGui");
@@ -1128,19 +1169,25 @@
       { ten: "Vs. Tháng trước",
         gt: "Doanh số thuần tháng này so với CHÍNH line đó tháng liền trước, "
           + "tính bằng phần trăm chênh." },
-      { ten: "Thưởng", cho: true },
-      { ten: "Ngày công", cho: true },
-      { ten: "Lương cứng", cho: true },
-      { ten: "Phụ cấp", cho: true },
-      { ten: "Tổng lương", cho: true },
+      { ten: "Thưởng (nghìn đ)",
+        gt: "Doanh số quy đổi × hệ số thưởng của bậc đang đạt, cộng thưởng "
+          + "nóng nếu chạm mốc. Bậc lấy theo HỆ SỐ QUY ĐỔI của line: 7,5% là "
+          + "cách A, 5,5% là cách B. Cột Ghi chú nói rõ line này ăn hệ số nào." },
+      { ten: "Ngày công",
+        gt: "Quản trị gõ tay theo thực tế, riêng từng tháng. Bỏ trống là CHƯA "
+          + "NHẬP — khác với gõ số 0." },
+      { ten: "Lương cứng (nghìn đ)",
+        gt: "4.500 cho 26 ngày công, chia đều theo ngày cả khi thiếu lẫn khi "
+          + "vượt." },
+      { ten: "Phụ cấp (nghìn đ)",
+        gt: "30 một ngày công, TRẦN ở 26 ngày — làm thêm ngày thì được thêm "
+          + "lương cứng, không được thêm phụ cấp." },
+      { ten: "Tổng lương (nghìn đ)",
+        gt: "Thưởng + Lương cứng + Phụ cấp." },
+      { ten: "Ghi chú",
+        gt: "Hệ số thưởng line này thực sự được tính, và phần thưởng nóng đã "
+          + "nằm trong cột Thưởng (nếu có)." },
     ];
-    /* Năm cột cuối CÒN CHỜ công thức (chủ dự án chốt: gán sau khi layout
-       xong). Xếp chỗ chứ không bỏ hẳn — đúng cách P4 xếp chỗ cho "Doanh số
-       quy đổi" trước khi P5 có công thức — và nói thẳng ở `title` rằng chúng
-       đang chờ, để một ô "—" không bị đọc nhầm thành "bằng 0". */
-    const CHO_CONG_THUC = "Cột này đang xếp chỗ: chủ dự án sẽ cho công thức và "
-      + "nguồn dữ liệu sau. “—” ở đây nghĩa là CHƯA CÓ công thức, không phải "
-      + "bằng 0.";
 
     const b = el("table", "bangNho bangTongHop");
     const tr = el("tr");
@@ -1152,15 +1199,11 @@
     }
     b.appendChild(tr);
 
-    /* Năm ô "—" của nhóm lương, dựng một chỗ để hàng line và hàng TỔNG không
-       đếm lệch nhau số cột. */
-    const oCho = (r) => {
-      for (let i = 0; i < 5; i++) {
-        const td = el("td", "oSo oCho", "—");
-        td.title = CHO_CONG_THUC;
-        r.appendChild(td);
-      }
-    };
+    const luong = (tkpi && tkpi.luong) || null;
+    const luongCua = (luong && luong.line) || {};
+    /* Chỉ Quản trị gõ được ngày công — cùng mức với KPI, vì nó là vế nhân của
+       lương cứng và phụ cấp. Quản lí vẫn đọc được con số. */
+    const duocNhap = window.VAI_BAO_CAO === "quantri";
 
     /* Thứ tự line: DOANH SỐ THUẦN GIẢM DẦN, do Engine sắp
        (`tom_tat_kpi.thu_tu`) — không sắp ở đây, vì "sắp theo cái gì" là một
@@ -1213,12 +1256,9 @@
 
       r.appendChild(el("td", "oSo", k && k.kpi !== null && k.kpi !== undefined
         ? nghinTron(k.kpi) : "—"));
-      /* "Chưa đặt KPI" và "đạt 0%" là hai câu khác nhau. */
-      r.appendChild(el("td", "oSo", k && k.dat_pt !== null && k.dat_pt !== undefined
-        ? so1(k.dat_pt) + "%" : "—"));
-
+      r.appendChild(oDat(k));
       r.appendChild(oVsThangTruoc(vsCua[ten] || null));
-      oCho(r);
+      oLuong(r, luongCua[ten] || null, ten, k, duocNhap);
       b.appendChild(r);
     }
 
@@ -1237,16 +1277,25 @@
       r.appendChild(oTonKho(t));
       r.appendChild(el("td", "oSo", t.kpi !== null && t.kpi !== undefined
         ? nghinTron(t.kpi) : "—"));
-      const oDat = el("td", "oSo", t.dat_pt !== null && t.dat_pt !== undefined
-        ? so1(t.dat_pt) + "%" : "—");
+      const tdDat = oDat(t);
       /* Tổng KPI chỉ cộng line CÓ MẶT trong kỳ — so tổng quy đổi của 3 line
          với KPI của cả 10 line là một tỉ lệ vô nghĩa. Nói ra ở `title` để
          người đối chiếu tay không phải tự đoán. */
-      oDat.title = "Tổng KPI chỉ cộng những line có đơn trong tháng này, "
+      tdDat.title = "Tổng KPI chỉ cộng những line có đơn trong tháng này, "
         + "không cộng cả 10 line.";
-      r.appendChild(oDat);
+      r.appendChild(tdDat);
       r.appendChild(oVsThangTruoc(t));
-      oCho(r);
+
+      /* Hàng TỔNG cộng ba cột TIỀN, bỏ trống Ngày công và Ghi chú: cộng ngày
+         công của nhiều line ra một con số không có nghĩa nào (26 + 26 + 24 =
+         76 "ngày" của ai?), và một dòng ghi chú gộp mười line cũng vậy. */
+      const tl = (luong && luong.tong) || null;
+      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.thuong) : "—"));
+      r.appendChild(el("td", "oSo", ""));
+      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.luong_cung) : "—"));
+      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.phu_cap) : "—"));
+      r.appendChild(el("td", "oSo", tl ? nghinTron(tl.tong_luong) : "—"));
+      r.appendChild(el("td", null, ""));
       b.appendChild(r);
     }
 
@@ -1256,8 +1305,149 @@
     ve.appendChild(el("p", "viDu",
       "Line sắp theo doanh số thuần giảm dần. Hệ số quy đổi và KPI của từng "
       + "line đặt ở dải setup trên tab của chính line đó — cột “Hệ số” đã bỏ "
-      + "khỏi bảng này (chủ dự án chốt 12/09/2026). Năm cột từ “Thưởng” trở "
-      + "đi đang xếp chỗ, chờ công thức."));
+      + "khỏi bảng này (chủ dự án chốt 12/09/2026). Cách tính lương đi theo "
+      + "HỆ SỐ QUY ĐỔI: 7,5% là cách A, 5,5% là cách B, hệ số khác thì tạm "
+      + "chưa tính — đổi cách tính của một line là đổi hệ số của nó, không "
+      + "phải sửa phần mềm."));
+
+    /* Ô ngày công lưu NGAY khi rời ô, nhưng bảng chỉ dựng lại khi tiêu điểm
+       rời hẳn KHỎI BẢNG — đúng bài học đã trả giá ở dải setup KPI (P5): cả
+       cột ngày công là MỘT đơn vị sửa (gõ xong line này thì Tab xuống line
+       kế), nên vẽ lại ngay sau mỗi ô sẽ xoá mất ô người dùng vừa nhảy vào và
+       ăn mất mấy ký tự họ đang gõ. */
+    b.addEventListener("change", (e) => {
+      const o = e.target.closest("input[data-line]");
+      if (o && b.contains(o)) guiCong(b, o);
+    });
+    /* Enter trong ô số KHÔNG tự nhả tiêu điểm, nên `change` bắn mà `focusout`
+       thì không — người dùng thấy số đã lưu mà bảng vẫn là số cũ. Nhả bằng
+       tay để chuỗi "ghi xong thì vẽ lại" chạy đúng nhịp. */
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const o = e.target.closest("input[data-line]");
+      if (!o || !b.contains(o)) return;
+      e.preventDefault();
+      o.blur();
+    });
+    b.addEventListener("focusout", () => {
+      setTimeout(() => {
+        if (!b.isConnected || b.contains(document.activeElement)) return;
+        if (!b.dataset.canVeLai) return;
+        delete b.dataset.canVeLai;
+        taiKy({ imLang: true });
+      }, 0);
+    });
+  }
+
+  /** Ô "Đạt" — kèm highlight ba mức khi vượt KPI.
+   *
+   *  Chủ dự án chốt 12/09/2026: "đạt 100% highlight xanh, 110% và 120% cũng
+   *  highlight nhưng màu khác". Tô ở ĐÂY chứ không tô cả hàng: cột "Doanh số
+   *  quy đổi" đã có nền tô riêng, tô cả hàng sẽ đè lên nó và xoá mất tín hiệu
+   *  cũ. Ba mốc cũng đúng ba mốc đổi bậc thưởng, nên màu ở đây đọc được thành
+   *  "line này vừa lên một bậc thưởng". */
+  function oDat(k) {
+    if (!k || k.dat_pt === null || k.dat_pt === undefined) {
+      /* "Chưa đặt KPI" và "đạt 0%" là hai câu khác nhau. */
+      return el("td", "oSo", "—");
+    }
+    const d = k.dat_pt;
+    const lop = d >= 120 ? "dat120" : d >= 110 ? "dat110" : d >= 100 ? "dat100" : "";
+    return el("td", "oSo " + lop, so1(d) + "%");
+  }
+
+  /** Sáu ô cuối: Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương · Ghi chú.
+   *
+   *  Dựng một chỗ để hàng nào cũng đúng số ô — lệch một ô là mọi con số từ đó
+   *  trở đi đọc sang sai tên cột. */
+  function oLuong(r, lg, ten, k, duocNhap) {
+    const co = !!(lg && lg.cach);
+
+    const oThuong = el("td", "oSo", co ? nghinTron(lg.thuong) : "—");
+    if (co && lg.thuong === null) {
+      oThuong.title = "Tháng này chưa có doanh số quy đổi (kỳ trước 09/2026 "
+        + "không có giá vốn) nên chưa tính được thưởng — khác với không được "
+        + "thưởng đồng nào.";
+    } else if (co && k && k.don_thieu_quy_doi) {
+      /* Thưởng chia trên doanh số quy đổi, nên nó thừa hưởng đúng cảnh báo
+         của cột ấy: còn đơn thiếu giá vốn thì con số này là SÀN. */
+      oThuong.textContent += " *";
+      oThuong.title = "Còn " + soNguyen(k.don_thieu_quy_doi)
+        + " đơn chưa đủ giá vốn nên chưa vào doanh số quy đổi, tức chưa vào "
+        + "con số thưởng này.";
+    }
+    r.appendChild(oThuong);
+
+    r.appendChild(oNgayCong(lg, ten, co, duocNhap));
+
+    for (const t of ["luong_cung", "phu_cap", "tong_luong"]) {
+      const td = el("td", "oSo", co ? nghinTron(lg[t]) : "—");
+      if (co && lg[t] === null && lg.ngay_cong === null) {
+        td.title = "Chưa nhập ngày công cho line này ở tháng đang xem.";
+      }
+      r.appendChild(td);
+    }
+
+    r.appendChild(oGhiChuLuong(lg, co));
+  }
+
+  /** Ô Ngày công — ô NHẬP cho Quản trị, chữ thường cho Quản lí. */
+  function oNgayCong(lg, ten, co, duocNhap) {
+    if (!co) {
+      const td = el("td", "oSo", "—");
+      td.title = "Line này chưa tính lương nên không cần ngày công.";
+      return td;
+    }
+    const td = el("td", "oSo oCong");
+    if (!duocNhap) {
+      td.textContent = lg.ngay_cong === null ? "—" : so1(lg.ngay_cong);
+      td.title = "Chỉ Quản trị nhập được ngày công.";
+      return td;
+    }
+    const o = el("input", "oNgayCong");
+    o.type = "number";
+    o.step = "0.5";
+    o.min = "0";
+    o.max = "31";
+    o.dataset.line = ten;
+    o.value = lg.ngay_cong === null ? "" : String(lg.ngay_cong);
+    o.title = "Gõ số ngày công thực tế của tháng đang xem. Xoá trắng ô là bỏ "
+      + "hẳn con số (về “chưa nhập”), khác với gõ số 0.";
+    td.appendChild(o);
+    return td;
+  }
+
+  /** Cột Ghi chú — hệ số thực được tính, và thưởng nóng đã nằm trong cột
+   *  Thưởng nếu có.
+   *
+   *  Chủ dự án chốt: "ghi rõ hệ số nhân viên được tính thực tế, và số tiền
+   *  thưởng đã bao gồm thưởng theo mốc 1 tỉ 5 / 2 tỉ (nếu đạt — còn không đạt
+   *  thì không ghi gì)". Engine trả về từng mảnh rời (`cach`,
+   *  `he_so_thuong_pt`, `moc_nong`, `nguong_nong`, `thuong_nong`); ghép chúng
+   *  thành câu là việc của màn hình, không phải phép tính. */
+  function oGhiChuLuong(lg, co) {
+    if (!co) {
+      const td = el("td", "oGhiChuLuong", "—");
+      td.title = "Hệ số quy đổi của line này không phải 7,5% (cách A) hay 5,5% "
+        + "(cách B) nên tạm chưa tính lương. Đổi hệ số trên dải setup của tab "
+        + "line là nó vào cách tương ứng ngay.";
+      return td;
+    }
+    if (lg.he_so_thuong_pt === null) {
+      return el("td", "oGhiChuLuong", "Cách " + lg.cach + " · chưa tính được thưởng");
+    }
+    let chu = "Cách " + lg.cach + " · " + so2(lg.he_so_thuong_pt) + "%";
+    if (lg.moc_nong) {
+      chu += " · đã gồm " + nghinTron(lg.thuong_nong)
+        + " thưởng mốc " + tyDong(lg.nguong_nong);
+    }
+    const td = el("td", "oGhiChuLuong", chu);
+    td.title = "Hệ số thưởng đang áp cho line này"
+      + (lg.moc_nong
+        ? ", và khoản thưởng nóng đã CỘNG SẴN vào cột Thưởng (không phải một "
+          + "khoản tính riêng)."
+        : ". Chưa chạm mốc thưởng nóng nào.");
+    return td;
   }
 
   /** Ô "Tỉ lệ tồn kho". Ba trạng thái, ba câu khác nhau — `null` KHÔNG được

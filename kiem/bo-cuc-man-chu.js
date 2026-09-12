@@ -218,7 +218,9 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
      không bắt người dùng F5; giá theo ngày bán nằm bên Tracking nên bắt buộc
      hỏi lại máy chủ). Bốn của P5: rời khỏi dải setup sau khi sửa KPI/hệ số,
      bỏ bản ghi đè một kỳ, tick gia dụng, và bấm nút chuyển "mặc định ↔ riêng
-     tháng này".
+     tháng này". Một của P6: rời khỏi BẢNG [Tổng hợp] sau khi sửa ngày công —
+     cùng lý do "vẽ lại muộn" của cái thứ tư ngay dưới đây, vì cả cột ngày
+     công cũng là MỘT đơn vị sửa nhiều ô.
 
      Chú ý cái thứ tư: lượt sửa KPI vẽ lại khi tiêu điểm rời KHỎI DẢI, không
      vẽ ngay trong lượt ghi. Vẽ ngay thì ô người dùng vừa Tab sang bị xoá
@@ -233,9 +235,10 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
      Đếm bằng con số tuyệt đối chứ không "≥ 3": một lượt sửa tại chỗ mới mà
      quên `imLang` sẽ làm bài này đỏ, và đó đúng là lúc cần biết. */
-  ok('  · và cả TÁM lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
-     + 'bỏ ghi đè/tick gia dụng/đổi chế độ/mở ô gia dụng) đều gọi nó với tuỳ chọn ấy',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 8);
+  ok('  · và cả CHÍN lượt sửa tại chỗ (P4: sửa/xoá/gán mã · P5: rời dải KPI/'
+     + 'bỏ ghi đè/tick gia dụng/đổi chế độ/mở ô gia dụng · P6: rời bảng Tổng '
+     + 'hợp sau khi sửa ngày công) đều gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 9);
   ok('  · giữ nguyên vị trí cuộn của khung bảng qua lượt vẽ lại',
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }

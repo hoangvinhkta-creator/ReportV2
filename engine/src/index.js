@@ -161,7 +161,7 @@ export default class extends WorkerEntrypoint {
    *  cho màn hình, không trả một bảng "mọi dòng đều chưa khớp" (CLAUDE.md —
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
-                         ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc) {
+                         ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc, bangCong) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -187,7 +187,7 @@ export default class extends WorkerEntrypoint {
        trống đúng một khoảng giữa hai lượt deploy, không sai số nào. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc);
+      doanhSoLineKyTruoc, bangCong);
     return bang;
   }
 
@@ -197,7 +197,7 @@ export default class extends WorkerEntrypoint {
    *  thì vẫn phải biến khỏi bảng và khỏi mọi tổng. Gateway đi đường này khi
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
-                          bangKpi, giaDung, ky, doanhSoLineKyTruoc) {
+                          bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
@@ -216,7 +216,7 @@ export default class extends WorkerEntrypoint {
        không giải thích. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc);
+      doanhSoLineKyTruoc, bangCong);
     return bang;
   }
 

@@ -270,12 +270,13 @@ const GOC = path.resolve(__dirname, '..');
     const kh = UI.match(/const COT_TONG_HOP = \[([\s\S]*?)\n    \];/);
     ok('tìm thấy danh sách cột', !!kh, true);
     const ten = [...(kh ? kh[1] : '').matchAll(/ten: "([^"]+)"/g)].map(m => m[1]);
-    ok('đúng 15 cột', ten.length, 15);
+    ok('đúng 16 cột', ten.length, 16);
     ok('đúng thứ tự, đúng tên', ten, [
       'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần (nghìn đ)',
       'Lợi nhuận (nghìn đ)', 'Doanh số quy đổi (nghìn đ)', 'Tỉ lệ tồn kho',
       'KPI (nghìn đ)', 'Đạt', 'Vs. Tháng trước',
-      'Thưởng', 'Ngày công', 'Lương cứng', 'Phụ cấp', 'Tổng lương',
+      'Thưởng (nghìn đ)', 'Ngày công', 'Lương cứng (nghìn đ)',
+      'Phụ cấp (nghìn đ)', 'Tổng lương (nghìn đ)', 'Ghi chú',
     ]);
     /* Cột "Hệ số" bỏ khỏi bảng này (chủ dự án chốt) — nó vẫn xem và sửa được
        trên dải setup của từng tab line, nên không mất đường vào. */
@@ -287,15 +288,36 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · và ô của nó mang đúng lớp ấy', /"oSo oQuyDoi"/.test(UI), true);
   }
 
-  console.log('\nL) Năm cột lương XẾP CHỖ — "—" nói rõ là CHƯA CÓ công thức');
+  console.log('\nL) Màn hình KHÔNG giữ bản thứ hai của luật lương');
   {
-    ok('có câu giải thích riêng cho nhóm cột chờ',
-       /CHO_CONG_THUC[\s\S]{0,200}CHƯA CÓ công thức/.test(UI), true);
-    ok('  · và nó nói thẳng "không phải bằng 0"',
-       /CHO_CONG_THUC[\s\S]{0,260}không phải[\s\S]{0,20}bằng 0/.test(UI), true);
-    /* Không được bịa số: năm ô ấy phải là "—" cứng, không đọc trường nào. */
-    ok('năm ô chờ dựng bằng một vòng lặp "—"',
-       /for \(let i = 0; i < 5; i\+\+\)[\s\S]{0,200}"—"/.test(UI), true);
+    /* LUẬT SỐ 1, và ở đây nó có một hệ quả rất cụ thể: chủ dự án chốt "nhập
+       hệ số là hệ thống tự hiểu cách tính, không phải code lại". Một con số
+       lương nào lọt vào trình duyệt là một bản luật thứ hai, và nó sẽ trôi
+       khỏi bản Engine đúng lúc chủ dự án đổi mức. */
+    /* Soi trên MÃ THẬT, đã bỏ chú thích và mọi chuỗi ký tự: con số 26 có mặt
+       hợp lệ trong câu giải thích ở `title` ("30 một ngày công, TRẦN ở 26
+       ngày") — đó là nói cho người dùng biết luật, không phải chạy luật. Thứ
+       phải cấm là một hằng số lương nằm trong một PHÉP TÍNH. */
+    const ma = UI
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    for (const so of ['4500', '4_500_000', '4500000', '30000', '1500000000',
+                      '0.15', '0.45', '0.005']) {
+      ok('mã màn hình không mang hằng số lương `' + so + '`',
+         new RegExp('[^\\w.]' + so.replace(/[.]/g, '\\.') + '[^\\w]').test(ma), false);
+    }
+    ok('  · không chia cho 26 ngày công', /[/*]\s*26\b/.test(ma), false);
+    ok('  · và không tự nhân doanh số quy đổi với hệ số nào',
+       /doanh_so_quy_doi\s*\*/.test(ma), false);
+    ok('màn hình chỉ ĐỌC bản kê lương của Engine', /tkpi\.luong/.test(UI), true);
+
+    /* Ba câu trống khác nhau cho ba lý do khác nhau — cùng kỷ luật "0 đồng
+       khác chưa biết" của cả repo. */
+    ok('nói được "line này không tính lương"',
+       /không phải 7,5% \(cách A\) hay 5,5%/.test(UI), true);
+    ok('nói được "chưa nhập ngày công"', /Chưa nhập ngày công/.test(UI), true);
+    ok('nói được "chưa có quy đổi nên chưa tính được thưởng"',
+       /chưa tính được thưởng — khác với không được/.test(UI), true);
   }
 
   /* ─────────── M. Nguồn số của bảng, và đường Gateway ─────────── */
@@ -336,8 +358,17 @@ const GOC = path.resolve(__dirname, '..');
        cũ sẽ nổ 503 giữa hai lượt deploy song song. */
     ok('dùng gopTheoLine đã có sẵn từ P2',
        /REPORT_ENGINE\.gopTheoLine\(cay, bangLine\)/.test(GW), true);
-    ok('tham số mới đứng CUỐI ở cả hai đường Engine',
-       /giaDung, doanhSoLineKyTruoc\)/.test(doc('engine/src/index.js')), true);
+    /* Bẫy số 4 dưới dạng một bài kiểm: mọi tham số THÊM VÀO phải nối vào
+       ĐUÔI chữ ký, không chèn vào giữa. Chèn giữa là bản Gateway cũ (còn
+       đang chạy trong khoảng hai lượt deploy song song) gọi lệch chỗ mọi
+       tham số sau đó — tức truyền bảng KPI vào ô của bảng giá. Bài này đỏ
+       mỗi lần có người thêm tham số, và đó là chủ ý: nó bắt người sửa nhìn
+       lại cái đuôi. */
+    const ENG = doc('engine/src/index.js');
+    ok('dungBangDonKemMa nhận tham số mới ở ĐUÔI',
+       /dungBangDonKemMa\([^)]*doanhSoLineKyTruoc, bangCong\)/.test(ENG), true);
+    ok('dungBangDonSuaTay cũng vậy',
+       /dungBangDonSuaTay\([^)]*doanhSoLineKyTruoc, bangCong\)/.test(ENG), true);
   }
 
   /* ─────────── O. Hàng TỔNG ─────────── */
@@ -371,7 +402,7 @@ const GOC = path.resolve(__dirname, '..');
    * nên bộ này chạy `veTongHop()` thật trên DOM giả, đúng lối
    * `kiem/dashboard-ve.js` đã mở đường. */
 
-  console.log('\nP) Chạy thật veTongHop() — đủ 15 ô mỗi hàng, đúng thứ tự Engine');
+  console.log('\nP) Chạy thật veTongHop() — đủ 16 ô mỗi hàng, đúng thứ tự Engine');
   {
     const nut = () => {
       const e = {
@@ -430,7 +461,23 @@ const GOC = path.resolve(__dirname, '..');
         tong: { doanh_so: 1000000, so_don: 4, so_san_pham: 8, loi_nhuan: 100000,
                 doanh_so_quy_doi: 1000000, kpi: 1000000, dat_pt: 100,
                 ty_le_ton_kho_pt: 36, doanh_so_chua_ro_nguon: 50000,
-                doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 33.3 } } },
+                doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 33.3 },
+        luong: {
+          line: {
+            L2: { cach: 'B', he_so_thuong_pt: 0.45, moc_nong: 1,
+                  nguong_nong: 1500000000, thuong_nong: 500000, thuong: 4550000,
+                  ngay_cong: 28, luong_cung: 4846153.85, phu_cap: 780000,
+                  tong_luong: 10176153.85 },
+            /* L1 — đã nhận ra bậc, nhưng kỳ này chưa có quy đổi nên thưởng
+               CHƯA BIẾT, và ngày công thì chưa ai nhập. Hai lý do trống khác
+               nhau nằm trên cùng một hàng. */
+            L1: { cach: 'A', he_so_thuong_pt: null, moc_nong: 0, nguong_nong: null,
+                  thuong_nong: null, thuong: null,
+                  ngay_cong: null, luong_cung: null, phu_cap: null, tong_luong: null },
+          },
+          tong: { thuong: 4550000, luong_cung: 4846153.85, phu_cap: 780000,
+                  tong_luong: 10176153.85 },
+        } } },
     };
     const ve = nut();
     ctx.__t.veTongHop(ve, kq);
@@ -442,7 +489,7 @@ const GOC = path.resolve(__dirname, '..');
     ok('4 hàng: tiêu đề + 3 line + TỔNG', b.con.length, 5);
     /* Lệch một ô ở một hàng là mọi con số từ đó trở đi đọc sang sai tên cột —
        lớp lỗi mà chỉ chạy thật mới thấy. */
-    ok('MỌI hàng đều đúng 15 ô', b.con.map((r) => r.con.length), [15, 15, 15, 15, 15]);
+    ok('MỌI hàng đều đúng 16 ô', b.con.map((r) => r.con.length), [16, 16, 16, 16, 16]);
 
     const chu = (i) => b.con[i].con.map((c) => c.textContent);
     ok('thứ tự hàng theo tom_tat_kpi.thu_tu, không theo tom_tat_line',
@@ -470,12 +517,42 @@ const GOC = path.resolve(__dirname, '..');
     ok('L3 — line sập về 0đ vẫn hiện −100% ở cột Vs.', chu(3)[9], '▼ -100,0%');
     ok('  · và mang lớp màu giảm', b.con[3].con[9].className, 'oSo vsGiam');
 
-    /* Năm cột lương: "—" ở MỌI hàng, kể cả TỔNG. */
-    for (let h = 1; h <= 4; h++) {
-      ok('hàng ' + h + ': năm cột lương đều "—"', chu(h).slice(10), ['—', '—', '—', '—', '—']);
-    }
-    ok('và chúng nói rõ đang chờ công thức',
-       /xếp chỗ/.test(b.con[1].con[10].title), true);
+    /* ── Nhóm cột lương ── */
+
+    /* L2 — cách B, có đủ mọi thứ. Ô Ngày công là Ô NHẬP (đang là quantri) nên
+       `textContent` rỗng; con số nằm ở `value` của <input> con. */
+    ok('L2 — Thưởng / Lương cứng / Phụ cấp / Tổng lương',
+       [chu(1)[10], chu(1)[12], chu(1)[13], chu(1)[14]],
+       ['4.550', '4.846', '780', '10.176']);
+    const oNhap = b.con[1].con[11].con[0];
+    ok('L2 — ô Ngày công là một <input>', !!oNhap, true);
+    ok('  · mang đúng số đã nhập', oNhap.value, '28');
+    ok('  · và khoá theo tên line để lượt ghi biết sửa ai', oNhap.dataset.line, 'L2');
+    ok('L2 — Ghi chú nói hệ số thực tế VÀ thưởng nóng đã gồm trong cột Thưởng',
+       chu(1)[15], 'Cách B · 0,45% · đã gồm 500 thưởng mốc 1,5 tỷ');
+
+    /* L1 — cùng một hàng, HAI lý do trống khác nhau, hai câu khác nhau. */
+    ok('L1 — chưa có quy đổi nên Thưởng "—"', chu(2)[10], '—');
+    ok('  · và ô đó nói vì sao', /chưa tính được thưởng/.test(b.con[2].con[10].title), true);
+    ok('L1 — chưa nhập ngày công nên Lương cứng "—"', chu(2)[12], '—');
+    ok('  · và ô đó nói một câu KHÁC', /Chưa nhập ngày công/.test(b.con[2].con[12].title), true);
+    ok('L1 — Ghi chú vẫn nói được bậc đã nhận ra', chu(2)[15], 'Cách A · chưa tính được thưởng');
+
+    /* L3 — hệ số không thuộc cách nào (Nội thành 2%): cả nhóm trống, kể cả ô
+       Ngày công, và KHÔNG dựng ô nhập cho nó. */
+    ok('L3 — không thuộc cách nào: cả sáu ô lương đều "—"',
+       chu(3).slice(10), ['—', '—', '—', '—', '—', '—']);
+    ok('  · và KHÔNG dựng ô nhập ngày công', b.con[3].con[11].con.length, 0);
+    ok('  · Ghi chú nói thẳng vì sao', /không phải 7,5%/.test(b.con[3].con[15].title), true);
+
+    /* TỔNG — cộng ba cột tiền, bỏ trống Ngày công và Ghi chú. */
+    ok('TỔNG — ba cột tiền có số', [chu(4)[10], chu(4)[12], chu(4)[13], chu(4)[14]],
+       ['4.550', '4.846', '780', '10.176']);
+    ok('  · Ngày công để TRỐNG (cộng ngày công nhiều line là vô nghĩa)', chu(4)[11], '');
+    ok('  · Ghi chú cũng để trống', chu(4)[15], '');
+
+    /* Highlight ba mức khi vượt KPI. */
+    ok('đạt 90% thì KHÔNG tô', b.con[1].con[8].className, 'oSo ');
 
     /* Cột quy đổi được tô — chủ dự án yêu cầu highlight đúng cột này. */
     ok('ô cột quy đổi mang lớp highlight', b.con[1].con[5].className, 'oSo oQuyDoi');
