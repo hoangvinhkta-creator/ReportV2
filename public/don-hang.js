@@ -133,13 +133,15 @@
    *  đã được kiểm (`doiChieuKy` giữ dòng đã sửa tay khỏi bị đè), nhưng đường
    *  ghi `bc/quyetdinh/dong/<kỳ>` là việc của P3 lượt 2. Hiện ra mờ để thấy
    *  trước chỗ chứ không giả vờ bấm được rồi im lặng không làm gì. */
-  function nutDong(bieuTuong, nhan) {
+  function nutDong(bieuTuong, nhan, bat, viec) {
     const td = el("td", "oIcon");
     const b = el("button", "nutIcon", bieuTuong);
     b.type = "button";
-    b.disabled = true;
-    b.title = nhan + " — mở ở lượt sau";
+    b.disabled = !bat;
+    b.title = bat ? nhan
+      : nhan + " — dòng này không sửa được (chiết khấu, hoặc kỳ ngoài phạm vi)";
     b.setAttribute("aria-label", nhan);
+    if (bat) b.dataset.viec = viec;
     td.appendChild(b);
     return td;
   }
@@ -212,6 +214,11 @@
   function oGiaNhap(d) {
     if (d.gia_nhap !== null && d.gia_nhap !== undefined) {
       const td = el("td", "oSo", nghin(d.gia_nhap));
+      /* Giá trị THÔ (đồng) đi kèm ô. Lượt sửa seed ô nhập từ đây, KHÔNG từ
+         chữ đang hiện: chữ ấy đã qua `nghin()` — một phép làm tròn để ĐỌC.
+         Seed từ nó là để một phép làm tròn hiển thị chảy ngược vào đường
+         ghi, và khi ấy chỉ cần mở ô sửa rồi bấm lưu là tiền đã khác. */
+      td.dataset.dong = String(d.gia_nhap);
       /* Giá được MANG QUA từ một mốc trước là chuyện bình thường của hệ Min
          (chỉ ghi khi đổi), nhưng người đối chiếu tay cần biết con số này quan
          sát được ngày nào. */
@@ -295,6 +302,139 @@
     bn.textContent = "Còn " + soNguyen(oNo.length) + " dòng chưa có mã bảng giá, thuộc "
       + soNguyen(ten.size) + " tên hàng. Bấm vào ô Mã sản phẩm của dòng đó để phân loại.";
     bn.className = "bangConNo";
+  }
+
+  /* ---- Chế độ SỬA một dòng ----
+   *
+   * Chủ dự án chốt 12/09/2026: hai ô Giá nhập và Nơi nhập KHOÁ cho tới khi
+   * bấm nút Sửa dòng. Khoá mặc định là thứ giữ cho một cú bấm nhầm giữa hàng
+   * nghìn ô không thành một lượt sửa tiền — và làm rõ rằng sửa tay là một
+   * hành động có chủ ý, không phải một lượt gõ lướt qua.
+   *
+   * Sửa TẠI CHỖ, cùng kỷ luật với màn gán mã: không vẽ lại bảng, không tải
+   * lại trang, nên vị trí cuộn và bố cục không đổi. Bề rộng cột đã chốt cố
+   * định nên một ô đổi thành ô nhập cũng không đẩy được cột nào.
+   */
+  let dangSua = null;          // { tr, khoa, huy }
+
+  function thoatSua() { if (dangSua) dangSua.huy(); }
+
+  function moSua(tr) {
+    if (dangSua && dangSua.tr === tr) return;
+    thoatSua();
+
+    const khoa = tr.dataset.khoaDong;
+    if (!khoa) return;
+    const tdGia = tr.querySelector('td[data-o="gia"]');
+    const tdNoi = tr.querySelector('td[data-o="noi"]');
+    if (!tdGia || !tdNoi) return;
+
+    const cuGia = tdGia.textContent, lopGia = tdGia.className;
+    const cuNoi = tdNoi.textContent, lopNoi = tdNoi.className;
+    const cuTitleGia = tdGia.title, cuTitleNoi = tdNoi.title;
+
+    /* Ô nhập nhận số theo NGHÌN đồng — đúng đơn vị cả bảng đang hiện, để
+       người gõ không phải đổi đơn vị trong đầu giữa lúc đọc và lúc sửa.
+       Engine nhận đồng, nên phép nhân 1.000 nằm đúng một chỗ: lúc gửi. */
+    const oGia = el("input", "oSuaGia");
+    oGia.type = "text";
+    oGia.inputMode = "decimal";
+    /* Seed từ giá trị THÔ, không từ chữ đang hiện — xem `oGiaNhap()`. */
+    oGia.value = tdGia.dataset.dong === undefined ? "" : String(Number(tdGia.dataset.dong) / 1000);
+    oGia.title = "Giá nhập, theo nghìn đồng";
+
+    const oNoi = el("input", "oSuaNoi");
+    oNoi.type = "text";
+    oNoi.value = cuNoi === "—" ? "" : cuNoi;
+    oNoi.title = "Nơi nhập";
+
+    tdGia.textContent = ""; tdGia.className = "oSo"; tdGia.title = "";
+    tdNoi.textContent = ""; tdNoi.className = ""; tdNoi.title = "";
+    tdGia.appendChild(oGia);
+    tdNoi.appendChild(oNoi);
+    tr.classList.add("hangDangSua");
+
+    const traLai = () => {
+      tdGia.textContent = cuGia; tdGia.className = lopGia; tdGia.title = cuTitleGia;
+      tdNoi.textContent = cuNoi; tdNoi.className = lopNoi; tdNoi.title = cuTitleNoi;
+      tr.classList.remove("hangDangSua");
+      dangSua = null;
+    };
+    dangSua = { tr, khoa, huy: traLai };
+
+    oGia.addEventListener("keydown", (e) => { if (e.key === "Enter") luu(); if (e.key === "Escape") traLai(); });
+    oNoi.addEventListener("keydown", (e) => { if (e.key === "Enter") luu(); if (e.key === "Escape") traLai(); });
+    oGia.focus();
+    oGia.select();
+
+    async function luu() {
+      const chuGia = oGia.value.trim();
+      /* Ô để trống = RÚT LẠI quyết định, không phải "giá 0". Hai thứ khác
+         hẳn nhau, và trên một cột tiền thì nhầm chúng là nhầm tiền. */
+      let giaGui;
+      if (chuGia === "") giaGui = null;
+      else {
+        const n = Number(chuGia.replace(/\s/g, "").replace(",", "."));
+        if (!Number.isFinite(n) || n < 0) { oGia.focus(); oGia.select(); return; }
+        giaGui = Math.round(n * 1000);
+      }
+      const noiGui = oNoi.value.trim() === "" ? null : oNoi.value.trim();
+
+      tr.classList.add("hangDangGui");
+      try {
+        await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa,
+          gia_nhap: giaGui, noi_nhap: noiGui });
+      } catch (e) {
+        tr.classList.remove("hangDangGui");
+        $("loiDonHang").textContent = "Không lưu được: " + e.message;
+        return;
+      }
+      tr.classList.remove("hangDangGui");
+      traLai();
+      /* Sửa giá nhập thì lợi nhuận của dòng và của đơn đều đổi theo, và
+         những con số ấy do ENGINE tính (LUẬT SỐ 1) — nên lượt này tải lại
+         đúng bảng đang xem thay vì tự nhân trừ ở trình duyệt. */
+      taiKy();
+    }
+
+    return { luu, huy: traLai };
+  }
+
+  async function xoaDongHang(tr) {
+    const khoa = tr.dataset.khoaDong;
+    if (!khoa) return;
+    const ten = (tr.querySelector('td[data-o="ma"]') || {}).textContent || "dòng này";
+    if (!window.confirm("Xoá " + ten + " khỏi báo cáo?\n\n"
+      + "Dòng sẽ biến khỏi bảng, và doanh số của nó bị trừ khỏi cả biểu đồ. "
+      + "Sổ gốc không đổi — bấm lại nút này trên dòng đó sau khi nhập lại sổ "
+      + "là khôi phục được.")) return;
+    tr.classList.add("hangDangGui");
+    try {
+      await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa, xoa: true });
+    } catch (e) {
+      tr.classList.remove("hangDangGui");
+      $("loiDonHang").textContent = "Không xoá được: " + e.message;
+      return;
+    }
+    /* Xoá đổi tổng của đơn, của ngày và của cả kỳ — bốn con số do Engine
+       tính. Tải lại đúng bảng đang xem thay vì tự trừ ở trình duyệt. */
+    taiKy();
+  }
+
+  /** Gửi một lượt GHI. Tách khỏi `goi()` vì nó cần POST kèm thân. */
+  async function goiGhi(duong, than) {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập.");
+    const token = await user.getIdToken();
+    const r = await fetch(duong, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify(than),
+    });
+    const kq = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((kq.loi || ("HTTP " + r.status))
+      + (kq.rid ? " (mã: " + kq.rid + ")" : ""));
+    return kq;
   }
 
   function veBang(kq) {
@@ -393,10 +533,14 @@
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
           tr.appendChild(o(dauDon ? nhanNgayDay(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
-          tr.appendChild(oNoiNhap(d));
+          const tdNoi = oNoiNhap(d);
+          tdNoi.dataset.o = "noi";
+          tr.appendChild(tdNoi);
           tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma));
           tr.appendChild(o(soNguyen(d.so_luong), "oSo"));
-          tr.appendChild(oGiaNhap(d));
+          const tdGia = oGiaNhap(d);
+          tdGia.dataset.o = "gia";
+          tr.appendChild(tdGia);
           tr.appendChild(o(nghin(d.gia_ban), "oSo"));
           tr.appendChild(o(nghin(d.tong_ban), "oSo"));
           tr.appendChild(o(d.loi_nhuan === null ? null : nghin(d.loi_nhuan), "oSo"));
@@ -413,8 +557,14 @@
           tr.appendChild(tdHang);
           tr.appendChild(tdNganh);
           tr.appendChild(oHep(d.imei, "oImei"));
-          tr.appendChild(nutDong("✏️", "Sửa dòng"));
-          tr.appendChild(nutDong("🗑", "Xoá dòng"));
+          /* Hai nút mở từ P5. Dòng chiết khấu KHÔNG sửa được: nó do Engine
+             gộp ra, không phải một dòng của sổ, nên không có khoá bền để
+             gắn quyết định vào. */
+          const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.trong_pham_vi_ma !== false;
+          tr.appendChild(nutDong("✏️", "Sửa dòng", suaDuoc, "sua"));
+          tr.appendChild(nutDong("🗑", "Xoá dòng", suaDuoc, "xoa"));
+          if (d.khoa) tr.dataset.khoaDong = d.khoa;
+          if (d.da_sua_tay) tr.classList.add("hangSuaTay");
           tbody.appendChild(tr);
           dauDon = false;
         }
@@ -434,6 +584,14 @@
        lại. Uỷ quyền cũng là thứ sống sót qua phép vá tại chỗ — ô được sửa
        không cần gắn lại gì. */
     tbody.addEventListener("click", function (e) {
+      const nut = e.target.closest("button[data-viec]");
+      if (nut && tbody.contains(nut)) {
+        const tr = nut.closest("tr");
+        if (!tr) return;
+        if (nut.dataset.viec === "sua") moSua(tr);
+        else xoaDongHang(tr);
+        return;
+      }
       const td = e.target.closest('td[data-o="ma"]');
       if (!td || !tbody.contains(td)) return;
       const khoa = td.dataset.khoa;
@@ -458,7 +616,12 @@
       + "Dòng đỏ: bán 0 đồng (quà tặng kèm) — vẫn có giá vốn nên vẫn trừ vào lợi nhuận. "
       + "Nơi nhập đỏ: chưa tra được giá Min của ngày đó. "
       + "Chiết khấu của cả đơn gộp thành một dòng mang dấu âm. "
-      + "Doanh số quy đổi và Ghi chú chờ chốt công thức. Nút Sửa/Xoá dòng mở ở lượt sau."));
+      + "Dòng nền xanh: có giá nhập hoặc nơi nhập do bạn tự sửa — sửa tay luôn "
+      + "thắng số máy tính, và sống qua mỗi lần nhập lại sổ. "
+      + "Bấm ✏️ để mở hai ô Giá nhập và Nơi nhập (bình thường chúng khoá); "
+      + "Enter lưu, Esc huỷ. Bấm 🗑 để xoá dòng khỏi báo cáo — doanh số của nó "
+      + "bị trừ khỏi cả biểu đồ, sổ gốc không đổi. "
+      + "Doanh số quy đổi và Ghi chú chờ chốt công thức."));
   }
 
   /* ---- Tab con: Tổng hợp + từng line ---- */

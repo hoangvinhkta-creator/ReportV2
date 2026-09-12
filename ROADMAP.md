@@ -105,6 +105,31 @@ Engine, PR-E Gateway + màn hình):
 - Mỗi dòng thiếu giá mang theo LÝ DO (`chua-co-ma`, `SOURCE_UNAVAILABLE`,
   `NO_DATA`, `INVALID_PRODUCT_CODE`), hiện ở tooltip ô Giá nhập.
 
+**LÁT P5 — SỬA TAY + AUDIT TRAIL — ĐÃ XONG 12/09/2026:**
+
+- Hai nút `[Sửa dòng]` `[Xoá dòng]` ĐÃ MỞ. Hai ô Giá nhập và Nơi nhập
+  KHOÁ cho tới khi bấm ✏️ (chủ dự án chốt) — Enter lưu, Esc huỷ.
+- Quyết định ghi `bc/quyetdinh/dong/<kỳ>/<khoá dòng>` kèm `boi` + `luc`.
+  Nhánh RIÊNG nên lượt nhập sổ không đè được; hợp nhất lúc ĐỌC.
+- **Sửa tay luôn thắng** số máy tính, vĩnh viễn tới khi chính người ấy
+  xoá. Dòng đã sửa hiện NỀN XANH.
+- Dòng biến mất khỏi file mới thì biến khỏi bảng, nhưng quyết định vẫn
+  nằm đó — lúc nào dòng quay lại thì giá đã nhập TỰ ÁP trở lại.
+- **Xoá dòng trừ ở CẢ HAI** (chủ dự án chốt): bảng đơn và biểu đồ. `bc/ky`
+  không bị nạp lại; Gateway tính phần phải TRỪ rồi trừ lúc đọc. Số đơn chỉ
+  giảm khi MỌI dòng của chứng từ ấy đều bị xoá.
+- Dòng 0 đồng (quà tặng kèm) bôi ĐỎ; chứng từ `BTL` KHÔNG gộp chung —
+  nghiệp vụ khác, chủ dự án chốt xử sau.
+- Nơi nhập lấy từ `min_sources` của bản ghi ngày bán, chọn theo thứ tự
+  **Việt Hải → Điện tử 179 → Thăng Long → Trung Xuân → Văn Quân → còn
+  lại**. "Việt Hải" và "Việt Hàn" là HAI NCC khác nhau — so cả chuỗi,
+  không gần đúng.
+
+**Một bẫy đã trả giá, ghi lại:** ô sửa giá từng seed từ CHỮ ĐANG HIỆN
+(đã qua `nghin()` — một phép làm tròn để ĐỌC). Khi ấy chỉ cần mở ô sửa
+rồi bấm lưu là tiền đã khác, và không có gì đỏ lên. Nay seed từ giá trị
+THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
+
 **Ba câu còn treo, CHƯA hỏi được:** công thức "Doanh số quy đổi"; dòng
 0đ (quà tặng/phụ kiện) và chứng từ `BTL` có giá vốn không; và "Nơi nhập"
 — bên Tracking nó là NCC đang giữ giá Min của một MÃ tại một thời điểm

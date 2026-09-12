@@ -52,6 +52,15 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     cua_ten: { An: 'Nội thành', Binh: 'Nội thành' },
   };
 
+  /* Một dòng 200 đ của An trong ngày 10/08/2026, và một quyết định xoá nó.
+     Đủ để chứng minh biểu đồ trừ theo — đúng lời hứa "xoá thì trừ ở CẢ HAI". */
+  let coXoaTay = false;
+  const DONG_08 = {
+    'BH1|Tivi|0': { nhan_vien: 'An', ngay: '2026-08-10', so_ct: 'BH1',
+      ten_hang: 'Tivi', so_luong: 1, don_gia: 200, doanh_so: 200, chiet_khau: 0 },
+  };
+  const QUYET_DINH = { 'BH1|Tivi|0': { xoa: true, boi: 'sep@tinphat.test' } };
+
   globalThis.fetch = async (url, opts) => {
     const u = String(url);
     if (u.includes('securetoken@system.gserviceaccount.com')) {
@@ -74,6 +83,18 @@ const b64u = (b) => Buffer.from(b).toString('base64')
       if (choBangLineLoi) return new Response('loi', { status: 500 });
       return new Response(JSON.stringify(choBangLineThieu ? null : BANG_LINE), { status: 200 });
     }
+    /* P5 — đường Dashboard hỏi "kỳ nào có quyết định sửa tay" (đọc NÔNG),
+       rồi chỉ kỳ nào thật sự có lệnh XOÁ mới kéo `bc/dong` của kỳ ấy về. */
+    if (u.includes('/bc/quyetdinh/dong.json')) {
+      return new Response(JSON.stringify(coXoaTay ? { '2026-08': true } : null),
+        { status: 200 });
+    }
+    if (u.includes('/bc/quyetdinh/dong/2026-08.json')) {
+      return new Response(JSON.stringify(coXoaTay ? QUYET_DINH : null), { status: 200 });
+    }
+    if (u.includes('/bc/dong/2026-08.json')) {
+      return new Response(JSON.stringify(coXoaTay ? DONG_08 : null), { status: 200 });
+    }
     throw new Error('bài kiểm không cho gọi ra ngoài: ' + u);
   };
 
@@ -81,6 +102,8 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   const w = mod.default;
   const engineThat = await import('file://' + path.join(GOC, 'engine/src/gop-theo-thoi-gian.mjs'));
   const lineThat = await import('file://' + path.join(GOC, 'engine/src/line.mjs'));
+  const suaTayThat = await import('file://' + path.join(GOC, 'engine/src/sua-tay.mjs'));
+  const gopThat = await import('file://' + path.join(GOC, 'engine/src/gop-ban-hang.mjs'));
 
   const gio = Math.floor(Date.now() / 1000);
   function tokenChuan(uid) {
@@ -103,6 +126,11 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     REPORT_ENGINE: {
       gopSucKhoeCongTy: async (cayKy) => engineThat.gopSucKhoeCongTy(cayKy),
       gopLineTheoThoiGian: async (cayKy, bang) => lineThat.gopLineTheoThoiGian(cayKy, bang),
+      /* P5 — đường Dashboard trừ phần đã xoá tay ra khỏi `bc/ky` trước khi
+         gộp. Bộ này không dựng quyết định nào nên phần trừ luôn rỗng; điều
+         đáng canh ở đây là đường ấy KHÔNG làm hỏng lượt đọc bình thường. */
+      truVaoCayKy: async (cay, tru) => suaTayThat.truVaoCayKy(cay, tru),
+      tinhTruDaXoa: async (dong, qd) => suaTayThat.tinhTruDaXoa(dong, qd, gopThat.khoaNhanVien),
     },
   };
 
@@ -222,7 +250,33 @@ const b64u = (b) => Buffer.from(b).toString('base64')
        JSON.stringify(await r.json()).includes('bang-line-khong-hop-le'), false);
   }
 
-  console.log('\n9) Sai method → 405, đúng như mọi endpoint /api/ khác');
+  console.log('\n8b) Dòng đã XOÁ TAY bị trừ khỏi biểu đồ — không chỉ khỏi bảng đơn');
+  {
+    hoSoDangDung = HO_SO_QUANLY;
+    choBcKyLoi = false; choBcKyRong = false; choBangLineLoi = false; choBangLineThieu = false;
+
+    coXoaTay = false;
+    const truoc = await (await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe')).json();
+    coXoaTay = true;
+    const sau = await (await goiCoToken(ENV_CO_FIREBASE, '/api/bao-cao/suc-khoe')).json();
+
+    /* Chủ dự án chốt 12/09/2026: xoá một dòng thì trừ ở CẢ HAI. Bảng đơn đọc
+       `bc/dong`, biểu đồ đọc `bc/ky`; trừ một bên là hai màn hình nói hai con
+       số cho cùng một tháng và không ai biết bên nào đúng. */
+    const t08 = (x) => x.theo_thang[2026][8];
+    ok('trước khi xoá: tháng 8/2026 đủ số', t08(truoc).doanh_so, 1500);
+    ok('sau khi xoá 200 đ: biểu đồ TRỪ THEO', t08(sau).doanh_so, 1300);
+    ok('  · và số đơn giảm một (chứng từ không còn dòng nào)',
+       t08(truoc).so_don - t08(sau).so_don, 1);
+    /* Line phải trừ theo cùng một con số — nếu không thì tổng công ty và
+       tổng các line lệch nhau, đúng thứ bất biến `gopTheoLine` canh. */
+    ok('bảng xếp hạng line cũng trừ theo',
+       truoc.line.theo_nam['Nội thành'][2026].doanh_so
+       - sau.line.theo_nam['Nội thành'][2026].doanh_so, 200);
+    coXoaTay = false;
+  }
+
+console.log('\n9) Sai method → 405, đúng như mọi endpoint /api/ khác');
   {
     const r = await w.fetch(
       new Request('https://reportv2-gateway.workers.dev/api/bao-cao/suc-khoe', { method: 'POST' }), ENV_CO_FIREBASE);

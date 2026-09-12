@@ -121,6 +121,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   const mod = await import('file://' + path.join(GOC, 'src/index.js'));
   const D = await import('file://' + path.join(GOC, 'engine/src/dong-hang.mjs'));
   const K = await import('file://' + path.join(GOC, 'engine/src/khop-ma.mjs'));
+  const S = await import('file://' + path.join(GOC, 'engine/src/sua-tay.mjs'));
   const w = mod.default;
   globalThis.fetch = fetchThat;
 
@@ -136,6 +137,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
        Tracking và tự lùi về `dungBangDon()` trần. Đó chính là điều đáng canh
        ở đây: thiếu khoá thì đường tải sổ vẫn chạy trọn vẹn, không hỏng lây. */
     async kyCoKhopMa(ky) { return K.kyCoKhopMa(ky); },
+    async dungBangDonSuaTay(a, b, c, d, qd) { return S.apDungSuaTay(D.dungBangDon(a, b, c, d), qd); },
     async maCanGiaVon(dong, n, ky) { return K.maCanGiaVon(dong, n, ky); },
   });
 

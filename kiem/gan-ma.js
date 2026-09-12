@@ -168,6 +168,7 @@ const b64u = (b) => Buffer.from(b).toString('base64')
   const TRK = await import('file://' + path.join(GOC, 'src/tracking.js'));
   const D = await import('file://' + path.join(GOC, 'engine/src/dong-hang.mjs'));
   const K = await import('file://' + path.join(GOC, 'engine/src/khop-ma.mjs'));
+  const S = await import('file://' + path.join(GOC, 'engine/src/sua-tay.mjs'));
   const w = mod.default;
   globalThis.fetch = fetchThat;
 
@@ -175,10 +176,13 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     async phienBan() { return 'kiem'; },
     async tomTatLine(a, b) { return D.tomTatLine(a, b); },
     async dungBangDon(a, b, c, d) { return D.dungBangDon(a, b, c, d); },
-    async dungBangDonKemMa(a, b, c, d, n, ky, mn) {
+    async dungBangDonKemMa(a, b, c, d, n, ky, mn, qd) {
       const bang = K.khopMaChoBangDon(D.dungBangDon(a, b, c, d), n, ky);
       if (mn) K.dienGiaNhap(bang, mn);
-      return bang;
+      return S.apDungSuaTay(bang, qd);
+    },
+    async dungBangDonSuaTay(a, b, c, d, qd) {
+      return S.apDungSuaTay(D.dungBangDon(a, b, c, d), qd);
     },
     async khoaTenHang(ten) { return K.khoaTenHang(ten); },
     async kyCoKhopMa(ky) { return K.kyCoKhopMa(ky); },
