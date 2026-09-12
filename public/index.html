@@ -84,11 +84,15 @@
   .hangThoiGian { gap: 0; align-items: center; }
   .hangThoiGian .nhomTab { display: flex; gap: 6px; flex-wrap: wrap; }
   .hangThoiGian .nhomTab + .nhomTab { margin-left: 28px; }
+  /* Nếp `.btn-mini` của Tracking: viền mảnh, bo 10px, rê chuột chuyển xanh.
+     Hai app đứng cạnh nhau nên nút phải đọc ra cùng một thứ. */
   .tabNut {
-    border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
-    padding: 6px 14px; font-size: 13px; cursor: pointer; color: #4b5563;
+    border: 1px solid #d1d5db; background: #fff; border-radius: 10px;
+    padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    color: #3d4a63; transition: border-color .12s, color .12s, background .12s;
   }
-  .tabNut.tabDang { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+  .tabNut:hover:not(:disabled):not(.tabDang) { border-color: #1d5bea; color: #1d5bea; }
+  .tabNut.tabDang { background: #1d5bea; border-color: #1d5bea; color: #fff; font-weight: 600; }
   .tabNut:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
   .tabNut.tabNho { padding: 4px 10px; font-size: 12px; }
   .dangTai { color: #6b7280; font-size: 13px; }
@@ -343,20 +347,30 @@
   }
 
   .bangConNo { font-size: 13px; color: #92400e; margin: 6px 0; }
-  /* Nút lọc trong đầu cột (chủ dự án chốt 12/09/2026). Cột hẹp nhất mang nút
-     này là "Lợi nhuận" (86px) và tiêu đề của nó đã chiếm gần hết, nên nút
-     phải nhỏ và KHÔNG được đẩy chữ xuống dòng — `float: right` giữ nó trên
-     cùng dòng chữ mà không cần đổi `.bangDon th` sang flex (đổi sang flex là
-     mất `text-overflow: ellipsis` của chính đầu cột). */
-  .nutLoc { float: right; border: 0; background: none; cursor: pointer;
-            font-size: 11px; line-height: 1; padding: 1px 3px; margin-left: 2px;
-            color: #9ca3af; border-radius: 3px; }
-  .nutLoc:hover { background: #e5e7eb; color: #374151; }
-  .nutLoc.locDang { background: #1d4ed8; color: #fff; }
-  .bangLoc { font-size: 13px; color: #1d4ed8; margin: 6px 0; }
-  .nutBoLoc { border: 1px solid #1d4ed8; background: #fff; color: #1d4ed8;
-              border-radius: 4px; padding: 1px 8px; font-size: 12px; cursor: pointer; }
-  .nutBoLoc:hover { background: #1d4ed8; color: #fff; }
+  /* ---- Đầu cột: nhãn + nút lọc trên MỘT hàng ngang ----
+     Chép nếp `.btn-mini` của Tracking (`public/index.html` repo đó): viền
+     mảnh, bo 10px, chữ 12px/600, rê chuột thì viền và chữ chuyển xanh. Cùng
+     một người dùng mở hai app cạnh nhau — hai thứ nút khác nhau cho cùng một
+     việc là bắt họ học hai lần.
+
+     `display: flex` đặt trên <div> BÊN TRONG <th>, không đặt lên chính <th>:
+     một ô bảng chuyển sang flex là rơi khỏi bố cục bảng, và cả <colgroup>
+     lẫn `table-layout: fixed` hết tác dụng — mất đúng thứ P4 phải sửa. */
+  .bangDon th > .oDauCot { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .bangDon th .tenCot { flex: 1 1 auto; min-width: 0;
+                        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Nút giữ nguyên kích thước dù cột hẹp cỡ nào — nó KHÔNG được co, và cũng
+     không được đẩy nhãn xuống dòng thứ hai (đúng cái "biến dạng cột" của bản
+     `float: right` trước). */
+  .nutLoc { flex: 0 0 auto; border: 1px solid #d1d5db; background: #fff;
+            color: #6b7280; border-radius: 6px; padding: 0 5px; height: 17px;
+            font-size: 10px; line-height: 15px; cursor: pointer;
+            transition: border-color .12s, color .12s, background .12s; }
+  .nutLoc:hover { border-color: #1d5bea; color: #1d5bea; }
+  .nutLoc.locDang { background: #1d5bea; border-color: #1d5bea; color: #fff; }
+  /* TÊN CỘT ĐỎ = cột này còn ô thiếu. Thay hẳn hai băng chữ dưới bảng. */
+  .bangDon th.cotCanhBao .tenCot { color: #c4361f; font-weight: 700; }
+  .bangLoc { font-size: 13px; color: #56637f; margin: 6px 0; }
   /* Kỳ ngoài phạm vi dữ liệu giá: một câu GIẢI THÍCH, không phải cảnh báo —
      nên màu xám như `.viDu`, không vàng như băng còn-nợ. Người dùng không có
      việc gì phải làm với nó. */
@@ -512,10 +526,11 @@
 
   .bangDon .oIcon { text-align: center; padding: 2px 4px; }
   .nutIcon {
-    border: 1px solid transparent; background: none; border-radius: 5px;
+    border: 1px solid transparent; background: none; border-radius: 6px;
     padding: 2px 6px; font-size: 13px; line-height: 1; cursor: pointer;
+    transition: border-color .12s, background .12s;
   }
-  .nutIcon:hover { background: #f3f4f6; border-color: #e5e7eb; }
+  .nutIcon:hover { background: rgba(29,91,234,.10); border-color: #1d5bea; }
   .nutIcon:disabled { opacity: .35; cursor: default; background: none; border-color: transparent; }
   .hangNgay td { background: #eef2ff; font-weight: 600; }
   .hangDauDon td { border-top: 2px solid #d1d5db; }

@@ -148,8 +148,8 @@
      không xê dịch một pixel.
 
      Phải đúng 19 số, đúng thứ tự `COT` — `kiem/bo-cuc-man-chu.js` canh cặp. */
-  const RONG_COT = [78, 78, 92, 240, 44, 82, 82, 90, 86, 96,
-    132, 94, 152, 92, 92, 112, 112, 34, 34];
+  const RONG_COT = [58, 78, 92, 200, 44, 100, 82, 90, 104, 96,
+    132, 108, 162, 92, 92, 112, 112, 34, 34];
 
   /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
      định cho mọi kỳ. Chỉ là trạng thái của màn hình — KHÔNG lưu ở đâu cả, và
@@ -183,6 +183,25 @@
    *     không đặt trường này chút nào) lẫn `null` (trong phạm vi mà chưa tra
    *     ra giá). Cả hai đều là "chưa có giá nhập" theo đúng nghĩa người dùng
    *     hỏi. */
+  /** Cảnh báo và bộ lọc chỉ dành cho QUẢN TRỊ (chủ dự án chốt 12/09/2026).
+   *
+   *  Quản lí xem báo cáo, không nhận việc: mọi thứ tô đỏ/vàng trên bảng đều
+   *  là "còn phải làm gì" — chưa phân loại, chưa có giá vốn, dòng lỗ — và ba
+   *  bộ lọc chính là ba câu hỏi ấy. Với người không có quyền sửa, chúng chỉ
+   *  là màu mè gây lo, còn nút lọc thì mời bấm vào một việc họ không làm
+   *  được.
+   *
+   *  Đây KHÔNG phải một lớp bảo mật, và không được đọc thành thế: số liệu
+   *  vẫn y nguyên trong phản hồi, chỉ khác cách vẽ. Cửa thật nằm ở Gateway
+   *  (`boc("quantri", …)` cho ba đường ghi KPI) và ở rules Firebase. Giấu
+   *  màu ở trình duyệt là chuyện TRÌNH BÀY, không phải chuyện quyền. */
+  const laQuanTri = () => window.VAI_BAO_CAO === "quantri";
+  const duocLoc = laQuanTri;
+
+  /** Lớp cảnh báo, hoặc `null` nếu vai này không được thấy cảnh báo.
+   *  Dùng ở MỌI chỗ tô cảnh báo, để không có chỗ nào quên. */
+  const lopCanhBao = (lop) => (duocLoc() ? lop : null);
+
   const LOC = {
     ma: { cot: "Mã sản phẩm", nhan: "Chỉ hiện dòng CHƯA PHÂN LOẠI",
       hop: (d) => !!d.ly_do_chua_ma },
@@ -332,7 +351,7 @@
     h.checked = !!d.la_gia_dung;
     h.dataset.o = "gd";
     h.dataset.khoa = d.khoa_ten;
-    const duoc = window.VAI_BAO_CAO === "quantri";
+    const duoc = laQuanTri();
     h.disabled = !duoc;
     h.title = duoc
       ? "Mặt hàng này là GIA DỤNG — ăn hệ số quy đổi gia dụng thay vì hệ số "
@@ -392,10 +411,10 @@
       td.title = d.ma_san_pham + "\n\nMã bảng giá: " + (d.ma_hien || d.ma_bang_gia)
         + (d.nguon_ma === "tu-dong" ? " (máy tự khớp — bấm để sửa)" : " (đã gán tay — bấm để đổi)");
     } else if (d.nguon_ma === "bo-qua") {
-      td.classList.add("maBoQua");
+      if (duocLoc()) td.classList.add("maBoQua");
       td.title = "Đã đánh dấu không phải sản phẩm cần gán mã — bấm để đổi.";
     } else if (d.nguon_ma === null && d.ly_do_chua_ma) {
-      td.classList.add("maChuaCo");
+      if (duocLoc()) td.classList.add("maChuaCo");
       td.title = LY_DO_MA[d.ly_do_chua_ma] || "Chưa có mã — bấm để phân loại.";
     } else {
       /* Nguồn Tracking hỏng nên phép khớp không chạy lượt này. KHÔNG tô như
@@ -436,7 +455,7 @@
        giữ giá cho một mã hàng) — ô để trống, KHÔNG bôi đỏ như một dòng
        chưa tra được giá. */
     const khongCanNoiNhap = d.la_chiet_khau || d.la_phu_phi_co_dinh;
-    const td = el("td", khongCanNoiNhap ? null : "oChuaRo", "—");
+    const td = el("td", khongCanNoiNhap ? null : lopCanhBao("oChuaRo"), "—");
     if (!khongCanNoiNhap && d.ly_do_chua_gia)
       td.title = "Chưa tra được nơi nhập: " + (LY_DO_GIA[d.ly_do_chua_gia]
         || d.ly_do_chua_gia);
@@ -502,7 +521,7 @@
                            trước bản này nó mờ y như ô kia nên người dùng cứ
                            đi gán lại mã cho một dòng đã có mã. */
     const chuaGanMa = d.ly_do_chua_gia === "chua-co-ma" || !d.ly_do_chua_gia;
-    const td = el("td", "oSo " + (chuaGanMa ? "oChuaGia" : "oChuaRo"), "—");
+    const td = el("td", ("oSo " + lopCanhBao(chuaGanMa ? "oChuaGia" : "oChuaRo")).trim(), "—");
     if (d.ly_do_chua_gia) td.title = "Chưa có giá vốn: " + (LY_DO_GIA[d.ly_do_chua_gia]
       || d.ly_do_chua_gia)
       + (chuaGanMa ? "" : " — gán lại mã KHÔNG chữa được, nguyên nhân ở bên Tracking.");
@@ -597,35 +616,14 @@
     demLaiConNo();
   }
 
-  /** Đếm lại băng "còn N dòng chưa có mã" từ chính DOM đang hiện.
-   *
-   *  Đếm trên DOM chứ không trừ dần một biến: sau vài lượt gán, một biến đếm
-   *  lệch đi là không cách nào biết, còn DOM thì luôn là thứ người dùng đang
-   *  thật sự nhìn. */
-  function demLaiConNo(hien) {
+  /** Băng "còn N dòng chưa có mã" ĐÃ BỎ (chủ dự án chốt 12/09/2026) — xem
+   *  chú thích dài ở chỗ vẽ bảng. Hàm giữ lại đúng phần TẮT nó, vì thẻ
+   *  `#bangConNo` vẫn nằm trong `index.html` và vẫn phải chắc chắn không
+   *  bao giờ hiện ra. Xoá cả hàm thì bốn chỗ gọi phải sửa theo, và một
+   *  trong bốn chỗ ấy lỡ sót là băng cũ sống lại. */
+  function demLaiConNo() {
     const bn = $("bangConNo");
-    if (!bn) return;
-    if (hien === false) { bn.hidden = true; return; }
-    /* Đang lọc thì băng này im. Nó đếm trên DOM (xem chú thích trên), mà DOM
-       lúc ấy chỉ còn phần khớp bộ lọc — in ra là in một con số nhỏ hơn sự
-       thật dưới đúng cái tên "còn N dòng chưa có mã". Băng bộ lọc ngay trên
-       bảng đã nói rõ đang xem cái gì và bao nhiêu dòng. */
-    if (trangThai.loc) { bn.hidden = true; return; }
-
-    const khung = $("veDonHang");
-    const oNo = khung ? khung.querySelectorAll("td.maChuaCo") : [];
-    const ten = new Set();
-    for (const td of oNo) ten.add(td.dataset.khoa);
-
-    bn.hidden = false;
-    if (!oNo.length) {
-      bn.textContent = "Mọi dòng trong bảng đều đã có mã bảng giá.";
-      bn.className = "bangConNo xong";
-      return;
-    }
-    bn.textContent = "Còn " + soNguyen(oNo.length) + " dòng chưa có mã bảng giá, thuộc "
-      + soNguyen(ten.size) + " tên hàng. Bấm vào ô Mã sản phẩm của dòng đó để phân loại.";
-    bn.className = "bangConNo";
+    if (bn) { bn.hidden = true; bn.textContent = ""; }
   }
 
   /* ---- Chế độ SỬA một dòng ----
@@ -910,7 +908,7 @@
       return;
     }
 
-    const duoc = window.VAI_BAO_CAO === "quantri";
+    const duoc = laQuanTri();
     for (const o of O_KPI) {
       const gt = hanh ? hanh[o.khoa] : null;
       /* Ô hệ số gia dụng CHỈ hiện ở line có nó — và "có nó" là việc của dữ
@@ -1228,7 +1226,7 @@
         + "Bấm nút dưới để nạp bộ số mặc định chủ dự án đã chốt "
         + "(Nội thành 15 tỷ/2%/8% · Tín Phát 2,7 tỷ/7,5% · tám line còn lại "
         + "1,3 tỷ/5,5%). Sau đó sửa thẳng trên dải setup của từng tab line."));
-      if (window.VAI_BAO_CAO === "quantri") {
+      if (laQuanTri()) {
         const nut = el("button", "nutNapKpi", "Nạp bộ số mặc định");
         nut.type = "button";
         nut.title = "Chỉ chạy được khi nhánh KPI còn rỗng — nó là nút khởi tạo, "
@@ -1320,7 +1318,7 @@
     const luongCua = (luong && luong.line) || {};
     /* Chỉ Quản trị gõ được ngày công — cùng mức với KPI, vì nó là vế nhân của
        lương cứng và phụ cấp. Quản lí vẫn đọc được con số. */
-    const duocNhap = window.VAI_BAO_CAO === "quantri";
+    const duocNhap = laQuanTri();
 
     /* Thứ tự line: DOANH SỐ THUẦN GIẢM DẦN, do Engine sắp
        (`tom_tat_kpi.thu_tu`) — không sắp ở đây, vì "sắp theo cái gì" là một
@@ -1674,12 +1672,6 @@
         + "để trống. Doanh số và số đơn không bị ảnh hưởng."));
     }
 
-    /* Băng bộ lọc: dựng CHỖ trước, điền chữ sau — số dòng khớp chỉ biết
-       được sau khi chạy hết vòng vẽ, mà băng thì phải đứng TRÊN bảng. */
-    const bangLoc = el("p", "bangLoc");
-    bangLoc.hidden = true;
-    khung.appendChild(bangLoc);
-
     const boc = el("div", "bocBang");
     const bang = el("table", "bangDon");
 
@@ -1704,6 +1696,20 @@
        nên bảng rộng hơn màn hình thì cuộn, không ép ai cả. */
     bang.style.width = RONG_COT.reduce((a, b) => a + b, 0) + "px";
 
+    /* Đếm cho phép BÔI ĐỎ TÊN CỘT. Đếm trên MỌI dòng của bảng, kể cả dòng
+       đang bị bộ lọc khác ẩn đi: cột đỏ trả lời "cột này còn ô thiếu
+       không", một câu về cả bảng — nếu nó đổi theo bộ lọc đang bật thì lọc
+       "chưa có giá" sẽ làm cột Mã hết đỏ và người dùng tưởng đã xong. */
+    const demCanhBaoCot = {};
+    for (const k of Object.keys(LOC)) demCanhBaoCot[k] = 0;
+    for (const ng2 of b.ngay) {
+      for (const don2 of ng2.don) {
+        for (const d2 of don2.dong) {
+          for (const k of Object.keys(LOC)) if (LOC[k].hop(d2)) demCanhBaoCot[k]++;
+        }
+      }
+    }
+
     const thead = el("thead");
     const trTen = el("tr");
     /* Nút lọc nằm TRONG đầu cột nó lọc (chủ dự án chốt 12/09/2026) — không
@@ -1713,9 +1719,33 @@
     const theoCot = {};
     for (const k of Object.keys(LOC)) theoCot[LOC[k].cot] = k;
     for (const c of COT) {
-      const th = el("th", null, c);
+      const th = el("th");
+      /* Nhãn và nút nằm trong MỘT hàng ngang, không `float`. Bản đầu dùng
+         `float: right` và nó làm đúng thứ chủ dự án kêu — nút bị đẩy xuống
+         dòng thứ hai ở cột hẹp, hàng tiêu đề cao lên, cột trông biến dạng.
+         Hàng ngang thì nhãn co lại (ellipsis) còn nút giữ nguyên kích thước,
+         nên bề rộng cột không quyết định gì nữa.
+
+         Bọc trong một <div> chứ không đặt `display:flex` lên chính <th>: một
+         ô bảng chuyển sang flex là rơi khỏi bố cục bảng, và cả `<colgroup>`
+         lẫn `table-layout: fixed` hết tác dụng — mất đúng thứ P4 phải sửa. */
+      const hang = el("div", "oDauCot");
+      hang.appendChild(el("span", "tenCot", c));
       const k = theoCot[c];
-      if (k) th.appendChild(nutLoc(k));
+      if (k && duocLoc()) hang.appendChild(nutLoc(k));
+      /* TÊN CỘT ĐỎ = cột này còn ô thiếu (chủ dự án chốt 12/09/2026, thay
+         cho hai băng chữ dưới bảng). Con số đếm từ chính những dòng vừa
+         dựng, nên nó không thể lệch với bảng — đó đúng là chỗ hai băng cũ
+         hỏng. Kèm số vào `title` để rê chuột biết còn bao nhiêu; không in
+         ra cạnh tên vì cột hẹp và một con số ở đó lại đẩy nhãn xuống dòng. */
+      if (k && duocLoc() && demCanhBaoCot[k]) {
+        th.classList.add("cotCanhBao");
+        hang.title = soNguyen(demCanhBaoCot[k]) + " dòng "
+          + LOC[k].nhan.replace("Chỉ hiện dòng ", "").toLowerCase()
+          + ". Bấm nút bên cạnh để chỉ hiện những dòng ấy.";
+      }
+      th.appendChild(hang);
+      if (k) th.dataset.loc = k;
       trTen.appendChild(th);
     }
     thead.appendChild(trTen);
@@ -1764,7 +1794,7 @@
                Engine đặt: ba loại dòng âm THEO THIẾT KẾ (chiết khấu, quà tặng
                0đ, bán trả lại) đã bị loại ra ở đó, và việc loại ấy là phán
                đoán nghiệp vụ chứ không phải một phép so `< 0` (LUẬT SỐ 1). */
-            d.la_lo ? "hangLo" : null].filter(Boolean).join(" ");
+            d.la_lo ? lopCanhBao("hangLo") : null].filter(Boolean).join(" ");
           const tr = el("tr", lop || null);
           /* Ngày và số BH chỉ ghi ở DÒNG ĐẦU của đơn — cùng cách file tay
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
@@ -1866,19 +1896,18 @@
       });
     });
 
-    if (loc) {
-      bangLoc.hidden = false;
-      bangLoc.textContent = "Đang lọc: " + loc.nhan.replace("Chỉ hiện dòng ", "")
-        + " — " + soNguyen(soKhop) + " dòng"
-        + (soKhop ? ". Băng ngày và hàng tổng đơn tạm ẩn." : ": bảng này không còn dòng nào như thế.");
-      const bo = el("button", "nutBoLoc", "Bỏ lọc");
-      bo.type = "button";
-      bo.addEventListener("click", () => {
-        trangThai.loc = null;
-        if (bangCuoi) veKetQua(bangCuoi);
-      });
-      bangLoc.appendChild(document.createTextNode(" "));
-      bangLoc.appendChild(bo);
+    /* KHÔNG có băng "Đang lọc: …" (chủ dự án chốt 12/09/2026: "nhìn icon là
+       đủ hiểu rồi"). Nút lọc đang sáng xanh trên đúng cột nó lọc — đó vốn đã
+       là câu trả lời cho "đang lọc theo cái gì", và một dòng chữ nhắc lại nó
+       chỉ đẩy bảng xuống thêm một dòng. Bấm lại chính nút ấy là bỏ lọc.
+
+       Ca DUY NHẤT còn phải nói bằng chữ: lọc xong không còn dòng nào. Một
+       bảng trống không tự nói được vì sao nó trống, và nó đọc y hệt một
+       line chưa có đơn — hoặc một cái hỏng. */
+    if (loc && !soKhop) {
+      khung.appendChild(el("p", "bangLoc",
+        "Không dòng nào " + loc.nhan.replace("Chỉ hiện dòng ", "").toLowerCase()
+        + ". Bấm lại nút lọc trên cột " + loc.cot + " để xem cả bảng."));
     }
 
     bang.appendChild(tbody);
@@ -1886,32 +1915,22 @@
     khung.appendChild(boc);
     dieuChinhCaoBang();
 
-    demLaiConNo(kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma);
+    /* HAI BĂNG CẢNH BÁO DƯỚI BẢNG ĐÃ BỎ — chủ dự án chốt 12/09/2026
+       ("dòng cảnh báo ở dưới không cập nhật theo thực tế nên hãy bỏ luôn").
 
-    /* Băng GIÁ VỐN — "N dòng chưa có giá vốn, vì lý do gì", đúng câu
-       ROADMAP.md đòi ở mục "Bạn nhìn thấy gì" của P4.
-       Trước đây lý do CHỈ nằm ở `title` của từng ô Giá nhập, nên muốn biết
-       cả kỳ còn nợ bao nhiêu thì phải rê chuột từng dòng một — mà đây đúng
-       là con số người đối chiếu tay cần thấy đầu tiên.
-       Đếm và phân loại do Engine trả về (`tom_tat_gia`); màn hình chỉ đọc
-       và ghép chữ, không tự cộng lại (LUẬT SỐ 1). */
-    const tg = b.tom_tat_gia;
-    if (tg && kq.trong_pham_vi_ma !== false && !kq.loi_nguon_ma
-        && (tg.co_gia || tg.chua_co_gia)) {
-      if (!tg.chua_co_gia) {
-        khung.appendChild(el("p", "bangConNo xong",
-          "Mọi dòng hàng trong bảng đều đã có giá vốn theo ngày bán."));
-      } else {
-        /* Xếp lý do theo SỐ DÒNG giảm dần: việc đáng làm trước đứng trước.
-           Mã lạ giữ nguyên chữ của Tracking thay vì nuốt — hợp đồng bên kia
-           thêm một lý do mới thì nó phải lộ ra để còn bổ sung. */
-        const ly = Object.entries(tg.theo_ly_do || {})
-          .sort((a, b2) => b2[1] - a[1])
-          .map(([k, n]) => soNguyen(n) + " dòng " + (LY_DO_GIA_NGAN[k] || k));
-        khung.appendChild(el("p", "bangConNo", "Còn " + soNguyen(tg.chua_co_gia)
-          + " dòng chưa có giá vốn" + (ly.length ? ": " + ly.join(" · ") : "") + "."));
-      }
-    }
+       Chúng SAI thật, và đây là lý do, để đừng ai dựng lại: cả hai đọc
+       `tom_tat_gia` / `tom_tat_sua_tay` mà Engine tính TRONG `dienGiaNhap()`,
+       tức TRƯỚC lượt áp sửa tay ở cuối chuỗi. Một dòng chủ dự án đã tự gõ
+       giá nhập vào vẫn bị đếm là "chưa có giá vốn" mãi mãi. Ảnh 12/09/2026:
+       băng dưới nói "còn 6 dòng chưa có giá vốn" trong khi bộ lọc — chạy
+       trên đúng những dòng đang hiện — tìm ra 0. Một con số cãi nhau với
+       chính cái bảng ngay trên nó thì không sửa được bằng cách sửa câu chữ.
+
+       Thay bằng: BÔI ĐỎ TÊN CỘT (`demCanhBaoCot` ngay dưới). Con số ấy đếm
+       từ CHÍNH những dòng vừa vẽ ra, nên nó không thể lệch với bảng — và
+       cột đỏ nói đúng thứ cần nói: "cột này còn ô thiếu, bấm nút lọc bên
+       cạnh để xem". */
+    demLaiConNo(false);
 
     /* Băng QUYẾT ĐỊNH MỒ CÔI ĐÃ BỎ — chủ dự án chốt 12/09/2026 ("bỏ các ghi
        chú về sửa tay ở dưới cùng"), sau khi nhìn nó ngoài đời: 22 khoá dòng

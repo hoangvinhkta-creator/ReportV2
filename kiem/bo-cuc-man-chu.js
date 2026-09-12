@@ -300,25 +300,54 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
      /bocMoi\.scrollTop\s*=\s*cuonCu/.test(JS), true);
 }
 
-console.log('\n10) Băng "còn N dòng chưa có giá vốn" — câu ROADMAP đòi ở P4');
+console.log('\n10) Hai băng cảnh báo dưới bảng ĐÃ BỎ — thay bằng TÊN CỘT ĐỎ');
 {
-  /* ROADMAP.md, P4 "Bạn nhìn thấy gì": *lợi nhuận của một kỳ, CỘNG danh sách
-     rõ ràng "N dòng chưa có giá vốn, vì lý do gì"*. Trước 12/09/2026 lý do
-     CHỈ nằm ở `title` của từng ô, nên muốn biết cả kỳ còn nợ bao nhiêu thì
-     phải rê chuột từng dòng — mà đây đúng là con số người đối chiếu tay cần
-     thấy trước nhất. */
-  ok('băng dựng từ bản kê Engine trả, không tự cộng ở trình duyệt',
-     /const tg = b\.tom_tat_gia;/.test(JS), true);
-  ok('  · nói ra CẢ số dòng lẫn lý do', /chưa có giá vốn/.test(JS), true);
-  ok('  · và nói khi mọi dòng đã đủ giá, không im lặng',
-     /đều đã có giá vốn theo ngày bán/.test(JS), true);
-  /* Kỳ ngoài phạm vi dữ liệu giá KHÔNG được hiện băng này: ở đó không có giá
-     vốn theo thiết kế, và một câu "còn N dòng chưa có giá vốn" chỉ mời người
-     ta đi làm một việc không làm được — đúng lý do băng gán mã cũng bị chặn
-     ở đó. */
-  ok('  · nhưng KHÔNG hiện ở kỳ ngoài phạm vi / lúc nguồn giá hỏng',
-     /tg && kq\.trong_pham_vi_ma !== false && !kq\.loi_nguon_ma/.test(JS), true);
+  /* Bản trước canh điều NGƯỢC LẠI: phải có băng "còn N dòng chưa có giá vốn"
+     dưới bảng, theo đúng câu ROADMAP.md đòi ở P4. Hai băng ấy SAI thật, và
+     lý do phải ghi lại để đừng ai dựng lại:
 
+     cả hai đọc `tom_tat_gia` / `tom_tat_sua_tay` mà Engine tính TRONG
+     `dienGiaNhap()`, tức TRƯỚC lượt áp sửa tay ở cuối chuỗi. Một dòng chủ dự
+     án đã tự gõ giá nhập vào vẫn bị đếm là "chưa có giá vốn" mãi mãi. Ảnh
+     12/09/2026: băng dưới nói "còn 6 dòng chưa có giá vốn" trong khi bộ lọc —
+     chạy trên đúng những dòng đang hiện — tìm ra 0. Một con số cãi nhau với
+     chính cái bảng ngay trên nó thì không sửa được bằng cách sửa câu chữ.
+
+     Thay bằng TÊN CỘT ĐỎ, đếm từ CHÍNH những dòng vừa dựng — nên nó không
+     thể lệch với bảng. Điều ROADMAP đòi ("thấy được còn bao nhiêu dòng chưa
+     có giá vốn") vẫn còn: số nằm ở `title` của đầu cột, và bộ lọc ngay cạnh
+     đưa thẳng tới đúng những dòng ấy. */
+  ok('không còn băng "chưa có giá vốn" dưới bảng',
+     /const tg = b\.tom_tat_gia;/.test(JS), false);
+  ok('  · và không còn băng "còn N dòng chưa có mã"',
+     /Còn " \+ soNguyen\(oNo\.length\) \+ " dòng chưa có mã/.test(JS), false);
+  ok('  · chú thích nói rõ vì sao bỏ, không xoá trắng',
+     /HAI BĂNG CẢNH BÁO DƯỚI BẢNG ĐÃ BỎ/.test(JS), true);
+  /* Thẻ `#bangConNo` vẫn nằm trong index.html, nên phải chắc chắn nó không
+     bao giờ hiện ra nữa — xoá hàm thì bốn chỗ gọi phải sửa theo, và một chỗ
+     sót là băng cũ sống lại. */
+  ok('  · và hàm cũ nay chỉ còn việc TẮT thẻ ấy',
+     /function demLaiConNo\(\) \{\s*\n\s*const bn = \$\("bangConNo"\);\s*\n\s*if \(bn\) \{ bn\.hidden = true;/.test(JS), true);
+
+  /* Đếm phải chạy trên MỌI dòng, kể cả dòng đang bị một bộ lọc KHÁC ẩn đi:
+     cột đỏ trả lời "cột này còn ô thiếu không", một câu về cả bảng. Đếm sau
+     khi lọc thì bật lọc "chưa có giá" sẽ làm cột Mã hết đỏ, và người dùng
+     tưởng đã xong. */
+  ok('tên cột đỏ đếm trên toàn bộ dòng, không đếm phần đã lọc',
+     /const demCanhBaoCot[\s\S]{0,400}?for \(const d2 of don2\.dong\)/.test(JS), true);
+  ok('  · và khối đếm đứng TRƯỚC lúc dựng hàng tiêu đề',
+     JS.indexOf('const demCanhBaoCot') < JS.indexOf('const thead = el("thead")'), true);
+  ok('  · gắn lớp cotCanhBao lên đúng <th>',
+     /th\.classList\.add\("cotCanhBao"\)/.test(JS), true);
+  ok('  · và số dòng còn thiếu nói ở title, không in cạnh tên (cột hẹp)',
+     /hang\.title = soNguyen\(demCanhBaoCot\[k\]\)/.test(JS), true);
+  ok('  · CSS bôi đỏ đúng nhãn cột',
+     /\.bangDon th\.cotCanhBao \.tenCot \{[^}]*color:/
+       .test(CSS.replace(/\/\*[\s\S]*?\*\//g, '')), true);
+}
+
+console.log('\n10b) Bảng dịch lý do — vẫn phải phủ đủ, chúng còn dùng ở tooltip');
+{
   /* Hai bảng dịch lý do phải phủ ĐỦ tập trạng thái của hợp đồng
      `daily-min-v1` cộng lý do nội bộ `chua-co-ma`. Thiếu một mã là màn hình
      hiện nguyên chữ tiếng Anh của app khác — đúng chuyện đã xảy ra với
@@ -386,7 +415,7 @@ console.log('\n12) Ba luật hiển thị chốt 12/09/2026');
      (chiết khấu, quà tặng 0đ, bán trả lại) bị loại ra ở đó, và việc loại ấy
      là phán đoán nghiệp vụ chứ không phải một phép so `< 0`. */
   ok('dòng lỗ đọc cờ Engine, không tự xét loi_nhuan < 0',
-     /d\.la_lo \? "hangLo" : null/.test(JS), true);
+     /d\.la_lo \? lopCanhBao\("hangLo"\) : null/.test(JS), true);
   /* Soi trên mã ĐÃ BỎ CHÚ THÍCH — cùng cách mục 1 xử `doiManChinh`. Chú
      thích của bộ lọc dòng lỗ có nhắc nguyên văn `loi_nhuan < 0` để nói vì
      sao KHÔNG được viết thế, và một bài kiểm đỏ vì lời giải thích đúng là
@@ -425,7 +454,23 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
        không mọc ra ở đâu cả, và không có gì đỏ lên. */
     ok('  · và ' + cot + ' là một cột có thật', COT.includes(cot), true);
   }
-  ok('nút mọc trong <th> của đúng cột ấy', /th\.appendChild\(nutLoc\(k\)\)/.test(JS), true);
+  ok('nút mọc trong hàng ngang của đúng cột ấy',
+     /hang\.appendChild\(nutLoc\(k\)\)/.test(JS), true);
+  /* Nút phải NẰM NGANG với nhãn, không `float`. Bản `float: right` đầu tiên
+     đẩy nút xuống dòng thứ hai ở cột hẹp và làm hàng tiêu đề cao lên — đúng
+     cái "biến dạng cột" chủ dự án kêu 12/09/2026. */
+  const cssS = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('  · nhãn và nút trên MỘT hàng ngang',
+     /\.bangDon th > \.oDauCot \{[^}]*display:\s*flex/.test(cssS), true);
+  ok('  · nhãn co lại được, nút thì không',
+     /\.nutLoc \{[^}]*flex:\s*0 0 auto/.test(cssS), true);
+  ok('  · và KHÔNG dùng float (chỗ hỏng của bản đầu)',
+     /\.nutLoc \{[^}]*float/.test(cssS), false);
+  /* `display:flex` phải nằm trên <div> BÊN TRONG <th>. Đặt lên chính <th> là
+     ô rơi khỏi bố cục bảng, và <colgroup> + `table-layout: fixed` hết tác
+     dụng — mất đúng thứ P4 phải sửa. */
+  ok('  · flex đặt trong <th>, không đặt LÊN <th>',
+     /\.bangDon th \{[^}]*display:\s*flex/.test(cssS), false);
 
   /* ── Ba phép khớp đều chỉ ĐỌC cờ Engine đã đặt ── */
 
@@ -465,16 +510,45 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
   ok('  · ngày nào lọc xong không còn dòng thì bỏ hẳn, không để băng trơ trọi',
      /if \(!hangNgay\.length\) continue;/.test(JS), true);
 
-  /* Băng "còn N dòng chưa có mã" đếm trên DOM. Đang lọc thì DOM chỉ còn phần
-     khớp, nên nó sẽ in một con số NHỎ HƠN SỰ THẬT dưới đúng cái tên ấy. */
-  ok('băng "còn N dòng chưa có mã" im khi đang lọc',
-     /if \(trangThai\.loc\) \{ bn\.hidden = true; return; \}/.test(JS), true);
+  /* KHÔNG có băng "Đang lọc: …" (chủ dự án chốt 12/09/2026: "nhìn icon là đủ
+     hiểu rồi"). Nút đang sáng xanh trên đúng cột nó lọc vốn đã là câu trả
+     lời, và một dòng chữ nhắc lại chỉ đẩy bảng xuống thêm một dòng. */
+  /* Soi trên mã ĐÃ BỎ CHÚ THÍCH: chú thích có nhắc lại chuỗi cũ để nói vì
+     sao nó biến mất, và nhắc là đúng. */
+  ok('không còn băng "Đang lọc: …"', /Đang lọc:/.test(maJS), false);
+  ok('  · và không còn nút "Bỏ lọc" riêng (bấm lại chính nút lọc là xong)',
+     /nutBoLoc/.test(JS), false);
 
-  /* Bảng rỗng sau khi lọc phải NÓI RA là do lọc. Không thì nó đọc y hệt một
-     line không có đơn nào, hoặc một cái hỏng. */
-  ok('lọc ra 0 dòng thì nói rõ vì sao bảng trống',
-     /bảng này không còn dòng nào như thế/.test(JS), true);
-  ok('  · và luôn có nút Bỏ lọc để thoát', /class="nutBoLoc"|"nutBoLoc"/.test(JS), true);
+  /* Ca DUY NHẤT còn phải nói bằng chữ: lọc xong không còn dòng nào. Một bảng
+     trống không tự nói được vì sao nó trống — nó đọc y hệt một line chưa có
+     đơn, hoặc một cái hỏng. */
+  ok('lọc ra 0 dòng thì vẫn nói rõ vì sao bảng trống',
+     /if \(loc && !soKhop\)/.test(JS), true);
+  ok('  · và chỉ ra chỗ bấm để thoát', /Bấm lại nút lọc trên cột/.test(JS), true);
+
+  /* ── Cảnh báo và bộ lọc chỉ dành cho QUẢN TRỊ (chốt 12/09/2026) ──
+     Quản lí xem báo cáo, không nhận việc: mọi thứ tô đỏ/vàng đều là "còn
+     phải làm gì", và ba bộ lọc chính là ba câu hỏi ấy. Đây KHÔNG phải một
+     lớp bảo mật — số liệu vẫn y nguyên trong phản hồi, chỉ khác cách vẽ;
+     cửa thật nằm ở Gateway và rules. Nhưng nó phải áp ĐỦ MỌI CHỖ, vì một
+     chỗ sót là một ô đỏ lẻ loi không ai giải thích được. */
+  ok('nút lọc chỉ mọc cho vai quantri', /if \(k && duocLoc\(\)\) hang\.appendChild/.test(JS), true);
+  ok('  · tên cột đỏ cũng vậy', /if \(k && duocLoc\(\) && demCanhBaoCot\[k\]\)/.test(JS), true);
+  ok('  · ô Mã "chưa phân loại" cũng vậy',
+     /if \(duocLoc\(\)\) td\.classList\.add\("maChuaCo"\)/.test(JS), true);
+  ok('  · ô Mã "bỏ qua" cũng vậy',
+     /if \(duocLoc\(\)\) td\.classList\.add\("maBoQua"\)/.test(JS), true);
+  ok('  · ô Giá nhập thiếu đi qua lopCanhBao()',
+     /lopCanhBao\(chuaGanMa \? "oChuaGia" : "oChuaRo"\)/.test(JS), true);
+  ok('  · ô Nơi nhập thiếu cũng vậy',
+     /khongCanNoiNhap \? null : lopCanhBao\("oChuaRo"\)/.test(JS), true);
+  /* Chuỗi vai chỉ được viết ra ĐÚNG MỘT LẦN trong cả file. Rải nó mỗi nơi
+     một bản là mời một chỗ gõ nhầm `"quan tri"` nằm im mà vẫn chạy — cửa
+     phân quyền hỏng theo kiểu không ai thấy. */
+  ok('chuỗi vai chỉ viết ra đúng một lần trong cả file',
+     (JS.match(/VAI_BAO_CAO === "quantri"/g) || []).length, 1);
+  ok('  · và mọi chỗ khác hỏi qua laQuanTri()',
+     (maJS.match(/laQuanTri\(\)/g) || []).length >= 4, true);
 
   /* Đổi tab mà còn giữ lọc thì mở một line mới ra thấy bảng gần như trống. */
   ok('đổi năm/tháng/line thì bỏ lọc',
