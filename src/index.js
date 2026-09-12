@@ -705,13 +705,20 @@ const layKyCoDon = boc(true, async ({ env }) => {
  *  ấy đang hiện khi mở tháng đó — và cột chênh lệch sai đúng bằng phần đã
  *  xoá, im lặng.
  */
-async function docDoanhSoLineKyTruoc(env, ky, bangLine, rid) {
+async function docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid) {
   const truoc = kyTruoc(ky);
   if (!truoc) return null;
   try {
-    const cayKy = await docDb("bc/ky/" + truoc, env);
+    /* Khởi động lượt đọc của RIÊNG mình trước, rồi mới chờ bảng line: hàm
+       này chạy trong cùng `Promise.all` với chính lượt đọc bảng line, nên
+       chờ trước là tự xếp hàng sau nó mà không được gì. */
+    const huaCay = docDb("bc/ky/" + truoc, env);
+    const cayKy = await huaCay;
     if (!cayKy.ok) throw new Error("bc-ky:" + chiTietLoi(cayKy));
     if (!cayKy.val) return null;
+    const bl = await huaBangLine;
+    if (!bl.ok || !bl.val) throw new Error("bang-line:" + chiTietLoi(bl));
+    const bangLine = bl.val;
 
     const mot = { [truoc]: cayKy.val };
     const truTheoKy = await tinhTruXoaTay(env, mot);
@@ -739,27 +746,44 @@ async function docDoanhSoLineKyTruoc(env, ky, bangLine, rid) {
  * đóng với MỌI vai kể cả quantri (CLAUDE.md), chỉ tài khoản dịch vụ của
  * Worker đọc được.
  */
-const layDonHang = boc(true, async ({ request, env, rid }) => {
-  const q = new URL(request.url).searchParams;
-  const ky = q.get("ky");
-  const line = q.get("line");
-  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
-  if (line !== null && (typeof line !== "string" || line.length > 60)) {
-    throw new LoiXacThuc(400, "line-khong-hop-le");
-  }
+/** Đọc mọi nguồn của MỘT (kỳ, line) rồi nhờ Engine dựng bảng đơn.
+ *
+ *  Tách khỏi `layDonHang` để đường GHI dùng lại được — xem `/api/sua-dong`.
+ *  Nếu để nguyên trong tay áo của một endpoint thì đường ghi chỉ còn cách
+ *  bảo trình duyệt "gọi lại GET đi", tức một vòng mạng thứ hai cho đúng thứ
+ *  máy chủ vừa có sẵn mọi nguyên liệu để dựng. */
+async function dungBangDonHang(env, ky, line, rid) {
   if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
 
-  const dong = await docDb("bc/dong/" + ky, env);
-  if (!dong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + chiTietLoi(dong));
-  const bangLine = await docDb("bc/quyetdinh/line", env);
-  if (!bangLine.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bang-line:" + chiTietLoi(bangLine));
-  if (!bangLine.val) throw new LoiXacThuc(503, "thieu-bang-line");
+  /* ═══════════ LƯỢT ĐỌC CHẠY SONG SONG — sửa 12/09/2026 ═══════════
+   *
+   * Bản trước `await` từng nguồn một, xếp hàng: `bc/dong` → bảng line →
+   * `bc/khach` → phạm vi → bảng giá Tracking → mã cần → Min theo ngày →
+   * quyết định → KPI → gia dụng → ngày công → kỳ trước. Mười một lượt đi
+   * mạng nối đuôi nhau cho MỘT lần bấm, và bấm sang tab line nào cũng trả
+   * lại đủ ngần ấy — chủ dự án đo được 3–4 giây mỗi lượt đổi tab.
+   *
+   * Chúng gần như độc lập nhau. Thứ tự cũ không phải một ràng buộc, nó chỉ
+   * là thứ tự người viết nghĩ ra từng thứ. Nay gom thành BA ĐỢT, mỗi đợt
+   * chỉ chờ đúng thứ đợt sau thật sự cần:
+   *
+   *   đợt 1  mọi lượt đọc chỉ cần `env` + `ky`      (7 Firebase + bảng giá)
+   *   đợt 2  mã cần giá vốn → Min theo ngày         (cần `dong` + bảng giá)
+   *   đợt 3  Engine dựng bảng                       (cần tất cả)
+   *
+   * Tổng thời gian rơi từ "cộng mọi lượt" xuống "lượt chậm nhất mỗi đợt".
+   * KHÔNG có bộ đệm nào được thêm ở đây, cố ý: đệm là đổi tốc độ lấy nguy
+   * cơ đọc số cũ, và số cũ đúng là lỗi đã phải sửa ở P5 (PR #73). Lượt sửa
+   * này chỉ bỏ thời gian NGỒI CHỜ, không bỏ một lượt đọc nào. */
+  const dong0 = Date.now();
 
-  /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
-     tháng. Đọc cả nhánh (như bản đầu của P3) là con số CỘNG DỒN mãi mãi:
-     đo trên sổ thật 151 KB/tháng, 36 tháng đã 5,29 MB cho MỘT lượt xem. */
-  const khach = await docDb("bc/khach/" + ky, env);
-  if (!khach.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-khach:" + chiTietLoi(khach));
+  /* Mốc khớp mã là một LUẬT NGHIỆP VỤ nên Engine giữ nó, Gateway chỉ hỏi.
+     Hỏi qua một lời hứa CHƯA await: kỳ ngoài phạm vi thì không kéo bảng giá
+     (~400 KB) lẫn Min theo ngày (vài nghìn bản ghi) về làm gì — nhưng cũng
+     không bắt bảy lượt đọc Firebase ngồi chờ câu trả lời ấy. */
+  const huaPhamVi = Promise.resolve()
+    .then(() => env.REPORT_ENGINE.kyCoKhopMa(ky))
+    .catch((e) => { throw new LoiXacThuc(503, "engine-loi-pham-vi:" + (e && e.message)); });
 
   /* Bảng giá Tracking — nguồn của cột mã, hãng, ngành hàng.
    *
@@ -771,67 +795,71 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
    * thứ CLAUDE.md cấm: một sự cố mạng nói một kết luận nghiệp vụ thay người.
    * Nên khi ấy phép khớp KHÔNG chạy chút nào, và `loi_nguon_ma` đi kèm phản
    * hồi để màn hình treo băng cảnh báo nói thẳng vì sao ba cột kia trống.
-   * Ba trạng thái tách bạch: có mã / chưa có mã / CHƯA BIẾT vì nguồn hỏng. */
-  /* Mốc khớp mã là một LUẬT NGHIỆP VỤ nên Engine giữ nó, Gateway chỉ hỏi.
-     Hỏi TRƯỚC khi đi lấy gì: kỳ ngoài phạm vi thì không kéo bảng giá (~400 KB)
-     lẫn Min theo ngày (vài nghìn bản ghi) về làm gì. */
-  let trongPhamVi;
-  try {
-    trongPhamVi = await env.REPORT_ENGINE.kyCoKhopMa(ky);
-  } catch (e) {
-    throw new LoiXacThuc(503, "engine-loi-pham-vi:" + (e && e.message));
-  }
+   * Ba trạng thái tách bạch: có mã / chưa có mã / CHƯA BIẾT vì nguồn hỏng.
+   *
+   * Bắt `LoiTracking` NGAY TẠI ĐÂY thay vì để nó nổ ra khỏi `Promise.all`:
+   * một lỗi thoát ra từ đó sẽ huỷ luôn cả đợt và làm hỏng cả bảng đơn —
+   * đúng điều đoạn trên vừa nói là không được. */
+  const huaNguon = huaPhamVi.then((trong) => (trong
+    ? docNguonTracking(env).then((n) => ({ nguon: n, ly: null }),
+      (e) => { if (!(e instanceof LoiTracking)) throw e; return { nguon: null, ly: e.ly }; })
+    : { nguon: null, ly: null }));
 
-  let nguon = null, minNgay = null, loi_nguon_ma = null;
-  if (trongPhamVi) {
-    try {
-      nguon = await docNguonTracking(env);
-      /* Hỏi Engine mã nào có mặt trong kỳ, rồi mới hỏi Tracking giá của đúng
-         những mã ấy theo TỪNG NGÀY BÁN. Một đơn ngày 01/09 lấy giá của mốc
-         01/09, không phải giá của hôm tải file lên. */
-      const maCan = await env.REPORT_ENGINE.maCanGiaVon(dong.val || {}, nguon, ky);
-      minNgay = await docMinNgay(env, ky, maCan);
-    } catch (e) {
-      if (!(e instanceof LoiTracking)) throw e;
-      /* Tracking hỏng thì KHÔNG làm hỏng cả bảng đơn: doanh số, số đơn, khách
-         hàng đều đọc được mà không cần bảng giá, và chặn hẳn màn hình vì một
-         nhánh phụ không trả lời là lấy đi nhiều hơn phần bị mất.
+  /* `bc/quyetdinh/line` chưa có kết quả lúc này, nên `docDoanhSoLineKyTruoc`
+     nhận LỜI HỨA của nó chứ không nhận giá trị. Nhờ thế nó khởi động lượt
+     đọc `bc/ky/<kỳ trước>` của riêng mình NGAY, song song với bảy lượt bên
+     dưới, rồi mới chờ bảng line ở đúng chỗ thật sự cần. Đưa nó xuống một
+     đợt sau thì đúng cái màn hình mở đầu tiên ([Tổng hợp]) lại phải chờ
+     thêm một vòng. */
+  const huaBangLine = docDb("bc/quyetdinh/line", env);
 
-         Nhưng cũng KHÔNG im lặng trả một bảng "chưa dòng nào khớp" — đó đúng
-         là thứ CLAUDE.md cấm: một sự cố mạng nói một kết luận nghiệp vụ thay
-         người. Nên phép khớp KHÔNG chạy chút nào, và `loi_nguon_ma` đi kèm để
-         màn hình nói thẳng vì sao mấy cột kia trống. Ba trạng thái tách bạch:
-         có / chưa có / CHƯA BIẾT vì nguồn hỏng. */
-      nguon = null; minNgay = null;
-      loi_nguon_ma = e.ly;
-      nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + e.ly });
-    }
-  }
+  /* CHỈ tab [Tổng hợp] (`line === null`) mới cần số tháng trước — cột
+     "Vs. Tháng trước" không có mặt ở tab của một line. Lấy nó ở mọi lượt là
+     bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
+     con số không ai nhìn. */
+  const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong,
+         kqNguon, doanhSoKyTruoc] = await Promise.all([
+    docDb("bc/dong/" + ky, env),
+    huaBangLine,
+    /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
+       tháng. Đọc cả nhánh (như bản đầu của P3) là con số CỘNG DỒN mãi mãi:
+       đo trên sổ thật 151 KB/tháng, 36 tháng đã 5,29 MB cho MỘT lượt xem. */
+    docDb("bc/khach/" + ky, env),
+    /* Quyết định sửa tay của kỳ này. Nhánh RIÊNG, không bị lượt nhập sổ đè,
+       và được hợp nhất ở đây — lúc ĐỌC (CLAUDE.md, mục "Nhập sổ"). */
+    docDb("bc/quyetdinh/dong/" + ky, env),
+    /* KPI / hệ số quy đổi, và tick "gia dụng" theo mặt hàng (P5).
+       `bc/quyetdinh/gia-dung` đọc TRỌN nhánh, không theo kỳ — cố ý. Đó là
+       quyết định về MỘT MẶT HÀNG nên nó áp cho mọi kỳ (CLAUDE.md), tức
+       không có cách nào chia nó theo kỳ. Nhánh này nhỏ: mỗi mặt hàng đúng
+       một khoá ngắn, không phải mỗi DÒNG một khoá như `bc/quyetdinh/dong`. */
+    docDb(DUONG_BANG_KPI, env),
+    docDb(DUONG_GIA_DUNG, env),
+    /* Ngày công đọc theo ĐÚNG kỳ đang xem, không đọc cả nhánh — nó là con số
+       của một tháng cụ thể, và đọc cả nhánh là con số cộng dồn mãi mãi
+       (đúng bài học `bc/khach` của P3). */
+    docDb(DUONG_NGAY_CONG + "/" + ky, env),
+    huaNguon,
+    line ? null : docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid),
+  ]);
+  const ms_doc = Date.now() - dong0;
 
-  /* Quyết định sửa tay của kỳ này. Nhánh RIÊNG, không bị lượt nhập sổ đè,
-     và được hợp nhất ở đây — lúc ĐỌC (CLAUDE.md, mục "Nhập sổ"). */
-  const quyetDinh = await docDb("bc/quyetdinh/dong/" + ky, env);
+  if (!dong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + chiTietLoi(dong));
+  if (!bangLine.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bang-line:" + chiTietLoi(bangLine));
+  if (!bangLine.val) throw new LoiXacThuc(503, "thieu-bang-line");
+  if (!khach.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-khach:" + chiTietLoi(khach));
   if (!quyetDinh.ok)
     throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(quyetDinh));
 
-  /* KPI / hệ số quy đổi, và tick "gia dụng" theo mặt hàng (P5).
-   *
-   * KHÔNG ném khi đọc không được — khác hẳn bảng line ở trên. Quy đổi là MỘT
-   * cột; doanh số, số đơn, khách hàng và giá vốn đều đọc được mà không cần
-   * nó, nên chặn cả bảng đơn vì một nhánh phụ không trả lời là lấy đi nhiều
-   * hơn phần bị mất. Engine nhận `null` thì để quy đổi trống và bật
-   * `thieu_bang` — màn hình nói thẳng vì sao cột ấy trống, không im lặng.
-   *
-   * `bc/quyetdinh/gia-dung` đọc TRỌN nhánh, không theo kỳ — cố ý. Đó là
-   * quyết định về MỘT MẶT HÀNG nên nó áp cho mọi kỳ (CLAUDE.md), tức không
-   * có cách nào chia nó theo kỳ. Nhánh này nhỏ: mỗi mặt hàng gia dụng đúng
-   * một khoá ngắn, không phải mỗi DÒNG một khoá như `bc/quyetdinh/dong`. */
-  const bangKpi = await docDb(DUONG_BANG_KPI, env);
-  const giaDung = await docDb(DUONG_GIA_DUNG, env);
-  /* Ngày công đọc theo ĐÚNG kỳ đang xem, không đọc cả nhánh — nó là con số
-     của một tháng cụ thể, và đọc cả nhánh là con số cộng dồn mãi mãi (đúng
-     bài học `bc/khach` của P3). */
-  const bangCong = await docDb(DUONG_NGAY_CONG + "/" + ky, env);
+  const trongPhamVi = await huaPhamVi;
+  let nguon = kqNguon.nguon, minNgay = null, loi_nguon_ma = kqNguon.ly;
+  if (loi_nguon_ma) nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + loi_nguon_ma });
+
+  /* KHÔNG ném khi đọc KPI không được — khác hẳn bảng line ở trên. Quy đổi là
+     MỘT cột; doanh số, số đơn, khách hàng và giá vốn đều đọc được mà không
+     cần nó, nên chặn cả bảng đơn vì một nhánh phụ không trả lời là lấy đi
+     nhiều hơn phần bị mất. Engine nhận `null` thì để quy đổi trống và bật
+     `thieu_bang` — màn hình nói thẳng vì sao cột ấy trống, không im lặng. */
   let loi_nguon_kpi = null;
   if (!bangKpi.ok) loi_nguon_kpi = "kpi:" + chiTietLoi(bangKpi);
   else if (!giaDung.ok) loi_nguon_kpi = "gia-dung:" + chiTietLoi(giaDung);
@@ -841,32 +869,62 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
   const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
   const congVal = bangCong.ok ? (bangCong.val || {}) : {};
 
-  /* CHỈ tab [Tổng hợp] (`line === null`) mới cần số tháng trước — cột
-     "Vs. Tháng trước" không có mặt ở tab của một line. Lấy nó ở mọi lượt là
-     bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
-     con số không ai nhìn. */
-  const doanhSoKyTruoc = line
-    ? null
-    : await docDoanhSoLineKyTruoc(env, ky, bangLine.val, rid);
+  /* ── Đợt 2 — giá vốn theo NGÀY BÁN. Phải chờ đợt 1 thật: hỏi Engine mã nào
+     có mặt trong kỳ (cần `dong` + bảng giá), rồi mới hỏi Tracking giá của
+     đúng những mã ấy theo từng ngày. Một đơn ngày 01/09 lấy giá của mốc
+     01/09, không phải giá của hôm tải file lên. */
+  const gia0 = Date.now();
+  if (nguon) {
+    try {
+      const maCan = await env.REPORT_ENGINE.maCanGiaVon(dong.val || {}, nguon, ky);
+      minNgay = await docMinNgay(env, ky, maCan);
+    } catch (e) {
+      if (!(e instanceof LoiTracking)) throw e;
+      nguon = null; minNgay = null;
+      loi_nguon_ma = e.ly;
+      nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + e.ly });
+    }
+  }
+  const ms_gia = Date.now() - gia0;
 
+  /* ── Đợt 3 — Engine dựng bảng. Hai lượt gọi độc lập nhau nên đi cùng lúc. */
+  const eng0 = Date.now();
   try {
-    const tom_tat_line = await env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val);
     /* Kỳ ngoài phạm vi hoặc Tracking hỏng thì vẫn phải áp sửa tay: một dòng
        đã XOÁ TAY phải biến khỏi bảng và khỏi mọi tổng dù có giá vốn hay
        không. Nên đường không-Tracking đi qua `dungBangDonSuaTay`, không phải
        `dungBangDon` trần. */
-    const bang = nguon
-      ? await env.REPORT_ENGINE.dungBangDonKemMa(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-        minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal)
-      : await env.REPORT_ENGINE.dungBangDonSuaTay(
-        dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-        kpiVal, gdVal, ky, doanhSoKyTruoc, congVal);
+    const [tom_tat_line, bang] = await Promise.all([
+      env.REPORT_ENGINE.tomTatLine(dong.val || {}, bangLine.val),
+      nguon
+        ? env.REPORT_ENGINE.dungBangDonKemMa(
+          dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
+          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal)
+        : env.REPORT_ENGINE.dungBangDonSuaTay(
+          dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
+          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal),
+    ]);
+    /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
+       chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ
+       đầu như lượt này. */
+    nhatKy({ rid, duong: "/api/don-hang", ky, line: line || null,
+             ms_doc, ms_gia, ms_engine: Date.now() - eng0 });
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
              trong_pham_vi_ma: trongPhamVi };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
+}
+
+const layDonHang = boc(true, async ({ request, env, rid }) => {
+  const q = new URL(request.url).searchParams;
+  const ky = q.get("ky");
+  const line = q.get("line");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (line !== null && (typeof line !== "string" || line.length > 60)) {
+    throw new LoiXacThuc(400, "line-khong-hop-le");
+  }
+  return dungBangDonHang(env, ky, line, rid);
 });
 
 /* =================== POST /api/sua-dong ===================
@@ -925,7 +983,37 @@ const suaDong = boc(true, async ({ nguoi, request, env, rid }) => {
 
   nhatKy({ rid, uid: nguoi.uid, duong: "/api/sua-dong", ky, khoa,
            viec: Object.keys(o).filter((k) => k !== "boi" && k !== "luc") });
-  return { ghi: true, ky, khoa };
+
+  /* ── TRẢ LUÔN BẢNG ĐÃ TÍNH LẠI (12/09/2026) ──
+   *
+   * Sửa giá nhập đổi lợi nhuận của dòng, của đơn, của ngày, quy đổi, tỉ lệ
+   * tồn kho và tổng cả kỳ — sáu con số do ENGINE tính, nên trình duyệt không
+   * được tự nhân trừ (LUẬT SỐ 1). Bản trước vì thế bảo màn hình gọi lại
+   * `GET /api/don-hang`, và người sửa một ô phải ngồi chờ TRỌN một vòng mạng
+   * thứ hai — đúng chỗ chủ dự án kêu "phải đợi một lúc mới thấy kết quả".
+   *
+   * Máy chủ vừa ghi xong đang đứng ngay cạnh mọi nguyên liệu để dựng lại
+   * bảng ấy. Dựng luôn tại đây thì một lượt bấm = MỘT vòng mạng, và con số
+   * hiện ra vẫn là con số Engine tính chứ không phải phỏng đoán của trình
+   * duyệt. Không có gì phải đánh đổi: cùng một phép tính, ít hơn một vòng.
+   *
+   * Dựng lại HỎNG thì lượt GHI vẫn thành công — nó đã ghi rồi. Trả `ghi:
+   * true` mà khuyết `bang`, và màn hình rơi về đường cũ (tự gọi lại GET).
+   * Ném ở đây là biến một lượt ghi ĐÃ XONG thành một thông báo lỗi đỏ, tức
+   * nói dối về thứ vừa xảy ra. */
+  let bang = null;
+  if (than && (typeof than.line === "string" || than.line === null)) {
+    if (typeof than.line === "string" && than.line.length > 60)
+      throw new LoiXacThuc(400, "line-khong-hop-le");
+    try {
+      bang = await dungBangDonHang(env, ky, than.line, rid);
+    } catch (e) {
+      bang = null;
+      nhatKy({ rid, duong: "/api/sua-dong", canh_bao: "dung-lai-bang-hong:"
+        + ((e && (e.ly || e.message)) || "khong-ro") });
+    }
+  }
+  return bang ? { ghi: true, ky, khoa, bang_moi: bang } : { ghi: true, ky, khoa };
 });
 
 /* =================== POST /api/dat-kpi ===================

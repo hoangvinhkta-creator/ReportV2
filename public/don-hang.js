@@ -665,9 +665,10 @@
       phien.xong = true;
 
       tr.classList.add("hangDangGui");
+      let kq;
       try {
-        await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa,
-          gia_nhap: giaGui, noi_nhap: noiGui });
+        kq = await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa,
+          gia_nhap: giaGui, noi_nhap: noiGui, line: trangThai.line });
       } catch (e) {
         tr.classList.remove("hangDangGui");
         phien.xong = false;
@@ -676,12 +677,7 @@
       }
       tr.classList.remove("hangDangGui");
       traLai();
-      /* Sửa giá nhập thì lợi nhuận của dòng và của đơn đều đổi theo, và
-         những con số ấy do ENGINE tính (LUẬT SỐ 1) — nên lượt này tải lại
-         đúng bảng đang xem thay vì tự nhân trừ ở trình duyệt. `imLang`:
-         không chớp "Đang tải…", không cuộn về gốc — người vừa bấm ra khỏi
-         một ô sửa, không phải vừa đổi tháng. */
-      taiKy({ imLang: true });
+      apBangMoi(kq);
     }
 
     return { luu, huy: traLai };
@@ -703,18 +699,42 @@
       + "Sổ gốc không đổi — bấm lại nút này trên dòng đó sau khi nhập lại sổ "
       + "là khôi phục được.")) return;
     tr.classList.add("hangDangGui");
+    let kq;
     try {
-      await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa, xoa: true });
+      kq = await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa, xoa: true,
+        line: trangThai.line });
     } catch (e) {
       tr.classList.remove("hangDangGui");
       $("loiDonHang").textContent = "Không xoá được: " + e.message;
       return;
     }
-    /* Xoá đổi tổng của đơn, của ngày và của cả kỳ — bốn con số do Engine
-       tính. Tải lại đúng bảng đang xem thay vì tự trừ ở trình duyệt.
-       `imLang`: giữ nguyên cuộn, không chớp "Đang tải…" — cùng lý do ở
-       `moSua()`. */
-    taiKy({ imLang: true });
+    apBangMoi(kq);
+  }
+
+  /** Dùng bảng mà lượt GHI vừa trả về, thay cho một vòng mạng thứ hai.
+   *
+   *  Sửa giá nhập đổi lợi nhuận của dòng, của đơn, của ngày, quy đổi, tỉ lệ
+   *  tồn kho và tổng cả kỳ — sáu con số do ENGINE tính, nên trình duyệt
+   *  không được tự nhân trừ (LUẬT SỐ 1). Bản trước vì thế gọi lại
+   *  `GET /api/don-hang` và người sửa một ô phải ngồi chờ trọn một vòng mạng
+   *  THỨ HAI. Nay máy chủ trả luôn bảng đã tính lại trong chính phản hồi
+   *  ghi: một lượt bấm = một vòng mạng, mà con số vẫn là con số Engine tính.
+   *
+   *  HAI ca rơi về đường cũ, và cả hai đều là ca thật:
+   *
+   *   · máy chủ không kèm được bảng (dựng lại hỏng, hoặc Gateway bản cũ giữa
+   *     hai lượt deploy) — `bang_moi` khuyết, gọi lại GET như trước;
+   *   · người dùng đã ĐỔI TAB hoặc ĐỔI THÁNG trong lúc lượt ghi đang bay.
+   *     Bảng trả về khi ấy là của chỗ CŨ; vẽ nó ra là ném người dùng ngược
+   *     về nơi họ vừa rời, với số của một line khác. Đối chiếu (kỳ, line)
+   *     rồi mới vẽ. */
+  function apBangMoi(kq) {
+    const b = kq && kq.bang_moi;
+    const dungCho = b && kq.ky === trangThai.ky
+      && (b.bang ? b.bang.line : null) === trangThai.line;
+    if (dungCho) veKetQua(b);
+    else taiKy({ imLang: true });
+    if (window.SucKhoe && window.SucKhoe.canhLai) window.SucKhoe.canhLai();
   }
 
   /** Đánh dấu (hay rút lại) MỘT MẶT HÀNG là gia dụng.
@@ -1914,6 +1934,31 @@
    *  gốc — đó đúng là thứ chủ dự án chốt 12/09/2026 phải hết ("mất thời
    *  gian và thêm lượt tải data"). Bỏ băng "Đang tải…" và giữ lại đúng vị
    *  trí cuộn của khung bảng qua lượt vẽ lại. */
+  /** Vẽ một kết quả `/api/don-hang` ra màn hình.
+   *
+   *  Tách khỏi `taiKy()` vì từ 12/09/2026 kết quả ấy còn đến từ một chỗ NỮA:
+   *  phản hồi của `POST /api/sua-dong` mang luôn bảng đã tính lại (xem
+   *  `luu()`). Hai đường vẽ phải đi qua đúng một hàm — hai bản vẽ là hai bản
+   *  trôi khỏi nhau, và chỗ trôi ở đây là con số hiện sau khi sửa khác con số
+   *  hiện sau khi tải lại.
+   *
+   *  Vị trí cuộn được đo NGAY TRONG hàm, trước khi `<tbody>` bị dựng lại: đo
+   *  ở chỗ gọi thì đường ghi phải nhớ đo, và cái phải-nhớ nào rồi cũng có chỗ
+   *  quên. */
+  function veKetQua(kq) {
+    const ve = $("veDonHang");
+    const bocCu = ve.querySelector(".bocBang");
+    const cuonCu = bocCu ? bocCu.scrollTop : 0;
+    veTabLine(kq.tom_tat_line);
+    if (trangThai.line === null) {
+      veTongHop(ve, kq);
+      return;
+    }
+    veBang(kq);
+    const bocMoi = ve.querySelector(".bocBang");
+    if (bocMoi && cuonCu) bocMoi.scrollTop = cuonCu;
+  }
+
   async function taiKy(tuyChon) {
     const imLang = !!(tuyChon && tuyChon.imLang);
     const loi = $("loiDonHang"), ve = $("veDonHang");
@@ -1932,23 +1977,11 @@
       return;
     }
 
-    const bocCu = imLang ? ve.querySelector(".bocBang") : null;
-    const cuonCu = bocCu ? bocCu.scrollTop : 0;
     if (!imLang) ve.innerHTML = '<p class="dangTai">Đang tải…</p>';
     try {
       const duong = "/api/don-hang?ky=" + encodeURIComponent(trangThai.ky)
         + (trangThai.line === null ? "" : "&line=" + encodeURIComponent(trangThai.line));
-      const kq = await goi(duong);
-      veTabLine(kq.tom_tat_line);
-      if (trangThai.line === null) {
-        veTongHop(ve, kq);
-      } else {
-        veBang(kq);
-        if (imLang) {
-          const bocMoi = ve.querySelector(".bocBang");
-          if (bocMoi) bocMoi.scrollTop = cuonCu;
-        }
-      }
+      veKetQua(await goi(duong));
     } catch (e) {
       ve.innerHTML = "";
       loi.textContent = "Không lấy được đơn hàng: " + e.message;
