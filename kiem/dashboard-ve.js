@@ -610,7 +610,18 @@ function kiemMoc(ten, gtThat, doiSo) {
     ctx.innerHeight = 600;
     napLai();
     await nghi(); await nghi(); await nghi();
-    ok('màn thấp → chặn ở sàn 240px, không bẹp dí', CAY.skVe.style.height, '240px');
+    ok('màn thấp → chặn ở SÀN, không bẹp dí', CAY.skVe.style.height, '200px');
+
+    /* MÀN CAO — bài quan trọng nhất của mục này, vì nó ghim đúng lỗi chủ dự
+       án bắt được khi mở thật: bản đầu chỉ có sàn, nên "chỗ còn lại" 800px
+       làm biểu đồ phình to ra đúng lúc lẽ ra phải gọn lại. Không có trần thì
+       ô này ra 800px và không ai thấy cho tới lúc mở trên một màn cao. */
+    ctx.innerHeight = 1400;
+    napLai();
+    await nghi(); await nghi(); await nghi();
+    ok('màn cao → chặn ở TRẦN, KHÔNG ăn hết chỗ còn lại', CAY.skVe.style.height, '300px');
+    ok('  · và cột phải vẫn bằng đúng cột trái', CAY.skLuoiNho.style.height, '300px');
+    ctx.innerHeight = 900;
   }
 
   xong();
