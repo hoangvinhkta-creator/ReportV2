@@ -21,9 +21,10 @@ nhận rồi merge thẳng, không phải điều kiện chờ chủ dự án g�
 ## Trạng thái hiện tại
 
 **P1 XONG. P2 ĐÃ ĐÓNG (11/09/2026), P3 ĐÃ ĐÓNG (12/09/2026), P4 ĐÃ ĐÓNG
-(12/09/2026).** Chi tiết lịch sử đầy đủ của P2/P3 (LINE, đối chiếu, bố
-cục) vẫn nằm nguyên bên dưới mục này — phần trên đây chỉ tóm lại đúng
-trạng thái ĐANG ĐÚNG hôm nay, không phải nhật ký từng lượt.
+(12/09/2026), P5 ĐÃ ĐÓNG (12/09/2026).** Chi tiết lịch sử đầy đủ của
+P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục này — phần
+trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
+ký từng lượt.
 
 - **P2 — dữ liệu gốc + biểu đồ.** 20 tháng (01/2025–08/2026) đã nằm trên
   Firebase, Dashboard sức khoẻ kinh doanh (2 biểu đồ, vòng cơ cấu Line,
@@ -37,11 +38,15 @@ trạng thái ĐANG ĐÚNG hôm nay, không phải nhật ký từng lượt.
   đặt/Chênh VAT), và một lượt rà soát bắt được bốn lỗi hiển thị trước khi
   đóng phase. **Bàn giao đầy đủ: `docs/handoff/2026-09-12-P4-dong.md`**
   — session P5 đọc file đó trước khi gõ dòng code đầu tiên.
-- **P5 — doanh số quy đổi + KPI theo line.** CODE ĐÃ XONG VÀ ĐÃ MERGE
-  (12/09/2026, PR #68 + #69). **Chưa đóng phase** — còn đúng hai việc,
-  cả hai là việc của chủ dự án, xem mục "P5" bên dưới.
+- **P5 — doanh số quy đổi + KPI theo line.** Công thức chốt và chạy
+  thật (PR #68–#73: Engine, Gateway + màn hình, nút nạp bộ số không cần
+  khoá dưới máy, và một lượt repair sửa cache + hiện mã ngắn sau khi chủ
+  dự án mở thật). Chủ dự án **xác nhận đã nghiệm thu** (đối chiếu tay
+  khớp kỳ 09/2026), 12/09/2026. **Bàn giao đầy đủ:
+  `docs/handoff/2026-09-12-P5-dong.md`** — session P6 đọc file đó trước
+  khi gõ dòng code đầu tiên, đặc biệt mục 6 (câu hỏi P6 cần hỏi trước).
 
-**BỐ CỤC MÀN HÌNH HIỆN TẠI (đúng tới 12/09/2026, sau lượt đóng P4) —
+**BỐ CỤC MÀN HÌNH HIỆN TẠI (đúng tới 12/09/2026, sau lượt đóng P5) —
 đọc trước khi sửa `public/index.html` hay `don-hang.js`:**
 
 ```
@@ -93,40 +98,27 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
 Tab đầu **[Tổng hợp]** nay có số thật (P5, 12/09/2026) — 8 cột
 `Line · Doanh số · Số đơn · Dòng hàng · Hệ số · Doanh số quy đổi · KPI ·
 Đạt`, cộng hàng TỔNG do Engine cộng. So với sheet "Summary" của file báo
-cáo tay thì còn thiếu **target thưởng, ngày công, lương** — bốn cột chưa
-có nhánh dữ liệu nào lưu và chưa chốt nguồn, nên cố ý để trống chứ không
-bịa cột rỗng cho đủ hình (xem mục "P5").
+cáo tay thì còn thiếu **target thưởng, ngày công, lương** — chưa có
+nhánh dữ liệu nào lưu và chưa chốt nguồn. **Việc này chuyển sang P6**
+(mở rộng thêm: tách lương cứng/phụ cấp riêng, xem mục "P6" bên dưới) —
+không bịa cột rỗng cho đủ hình ở P5.
 
-**ĐANG LÀM: P5 — đã deploy, CHỜ HAI VIỆC CỦA CHỦ DỰ ÁN.**
+**P5 ĐÃ ĐÓNG (12/09/2026).** Chủ dự án xác nhận đã nghiệm thu (đối chiếu
+tay khớp kỳ 09/2026), sau một lượt repair sửa hai lỗi bắt được khi mở
+thật (PR #73 — tổng quy đổi cũ do cache; ô Mã sản phẩm hiện mã ngắn thay
+câu tên kế toán). Bộ số KPI/hệ số được chủ dự án nhập tay trực tiếp (nút
+"Nạp bộ số mặc định" ra đời sau đó, ở PR #72, cho lượt nạp kế tiếp nếu
+cần dựng lại từ đầu). Chi tiết đầy đủ: **bàn giao
+`docs/handoff/2026-09-12-P5-dong.md`**.
 
-Công thức đã chốt (12/09/2026) và code đã merge. Hai việc còn lại, theo
-đúng thứ tự:
+Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/dat-kpi`,
+`/api/gia-dung`, `/api/nap-kpi`) chỉ cho vai **`quantri`** — đặt KPI là
+đổi mọi báo cáo của mọi tháng. Không đụng tới chốt này khi làm P6.
 
-1. **Nạp bộ số hạt giống — MỘT CÚ BẤM trên màn hình.** Mở tab [Tổng
-   hợp], bấm **"Nạp bộ số mặc định"** trong khung vàng. Hết.
-
-   Không cần khoá, không cần clone repo, không cần terminal — Gateway đã
-   giữ `FB_SA_EMAIL`/`FB_SA_KEY` làm Secret nên nó tự ghi. Đường này
-   (`POST /api/nap-kpi`, chỉ `quantri`) **chỉ chạy khi nhánh còn rỗng**:
-   nó là nút KHỞI TẠO, không phải nút đặt-lại, nên bấm nhầm hai lần cũng
-   không xoá mất con số nào đã sửa.
-
-   `bin/nap-kpi.mjs` vẫn còn dùng được cho ai có repo và có khoá dưới
-   máy, nhưng **không còn là đường bắt buộc**. Nhớ: script PUT ĐÈ TRỌN
-   nhánh, kể cả mọi bản ghi đè theo kỳ — nút trên màn hình thì không thể.
-
-2. **Mở kỳ 09/2026, đối chiếu tay.** Đó là kỳ DUY NHẤT có số quy đổi —
-   xem "Phạm vi" ở mục P5 bên dưới.
-
-**Một điều phải kiểm ngay ở lượt mở đầu tiên:** hai đường ghi
-(`/api/dat-kpi`, `/api/gia-dung`, `/api/nap-kpi`) chỉ cho vai
-**`quantri`**. Nếu tài
-khoản chủ dự án đang là `quanly` thì nút "Nạp bộ số mặc định" KHÔNG hiện
-(thay bằng câu "Chỉ Quản trị nạp được bộ số này") và ô trên dải setup
-KHOÁ SẴN kèm câu "Chỉ Quản trị đặt được" — không phải lỗi, là chốt an
-toàn cố ý (đặt KPI là đổi mọi báo cáo của mọi tháng). Hai cách: sửa
-`profiles/<uid>/vai` thành `quantri` trên Console, hoặc nói để nới cho cả
-hai vai (sửa đúng một chữ ở `src/index.js`).
+**ĐANG LÀM: P6 — dựng lại tab [Tổng hợp] + tab Biểu đồ.** Đọc
+`docs/handoff/2026-09-12-P5-dong.md` mục 6 trước khi bắt đầu — liệt kê
+đúng những gì P6 cần hỏi chủ dự án trước khi viết dòng code đầu tiên.
+Xem mục "P6" bên dưới cho đặc tả đầy đủ.
 
 
 ### P2 — đã làm được gì (11/09/2026, cập nhật lần hai cùng ngày: đã có sổ 2025)
@@ -907,7 +899,7 @@ khối trong đó vào một session mới.
 
 ---
 
-## Tám phase
+## Chín phase
 
 **Sắp xếp lại 11/09/2026, lần ba cùng ngày** — sau khi P2 (bản cũ) đã
 chạy thật và có kết quả (xem "Trạng thái hiện tại"). Chủ dự án gộp lại
@@ -932,6 +924,11 @@ làm xong bên trong P4 — xem lát "P5-1". Slot số P5 được TÁI SỬ D�
 nội dung mới, "Doanh số quy đổi + KPI nhân viên", thay vì chèn thêm một
 số phase mới và đẩy P6/P7 lùi lại — ít xáo trộn tham chiếu cũ hơn.)*
 
+*(Cập nhật 12/09/2026, lúc đóng P5: P5 đã nghiệm thu. Slot P6 "Sản phẩm,
+thương hiệu, cơ cấu" (tuỳ chọn, chưa cam kết) TÁI SỬ DỤNG thành "Dựng lại
+tab Tổng hợp + Biểu đồ" — nội dung cũ của P6 DỜI XUỐNG P8 nguyên vẹn,
+không mất. Lộ trình từ đây có CHÍN phase (P0–P8), không còn tám.)*
+
 | # | Tên | Ước lượng | Trạng thái |
 |---|---|---|---|
 | P0 | Chốt sáu quyết định | 1 buổi · không code | ✅ Xong — 11/09 |
@@ -939,9 +936,10 @@ số phase mới và đẩy P6/P7 lùi lại — ít xáo trộn tham chiếu c�
 | P2 | Dữ liệu gốc (2025→08/2026) + biểu đồ | 2 tuần | ✅ Xong — 11/09, chủ dự án đã nghiệm thu |
 | P3 | Cơ chế tải file doanh số theo thời điểm, nối dài dữ liệu | 1–2 tuần | ✅ Xong — 12/09, chủ dự án đã nghiệm thu |
 | P4 | Phân tích giá vốn, dựa trên dữ liệu P3 (chỉ từ ~07/09/2026) | 2 tuần | ✅ Đóng — 12/09 (gồm cả "Chỉnh sửa tay + audit trail" cũ của P5, xem lát P5-1) |
-| P5 | Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026 — nội dung cũ đã làm xong trong P4)* | chưa ước lượng — chờ chốt công thức | ⬜ Đang mở |
-| P6 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
+| P5 | Doanh số quy đổi + KPI nhân viên *(định nghĩa lại 12/09/2026 — nội dung cũ đã làm xong trong P4)* | — | ✅ Đóng — 12/09, chủ dự án đã nghiệm thu |
+| P6 | Dựng lại tab Tổng hợp + Biểu đồ *(định nghĩa lại 12/09/2026 — nội dung cũ dời xuống P8)* | chưa ước lượng — chưa chốt hết câu hỏi | ⬜ Chưa bắt đầu |
 | P7 | Khai tử V1 | 1 buổi | ⬜ Chưa bắt đầu |
+| P8 | Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết | — | ⬜ Chưa xác nhận cần |
 
 ---
 
@@ -1136,16 +1134,18 @@ tay.
 
 ---
 
-### P5 — Doanh số quy đổi + KPI theo line *(công thức chốt 12/09/2026)*
+### P5 — Doanh số quy đổi + KPI theo line — ✅ ĐÃ ĐÓNG 12/09/2026
 
 Nội dung CŨ của slot P5 này — "Chỉnh sửa tay + audit trail" (sửa/xoá
 dòng, `bc/quyetdinh/dong/<kỳ>`, giữ-lại-cảnh-báo khi dòng sửa tay biến
 mất) — **đã làm xong, gộp vào P4** dưới tên "lát P5-1" (PR-D/PR-E,
 `engine/src/sua-tay.mjs`). Không mất — chỉ đổi chỗ ghi.
 
-**Trạng thái: CODE XONG, ĐÃ MERGE, CHƯA ĐÓNG PHASE.** PR #68 (Engine) +
-PR #69 (Gateway & màn hình), 12/09/2026. Còn hai việc của chủ dự án —
-xem "Trạng thái hiện tại" ở đầu file.
+**Trạng thái: ĐÃ ĐÓNG.** PR #68 (Engine) + PR #69 (Gateway & màn hình) +
+PR #71/#72 (nạp bộ số không cần khoá dưới máy) + PR #73 (repair: cache +
+mã ngắn), tất cả 12/09/2026. Chủ dự án xác nhận đã nghiệm thu — đối
+chiếu tay khớp kỳ 09/2026. **Bàn giao đầy đủ cho P6:
+`docs/handoff/2026-09-12-P5-dong.md`.**
 
 #### Công thức — chủ dự án chốt 12/09/2026
 
@@ -1299,31 +1299,82 @@ và số KPI**; 20 tháng 01/2025–08/2026 hiện "—" ở cột quy đổi v�
 - Bảng đơn **vẫn đúng 19 cột** (ô tick nằm trong ô Mã, không thành cột
   thứ 20 — một cột chỉ có ở một tab sẽ phá bề rộng cố định của P4).
 
-#### Ra khỏi phase khi
+#### Ra khỏi phase khi — ✅ ĐẠT 12/09/2026
 
 Chủ dự án đã nạp hạt giống, mở kỳ 09/2026 và **đối chiếu tay khớp**.
-Công thức thì đã chốt và đã chạy — phần còn lại là phép nghiệm thu.
+Công thức thì đã chốt và đã chạy — phần còn lại là phép nghiệm thu, và
+chủ dự án đã xác nhận.
 
-#### Chưa làm, và cố ý chưa làm
+#### Chưa làm, và cố ý chưa làm — chuyển sang P6
 
 Bốn cột còn lại của sheet "Summary" — **target thưởng, ngày công,
 lương** — chưa có nhánh dữ liệu nào lưu. Chủ dự án chưa chốt nguồn cho
 chúng (nhập tay qua một màn hình mới? tải .xlsx theo kỳ? nối vào một hệ
 thống khác?) và chưa chốt có cần app TÍNH lương hay chỉ HIỆN LẠI con số
-nhập vào. Không bịa cột rỗng cho đủ hình.
+nhập vào. Không bịa cột rỗng cho đủ hình ở P5 — **P6 mở rộng đúng việc
+này** (thêm "Phụ cấp", tách "Lương cứng" riêng), xem mục "P6" bên dưới.
 
 ---
 
-### P6 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
+### P6 — Dựng lại tab [Tổng hợp] + tab Biểu đồ *(đặc tả 12/09/2026, chưa chốt hết)*
 
-Chủ dự án xác nhận KHÔNG cần chi tiết từng mặt hàng cho nhu cầu hiện tại.
-Phase này ở lại roadmap chỉ để không mất bối cảnh kỹ thuật (nhãn thương
-hiệu/nhóm hàng đọc từ Tracking, `GET /api/xuat/`, danh sách đóng 40
-hãng) — KHÔNG làm trừ khi chủ dự án yêu cầu rõ. Không tính vào ước lượng
-tổng của lộ trình.
+**Trạng thái: CHƯA BẮT ĐẦU.** Đọc
+**`docs/handoff/2026-09-12-P5-dong.md` mục 6 TRƯỚC khi gõ dòng code đầu
+tiên** — liệt kê đúng những câu phải hỏi chủ dự án, và một rào kỹ thuật
+thật (cột "Tỉ lệ tồn kho" cần sửa REPO TRACKING trước — bẫy số 4).
 
-**Nếu được yêu cầu, bạn sẽ thấy gì:** mặt hàng nào tạo doanh thu, hãng
-nào tạo lợi nhuận.
+#### Yêu cầu chủ dự án, nguyên văn rút gọn (12/09/2026)
+
+**1. Tab [Tổng hợp] — sắp Line theo doanh số giảm dần** (thay cho thứ tự
+cố định `thu_tu` hiện tại).
+
+**2. Tab [Tổng hợp] — đổi thành 15 cột, đúng thứ tự:**
+
+```
+Line · Số đơn · Số sản phẩm · Doanh số thuần · Lợi nhuận ·
+Doanh số quy đổi (highlight) · Tỉ lệ tồn kho · KPI · Đạt · Vs. Tháng trước ·
+Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương
+```
+
+So với 8 cột hiện tại (`Line · Doanh số · Số đơn · Dòng hàng · Hệ số ·
+Doanh số quy đổi · KPI · Đạt`): đổi thứ tự, đổi tên "Dòng hàng" →
+"Số sản phẩm", BỎ cột "Hệ số" (xác nhận trước khi bỏ — xem handoff),
+thêm MỚI: Lợi nhuận, Tỉ lệ tồn kho, Vs. Tháng trước, Thưởng, Ngày công,
+Lương cứng, Phụ cấp, Tổng lương.
+
+**3. Từ cột "Thưởng" trở đi: công thức tự động, SAU KHI dựng xong 1–2.**
+Chủ dự án sẽ cho công thức/nguồn dữ liệu khi layout đã có — **không bịa
+công thức trước khi được cho**, xếp chỗ (giữ "—") đúng cách P4 từng xếp
+chỗ cho "Doanh số quy đổi" trước khi P5 có công thức.
+
+**4. Tab Biểu đồ — dựng SAU khi tab [Tổng hợp] xong.** Chưa có mô tả nội
+dung cụ thể nào cho tab này — PHẢI HỎI trước khi bắt tay phần này.
+
+#### Hai chốt của P5 không được mở lại ở P6
+
+- **Biểu đồ vẫn vẽ bằng doanh số THUẦN**, không đổi nguồn số dù tab có
+  "renew" hình thức (P5 chốt, lý do: tránh nhiều nguồn doanh số cùng
+  một chart).
+- **Ba đường ghi KPI (`/api/dat-kpi`, `/api/gia-dung`, `/api/nap-kpi`)
+  chỉ cho vai `quantri`.**
+
+#### Bạn nhìn thấy gì
+
+Tối thiểu: tab [Tổng hợp] sắp theo doanh số thuần giảm dần, đủ 15 cột
+đúng thứ tự trên, cột "Doanh số quy đổi" có highlight. Năm cột
+Thưởng→Tổng lương có thể còn "—" nếu công thức chưa được cho ở lượt đầu
+— đó là xếp chỗ hợp lệ, không phải thiếu sót. "Tỉ lệ tồn kho" và
+"Vs. Tháng trước" phải có số THẬT (không phải "—" vĩnh viễn) vì chúng
+không thuộc nhóm "chờ công thức sau" mà chủ dự án nêu — nghĩa là công
+thức hai cột này phải hỏi và chốt NGAY ở lượt này (xem handoff mục 6).
+
+#### Ra khỏi phase khi
+
+Mọi câu hỏi ở `docs/handoff/2026-09-12-P5-dong.md` mục 6 đã có câu trả
+lời và đã áp dụng đúng; chủ dự án mở tab [Tổng hợp] thật, xác nhận đúng
+thứ tự Line/cột, đối chiếu được ít nhất "Tỉ lệ tồn kho" và
+"Vs. Tháng trước" khớp tay; tab Biểu đồ (nếu đã có đặc tả trong lượt
+này) chạy thật và được xác nhận.
 
 ---
 
@@ -1346,6 +1397,22 @@ chiếu thật.
 
 **Ra khỏi phase khi:** Render, PostgreSQL, R2 đã tắt; khoá đã xoay; hoá
 đơn hai nơi về 0.
+
+---
+
+### P8 — Sản phẩm, thương hiệu, cơ cấu — TUỲ CHỌN, không cam kết
+
+*(Dời số từ P6 cũ khi P6 được định nghĩa lại thành "Dựng lại tab Tổng
+hợp + Biểu đồ", 12/09/2026 — nội dung dưới đây KHÔNG đổi.)*
+
+Chủ dự án xác nhận KHÔNG cần chi tiết từng mặt hàng cho nhu cầu hiện tại.
+Phase này ở lại roadmap chỉ để không mất bối cảnh kỹ thuật (nhãn thương
+hiệu/nhóm hàng đọc từ Tracking, `GET /api/xuat/`, danh sách đóng 40
+hãng) — KHÔNG làm trừ khi chủ dự án yêu cầu rõ. Không tính vào ước lượng
+tổng của lộ trình.
+
+**Nếu được yêu cầu, bạn sẽ thấy gì:** mặt hàng nào tạo doanh thu, hãng
+nào tạo lợi nhuận.
 
 ---
 
