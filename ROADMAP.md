@@ -186,6 +186,41 @@ THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
   nhập khi nó khác giá nhập — "Kho" đứng cạnh một con số không phải giá
   kho trông y như một lỗi.
 
+**RÀ SOÁT P4 — 12/09/2026.** Soi lại toàn phase theo đúng mục "Bạn nhìn
+thấy gì" của nó, cộng một lượt chạy cả đường ống trên một kỳ có đủ mọi
+loại dòng (hàng thường, phụ phí cố định, chiết khấu, BTL ghép được, BTL
+không ghép được, sửa tay). Bốn thứ tìm ra, đã sửa hết:
+
+1. **Một câu SAI trên màn hình tiền** (do chính lát 5b gây ra): gõ đè nơi
+   nhập xong thì ô ghi "Tuấn Ngoan" nhưng tooltip vẫn nói "hàng có sẵn
+   trong kho nên xuất từ kho… giá nhập vẫn lấy giá Min". Nay lời giải
+   thích đi theo một CỜ do Engine đặt (`noi_nhap_tu_kho`), và
+   `apDungSuaTay()` tắt cờ khi người dùng gõ đè.
+2. **Thiếu hẳn vế thứ hai của "Bạn nhìn thấy gì"** — *"danh sách rõ ràng
+   N dòng chưa có giá vốn, vì lý do gì"*. Engine tính `tom_tat_gia` từ
+   lát 2 nhưng con số ấy chưa bao giờ ra tới màn hình; lý do chỉ nằm ở
+   `title` từng ô, muốn biết cả kỳ còn nợ bao nhiêu thì phải rê chuột
+   từng dòng. Nay có băng dưới bảng.
+3. **`OUT_OF_STOCK` không có trong bảng dịch** dù là một trong BA trạng
+   thái của hợp đồng `daily-min-v1` — màn hình hiện nguyên chữ tiếng Anh
+   cho một cảnh rất thường gặp. Kèm theo: bảng dịch ấy có tới BA bản, bản
+   trong `khop-ma.mjs` chưa ai import lần nào. Đã bỏ bản chết, bài kiểm
+   giữ cho nó không quay lại và canh hai bản còn lại phủ đủ tập trạng
+   thái.
+4. **Một yêu cầu CỨNG của CLAUDE.md chưa ai làm**: *"phải nói rõ có bao
+   nhiêu quyết định cũ không còn dòng nào để áp, kèm danh sách"*.
+   `tom_tat_sua_tay.mo_coi` cũng tính rồi bỏ đó. Nay có băng, liệt kê đủ
+   khoá, không cắt bớt.
+
+Cùng một lớp lỗi ở ba trong bốn ca: **Engine tính đúng, rồi không ai
+hiện ra**. Đáng nhớ khi mở phase sau — một con số chỉ tồn tại trong
+`tom_tat_*` thì với người dùng nó chưa tồn tại.
+
+Đã kiểm và KHÔNG phải lỗi: Gateway chuyển nguyên bản ghi `min-ngay`
+(`records.push(...)`, không lọc trường) nên `inventory_unit_cost` đi tới
+Engine được thật; `tom_tat_ma` không được hiện là CỐ Ý (băng gán mã đếm
+trên DOM, và bản thân những ô vàng chính là danh sách việc).
+
 **Còn treo sau lát này:**
 
 1. **`bc/ky` chưa trừ theo lượt BTL.** Biểu đồ đọc `bc/ky` (số đã tính
@@ -205,8 +240,19 @@ THÔ (`dataset.dong`), và `kiem/dinh-dang-tien.js` canh đúng dòng đó.
    bằng đúng một lượt chạy `POST /api/min-ngay/dung-lai` bên Tracking cho
    khoảng ngày ấy (đường R7, admin) — cùng một thao tác đang cần cho việc
    giá nhập trống ở đầu tháng 9.
-4. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống.
-5. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
+4. **Công thức "Doanh số quy đổi"** vẫn chưa có — cột ấy còn trống. KHÔNG
+   chặn điều kiện ra khỏi P4: mục "Bạn nhìn thấy gì" của phase chỉ đòi
+   lợi nhuận và danh sách dòng thiếu giá vốn, không đòi cột này.
+5. **`maCanGiaVon()` chưa bỏ qua dòng phụ phí cố định** như
+   `khopMaChoBangDon()` đã bỏ. Hệ quả duy nhất: nếu một tên phụ phí tình
+   cờ chứa một mã bảng giá thì mã ấy bị hỏi Tracking một cách thừa. Không
+   sai tiền, không sai nhãn — ghi lại vì đó là chỗ hai hàm nhìn cùng một
+   dòng mà kết luận khác nhau.
+6. **`ncc_uu_tien_khong_gap` không được hiện ở đâu.** Cố ý: nó là phép tự
+   chẩn cho người sửa mã (một tên NCC gõ sai làm luật ưu tiên im lặng
+   không chạy), còn với người dùng thì "tháng này Thăng Long không giữ
+   Min lần nào" là chuyện bình thường, hiện ra chỉ thành nhiễu.
+7. **"Nơi nhập"** bên Tracking là NCC đang giữ giá Min của một MÃ tại một
    thời điểm (`nccGiuMin()`), không phải thuộc tính của từng lô — đã dùng
    đúng như vậy ở lát 3, ghi lại đây để không ai đi dựng lại.
 
