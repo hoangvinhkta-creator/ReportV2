@@ -51,6 +51,11 @@
  * hai chuỗi khác nhau là tỉ lệ tụt về 0% mà bảng vẫn trông bình thường —
  * đúng lớp lỗi "hai nơi phải khớp mà không ai đối chiếu". */
 import { NHAN_TON_KHO } from "./khop-ma.mjs";
+/* Thưởng và lương ở MODULE RIÊNG, không nhét thêm vào file này: chúng phân
+ * loại theo hệ số quy đổi nên phải đọc kết quả của file này, nhưng chúng là
+ * một miền nghiệp vụ khác hẳn (tiền trả cho người, không phải tiền bán hàng)
+ * và có bộ hằng số riêng. Xem `luong.mjs`. */
+import { luongTheoLine } from "./luong.mjs";
 
 /** Đường dẫn hai nhánh trên Firebase. Khai MỘT chỗ để script nạp, Gateway
  *  đọc và Gateway ghi không bao giờ trỏ lệch nhau.
@@ -609,7 +614,7 @@ export function sapLineTheoDoanhSo(tomTatKpi, thuTu) {
  *  rỗng: `van_de`/`thieu_bang` đi kèm để màn hình nói thẳng vì sao cột ấy
  *  trống — đúng ba trạng thái tách bạch của CLAUDE.md ("có / không có /
  *  CHƯA BIẾT vì nguồn hỏng"). */
-export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc) {
+export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong) {
   /* Vắng hẳn bảng KPI và bảng KPI SAI là hai chuyện khác nhau, nên báo bằng
      hai trường khác nhau. Vắng là trạng thái bình thường trước lượt nạp hạt
      giống đầu tiên; sai là một nhánh dữ liệu có người sửa tay làm hỏng. */
@@ -623,6 +628,10 @@ export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc)
      (P6 — xem `sapLineTheoDoanhSo`). */
   bang.tom_tat_kpi.thu_tu = sapLineTheoDoanhSo(bang.tom_tat_kpi, thuTu);
   bang.tom_tat_kpi.vs_line = vsThangTruocTheoLine(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc);
+  /* Lương chạy CUỐI CÙNG, sau khi bản kê theo line đã có đủ `he_so_pt`,
+     `dat_pt` và `doanh_so_quy_doi` — nó chia trên cả ba. Chạy trước là tính
+     thưởng trên một bảng chưa điền xong. */
+  bang.tom_tat_kpi.luong = luongTheoLine(bang.tom_tat_kpi, bangCong);
   bang.tom_tat_kpi.thieu_bang = thieu_bang;
   bang.tom_tat_kpi.van_de = van_de;
   return bang;

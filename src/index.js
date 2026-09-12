@@ -337,6 +337,10 @@ function kyTruoc(ky) {
  *  hai repo. */
 const DUONG_BANG_KPI = "bc/quyetdinh/kpi";
 const DUONG_GIA_DUNG = "bc/quyetdinh/gia-dung";
+/* Nhánh ngày công của P6. Cùng lý do đặt dưới `bc/quyetdinh` như hai nhánh
+   trên: đây là con số NGƯỜI nhập tay, và nhánh đó đã có rules đang chạy nên
+   nhánh con thừa hưởng sẵn — không phải sửa rules rồi publish tay. */
+const DUONG_NGAY_CONG = "bc/quyetdinh/cong";
 
 /** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
  *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
@@ -822,12 +826,18 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
    * một khoá ngắn, không phải mỗi DÒNG một khoá như `bc/quyetdinh/dong`. */
   const bangKpi = await docDb(DUONG_BANG_KPI, env);
   const giaDung = await docDb(DUONG_GIA_DUNG, env);
+  /* Ngày công đọc theo ĐÚNG kỳ đang xem, không đọc cả nhánh — nó là con số
+     của một tháng cụ thể, và đọc cả nhánh là con số cộng dồn mãi mãi (đúng
+     bài học `bc/khach` của P3). */
+  const bangCong = await docDb(DUONG_NGAY_CONG + "/" + ky, env);
   let loi_nguon_kpi = null;
   if (!bangKpi.ok) loi_nguon_kpi = "kpi:" + chiTietLoi(bangKpi);
   else if (!giaDung.ok) loi_nguon_kpi = "gia-dung:" + chiTietLoi(giaDung);
+  else if (!bangCong.ok) loi_nguon_kpi = "ngay-cong:" + chiTietLoi(bangCong);
   if (loi_nguon_kpi) nhatKy({ rid, duong: "/api/don-hang", canh_bao: loi_nguon_kpi });
   const kpiVal = bangKpi.ok ? (bangKpi.val || null) : null;
   const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
+  const congVal = bangCong.ok ? (bangCong.val || {}) : {};
 
   /* CHỈ tab [Tổng hợp] (`line === null`) mới cần số tháng trước — cột
      "Vs. Tháng trước" không có mặt ở tab của một line. Lấy nó ở mọi lượt là
@@ -846,10 +856,10 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
     const bang = nguon
       ? await env.REPORT_ENGINE.dungBangDonKemMa(
         dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-        minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc)
+        minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal)
       : await env.REPORT_ENGINE.dungBangDonSuaTay(
         dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-        kpiVal, gdVal, ky, doanhSoKyTruoc);
+        kpiVal, gdVal, ky, doanhSoKyTruoc, congVal);
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
              trong_pham_vi_ma: trongPhamVi };
   } catch (e) {
@@ -998,6 +1008,67 @@ const datKpi = boc("quantri", async ({ nguoi, request, env, rid }) => {
   nhatKy({ rid, uid: nguoi.uid, duong: "/api/dat-kpi", line, ky,
            viec: Object.keys(o).filter((k) => k !== "boi" && k !== "luc") });
   return { ghi: true, line, ky };
+});
+
+/* =================== POST /api/dat-cong ===================
+ * Ngày công của MỘT line trong MỘT kỳ.
+ *
+ * Chủ dự án chốt 12/09/2026: *"Ngày công: tự điền theo thực tế"*, và
+ * *"Quản trị nhập theo từng tháng"*. Nên đường này KHÔNG có tầng "mặc định
+ * chung" như `dat-kpi`: một tháng có bao nhiêu ngày công là chuyện của đúng
+ * tháng ấy, không có giá trị nào áp cho mọi tháng. `ky` vì vậy BẮT BUỘC.
+ *
+ * Ghi `bc/quyetdinh/cong/<kỳ>/<line>` — nhánh RIÊNG, không bị lượt nhập sổ
+ * đè, hợp nhất lúc ĐỌC (CLAUDE.md — "Nhập sổ"). Nhập lại sổ tháng 9 không
+ * xoá mất ngày công đã gõ.
+ *
+ * ĐƠN VỊ: `ngay_cong` là SỐ NGÀY, không phải tiền — không nhân 1.000 ở biên
+ * như `dat-kpi`. Cho phép số lẻ (nửa ngày công là chuyện có thật), trần 31 vì
+ * không tháng nào dài hơn thế và một con số lớn hơn chắc chắn là gõ nhầm —
+ * mà gõ nhầm ở đây thì lương cứng nhân thẳng theo tỉ lệ.
+ *
+ * CHỈ QUẢN TRỊ, cùng mức với `dat-kpi`: đây là vế nhân của lương cứng và phụ
+ * cấp. Quản lí vẫn ĐỌC được.
+ */
+const datCong = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const line = than && typeof than.line === "string" ? than.line.trim() : "";
+  if (!line || line.length > 60) throw new LoiXacThuc(400, "line-khong-hop-le");
+  /* Tên line đi thẳng vào một đường Firebase — từ chối ký tự cấm thay vì sửa
+     hộ, cùng cách `datKpi` xử. */
+  if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
+
+  const ky = than && than.ky;
+  if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+
+  const duong = DUONG_NGAY_CONG + "/" + ky + "/" + line;
+
+  /* `null` là XOÁ hẳn ô ngày công, về lại "chưa nhập" — khác hẳn gõ số 0
+     ("tháng này không đi làm ngày nào"). Hai câu khác nhau, và cột Lương
+     cứng hiện hai thứ khác nhau: "—" so với "0". Xoá thì bỏ hẳn bản ghi,
+     không ghi `ngay_cong: null`, cùng lý do `gia-dung` đã chọn. */
+  if (than.ngay_cong === null) {
+    const x = await xoaDb(duong, env);
+    if (!x.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-cong:" + chiTietLoi(x));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/dat-cong", line, ky, viec: "xoa" });
+    return { ghi: true, line, ky, ngay_cong: null };
+  }
+
+  const n = Number(than.ngay_cong);
+  if (!Number.isFinite(n) || n < 0 || n > 31)
+    throw new LoiXacThuc(400, "ngay-cong-khong-hop-le");
+
+  const r = await vaDb(duong, {
+    ngay_cong: n,
+    /* Dấu vết người sửa đi CÙNG lượt ghi — hai lượt thì có một khoảng con số
+       đã đổi mà chưa biết của ai. */
+    boi: nguoi.email || nguoi.uid,
+    luc: { ".sv": "timestamp" },
+  }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-cong:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/dat-cong", line, ky, ngay_cong: n });
+  return { ghi: true, line, ky, ngay_cong: n };
 });
 
 /* =================== POST /api/gia-dung ===================
@@ -1194,6 +1265,7 @@ const API_ROUTES = new Map([
   ["POST /api/gan-ma", ganMa],
   ["POST /api/sua-dong", suaDong],
   ["POST /api/dat-kpi", datKpi],
+  ["POST /api/dat-cong", datCong],
   ["POST /api/gia-dung", datGiaDung],
   ["POST /api/nap-kpi", napKpi],
 ]);

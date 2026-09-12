@@ -211,9 +211,9 @@ const GOC = path.resolve(__dirname, '..');
     /* Gateway phải TRUYỀN hai nhánh xuống Engine — đọc rồi mà không truyền là
        đúng lớp lỗi này, ở tầng dưới một bậc. */
     ok('Gateway truyền bảng KPI + tick vào dungBangDonKemMa',
-       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc\)/.test(GW), true);
+       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal\)/.test(GW), true);
     ok('  · và vào cả đường ngoài phạm vi khớp mã (dungBangDonSuaTay)',
-       /kpiVal, gdVal, ky, doanhSoKyTruoc\)/.test(GW), true);
+       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal\)/.test(GW), true);
   }
 
   /* ─────────── G. Ô tick không mở oan màn gán mã ─────────── */
