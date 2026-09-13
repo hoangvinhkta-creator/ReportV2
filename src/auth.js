@@ -39,7 +39,21 @@ async function layKhoa(epLayLai) {
 /** Lỗi có mã HTTP đi kèm. `ly` là mã NGẮN cho log, không phải câu hiển thị
  *  cho người dùng — người gọi tự dịch sang câu tử tế. */
 export class LoiXacThuc extends Error {
-  constructor(ma, ly) { super(ly); this.ma = ma; this.ly = ly; }
+  /* `ly` là lý do NỘI BỘ — chỉ vào nhật ký, không bao giờ ra màn hình
+     (CLAUDE.md: không lộ mã lỗi nội bộ).
+
+     `choNguoi` là ngoại lệ hiếm và có chủ ý, thêm 13/09/2026 cho đường đẩy
+     Google Sheet: lỗi của Google là thứ NGƯỜI DÙNG sửa được ("chưa chia sẻ
+     file cho service account"), nên giấu nó sau câu chung "Dữ liệu gửi lên
+     không hợp lệ" là bắt chủ dự án đoán. Chỉ đặt trường này cho câu chữ
+     mình tự viết và đã đọc lại — KHÔNG bao giờ nhét nguyên văn phản hồi của
+     một dịch vụ ngoài vào đây. */
+  constructor(ma, ly, choNguoi) {
+    super(ly);
+    this.ma = ma;
+    this.ly = ly;
+    if (choNguoi) this.choNguoi = choNguoi;
+  }
 }
 
 const b64urlToBytes = (s) => {

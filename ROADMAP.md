@@ -141,6 +141,45 @@ Ghi lại một chốt vẫn còn hiệu lực cho P6: ba đường ghi (`/api/d
   ngay dưới bảng [Tổng hợp], gộp Doanh số + Số đơn vào một khung hai tab,
   bố cục hai cột với "Xu hướng theo Line" bên phải, bỏ vòng "Cơ cấu theo
   Line". Xem "Biểu đồ" bên dưới.
+
+**ĐẨY SANG GOOGLE SHEET — XONG (13/09/2026).** Chủ dự án gửi file "Báo cáo
+Kinh doanh 2026" đang dùng tay và chốt: mỗi tháng tạo một Sheet mới cho từng
+nhân viên, dán link vào tab line, rồi app tự ghi sang mỗi ngày.
+
+Bố cục 19 cột anh chốt bằng ảnh hàng tiêu đề — ghi từ **dòng 3** xuống, hai
+khối rời `A:J` và `O:S`:
+
+```
+A Ngày · B Số BH · C Nơi nhập · D Mã Sản phẩm · E Số lượng ·
+F Giá nhập TT · G Giá bán · H Tổng bán · I Lợi nhuận · J Quy đổi ·
+K L M N  ← KHÔNG ĐỤNG TỚI (cột tay của chủ dự án) ·
+O Tên khách hàng · P Số điện thoại · Q Địa chỉ · R Hãng · S IMEI
+```
+
+Bốn chốt đi kèm, đừng đổi mà không hỏi lại:
+
+- **Dòng 1 và dòng 2 bất khả xâm phạm.** `Summary` của anh trỏ thẳng vào ô
+  dòng 1 của từng tab (`'01.2026 Ly'!$B$1`), dòng 2 là hàng tiêu đề anh gõ.
+- **Tiền đẩy bằng NGHÌN ĐỒNG** (12.550.000 đ → `12550`) — khớp file cũ và
+  khớp đúng thứ màn hình đang hiện.
+- **Ngày · Số BH · Tên khách · SĐT · Địa chỉ chỉ nằm ở DÒNG ĐẦU của đơn.**
+  Nhờ vậy đếm cột B ra đúng SỐ ĐƠN; lặp ở mọi dòng thì ra số DÒNG.
+- **Link phải có `#gid`** — thiếu thì từ chối ngay lúc lưu. Đoán "chắc là
+  tab đầu" một lần là xoá trắng số liệu của một nhân viên khác.
+
+Chạy tự động **17h30 giờ VN mỗi ngày** (`crons = ["30 10 * * *"]`, UTC+7),
+đẩy kỳ hiện tại VÀ kỳ liền trước, cộng nút "Đẩy sang Sheet" trên dải setup.
+Chỉ vai `quantri`. Nguồn giá hoặc KPI hỏng thì **KHÔNG đẩy** — đè bộ số đúng
+bằng một bộ thiếu giá vốn thì trên Sheet không có gì nói là thiếu.
+
+Files: `engine/src/day-sheet.mjs` (dựng ô — LUẬT SỐ 1), `src/sheet.js` (nói
+chuyện với Google), `kiem/day-sheet.js` (64 bài).
+
+**Không phải bật lại Google Sheets API**: repo Marketing đã bật nó từ
+21/08/2026 trên cùng project `tinphattracking`, và API bật theo PROJECT chứ
+không theo Worker hay service account. Việc tay còn lại đúng một — **chia sẻ
+file Sheet cho `FB_SA_EMAIL` quyền Editor**. Mẹo: share một THƯ MỤC Drive
+một lần rồi mỗi tháng tạo file bên trong, quyền thừa hưởng theo.
 **P7 CHẠY SONG SONG (12/09/2026).** Chủ dự án thu hẹp P7 còn ĐÚNG hai
 việc: giữ tên miền `reports.tinphatcrm.com` cho V2, và màn đăng nhập chỉ
 cần Firebase (bỏ Cloudflare Access). Mọi việc khác của P7 cũ — di trú dữ
