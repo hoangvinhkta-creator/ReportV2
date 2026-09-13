@@ -89,7 +89,12 @@
    * mặt cộng nhãn trực tiếp, đúng lối "relief required" mà bộ đo chấp nhận.
    * ĐỔI MÀU Ở ĐÂY THÌ ĐO LẠI — đừng chọn bằng mắt. */
   const MAU_NAY = "#2563eb";
-  const MAU_TRUOC = "#7da2e3";
+  /* Kỳ trước là ĐƯỜNG NỀN, không phải một chuỗi ngang hàng: mắt phải bắt được
+     kỳ NAY trước, rồi mới liếc sang cái để so. Bản trước dùng một sắc xanh
+     nhạt (#7da2e3) nên hai đường cạnh tranh nhau. Nay xám và nhạt hơn nữa
+     (chủ dự án chốt 13/09/2026) — vẫn đủ tương phản trên nền trắng để đọc
+     được hình dáng, nhưng không còn giành sự chú ý. */
+  const MAU_TRUOC = "#b9c0cc";
 
   /* `RONG` là bề rộng của HỆ TOẠ ĐỘ, không phải bề rộng trên màn: SVG khai
      `width: 100%` nên nó co giãn theo cột. `CAO_MAC_DINH` chỉ là bản lùi khi

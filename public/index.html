@@ -58,10 +58,18 @@
   header.thanhTren h1 { font-size: 18px; margin: 0; }
   .aiDangNhap { font-size: 13px; color: #4b5563; }
   .aiDangNhap b { color: #1f2430; }
+  /* ---- Nút PHẲNG: không nền, không viền (chủ dự án chốt 13/09/2026) ----
+     Một trang chỉ có vài chục nút mà nút nào cũng đóng khung thì cái khung
+     thành nhiễu nền, không còn là dấu hiệu "bấm được". Bỏ nền và viền đi thì
+     thứ duy nhất còn nổi lên là NỘI DUNG — và trạng thái đang chọn (tab xanh)
+     lại đọc được ngay từ xa. Viền chỉ quay lại lúc rê chuột: đó là lúc câu
+     hỏi "cái này bấm được không" thật sự được đặt ra. */
   button.dangXuat {
-    border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
+    border: 1px solid transparent; background: none; border-radius: 8px;
     padding: 6px 10px; font-size: 13px; cursor: pointer; margin-left: 8px;
+    color: #3d4a63; font-weight: 600; transition: background .12s, color .12s;
   }
+  button.dangXuat:hover { background: rgba(29,91,234,.10); color: #1d5bea; }
 
   #hopLoi { color: #b91c1c; font-size: 13px; }
 
@@ -87,11 +95,11 @@
   /* Nếp `.btn-mini` của Tracking: viền mảnh, bo 10px, rê chuột chuyển xanh.
      Hai app đứng cạnh nhau nên nút phải đọc ra cùng một thứ. */
   .tabNut {
-    border: 1px solid #d1d5db; background: #fff; border-radius: 10px;
+    border: 1px solid transparent; background: none; border-radius: 10px;
     padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
-    color: #3d4a63; transition: border-color .12s, color .12s, background .12s;
+    color: #3d4a63; transition: background .12s, color .12s;
   }
-  .tabNut:hover:not(:disabled):not(.tabDang) { border-color: #1d5bea; color: #1d5bea; }
+  .tabNut:hover:not(:disabled):not(.tabDang) { background: rgba(29,91,234,.10); color: #1d5bea; }
   .tabNut.tabDang { background: #1d5bea; border-color: #1d5bea; color: #fff; font-weight: 600; }
   .tabNut:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
   .tabNut.tabNho { padding: 4px 10px; font-size: 12px; }
@@ -189,9 +197,11 @@
   /* ---- Màn nhập sổ + màn đơn hàng (P3) ---- */
   .hangChon { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
   .nutNho {
-    border: 1px solid #d1d5db; background: #fff; border-radius: 6px;
-    padding: 6px 12px; font-size: 13px; cursor: pointer; color: #1f2430;
+    border: 1px solid transparent; background: none; border-radius: 8px;
+    padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+    color: #3d4a63; transition: background .12s, color .12s;
   }
+  .nutNho:hover:not(:disabled) { background: rgba(29,91,234,.10); color: #1d5bea; }
   .nutNho:disabled { color: #9ca3af; cursor: default; }
   .khoiKq { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
   .khoiKq h3 { margin: 0 0 10px; font-size: 15px; }
@@ -362,12 +372,12 @@
   /* Nút giữ nguyên kích thước dù cột hẹp cỡ nào — nó KHÔNG được co, và cũng
      không được đẩy nhãn xuống dòng thứ hai (đúng cái "biến dạng cột" của bản
      `float: right` trước). */
-  .nutLoc { flex: 0 0 auto; border: 1px solid #d1d5db; background: #fff;
-            color: #6b7280; border-radius: 6px; padding: 0 5px; height: 17px;
-            font-size: 10px; line-height: 15px; cursor: pointer;
-            transition: border-color .12s, color .12s, background .12s; }
-  .nutLoc:hover { border-color: #1d5bea; color: #1d5bea; }
-  .nutLoc.locDang { background: #1d5bea; border-color: #1d5bea; color: #fff; }
+  .nutLoc { flex: 0 0 auto; border: 0; background: none; color: #9ca3af;
+            border-radius: 5px; padding: 0 3px; height: 18px; line-height: 0;
+            cursor: pointer; transition: background .12s, color .12s; }
+  .nutLoc svg { width: 12px; height: 12px; display: block; }
+  .nutLoc:hover { background: rgba(29,91,234,.12); color: #1d5bea; }
+  .nutLoc.locDang { background: #1d5bea; color: #fff; }
   /* TÊN CỘT ĐỎ = cột này còn ô thiếu. Thay hẳn hai băng chữ dưới bảng. */
   .bangDon th.cotCanhBao .tenCot { color: #c4361f; font-weight: 700; }
   .bangLoc { font-size: 13px; color: #56637f; margin: 6px 0; }
@@ -378,11 +388,11 @@
      trỏ người đang bấm. */
   .bangDon td.oBonus { position: relative; white-space: nowrap; }
   .soBonus { color: #0f9d58; font-weight: 600; }
-  .nutBonus { border: 1px solid #d1d5db; background: #fff; color: #6b7280;
-              border-radius: 6px; padding: 0 5px; height: 17px; margin-left: 4px;
-              font-size: 11px; line-height: 15px; cursor: pointer;
-              transition: border-color .12s, color .12s; }
-  .nutBonus:hover { border-color: #0f9d58; color: #0f9d58; }
+  .nutBonus { border: 0; background: none; color: #9ca3af; border-radius: 5px;
+              padding: 0 3px; height: 18px; line-height: 0; margin-left: 4px;
+              cursor: pointer; transition: background .12s, color .12s; }
+  .nutBonus svg { width: 13px; height: 13px; display: block; }
+  .nutBonus:hover { background: rgba(15,157,88,.14); color: #0f9d58; }
   .bangDon td.oLyDoBonus { color: #56637f; font-style: italic; }
   /* Hộp nhập bung ra ĐÈ LÊN bảng, không chen vào bố cục: chen vào là đẩy
      mọi dòng bên dưới xuống đúng lúc người dùng đang nhắm vào một dòng. */
@@ -550,12 +560,18 @@
   .ganMaNut { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
 
   .bangDon .oIcon { text-align: center; padding: 2px 4px; }
+  /* Icon VẼ THEO LINE, một màu (chủ dự án chốt 13/09/2026) — không dùng emoji
+     nữa. Emoji do HỆ ĐIỀU HÀNH vẽ: mỗi máy một hình, luôn nhiều màu, và không
+     nhận `color` nên không bao giờ hoà được với bảng. SVG `stroke:currentColor`
+     thì đổi màu theo trạng thái nút, và giống nhau trên mọi máy. */
   .nutIcon {
-    border: 1px solid transparent; background: none; border-radius: 6px;
-    padding: 2px 6px; font-size: 13px; line-height: 1; cursor: pointer;
-    transition: border-color .12s, background .12s;
+    border: 0; background: none; border-radius: 6px; color: #9ca3af;
+    padding: 3px 5px; line-height: 0; cursor: pointer;
+    transition: background .12s, color .12s;
   }
-  .nutIcon:hover { background: rgba(29,91,234,.10); border-color: #1d5bea; }
+  .nutIcon svg { width: 14px; height: 14px; display: block; }
+  .nutIcon:hover { background: rgba(29,91,234,.10); color: #1d5bea; }
+  .nutIcon.nutXoa:hover { background: rgba(196,54,31,.12); color: #c4361f; }
   .nutIcon:disabled { opacity: .35; cursor: default; background: none; border-color: transparent; }
   .hangNgay td { background: #eef2ff; font-weight: 600; }
   .hangDauDon td { border-top: 2px solid #d1d5db; }

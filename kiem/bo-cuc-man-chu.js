@@ -563,4 +563,56 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
      /trangThai\.loc = null;\s*\n\s*taiKy\(\);/.test(JS), true);
 }
 
+console.log('\n14) Giao diện — nút phẳng, icon vẽ theo line, ô KPI có dấu phân cách');
+{
+  const cssS = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  /* Nút PHẲNG: không nền, không viền (chủ dự án chốt 13/09/2026). Một trang
+     mà nút nào cũng đóng khung thì cái khung thành nhiễu nền, không còn là
+     dấu hiệu "bấm được". Viền chỉ quay lại lúc rê chuột. */
+  for (const [ten, luat] of [['tab', '\\.tabNut \\{'], ['Nhập sổ / Đăng xuất', 'button\\.dangXuat \\{'],
+                             ['nút nhỏ', '\\.nutNho \\{']]) {
+    const khoi = (cssS.match(new RegExp(luat + '[^}]*\\}')) || [''])[0];
+    ok('nút ' + ten + ' không có nền', /background:\s*none/.test(khoi), true);
+    ok('  · và viền trong suốt', /border:\s*1px solid transparent/.test(khoi), true);
+  }
+  /* Trạng thái ĐANG CHỌN vẫn phải đọc được từ xa — bỏ nền hết thì không còn
+     gì phân biệt tab đang mở với tab khác. */
+  ok('tab đang chọn vẫn có nền đặc', /\.tabNut\.tabDang \{[^}]*background:\s*#1d5bea/.test(cssS), true);
+
+  /* Icon VẼ THEO LINE, một màu. Emoji do HỆ ĐIỀU HÀNH vẽ: mỗi máy một hình,
+     luôn nhiều màu, và KHÔNG nhận `color` nên không bao giờ hoà được với
+     bảng. `stroke="currentColor"` thì icon đổi màu theo trạng thái nút. */
+  ok('không còn emoji nào làm icon nút', /"✏️"|"🗑"|"⌄"|"✎"/.test(JS), false);
+  ok('  · icon dựng bằng SVG', /createElementNS\("http:\/\/www\.w3\.org\/2000\/svg", "svg"\)/.test(JS), true);
+  ok('  · nét vẽ, không tô đặc', /setAttribute\("fill", "none"\)/.test(JS), true);
+  ok('  · và ăn màu theo nút chứa nó', /setAttribute\("stroke", "currentColor"\)/.test(JS), true);
+  for (const k of ['sua', 'xoa', 'loc', 'cong']) {
+    ok('  · có hình cho "' + k + '"', new RegExp('\\b' + k + ': \'<path').test(JS), true);
+  }
+  ok('nút Xoá có màu rê chuột riêng (đỏ)',
+     /\.nutIcon\.nutXoa:hover \{[^}]*#c4361f/.test(cssS), true);
+
+  /* ── Ô KPI có dấu phân cách hàng nghìn ──
+     Chỉ ô KPI. Hai ô hệ số là phần trăm có phần lẻ (`7,5`); chấm ở đó vô
+     nghĩa và mơ hồ. */
+  ok('ô KPI khai cờ phân cách', /khoa: "kpi"[^}]*phanCach: true/.test(JS), true);
+  ok('  · và hai ô hệ số KHÔNG khai', (JS.match(/phanCach: true/g) || []).length, 1);
+  ok('  · ô có phân cách phải là type=text (number không hiện được dấu chấm)',
+     /oN\.type = "text"/.test(JS), true);
+  /* Định dạng lúc RỜI ô, gỡ lúc VÀO ô: định dạng ngay trong lúc gõ thì mỗi
+     lần chèn một dấu chấm là con trỏ nhảy về cuối. */
+  ok('  · gỡ dấu lúc vào ô', /addEventListener\("focus"[\s\S]{0,90}?replace\(\/\\\.\/g, ""\)/.test(JS), true);
+  ok('  · và đặt lại lúc rời ô', /addEventListener\("blur"[\s\S]{0,60}?chamNghin/.test(JS), true);
+
+  /* Ca đắt nhất của cả mục này, và nó đã suýt lọt: bỏ dấu chấm ở MỌI ô thì
+     hai ô hệ số (`type="number"`, `.value` luôn dùng dấu chấm làm dấu thập
+     phân, `"7.5"`) biến 7,5% thành 75% — sai gấp mười trên mọi con số quy
+     đổi của line, im lặng. Cờ phải đi CÙNG ô, không suy lại từ tên trường. */
+  ok('chỗ đọc chỉ bỏ dấu chấm ở ô THẬT SỰ có phân cách',
+     /o\.dataset\.phanCach\s*\n?\s*\? o\.value\.trim\(\)\.replace\(\/\\\.\/g, ""\)/.test(JS), true);
+  ok('  · cờ gắn lên chính ô, không đoán lại từ tên trường',
+     /oN\.dataset\.phanCach = "1"/.test(JS), true);
+}
+
 xong();
