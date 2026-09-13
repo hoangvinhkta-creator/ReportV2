@@ -401,6 +401,11 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
 
   for (const ng of bang.ngay) {
     let quyDoiNgay = null;
+    /* Lợi nhuận theo NGÀY — chủ dự án chốt 13/09/2026 để hàng băng ngày (nay
+       là một trình thả xuống) nói đủ ba con số mà không phải mở ra mới thấy.
+       Cùng luật với line: cộng phần BIẾT ĐƯỢC, đếm riêng số đơn còn thiếu.
+       Hoá phần thiếu thành 0 là để một con số nhỏ đọc như một con số đủ. */
+    let loiNhuanNgay = 0, thieuNgay = 0;
     for (const don of ng.don) {
       const h = layHanh(don.line);
       let quyDoiDon = null;
@@ -479,7 +484,15 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
          đây. Thiếu dòng này thì cột Lợi nhuận của [Tổng hợp] thấp hơn tổng
          cột Lợi nhuận của chính tab line ấy, đúng lớp lỗi im lặng mà bảng
          [Tổng hợp] vừa phải sửa ở P6. */
-      if (bonus > 0) o.loi_nhuan = lamTron(o.loi_nhuan + bonus);
+      if (bonus > 0) {
+        o.loi_nhuan = lamTron(o.loi_nhuan + bonus);
+        loiNhuanNgay = lamTron(loiNhuanNgay + bonus);
+      }
+      for (const d of don.dong) {
+        if (d.loi_nhuan === null || d.loi_nhuan === undefined) continue;
+        loiNhuanNgay = lamTron(loiNhuanNgay + (Number(d.loi_nhuan) || 0));
+      }
+      if (!duLoiNhuan) thieuNgay++;
 
       if (!duQuyDoi) o.don_thieu_quy_doi++;
       /* Đếm RIÊNG khỏi `don_thieu_quy_doi`, không dùng lại con số kia. Hai
@@ -490,6 +503,8 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
       theoLine.set(don.line, o);
     }
     ng.doanh_so_quy_doi = quyDoiNgay;
+    ng.loi_nhuan = loiNhuanNgay;
+    ng.don_thieu_loi_nhuan = thieuNgay;
   }
 
   bang.tom_tat.doanh_so_quy_doi = tongQuyDoi;

@@ -216,13 +216,82 @@ const GOC = path.resolve(__dirname, '..');
     ok('vẫn gõ được lý do khác', /"Khác…"/.test(UI), true);
     ok('thiếu lý do thì cảnh báo NGAY, không gửi đi',
        /Phải chọn hoặc gõ lý do được cộng/.test(UI), true);
-    ok('  · và thiếu tiền cũng vậy', /Nhập số tiền lớn hơn 0/.test(UI), true);
+    /* Ô số trống (hoặc 0) KHÔNG còn là lỗi — nó là cách XOÁ bonus, và ô quay
+       về dấu `+` (chủ dự án chốt 13/09/2026). Nên thứ phải canh đổi chiều:
+       trống thì gửi `tien: null`, không phải báo lỗi. */
+    ok('  · xoá trắng ô số là BỎ bonus, không phải lỗi',
+       /const than = n === 0 \? \{ tien: null \} : null;/.test(UI), true);
+    ok('  · và chỉ đòi lý do khi THẬT SỰ có tiền', /if \(!than\) \{/.test(UI), true);
     /* Người dùng gõ theo NGHÌN (50 = 50.000 đ), cùng đơn vị với ô Giá nhập. */
     ok('tiền gõ theo nghìn, nhân 1.000 trước khi gửi', /Math\.round\(n \* 1000\)/.test(UI), true);
     /* Lý do cũ ngoài bốn cái mặc định phải được điền lại khi mở ra sửa —
        nếu không, mở ra sửa số tiền là lý do lặng lẽ bị thay. */
     ok('lý do cũ ngoài danh sách vẫn được điền lại khi mở sửa',
-       /!dsLyDo\.includes\(lyDoCu\)/.test(UI), true);
+       /!dsLyDo\.includes\(cuLyDo\)/.test(UI), true);
+    /* Sửa TẠI CHỖ, không bung hộp nổi (chủ dự án 13/09/2026: "tù quá" — hộp
+       che mất chính cái đơn đang cộng cho, và số tiền gõ ở một chỗ khác hẳn
+       cột nó sẽ hiện ra). Cùng khuôn với lượt sửa Giá nhập của P4: rời khỏi
+       HÀNG là tự lưu. */
+    ok('không còn hộp nổi', /hopBonus/.test(UI), false);
+    ok('  · ô số nằm ngay tại cột Lợi nhuận', /tdTien\.appendChild\(oTien\)/.test(UI), true);
+    ok('  · ô lý do nằm ngay tại cột Ghi chú', /tdLyDo\.appendChild\(chon\)/.test(UI), true);
+    ok('  · rời khỏi HÀNG thì tự lưu, không xét từng ô',
+       /!tr\.contains\(e\.relatedTarget\)\) luu\(\)/.test(UI), true);
+  }
+
+  console.log('\n9) Lợi nhuận theo NGÀY — số cho băng ngày, Engine tính');
+  {
+    /* Băng ngày nay là một trình thả xuống và nói đủ bốn con số, nên nó cần
+       lợi nhuận của ngày. Cùng luật với line: cộng phần BIẾT ĐƯỢC, đếm riêng
+       số đơn còn thiếu. Hoá phần thiếu thành 0 là để một con số nhỏ đọc như
+       một con số đủ. */
+    const b = bang([
+      { so_ct: 'BH1', line: 'L1', tong_ban: 100, loi_nhuan: 1000,
+        dong: [dong({ tong_ban: 100, loi_nhuan: 1000 })] },
+      { so_ct: 'BH2', line: 'L1', tong_ban: 100, loi_nhuan: null,
+        dong: [dong({ tong_ban: 100, loi_nhuan: null })] },
+    ]);
+    B.apDungBonus(b, { BH1: { tien: 500, ly_do: 'KHBH' } });
+    K.dienDoanhSoQuyDoi(b, BANG, '2026-09', {});
+    const ng = b.ngay[0];
+    ok('lợi nhuận ngày = phần biết được + bonus', ng.loi_nhuan, 1500);
+    ok('  · và nói rõ còn mấy đơn chưa đủ', ng.don_thieu_loi_nhuan, 1);
+    /* Con số của NGÀY và của LINE phải khớp nhau khi cả bảng chỉ có một
+       line và một ngày — hai đường cộng độc lập, lệch là một trong hai sai. */
+    ok('  · khớp đúng con số của line', ng.loi_nhuan, b.tom_tat_kpi.line.L1.loi_nhuan);
+
+    const b2 = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100, loi_nhuan: 1000,
+      dong: [dong({ tong_ban: 100, loi_nhuan: 1000 })] }]);
+    K.dienDoanhSoQuyDoi(b2, BANG, '2026-09', {});
+    ok('không đơn nào thiếu thì bộ đếm bằng 0', b2.ngay[0].don_thieu_loi_nhuan, 0);
+  }
+
+  console.log('\n10) Băng ngày = trình thả xuống, đóng sẵn');
+  {
+    const UI = doc('public/don-hang.js');
+    /* Dùng một HÀNG BẢNG bấm được chứ không phải `<details>`: `<details>`
+       trong `<tbody>` là HTML không hợp lệ, trình duyệt ném nó ra ngoài bảng
+       và cột lệch hết. */
+    /* Soi trên mã ĐÃ BỎ CHÚ THÍCH: chú thích ngay trên có nhắc `<details>` để
+       nói vì sao KHÔNG dùng nó, và nhắc là đúng. */
+    ok('không dùng <details> trong bảng',
+       /<details/.test(UI.replace(/\/\*[\s\S]*?\*\//g, ' ')), false);
+    ok('băng ngày đóng sẵn', /trNgay\.classList\.add\("dongLai"\)/.test(UI), true);
+    ok('  · và mọi dòng của ngày ẩn theo',
+       /t\.hidden = true; tbody\.appendChild\(t\)/.test(UI), true);
+    ok('  · bấm vào băng thì lật trạng thái',
+       /trNgay\.classList\.toggle\("dongLai"\)/.test(UI), true);
+    /* Mở một ngày ra là bảng cao lên → chỗ còn lại cho biểu đồ đổi. Không
+       đo lại thì bảng tràn xuống dưới biểu đồ. */
+    ok('  · và đo lại chiều cao bảng sau mỗi lượt mở/đóng',
+       /toggle\("dongLai"\)[\s\S]{0,400}?dieuChinhCaoBang\(\)/.test(UI), true);
+    /* Bốn con số trên băng đều do Engine tính; màn hình chỉ đọc field. */
+    ok('băng nói cả lợi nhuận lẫn quy đổi của ngày',
+       /ng\.loi_nhuan[\s\S]{0,220}?ng\.doanh_so_quy_doi/.test(UI), true);
+    ok('  · quy đổi chưa biết thì hiện "—", không hiện 0',
+       /doanh_so_quy_doi === null \|\| ng\.doanh_so_quy_doi === undefined\s*\n?\s*\? "—"/.test(UI), true);
+    ok('  · còn đơn thiếu giá vốn thì dán dấu "*" vào lợi nhuận',
+       /ng\.don_thieu_loi_nhuan \? " \*" : ""/.test(UI), true);
   }
 
   xong();
