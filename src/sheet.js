@@ -216,8 +216,24 @@ export async function daySangTab(env, { id, gid, khoi }, opts = {}) {
   return { ten_tab: ten, so_dong: khoi[0].dong.length };
 }
 
+/* ─────────────── Màu nền mảng ngày (chủ dự án chốt 13/09/2026) ───────────
+ *
+ * Anh gửi ảnh mẫu: mỗi NGÀY là một mảng xám liền, hai ngày cách nhau một
+ * dòng trống trắng, và cột N chừa trắng. Nhờ vậy nhìn lướt là thấy ranh giới
+ * ngày mà không phải dò cột Ngày.
+ *
+ * #d9d9d9 — đúng "Light gray 3" trong bảng màu sẵn của Google Sheets, nên ô
+ * app tô và ô anh tự tô tay ra CÙNG một màu. Đổi màu thì sửa đúng đây.
+ */
+const XAM = { red: 0.851, green: 0.851, blue: 0.851 };
+const TRANG = { red: 1, green: 1, blue: 1 };
+
+/* Hai dải cột được tô, và khoảng hở giữa chúng chính là cột N.
+   Chỉ số 0-based, nửa mở [dau, cuoi) — đúng cách GridRange đếm. */
+const DAI_TO = [{ dau: 0, cuoi: 13 }, { dau: 14, cuoi: 19 }];   // A–M và O–S
+
 /**
- * Phủ định dạng ngày và tiền lên đúng những cột mang chúng.
+ * Phủ định dạng số và tô mảng ngày — MỘT lượt gọi cho cả hai.
  *
  * Định dạng Ô thay vì ép sẵn dấu chấm vào chuỗi bên Engine — bài học từ repo
  * Marketing: ép sẵn thì Sheet nhận CHỮ, mất hết khả năng cộng, lọc và sắp
@@ -227,11 +243,43 @@ export async function daySangTab(env, { id, gid, khoi }, opts = {}) {
  * Chạy sau lượt ghi và KHÔNG chặn kết quả: ô đã có số đúng rồi, định dạng
  * hỏng thì cùng lắm là nhìn xấu.
  */
-export async function dinhDangCot(env, { id, gid, cotNgay, cotTien, hangDau, hangCuoi },
-                                 opts = {}) {
+export async function dinhDangCot(env, { id, gid, cotNgay, cotTien, hangDau, hangCuoi,
+                                         bangNgay }, opts = {}) {
   const token = opts.token || await fbToken(env, SCOPE_SHEETS);
   if (!token) throw new LoiSheet(503, "Chưa cấu hình service account.");
 
+  const yeuCau = [];
+
+  /* ── 1. Xoá sạch nền CŨ, từ dòng 3 xuống hết lưới ──
+     `batchClear` ở lượt ghi chỉ xoá GIÁ TRỊ, không xoá màu. Tháng này ít
+     ngày hơn tháng trước mà không quét nền thì mấy mảng xám của lượt cũ nằm
+     lại dưới đáy, trông y như còn dữ liệu. Bỏ `endRowIndex` = tới hết lưới,
+     và không giới hạn cột = quét cả cột N (N vốn phải trắng). */
+  yeuCau.push({
+    repeatCell: {
+      range: { sheetId: gid, startRowIndex: hangDau - 1 },
+      cell: { userEnteredFormat: { backgroundColor: TRANG } },
+      fields: "userEnteredFormat.backgroundColor",
+    },
+  });
+
+  /* ── 2. Tô từng mảng ngày ──
+     Hai dải rời cho mỗi ngày, chừa cột N ở giữa. Tô sau bước 1 nên đè lên
+     nền trắng vừa quét — thứ tự trong `requests` là thứ tự Google áp dụng. */
+  for (const b of (bangNgay || [])) {
+    for (const c of DAI_TO) {
+      yeuCau.push({
+        repeatCell: {
+          range: { sheetId: gid, startRowIndex: b.tu - 1, endRowIndex: b.den,
+                   startColumnIndex: c.dau, endColumnIndex: c.cuoi },
+          cell: { userEnteredFormat: { backgroundColor: XAM } },
+          fields: "userEnteredFormat.backgroundColor",
+        },
+      });
+    }
+  }
+
+  /* ── 3. Định dạng ngày và tiền ── */
   const o = (cot, mau) => ({
     repeatCell: {
       range: { sheetId: gid, startRowIndex: hangDau - 1, endRowIndex: hangCuoi,
@@ -240,8 +288,7 @@ export async function dinhDangCot(env, { id, gid, cotNgay, cotTien, hangDau, han
       fields: "userEnteredFormat.numberFormat",
     },
   });
-
-  const yeuCau = [o(cotNgay, { type: "DATE", pattern: "dd/mm/yyyy" })];
+  yeuCau.push(o(cotNgay, { type: "DATE", pattern: "dd/mm/yyyy" }));
   for (const c of cotTien) yeuCau.push(o(c, { type: "NUMBER", pattern: "#,##0" }));
 
   await goi(encodeURIComponent(id) + ":batchUpdate",

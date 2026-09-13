@@ -1518,6 +1518,11 @@ async function dayMotLine(env, ky, line, rid) {
       await dinhDangCot(env, {
         id: dia.id, gid: dia.gid, cotNgay: boCuc.cot_ngay, cotTien: boCuc.cot_tien,
         hangDau: khoi.hang_dau, hangCuoi: khoi.hang_cuoi,
+        /* Dải tô xám của từng ngày do ENGINE tính — nó là nơi duy nhất biết
+           dòng trống chen vào đâu, nên cũng phải là nơi duy nhất biết mảng
+           ngày bắt đầu và kết thúc ở hàng nào. Gateway đếm lại là hai bản
+           đếm, và lệch một hàng thì mảng xám trượt khỏi dữ liệu. */
+        bangNgay: khoi.bang_ngay,
       });
     } catch (e) {
       nhatKy({ rid, duong: "/api/day-sheet", ky, line,
@@ -1528,10 +1533,13 @@ async function dayMotLine(env, ky, line, rid) {
   /* Dấu vết lượt đẩy nằm CẠNH link, để màn hình nói được "lần cuối lúc nào".
      `day_loi: null` xoá dấu lỗi của lượt trước — không xoá thì một lượt hỏng
      hôm qua còn kêu mãi sau khi đã sửa xong. */
+  /* Báo SỐ DÒNG HÀNG THẬT (`khoi.so_dong`), không phải số hàng đã ghi —
+     `ra.so_dong` đếm cả dòng trống ngăn ngày, và một con số như thế không
+     khớp với bất cứ thứ gì chủ dự án đếm được trên sổ. */
   await vaDb(duong, { day_luc: { ".sv": "timestamp" }, day_loi: null,
-                      day_so_dong: ra.so_dong }, env);
+                      day_so_dong: khoi.so_dong }, env);
 
-  return { ky, line, ten_tab: ra.ten_tab, so_dong: ra.so_dong };
+  return { ky, line, ten_tab: ra.ten_tab, so_dong: khoi.so_dong };
 }
 
 /* =================== POST /api/sheet-link ===================

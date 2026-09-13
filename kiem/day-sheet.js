@@ -124,6 +124,69 @@ console.log('\nE) Chỉ dòng đầu của đơn mang ngày · số BH · khách
   ok('mã sản phẩm có ở CẢ HAI dòng', [d1[3], d2[3]], ['TV', 'Giá treo']);
 }
 
+console.log('\nE2) Dòng trống ngăn ngày + mảng xám từng ngày (chốt 13/09/2026)');
+{
+  /* Chủ dự án gửi ảnh mẫu: mỗi ngày một mảng xám liền, hai ngày cách nhau
+     một dòng trống. Đây là bài canh SỐ HÀNG — lệch một hàng thì mảng xám
+     trượt khỏi dữ liệu, và mắt đọc ra sai ranh giới ngày. */
+  const ng = (d, soDon) => ({ ngay: d, don: Array.from({ length: soDon }, (_, i) => ({
+    so_ct: 'BH' + i, dong: [{ ma_san_pham: 'X', so_luong: 1 }] })) });
+  const k = E.dungKhoiSheet({ ngay: [ng('2026-08-01', 2), ng('2026-08-02', 3),
+                                     ng('2026-08-03', 1)] });
+
+  ok('so_dong đếm DÒNG HÀNG THẬT, không kể dòng trống', k.so_dong, 6);
+  ok('tong_hang kể cả 2 dòng trống', k.tong_hang, 8);
+  /* 3-4 (ngày 1) · 5 trống · 6-8 (ngày 2) · 9 trống · 10 (ngày 3) */
+  ok('ba mảng ngày đúng dải hàng', k.bang_ngay,
+     [{ tu: 3, den: 4 }, { tu: 6, den: 8 }, { tu: 10, den: 10 }]);
+  ok('hàng cuối là 10', k.hang_cuoi, 10);
+
+  const trong = k.khoi[0].dong
+    .map((r, i) => (r.every((x) => x === null) ? i + E.HANG_DAU : null))
+    .filter((x) => x !== null);
+  ok('đúng hai dòng trống, ở hàng 5 và 9', trong, [5, 9]);
+  /* Dòng trống phải giữ ĐÚNG bề rộng, không phải mảng rỗng — sai bề rộng là
+     hàng kế tiếp rơi lệch cột. */
+  ok('mọi hàng khối trái đều rộng 10 ô',
+     [...new Set(k.khoi[0].dong.map((r) => r.length))], [10]);
+  ok('mọi hàng khối phải đều rộng 5 ô',
+     [...new Set(k.khoi[1].dong.map((r) => r.length))], [5]);
+
+  /* KHÔNG có dòng trống thừa ở hai đầu: dòng thừa chỉ làm dải công thức
+     dòng 1 phải đếm thêm mà không ngăn cách gì. */
+  const mot = E.dungKhoiSheet({ ngay: [ng('2026-08-01', 1)] });
+  ok('một ngày duy nhất thì không có dòng trống nào', mot.tong_hang, 1);
+  ok('  · và đúng một mảng xám', mot.bang_ngay, [{ tu: 3, den: 3 }]);
+
+  /* Ngày rỗng không được đẻ ra hai dòng trống liền nhau — mọi mảng bên dưới
+     sẽ trượt một hàng. */
+  const rong = E.dungKhoiSheet({ ngay: [ng('2026-08-01', 1), { ngay: '2026-08-02', don: [] },
+                                        ng('2026-08-03', 1)] });
+  ok('ngày rỗng không sinh dòng trống thừa', rong.tong_hang, 3);
+  ok('  · và không sinh mảng xám rỗng (dải tô ngược làm Google từ chối cả lượt)',
+     rong.bang_ngay, [{ tu: 3, den: 3 }, { tu: 5, den: 5 }]);
+}
+
+console.log('\nE3) Tô xám: A–M và O–S, CHỪA cột N');
+{
+  ok('hai dải tô, không phải một dải liền',
+     /DAI_TO = \[\{ dau: 0, cuoi: 13 \}, \{ dau: 14, cuoi: 19 \}\]/.test(SHEET), true);
+  /* Cột N là chỉ số 13. Dải 1 dừng ở 13 (nửa mở ⇒ hết ở M), dải 2 bắt đầu
+     từ 14 (= O). Khoảng hở đúng bằng một cột N. */
+  ok('  · khoảng hở giữa hai dải rộng đúng 1 cột (chính là N)',
+     14 - 13, 1);
+  ok('quét sạch nền cũ trước khi tô lại (tháng ít ngày hơn tháng trước)',
+     /backgroundColor: TRANG/.test(SHEET), true);
+  ok('  · quét từ dòng 3 xuống HẾT lưới, không đặt endRowIndex',
+     /range: \{ sheetId: gid, startRowIndex: hangDau - 1 \}/.test(SHEET), true);
+  ok('  · và quét CHẠY TRƯỚC lượt tô xám',
+     SHEET.indexOf('backgroundColor: TRANG') < SHEET.indexOf('backgroundColor: XAM'), true);
+  ok('dải tô xám do ENGINE tính, Gateway không đếm lại',
+     /bangNgay: khoi\.bang_ngay/.test(GW), true);
+  ok('màn hình báo số dòng HÀNG THẬT, không kể dòng trống',
+     /so_dong: khoi\.so_dong/.test(GW), true);
+}
+
 console.log('\nF) Mã sản phẩm hiện đúng thứ màn hình đang hiện');
 {
   const mot = (r) => E.dungKhoiSheet({ ngay: [{ ngay: '2026-08-01', don: [{

@@ -120,12 +120,36 @@ export function dungKhoiSheet(bang) {
   const ngay = bang && Array.isArray(bang.ngay) ? bang.ngay : [];
 
   const hang = [];
+  const bang_ngay = [];   // dải hàng của từng ngày, để tô xám
+  const RONG = 15;        // 10 ô khối trái + 5 ô khối phải
+  let soDongThat = 0;     // đếm riêng, KHÔNG suy từ hang.length
+
   for (const n of ngay) {
+    /* Một DÒNG TRỐNG ngăn giữa hai ngày (chủ dự án chốt 13/09/2026, gửi kèm
+       ảnh mẫu). Chỉ chen GIỮA: không có dòng trống trước ngày đầu, sau ngày
+       cuối, hay quanh một ngày rỗng.
+
+       Chèn LƯỜI — ngay trước dòng hàng đầu tiên của ngày, không phải ở đầu
+       vòng lặp. Chèn ở đầu vòng lặp thì một ngày không có dòng nào (về lý
+       thuyết `dungBangDon` không sinh ra, nhưng đừng để cấu trúc phụ thuộc
+       vào điều đó) sẽ đẻ ra HAI dòng trống liền nhau, và mọi dải tô xám bên
+       dưới trượt đi một hàng. */
+    let tuHang = 0;
+    const moNgay = () => {
+      if (tuHang) return;
+      /* Dòng trống là một hàng toàn `null` chứ không phải mảng rỗng — phải
+         giữ ĐÚNG bề rộng thì hàng kế tiếp mới rơi đúng cột. */
+      if (hang.length) hang.push(new Array(RONG).fill(null));
+      tuHang = HANG_DAU + hang.length;
+    };
+
     const don = Array.isArray(n.don) ? n.don : [];
     for (const d of don) {
       const dong = Array.isArray(d.dong) ? d.dong : [];
       for (let i = 0; i < dong.length; i++) {
         const r = dong[i];
+        moNgay();
+        soDongThat++;
         /* Chủ dự án chốt: ngày · số BH · tên khách · SĐT · địa chỉ CHỈ nằm
            ở dòng đầu của đơn, các dòng hàng sau để trống — y như file cũ.
            Nhờ vậy đếm cột B ra đúng SỐ ĐƠN, và nhìn bằng mắt thấy ngay đơn
@@ -151,6 +175,12 @@ export function dungKhoiSheet(bang) {
         ]);
       }
     }
+
+    /* `tuHang` còn 0 nghĩa là ngày ấy không có dòng nào — không có mảng nào
+       để tô, và cũng chưa chen dòng trống nào. Không đẩy một dải rỗng vào
+       `bang_ngay`: dải `tu > den` là yêu cầu tô ngược, Google từ chối CẢ
+       lượt định dạng chứ không bỏ qua mỗi dải ấy. */
+    if (tuHang) bang_ngay.push({ tu: tuHang, den: HANG_DAU + hang.length - 1 });
   }
 
   /* Ném chứ không cắt bớt. Cắt bớt là đẩy sang Sheet một tháng THIẾU dòng mà
@@ -161,12 +191,18 @@ export function dungKhoiSheet(bang) {
     throw new Error("day-sheet: qua nhieu dong (" + hang.length + " > " + TRAN_DONG + ")");
   }
 
+  /* `so_dong` là số dòng HÀNG THẬT — thứ đi ra màn hình ("Xong — N dòng").
+     Đếm cả dòng trống vào đó là báo cho chủ dự án một con số không khớp với
+     bất cứ thứ gì anh đếm được trên sổ. `tong_hang` mới là thứ dùng để tính
+     dải ô, và hai con số này lệch nhau đúng bằng số ngày trừ một. */
   return {
     khoi: [
       { cot_dau: "A", cot_cuoi: "J", dong: hang.map((h) => h.slice(0, 10)) },
       { cot_dau: "O", cot_cuoi: "S", dong: hang.map((h) => h.slice(10, 15)) },
     ],
-    so_dong: hang.length,
+    so_dong: soDongThat,
+    tong_hang: hang.length,
+    bang_ngay,
     hang_dau: HANG_DAU,
     hang_cuoi: HANG_DAU + hang.length - 1,
   };
