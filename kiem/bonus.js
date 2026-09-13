@@ -197,7 +197,17 @@ const GOC = path.resolve(__dirname, '..');
   console.log('\n8) Màn hình — lý do bắt buộc, bốn lựa chọn đọc từ Engine');
   {
     const UI = doc('public/don-hang.js');
-    ok('nút + chỉ hiện cho Quản trị', /if \(!laQuanTri\(\)\) return td;/.test(UI), true);
+    ok('nút + chỉ hiện cho Quản trị', /if \(!laQuanTri\(\)\) \{/.test(UI), true);
+    /* Nút đứng TRƯỚC số. Đặt sau thì bề rộng nút bị cộng vào phần bên phải,
+       nên con số bonus lùi trái đúng bằng một cái nút và không còn thẳng
+       hàng với mọi con số khác của cột — "biến dạng dòng" chủ dự án thấy
+       13/09/2026. */
+    ok('  · và nút đứng TRƯỚC số, để số thẳng hàng với cả cột',
+       UI.indexOf('td.appendChild(b);') < UI.indexOf('td.appendChild(so);'), true);
+    const CSS2 = doc('public/index.html').replace(/\/\*[\s\S]*?\*\//g, '');
+    ok('  · ô canh giữa theo chiều dọc (nút cao hơn dòng chữ)',
+       /td\.oBonus \{[^}]*align-items:\s*center/.test(CSS2), true);
+    ok('  · và số bị đẩy sát mép phải', /\.soBonus \{[^}]*margin-left:\s*auto/.test(CSS2), true);
     /* Bốn lý do đọc từ Engine, không gõ cứng ở trình duyệt: thêm một lý do
        phải là sửa đúng một chỗ. */
     ok('bốn lý do đọc từ Engine, không gõ cứng ở màn hình',
@@ -278,7 +288,23 @@ const GOC = path.resolve(__dirname, '..');
        /<details/.test(UI.replace(/\/\*[\s\S]*?\*\//g, ' ')), false);
     ok('băng ngày đóng sẵn', /trNgay\.classList\.add\("dongLai"\)/.test(UI), true);
     ok('  · và mọi dòng của ngày ẩn theo',
-       /t\.hidden = true; tbody\.appendChild\(t\)/.test(UI), true);
+       /t\.hidden = !dangMo; tbody\.appendChild\(t\)/.test(UI), true);
+    /* Ngày nào ĐANG MỞ phải sống qua mỗi lượt vẽ lại. Thiếu chỗ này thì nhập
+       xong một cái bonus là cả bảng dựng lại và mọi ngày đóng sập — người
+       vừa gõ bị ném về đầu tháng. Nhớ theo NGÀY chứ không theo vị trí: lọc
+       hay đổi line làm thứ tự đổi, còn `2026-09-01` thì không. */
+    ok('  · ngày đang mở sống qua lượt vẽ lại',
+       /const dangMo = trangThai\.ngayMo\.has\(ng\.ngay\);/.test(UI), true);
+    ok('  · và lượt bấm cập nhật đúng bộ nhớ ấy',
+       /trangThai\.ngayMo\.delete\(ng\.ngay\)[\s\S]{0,80}?trangThai\.ngayMo\.add\(ng\.ngay\)/.test(UI), true);
+
+    /* Ngày còn đơn chưa đủ giá vốn: tô CẢ BĂNG, và đi qua `lopCanhBao()` như
+       mọi cảnh báo khác — Quản lí xem báo cáo, không nhận việc. */
+    ok('băng ngày còn đơn thiếu thì tô cả dòng',
+       /lopCanhBao\("ngayThieu"\)/.test(UI), true);
+    ok('  · và có luật CSS cho nó',
+       /\.hangNgay\.ngayThieu td \{[^}]*background:/.test(
+         doc('public/index.html').replace(/\/\*[\s\S]*?\*\//g, '')), true);
     ok('  · bấm vào băng thì lật trạng thái',
        /trNgay\.classList\.toggle\("dongLai"\)/.test(UI), true);
     /* Mở một ngày ra là bảng cao lên → chỗ còn lại cho biểu đồ đổi. Không

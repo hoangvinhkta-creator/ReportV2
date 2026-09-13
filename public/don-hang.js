@@ -149,7 +149,7 @@
 
      Phải đúng 19 số, đúng thứ tự `COT` — `kiem/bo-cuc-man-chu.js` canh cặp. */
   const RONG_COT = [58, 78, 92, 200, 44, 100, 82, 90, 104, 96,
-    132, 108, 162, 92, 92, 112, 112, 34, 34];
+    132, 108, 132, 150, 92, 112, 84, 34, 34];
 
   /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
      định cho mọi kỳ. Chỉ là trạng thái của màn hình — KHÔNG lưu ở đâu cả, và
@@ -157,7 +157,7 @@
      gì. Về mặc định mỗi lần nạp trang, vì đặt mặc định là lượt sửa thường
      gặp, còn ghi đè một tháng là việc cố ý làm. */
   const trangThai = { nam: null, line: null, ky: null, dsKy: null, hienLine0: false,
-    kpiRiengKy: false, moGiaDung: null, loc: null };
+    kpiRiengKy: false, moGiaDung: null, loc: null, ngayMo: new Set() };
 
   /** BA BỘ LỌC trên đầu cột (chủ dự án chốt 12/09/2026). Mỗi cái trả lời một
    *  câu hỏi "còn việc gì phải làm trên bảng này", nên cả ba đều là DANH SÁCH
@@ -495,12 +495,22 @@
    *  mức khoá với đặt KPI. */
   function oBonus(don) {
     const td = el("td", "oSo oBonus");
-    if (don.bonus) {
-      const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
-      so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
-      td.appendChild(so);
+    /* NÚT ĐỨNG TRƯỚC SỐ (chủ dự án chốt 13/09/2026). Đặt sau số thì bề rộng
+       của nút bị cộng vào phần bên phải, nên con số bonus lùi trái đúng bằng
+       một cái nút và KHÔNG còn thẳng hàng với mọi con số khác của cột — đó
+       là "biến dạng dòng" chủ dự án thấy. Nút bên trái thì mép phải của số
+       vẫn là mép phải của ô, y như mọi hàng khác.
+       Nút dựng TRƯỚC cả nhánh sớm, để hàng không có bonus cũng chừa đúng
+       ngần ấy chỗ bên trái — nếu không, hàng có và hàng không có bonus lệch
+       nhau. */
+    if (!laQuanTri()) {
+      if (don.bonus) {
+        const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
+        so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
+        td.appendChild(so);
+      }
+      return td;
     }
-    if (!laQuanTri()) return td;
     const b = el("button", "nutBonus");
     b.appendChild(icon(don.bonus ? "sua" : "cong", 2.4));
     b.type = "button";
@@ -509,6 +519,11 @@
     b.setAttribute("aria-label", b.title);
     b.dataset.soCt = don.so_ct;
     td.appendChild(b);
+    if (don.bonus) {
+      const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
+      so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
+      td.appendChild(so);
+    }
     return td;
   }
 
@@ -2032,7 +2047,16 @@
         + "  ·  QĐ " + (ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
           ? "—" : nghinTron(ng.doanh_so_quy_doi));
       tdNgay.appendChild(el("span", "soNgay", soNgay));
+      /* Tô CẢ BĂNG khi ngày ấy còn đơn chưa đủ thông tin (chủ dự án chốt
+         13/09/2026) — đóng lại rồi thì dấu "*" bên trong một dòng chữ dài
+         không đủ để mắt bắt được ngày nào còn việc. Cả băng đổi màu thì
+         lướt dọc một tháng là thấy ngay.
+
+         Đi qua `lopCanhBao()` như mọi cảnh báo khác: Quản lí xem báo cáo,
+         không nhận việc. */
       if (ng.don_thieu_loi_nhuan) {
+        const lop = lopCanhBao("ngayThieu");
+        if (lop) trNgay.classList.add(lop);
         tdNgay.title = "Còn " + soNguyen(ng.don_thieu_loi_nhuan)
           + " đơn chưa đủ giá vốn, nên lợi nhuận của ngày là con số SÀN.";
       }
@@ -2142,12 +2166,20 @@
         for (const t of hangNgay) tbody.appendChild(t);
         continue;
       }
+      /* Ngày nào ĐANG MỞ được nhớ qua mỗi lượt vẽ lại. Thiếu chỗ này thì
+         nhập xong một cái bonus là cả bảng dựng lại và mọi ngày đóng sập —
+         người vừa gõ bị ném về đầu tháng, đúng lỗi chủ dự án gặp
+         13/09/2026. Nhớ theo NGÀY chứ không theo vị trí: lọc hay đổi line
+         làm thứ tự đổi, còn `2026-09-01` thì không đổi. */
+      const dangMo = trangThai.ngayMo.has(ng.ngay);
       tbody.appendChild(trNgay);
-      for (const t of hangNgay) { t.hidden = true; tbody.appendChild(t); }
-      trNgay.classList.add("dongLai");
+      for (const t of hangNgay) { t.hidden = !dangMo; tbody.appendChild(t); }
+      if (!dangMo) trNgay.classList.add("dongLai");
       trNgay.addEventListener("click", () => {
         const mo = trNgay.classList.toggle("dongLai");
         for (const t of hangNgay) t.hidden = mo;
+        if (mo) trangThai.ngayMo.delete(ng.ngay);
+        else trangThai.ngayMo.add(ng.ngay);
         /* Chiều cao bảng đổi → chỗ còn lại cho biểu đồ cũng đổi. Không gọi
            lại thì mở một ngày ra là bảng tràn xuống dưới biểu đồ. */
         dieuChinhCaoBang();
@@ -2296,6 +2328,10 @@
        thấy bảng gần như trống mà không hiểu vì sao — nhất là khi line ấy
        không còn dòng nào khớp và bảng rỗng hoàn toàn. */
     trangThai.loc = null;
+    /* Ngày đang mở là chuyện của BẢNG ĐANG XEM. Mang sang tháng khác thì
+       `2026-09-01` không tồn tại ở đó, còn mang sang line khác thì mở ra một
+       ngày người dùng chưa hề bấm. */
+    trangThai.ngayMo = new Set();
     taiKy();
   }
 

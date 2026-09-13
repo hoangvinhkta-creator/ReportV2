@@ -257,11 +257,21 @@
   /* Ô nhập ngày công nằm TRONG ô bảng, không phải một cột riêng — cùng lối ô
      tick gia dụng của P5 nằm trong ô Mã sản phẩm. */
   .bangTongHop td.oCong { padding: 2px 4px; }
+  /* ---- Ô NHẬP PHẲNG (chủ dự án chốt 13/09/2026) ----
+     Cùng lối với nút: nghỉ thì hoà vào nền, rê chuột mới hiện viền, gõ thì
+     hiện rõ hẳn. Một ô trắng đóng khung giữa một bảng trắng không nói thêm
+     được gì — nhưng bỏ SẠCH mọi dấu hiệu thì cũng không ai biết chỗ nào gõ
+     được, nên viền không biến mất mà chỉ trong suốt: nó quay lại đúng lúc
+     con trỏ tới, tức đúng lúc câu hỏi "gõ được không" được đặt ra. */
   .bangTongHop input.oNgayCong {
     width: 58px; padding: 2px 4px; font-size: 12px; text-align: right;
-    border: 1px solid #d1d5db; border-radius: 4px;
+    border: 1px solid transparent; border-radius: 6px; background: transparent;
+    color: inherit; transition: border-color .12s, background .12s;
   }
-  .bangTongHop input.oNgayCong:focus { outline: 2px solid #2563eb; outline-offset: -1px; }
+  .bangTongHop input.oNgayCong:hover:not(:disabled) { border-color: #cbd5e1; }
+  .bangTongHop input.oNgayCong:focus {
+    border-color: #1d5bea; background: #fff; outline: none;
+  }
   /* Đang gửi: mờ cả bảng và chặn bấm tiếp, để hai lượt ghi không chồng nhau
      lên cùng một ô. Cùng lối `.daiKpi.dangGui`. */
   .bangTongHop.dangGui { opacity: .55; pointer-events: none; }
@@ -386,10 +396,19 @@
      relative` để hộp nhập bung ra được mà không kéo giãn hàng tổng — hàng ấy
      nằm giữa bảng, giãn nó ra là mọi dòng bên dưới nhảy chỗ ngay dưới con
      trỏ người đang bấm. */
-  .bangDon td.oBonus { position: relative; white-space: nowrap; }
-  .soBonus { color: #0f9d58; font-weight: 600; }
+  /* Nút bên TRÁI, số bên PHẢI (chủ dự án chốt 13/09/2026). Đặt nút sau số
+     thì bề rộng nút bị cộng vào phần bên phải và con số bonus lùi trái đúng
+     bằng một cái nút, không còn thẳng hàng với mọi con số khác của cột.
+     `justify-content: space-between` đẩy nút sát mép trái, số sát mép phải —
+     mép phải ấy là cùng một đường với mọi hàng khác.
+     `align-items: center` là vế thứ hai: nút cao 18px cạnh một dòng chữ 13px,
+     không canh giữa thì nó thò lên và làm hàng trông cao thêm. */
+  .bangDon td.oBonus { position: relative; white-space: nowrap;
+                       display: flex; align-items: center;
+                       justify-content: space-between; gap: 6px; }
+  .soBonus { color: #0f9d58; font-weight: 600; margin-left: auto; }
   .nutBonus { border: 0; background: none; color: #9ca3af; border-radius: 5px;
-              padding: 0 3px; height: 18px; line-height: 0; margin-left: 4px;
+              padding: 0 3px; height: 18px; line-height: 0; flex: 0 0 auto;
               cursor: pointer; transition: background .12s, color .12s; }
   .nutBonus svg { width: 13px; height: 13px; display: block; }
   .nutBonus:hover { background: rgba(15,157,88,.14); color: #0f9d58; }
@@ -399,6 +418,11 @@
      có mấy ngày. */
   .hangNgay td { cursor: pointer; user-select: none; }
   .hangNgay:hover td { background: #e0e7ff; }
+  /* Ngày còn đơn chưa đủ giá vốn: tô CẢ BĂNG. Đóng lại rồi thì một dấu "*"
+     lọt trong dòng chữ dài không đủ để mắt bắt được ngày nào còn việc; cả
+     băng đổi màu thì lướt dọc một tháng là thấy ngay. */
+  .hangNgay.ngayThieu td { background: #fef3c7; }
+  .hangNgay.ngayThieu:hover td { background: #fde68a; }
   .muiTenNgay { width: 12px; height: 12px; vertical-align: -1px; margin-right: 6px;
                 color: #6b7280; transform: rotate(90deg); transition: transform .12s; }
   .hangNgay.dongLai .muiTenNgay { transform: rotate(0deg); }
@@ -440,7 +464,7 @@
   .bangDon tr.hangDangGui > td { opacity: .55; }
   .oSuaGia, .oSuaNoi {
     width: 100%; box-sizing: border-box; font: inherit; padding: 1px 4px;
-    border: 1px solid #2563eb; border-radius: 4px; background: #fff;
+    border: 1px solid #1d5bea; border-radius: 6px; background: #fff; outline: none;
   }
   .oSuaGia { text-align: right; }
 
@@ -475,34 +499,41 @@
      đậm: nó là chỗ đặt mục tiêu, không phải một cảnh báo. */
   .daiKpi {
     display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
-    padding: 8px 10px; margin: 8px 0; font-size: 13px;
+    background: none; border: 0; border-radius: 6px;
+    padding: 4px 0; margin: 8px 0; font-size: 13px;
   }
   .daiKpi label { display: flex; align-items: center; gap: 5px; }
   .daiKpi .oKpi {
     font: inherit; text-align: right; padding: 2px 5px;
-    border: 1px solid #cbd5e1; border-radius: 4px; background: #fff;
+    border: 1px solid transparent; border-radius: 6px; background: transparent;
+    color: inherit; transition: border-color .12s, background .12s;
   }
+  .daiKpi .oKpi:hover:not(:disabled) { border-color: #cbd5e1; }
+  .daiKpi .oKpi:focus { border-color: #1d5bea; background: #fff; outline: none; }
   .daiKpi .oKpi[data-o="kpi"] { width: 96px; }
   .daiKpi .oKpi[data-o="he_so_pt"], .daiKpi .oKpi[data-o="he_so_gia_dung_pt"] { width: 56px; }
   /* Ô đang mang một con số RIÊNG của kỳ này (không phải mặc định): viền xanh
      dương để phân biệt, cùng sắc với ô đang sửa của bảng đơn. Không có dấu
      này thì người sửa không biết mình vừa đổi cho MỘT tháng hay cho MỌI
      tháng — đúng chỗ bộ "mặc định + ghi đè" dễ gây hiểu nhầm nhất. */
-  .daiKpi .oKpi.rieng { border-color: #2563eb; background: #eff6ff; }
+  /* Viền xanh của ô "riêng tháng này" là DẤU HIỆU NGHĨA, không phải trang
+     trí — nó phân biệt "đổi cho MỘT tháng" với "đổi cho MỌI tháng". Nó ở lại
+     kể cả khi ô nghỉ, khác mọi ô phẳng khác. */
+  .daiKpi .oKpi.rieng { border-color: #1d5bea; background: rgba(29,91,234,.07); }
   .daiKpi .datKpi { font-weight: 600; }
   .daiKpi .datKpi.thieu { color: #92400e; font-weight: 400; }
   .daiKpi .ghiChuKpi { color: #6b7280; font-size: 12px; }
   .daiKpi .nutNhoKpi {
-    font: inherit; font-size: 12px; padding: 1px 7px; cursor: pointer;
-    border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #374151;
+    font: inherit; font-size: 12px; font-weight: 600; padding: 2px 8px; cursor: pointer;
+    border: 1px solid transparent; border-radius: 8px; background: none; color: #3d4a63;
+    transition: background .12s, color .12s;
   }
-  .daiKpi .nutNhoKpi:hover { background: #f1f5f9; }
+  .daiKpi .nutNhoKpi:hover { background: rgba(29,91,234,.10); color: #1d5bea; }
   .daiKpi.dangGui { opacity: .55; }
   /* Quản lí ĐỌC được dải này (rules của bc/quyetdinh mở cho cả hai vai) nhưng
      không đặt được — Gateway chặn. Khoá ô sẵn và nói lý do ở `title` thay vì
      để họ gõ rồi ăn 403: một ô gõ được mà lưu không được là lời hứa hỏng. */
-  .daiKpi .oKpi:disabled { background: #f1f5f9; color: #6b7280; cursor: not-allowed; }
+  .daiKpi .oKpi:disabled { background: none; color: #6b7280; cursor: not-allowed; }
 
   /* ---- Khung nạp bộ số KPI lượt đầu (P5) ----
      Vàng nhạt như băng "còn nợ": có việc cần làm, nhưng không phải sự cố. */
@@ -523,8 +554,14 @@
      dụng. Chủ dự án chốt 12/09/2026: "ngay trong ô mã sản phẩm, không cần
      ghi tiêu đề cột quá rõ, chỉ cần ô tick là tôi tự hiểu". Nhờ vậy bảng vẫn
      đúng 19 cột — không sinh một cột chỉ có mặt ở một tab. */
+  /* `accent-color` là cách DUY NHẤT đổi màu ô tick mà không phải vẽ lại nó
+     bằng tay: hộp tick do hệ điều hành vẽ, nên mọi cách khác đều phải
+     `appearance: none` rồi tự dựng — và bản tự dựng thì mất luôn hành vi bàn
+     phím lẫn trạng thái `:indeterminate`. Đây là cùng lý do icon chuyển sang
+     SVG hôm qua, chỉ khác là ô tick còn cứu được bằng một dòng. */
   .bangDon td.oMa .tickGd {
     margin: 0 5px 0 0; vertical-align: baseline; cursor: pointer;
+    accent-color: #1d5bea; width: 13px; height: 13px;
   }
   .bangDon td.oMa .tickGd:disabled { cursor: not-allowed; }
   /* Mặt hàng ĐÃ tick: ô mã hơi đậm lên để lướt mắt thấy được phần đang ăn hệ

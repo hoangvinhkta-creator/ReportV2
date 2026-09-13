@@ -137,6 +137,15 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
   const RONG = JSON.parse(cat(JS, /const RONG_COT = \[[\s\S]*?\];/)
     .replace(/^const RONG_COT = /, '').replace(/;$/, ''));
   ok('RONG_COT có đúng một số cho mỗi cột', RONG.length, COT.length);
+  /* Chia lại 13/09/2026: Ghi chú rộng ra, Địa chỉ và IMEI hẹp lại. Ghi chú
+     chứa VĂN XUÔI ("giao lắp trước 5h chiều") nên nó là cột cần chỗ nhất;
+     IMEI là một chuỗi mã người ta copy chứ không đọc, cắt đuôi không mất gì.
+     Canh QUAN HỆ chứ không ghim ba con số: ghim thì mỗi lượt nới một cột lại
+     đỏ mà chẳng bắt được lỗi nào. */
+  ok('cột Ghi chú rộng hơn cột IMEI', RONG[COT.indexOf('Ghi chú')] > RONG[COT.indexOf('IMEI')], true);
+  ok('  · và rộng hơn cả cột Hãng lẫn Ngành hàng',
+     RONG[COT.indexOf('Ghi chú')] > Math.max(RONG[COT.indexOf('Hãng')],
+       RONG[COT.indexOf('Ngành hàng')]), true);
   ok('mọi bề rộng đều là số dương', RONG.every((w) => Number.isFinite(w) && w > 0), true);
   ok('bảng đơn khai table-layout: fixed',
      /\.bangDon\s*\{[^}]*table-layout:\s*fixed/.test(HTML), true);
@@ -534,7 +543,7 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
   /* Đang lọc thì cũng KHÔNG có trình thả xuống nào: bắt người dùng mở từng
      ngày mới thấy việc là đúng thứ bộ lọc sinh ra để tránh. */
   ok('  · và không đóng ngày lại khi đang lọc',
-     /if \(loc\)[\s\S]{0,400}?continue;\s*\n\s*\}\s*\n\s*tbody\.appendChild\(trNgay\);/.test(JS), true);
+     /if \(loc\)[\s\S]{0,400}?continue;\s*\n\s*\}\s*\n[\s\S]{0,600}?tbody\.appendChild\(trNgay\);/.test(JS), true);
   ok('  · ngày nào lọc xong không còn dòng thì bỏ hẳn, không để băng trơ trọi',
      /if \(!hangNgay\.length\) continue;/.test(JS), true);
 
@@ -580,7 +589,12 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
 
   /* Đổi tab mà còn giữ lọc thì mở một line mới ra thấy bảng gần như trống. */
   ok('đổi năm/tháng/line thì bỏ lọc',
-     /trangThai\.loc = null;\s*\n\s*taiKy\(\);/.test(JS), true);
+     /trangThai\.loc = null;/.test(JS), true);
+  /* Ngày đang mở cũng là chuyện của BẢNG ĐANG XEM: mang sang tháng khác thì
+     `2026-09-01` không tồn tại ở đó, mang sang line khác thì mở ra một ngày
+     người dùng chưa hề bấm. */
+  ok('  · và quên luôn ngày nào đang mở',
+     /trangThai\.ngayMo = new Set\(\);\s*\n\s*taiKy\(\);/.test(JS), true);
 }
 
 console.log('\n14) Giao diện — nút phẳng, icon vẽ theo line, ô KPI có dấu phân cách');
@@ -599,6 +613,35 @@ console.log('\n14) Giao diện — nút phẳng, icon vẽ theo line, ô KPI có
   /* Trạng thái ĐANG CHỌN vẫn phải đọc được từ xa — bỏ nền hết thì không còn
      gì phân biệt tab đang mở với tab khác. */
   ok('tab đang chọn vẫn có nền đặc', /\.tabNut\.tabDang \{[^}]*background:\s*#1d5bea/.test(cssS), true);
+
+  /* ── Ô NHẬP cũng phẳng (chủ dự án rà soát lại 13/09/2026) ──
+     Lượt trước mới làm nút; mấy ô nhập vẫn còn hộp trắng đóng khung giữa một
+     bảng trắng. Nghỉ thì hoà vào nền, rê chuột mới hiện viền, gõ thì hiện rõ
+     hẳn — bỏ SẠCH mọi dấu hiệu thì không ai biết chỗ nào gõ được. */
+  for (const [ten, luat] of [['KPI/hệ số', '\\.daiKpi \\.oKpi \\{'],
+                             ['ngày công', '\\.bangTongHop input\\.oNgayCong \\{'],
+                             ['"Đặt riêng tháng này"', '\\.daiKpi \\.nutNhoKpi \\{']]) {
+    const khoi = (cssS.match(new RegExp(luat + '[^}]*\\}')) || [''])[0];
+    ok('ô ' + ten + ' không còn nền trắng',
+       /background:\s*(transparent|none)/.test(khoi), true);
+    ok('  · và viền trong suốt lúc nghỉ',
+       /border:\s*1px solid transparent|border:\s*0/.test(khoi), true);
+  }
+  ok('dải KPI không còn là một hộp riêng trên nền trang',
+     /\.daiKpi \{[^}]*background:\s*none/.test(cssS), true);
+  /* Nhưng ô đang gõ PHẢI hiện rõ — mất dấu ấy là gõ vào hư không. */
+  ok('ô KPI đang gõ hiện viền xanh và nền trắng',
+     /\.daiKpi \.oKpi:focus \{[^}]*border-color:\s*#1d5bea[^}]*background:\s*#fff/.test(cssS), true);
+  /* Viền xanh của ô "riêng tháng này" là DẤU HIỆU NGHĨA, không phải trang
+     trí: nó phân biệt "đổi cho MỘT tháng" với "đổi cho MỌI tháng". Nó phải ở
+     lại kể cả khi ô nghỉ — đây là ngoại lệ có chủ ý của luật ô phẳng. */
+  ok('ô "riêng tháng này" vẫn giữ viền kể cả lúc nghỉ',
+     /\.daiKpi \.oKpi\.rieng \{[^}]*border-color:\s*#1d5bea/.test(cssS), true);
+  /* Ô tick do HỆ ĐIỀU HÀNH vẽ — `accent-color` là cách duy nhất đổi màu nó
+     mà không phải `appearance: none` rồi tự dựng lại (bản tự dựng mất luôn
+     hành vi bàn phím). */
+  ok('ô tick gia dụng ăn theo tông xanh của app',
+     /\.tickGd \{[^}]*accent-color:\s*#1d5bea/.test(cssS), true);
 
   /* Icon VẼ THEO LINE, một màu. Emoji do HỆ ĐIỀU HÀNH vẽ: mỗi máy một hình,
      luôn nhiều màu, và KHÔNG nhận `color` nên không bao giờ hoà được với
