@@ -323,6 +323,13 @@
   .bangDon th, .bangDon td { overflow: hidden; text-overflow: ellipsis; }
   .bangDon th, .bangDon td { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; }
   .bangDon th { background: #f9fafb; position: sticky; top: 0; z-index: 1; }
+  /* Hàng TỔNG của cả bảng, ngay dưới hàng tiêu đề (chủ dự án chốt
+     13/09/2026). Nền đậm hơn một hàng thường để không lẫn với dữ liệu chi
+     tiết, nhạt hơn hàng tiêu đề để không tranh với tên cột. KHÔNG sticky —
+     nó cuộn theo bảng như mọi hàng khác; chỉ hàng tiêu đề mới cần đứng yên. */
+  .bangDon tr.hangTongBang > td {
+    background: #eef2ff; font-weight: 700; border-top: 2px solid #c7d2fe;
+  }
   .bangDon .oSo { text-align: right; }
   .bangDon .oTen { white-space: normal; max-width: 260px; }
 
@@ -427,7 +434,19 @@
                 color: #6b7280; transform: rotate(90deg); transition: transform .12s; }
   .hangNgay.dongLai .muiTenNgay { transform: rotate(0deg); }
   .chuNgay { font-weight: 700; }
-  .soNgay { font-weight: 400; color: #3d4a63; margin-left: 12px; }
+  /* Lưới CỐ ĐỊNH bề rộng cho bốn con số của băng ngày (chủ dự án chốt
+     13/09/2026: "cân lại cho thẳng theo cột thay vì thụt ra thụt vào").
+     `display: inline-grid` với `grid-template-columns` cố định — không dùng
+     flex + gap: flex chỉ đảm bảo KHOẢNG CÁCH đều, không đảm bảo MỖI Ô bắt
+     đầu ở cùng một vị trí khi nội dung dài ngắn khác nhau giữa các ngày; grid
+     với cột cố định thì có. `tabular-nums` giữ mọi chữ số cùng bề rộng, nên
+     hai số cùng bậc (hàng nghìn/hàng chục nghìn) không bị lệch bởi phông chữ
+     tỉ lệ. Bốn cột đủ rộng cho dòng dài nhất đã gặp (12 đơn, "159.950", "LN
+     9.950 *", "QĐ 132.667") mà không phải đổi theo dữ liệu từng tháng — cố
+     định là cả điểm của việc canh thẳng. */
+  .soNgay { display: inline-grid; grid-template-columns: 64px 92px 118px 118px;
+            column-gap: 16px; margin-left: 14px; font-variant-numeric: tabular-nums; }
+  .soNgay .ngayO { text-align: right; font-weight: 400; color: #3d4a63; }
   /* Ô nhập ngay tại chỗ, thay hộp nổi của bản đầu (chủ dự án chốt
      13/09/2026: hộp che mất chính cái đơn đang cộng cho). */
   .oSuaLyDo { border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 4px;

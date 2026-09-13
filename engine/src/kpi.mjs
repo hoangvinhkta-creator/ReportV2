@@ -347,6 +347,11 @@ function oTrong() {
     so_san_pham: 0,
     loi_nhuan: 0, don_thieu_loi_nhuan: 0,
     doanh_so_tu_kho: 0, doanh_so_ro_nguon: 0, doanh_so_chua_ro_nguon: 0,
+    /* TỔNG GIÁ TRỊ nhập/bán — chủ dự án chốt 13/09/2026, cho dòng TỔNG của
+       bảng đơn. KHÔNG phải Σ đơn giá (cộng thẳng giá của một cái TV với giá
+       của một cái tủ lạnh không ra một khoản tiền có nghĩa) — là Σ(đơn giá ×
+       SL) của từng dòng, tức tổng vốn nhập và tổng giá trị bán ra thật sự. */
+    tong_gia_nhap: 0, dong_thieu_gia_nhap: 0, tong_gia_ban: 0,
   };
 }
 
@@ -356,11 +361,31 @@ function oTrong() {
 function congThemVaoLine(o, d) {
   const tien = Number(d.tong_ban) || 0;
   const laHang = !d.la_chiet_khau && !d.la_phu_phi_co_dinh;
+  const sl = Number(d.so_luong) || 0;
 
-  if (laHang) o.so_san_pham += Number(d.so_luong) || 0;
+  if (laHang) o.so_san_pham += sl;
 
   if (d.loi_nhuan !== null && d.loi_nhuan !== undefined) {
     o.loi_nhuan = lamTron(o.loi_nhuan + (Number(d.loi_nhuan) || 0));
+  }
+
+  /* Tổng giá trị nhập/bán — chỉ tính trên HÀNG THẬT, cùng luật với
+     `so_san_pham`: chiết khấu và phụ phí cố định không phải mặt hàng, kể
+     chúng vào đây là cộng một đơn giá không hề tồn tại.
+
+     `gia_ban` (đơn giá từ sổ) LUÔN có, nên Σ(gia_ban × SL) tính được ngay.
+     `gia_nhap` thì KHÔNG — kỳ ngoài phạm vi khớp mã, hoặc dòng chưa tra ra
+     giá, `gia_nhap` là `null`. Cộng `null × SL` bằng NaN sẽ làm hỏng cả tổng
+     của những dòng khác cộng chung; bỏ qua và ĐẾM RIÊNG số dòng thiếu — cùng
+     kỷ luật "cộng phần biết được, đếm riêng phần thiếu" đang chạy cho lợi
+     nhuận và cho lợi nhuận theo ngày. */
+  if (laHang) {
+    o.tong_gia_ban = lamTron(o.tong_gia_ban + (Number(d.gia_ban) || 0) * sl);
+    if (d.gia_nhap !== null && d.gia_nhap !== undefined) {
+      o.tong_gia_nhap = lamTron(o.tong_gia_nhap + (Number(d.gia_nhap) || 0) * sl);
+    } else {
+      o.dong_thieu_gia_nhap++;
+    }
   }
 
   const noi = typeof d.noi_nhap === "string" ? d.noi_nhap.trim() : "";

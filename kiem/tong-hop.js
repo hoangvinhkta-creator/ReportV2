@@ -412,7 +412,90 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · 200 so với 200 = 0%', t.vs_thang_truoc_pt, 0);
   }
 
-  /* ─────────── P. Chạy thật hàm vẽ, soi cái nó dựng ra ───────────
+  console.log('\nO2) Tổng giá TRỊ nhập/bán — Σ(đơn giá × SL), không phải Σ đơn giá');
+  {
+    /* Chủ dự án chốt 13/09/2026: dòng tổng của bảng cần "tổng giá nhập" và
+       "tổng giá bán". Cộng thẳng đơn giá của một cái TV với đơn giá của một
+       cái tủ lạnh không ra một khoản tiền có nghĩa — phải nhân với SL trước
+       khi cộng. */
+    const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 200, dong: [
+      dong({ so_luong: 2, gia_ban: 100, gia_nhap: 60, tong_ban: 200, loi_nhuan: 80 }),
+    ] }]);
+    P.dienDoanhSoQuyDoi(b, BANG, '2026-09', {});
+    const o = b.tom_tat_kpi.line.L1;
+    ok('tổng giá bán = Σ(giá bán × SL) = 100×2', o.tong_gia_ban, 200);
+    ok('tổng giá nhập = Σ(giá nhập × SL) = 60×2', o.tong_gia_nhap, 120);
+    ok('không dòng nào thiếu giá nhập', o.dong_thieu_gia_nhap, 0);
+
+    /* Chiết khấu/phụ phí không phải mặt hàng — cùng luật với "Số sản phẩm"
+       ở mục A: kể chúng vào đây là cộng một đơn giá không hề tồn tại. */
+    const b2 = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 90, dong: [
+      dong({ so_luong: 1, gia_ban: 100, gia_nhap: 60, tong_ban: 100, loi_nhuan: 40 }),
+      dong({ so_luong: 1, gia_ban: -10, gia_nhap: null, tong_ban: -10, loi_nhuan: -10,
+        la_chiet_khau: true }),
+    ] }]);
+    P.dienDoanhSoQuyDoi(b2, BANG, '2026-09', {});
+    const o2 = b2.tom_tat_kpi.line.L1;
+    ok('chiết khấu KHÔNG vào tổng giá bán (chỉ 100, không trừ/cộng -10)', o2.tong_gia_ban, 100);
+    ok('  · và không bị đếm là "thiếu giá nhập"', o2.dong_thieu_gia_nhap, 0);
+
+    /* `gia_nhap: null` (kỳ ngoài phạm vi khớp mã, hoặc dòng chưa tra ra giá)
+       phải bị BỎ QUA khỏi tổng — cộng null×SL ra NaN sẽ làm hỏng lây sang
+       tổng của những dòng khác cộng chung, và NaN thì không tự biết dừng ở
+       đâu. Đếm RIÊNG số dòng thiếu, cùng kỷ luật "cộng phần biết được, đếm
+       riêng phần thiếu" đang chạy cho lợi nhuận. */
+    const b3 = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 250, dong: [
+      dong({ so_luong: 2, gia_ban: 100, gia_nhap: 60, tong_ban: 200, loi_nhuan: 80 }),
+      dong({ so_luong: 1, gia_ban: 50, gia_nhap: null, tong_ban: 50, loi_nhuan: null }),
+    ] }]);
+    P.dienDoanhSoQuyDoi(b3, BANG, '2026-09', {});
+    const o3 = b3.tom_tat_kpi.line.L1;
+    ok('tổng giá bán vẫn cộng đủ (200+50)', o3.tong_gia_ban, 250);
+    ok('tổng giá nhập CHỈ cộng phần biết (120), không phải NaN', o3.tong_gia_nhap, 120);
+    ok('  · và đếm đúng 1 dòng thiếu', o3.dong_thieu_gia_nhap, 1);
+  }
+
+  console.log('\nO3) Hàng tổng của cả bảng đơn — đọc từ tom_tat_kpi.line, không cộng lại');
+  {
+    const UI2 = doc('public/don-hang.js');
+    /* Hàng này đứng trong <thead>, dùng CHUNG lưới 19 cột với hàng tiêu đề
+       và mọi dòng chi tiết — không phải một dòng chữ tự do như băng ngày. */
+    ok('hàng tổng đọc từ tom_tat_kpi.line[trangThai.line], không tự cộng',
+       /const tongLine = tkpi && tkpi\.line \? tkpi\.line\[trangThai\.line\] : null;/.test(UI2), true);
+    ok('  · và bị ẨN khi đang lọc (cùng luật với băng ngày, hàng tổng đơn)',
+       /if \(!loc && tongLine\)/.test(UI2), true);
+    ok('  · dùng chung <colgroup>, không phải colSpan tự do',
+       /const trTong = el\("tr", "hangTongBang"\);[\s\S]{0,30}for \(const c of COT\)/.test(UI2), true);
+
+    /* Ba con số phụ thuộc Tracking hiện "—" khi kỳ ngoài phạm vi hoặc nguồn
+       hỏng — dùng lại CHÍNH hai cờ `kq.trong_pham_vi_ma`/`kq.loi_nguon_ma`
+       đang gác mọi ô Giá nhập khác trên bảng, không phải một phép đoán mới. */
+    ok('  · "CHƯA BIẾT" (kỳ ngoài phạm vi / nguồn hỏng) hiện "—", không phải 0',
+       /const thieuNguon = kq\.trong_pham_vi_ma === false \|\| !!kq\.loi_nguon_ma;/.test(UI2), true);
+    ok('  · Giá nhập/Lợi nhuận/Quy đổi đều đi qua cùng MỘT cửa "—"',
+       (UI2.match(/thieuNguon \? "—"/g) || []).length, 1);
+
+    /* KHÔNG tính lại quy đổi/lợi nhuận ở đây — đọc thẳng field Engine đã có
+       sẵn cho dải KPI phía trên, đúng LUẬT SỐ 1. */
+    ok('SL/Tổng bán/Lợi nhuận/Quy đổi đọc thẳng field có sẵn, không cộng lại',
+       /"SL": soNguyen\(tongLine\.so_san_pham\)/.test(UI2)
+       && /"Tổng bán": nghinTron\(tongLine\.doanh_so\)/.test(UI2), true);
+  }
+
+  console.log('\nO4) Dải KPI bỏ chữ "quy đổi" — hàng tổng đã nói thay');
+  {
+    const UI3 = doc('public/don-hang.js');
+    /* Chủ dự án chốt 13/09/2026: con số quy đổi ở dải KPI ("Đạt X% · quy đổi
+       NNN") trùng với con số hàng tổng vừa thêm — bỏ một trong hai để không
+       in cùng một sự thật ở hai chỗ mà người đọc phải tự tin là chúng khớp
+       nhau. Dải KPI chỉ còn giữ đúng việc của nó: phần trăm ĐẠT. */
+    ok('dải KPI KHÔNG còn in "quy đổi NNN" cạnh phần trăm đạt',
+       /"Đạt " \+ so1\(cua\.dat_pt\) \+ "%  ·  quy đổi "/.test(UI3), false);
+    ok('  · chỉ còn đúng "Đạt X%"',
+       /el\("span", "datKpi", "Đạt " \+ so1\(cua\.dat_pt\) \+ "%"\)/.test(UI3), true);
+  }
+
+    /* ─────────── P. Chạy thật hàm vẽ, soi cái nó dựng ra ───────────
    *
    * Mọi bài trên đây hoặc chạy Engine, hoặc ĐỌC mã màn hình. Cả hai đều bỏ
    * lọt đúng một lớp lỗi: hàm vẽ ném giữa chừng, hay dựng thiếu một ô — lúc
