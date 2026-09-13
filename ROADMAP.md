@@ -167,6 +167,14 @@ Bốn chốt đi kèm, đừng đổi mà không hỏi lại:
 - **Link phải có `#gid`** — thiếu thì từ chối ngay lúc lưu. Đoán "chắc là
   tab đầu" một lần là xoá trắng số liệu của một nhân viên khác.
 
+**Giao diện, chốt 13/09/2026 (lượt 2, chủ dự án gửi ảnh mẫu):** hai ngày
+cách nhau **một dòng trống**, và mỗi ngày là **một mảng xám** (`#d9d9d9`,
+đúng "Light gray 3" của Sheets) phủ `A–M` và `O–S` — **cột N chừa trắng**.
+Mỗi lượt đẩy quét sạch nền cũ từ dòng 3 xuống hết lưới rồi tô lại, nên
+tháng ít ngày hơn tháng trước không để mảng xám thừa nằm lại dưới đáy.
+Dải tô do Engine tính (`bang_ngay`) — Gateway không đếm lại, vì hai bản đếm
+lệch một hàng là mảng xám trượt khỏi dữ liệu.
+
 Chạy tự động **17h30 giờ VN mỗi ngày** (`crons = ["30 10 * * *"]`, UTC+7),
 đẩy kỳ hiện tại VÀ kỳ liền trước, cộng nút "Đẩy sang Sheet" trên dải setup.
 Chỉ vai `quantri`. Nguồn giá hoặc KPI hỏng thì **KHÔNG đẩy** — đè bộ số đúng
