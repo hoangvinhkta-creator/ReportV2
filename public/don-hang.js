@@ -1200,8 +1200,12 @@
        theo doanh số quy đổi" (chủ dự án chốt điểm 3) hiện thành chữ. */
     const cua = tkpi && tkpi.line ? tkpi.line[trangThai.line] : null;
     if (cua && cua.dat_pt !== null && cua.dat_pt !== undefined) {
-      const nhan = el("span", "datKpi",
-        "Đạt " + so1(cua.dat_pt) + "%  ·  quy đổi " + nghinTron(cua.doanh_so_quy_doi));
+      /* Con số "quy đổi NNN" bị BỎ khỏi dòng này (chủ dự án chốt 13/09/2026):
+         hàng TỔNG mới thêm dưới tiêu đề bảng đã hiện đúng con số ấy ở cột
+         Quy đổi, và băng mỗi ngày cũng đã có "QĐ …" riêng — một con số in
+         hai lần ở hai chỗ khác nhau chỉ tổ nghi ngờ hai chỗ có khớp nhau
+         không. Dải KPI chỉ còn giữ đúng việc của nó: phần trăm ĐẠT. */
+      const nhan = el("span", "datKpi", "Đạt " + so1(cua.dat_pt) + "%");
       nhan.title = "Doanh số quy đổi của line chia cho KPI của line, trong tháng "
         + "đang xem. Engine tính, màn hình chỉ hiện.";
       dai.appendChild(nhan);
@@ -1931,6 +1935,18 @@
         + "để trống. Doanh số và số đơn không bị ảnh hưởng."));
     }
 
+    /* ── BỘ LỌC ──
+       Đang lọc thì bảng thành một DANH SÁCH VIỆC phẳng: không băng ngày,
+       không hàng tổng đơn, không hàng tổng cả bảng. Ba thứ ấy mang tổng do
+       Engine cộng trên TOÀN BỘ dòng/đơn/ngày; để chúng đứng cạnh một tập
+       dòng đã lọc là in ra một con số không khớp với những gì đang nhìn
+       thấy, và người đọc không có cách nào biết con số ấy đang nói về tập
+       nào. Thà bỏ hẳn còn hơn in một số đúng ở chỗ nó đọc thành sai.
+
+       Khai SỚM — trước khi dựng cả bảng — vì cả hàng tiêu đề (nút lọc) lẫn
+       hàng tổng của cả bảng đều cần biết đang lọc theo cái gì. */
+    const loc = trangThai.loc ? LOC[trangThai.loc] : null;
+
     const boc = el("div", "bocBang");
     const bang = el("table", "bangDon");
 
@@ -2008,17 +2024,76 @@
       trTen.appendChild(th);
     }
     thead.appendChild(trTen);
+
+    /* ── HÀNG TỔNG CỦA CẢ BẢNG, NGAY DƯỚI HÀNG TIÊU ĐỀ ──
+       Chủ dự án chốt 13/09/2026: "ngay dưới dòng tên dòng, cho thêm 1 dòng
+       tổng có thông tin tổng của các cột". Đứng đúng LƯỚI 19 CỘT như mọi
+       dòng khác — dùng chung <colgroup> nên mỗi con số nằm NGAY DƯỚI cột
+       của nó, đọc được không cần đối chiếu ngang, khác hẳn một dòng chữ tự
+       do như băng ngày.
+
+       Đọc từ `tkpi.line[trangThai.line]` — CHÍNH bản kê Engine đã tính cho
+       dải KPI phía trên, KHÔNG cộng lại ở đây: SL, Tổng bán, Lợi nhuận, Quy
+       đổi đều là số ĐÃ CÓ SẴN. Tính hai lần ở hai chỗ là hai chỗ có thể lệch
+       nhau mà không ai biết bên nào đúng (LUẬT SỐ 1) — cùng lý do "Đạt %"
+       ở dải KPI vừa bỏ chữ "quy đổi" đi, để con số ấy chỉ còn đúng MỘT nơi
+       hiện ra: hàng này.
+
+       `tongLine` có thể `null` (line không có đơn nào trong tháng, hoặc
+       nguồn KPI hỏng) — khi ấy bỏ hẳn hàng, không hiện một hàng toàn "—". */
+    const tongLine = tkpi && tkpi.line ? tkpi.line[trangThai.line] : null;
+    if (!loc && tongLine) {
+      /* Ba con số phụ thuộc Tracking (giá nhập, lợi nhuận, quy đổi) hiện "—"
+         khi kỳ ngoài phạm vi khớp mã hoặc nguồn giá hỏng lượt này — CHƯA
+         BIẾT khác "bằng 0" (CLAUDE.md). `kq.trong_pham_vi_ma`/`kq.loi_nguon_ma`
+         là hai cờ ĐÃ CÓ, dùng chung với mọi ô Giá nhập khác trên bảng, không
+         phải một phép đoán mới ở đây.
+
+         Còn biết được MỘT PHẦN thì hiện số kèm "*", đúng quy ước băng ngày
+         và dải KPI đang dùng — không bịa một quy ước thứ hai cho cùng một
+         ý nghĩa. */
+      const thieuNguon = kq.trong_pham_vi_ma === false || !!kq.loi_nguon_ma;
+      const soHoacGach = (so, thieu) => thieuNguon ? "—" : nghinTron(so) + (thieu ? " *" : "");
+
+      const mKy = String(trangThai.ky || "").match(/^(\d{4})-(\d{2})$/);
+      const GT_TONG = {
+        "Ngày": mKy ? mKy[2] + "/" + mKy[1] : "",
+        "Số BH": soNguyen(tongLine.so_don),
+        "SL": soNguyen(tongLine.so_san_pham),
+        "Giá nhập": soHoacGach(tongLine.tong_gia_nhap, tongLine.dong_thieu_gia_nhap),
+        "Giá bán": nghinTron(tongLine.tong_gia_ban),
+        "Tổng bán": nghinTron(tongLine.doanh_so),
+        "Lợi nhuận": soHoacGach(tongLine.loi_nhuan, tongLine.don_thieu_loi_nhuan),
+        "Quy đổi": soHoacGach(tongLine.doanh_so_quy_doi, tongLine.don_thieu_quy_doi),
+      };
+      const LOP_SO = new Set(["Số BH", "SL", "Giá nhập", "Giá bán",
+        "Tổng bán", "Lợi nhuận", "Quy đổi"]);
+
+      const trTong = el("tr", "hangTongBang");
+      for (const c of COT) {
+        const gt = GT_TONG[c];
+        const td = el("td", LOP_SO.has(c) ? "oSo" : null, gt === undefined ? "" : gt);
+        if (c === "Giá nhập" && thieuNguon) {
+          td.title = "Kỳ này nằm ngoài phạm vi dữ liệu giá của Tracking, hoặc "
+            + "nguồn giá hỏng lượt này.";
+        } else if (c === "Giá nhập" && tongLine.dong_thieu_gia_nhap) {
+          td.title = "Còn " + soNguyen(tongLine.dong_thieu_gia_nhap)
+            + " dòng chưa có giá nhập, nên đây là con số SÀN.";
+        } else if (c === "Lợi nhuận" && !thieuNguon && tongLine.don_thieu_loi_nhuan) {
+          td.title = "Còn " + soNguyen(tongLine.don_thieu_loi_nhuan)
+            + " đơn chưa đủ giá vốn, nên đây là con số SÀN.";
+        } else if (c === "Quy đổi" && !thieuNguon && tongLine.don_thieu_quy_doi) {
+          td.title = "Còn " + soNguyen(tongLine.don_thieu_quy_doi)
+            + " đơn chưa quy đổi được, nên đây là con số SÀN.";
+        }
+        trTong.appendChild(td);
+      }
+      thead.appendChild(trTong);
+    }
+
     bang.appendChild(thead);
 
     const tbody = el("tbody");
-    /* ── BỘ LỌC ──
-       Đang lọc thì bảng thành một DANH SÁCH VIỆC phẳng: không băng ngày,
-       không hàng tổng đơn. Hai thứ ấy mang tổng do Engine cộng trên TOÀN BỘ
-       dòng của ngày/của đơn; để chúng đứng cạnh một tập dòng đã lọc là in ra
-       một con số không khớp với những gì đang nhìn thấy, và người đọc không
-       có cách nào biết con số ấy đang nói về tập nào. Thà bỏ hẳn còn hơn in
-       một số đúng ở chỗ nó đọc thành sai. */
-    const loc = trangThai.loc ? LOC[trangThai.loc] : null;
     let soKhop = 0;
     for (const ng of b.ngay) {
       /* Một hàng tiêu đề cho mỗi ngày — đúng cách file tay chia. Kèm luôn
@@ -2038,15 +2113,27 @@
       muiTen.classList.add("muiTenNgay");
       tdNgay.appendChild(muiTen);
       tdNgay.appendChild(el("span", "chuNgay", nhanNgayDay(ng.ngay)));
-      /* Ba con số ENGINE tính, màn hình chỉ đọc: số đơn, doanh số, lợi nhuận,
-         quy đổi. Dấu "*" ở lợi nhuận nghĩa là còn đơn chưa đủ giá vốn — cùng
-         quy ước với cột Tỉ lệ tồn kho, không phải một dấu mới. */
-      const soNgay = soNguyen(ng.so_don) + " đơn  ·  " + nghinTron(ng.doanh_so)
-        + "  ·  LN " + nghinTron(ng.loi_nhuan || 0)
-        + (ng.don_thieu_loi_nhuan ? " *" : "")
-        + "  ·  QĐ " + (ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
-          ? "—" : nghinTron(ng.doanh_so_quy_doi));
-      tdNgay.appendChild(el("span", "soNgay", soNgay));
+      /* Bốn con số ENGINE tính, màn hình chỉ đọc: số đơn, doanh số, lợi
+         nhuận, quy đổi. Dấu "*" ở lợi nhuận nghĩa là còn đơn chưa đủ giá vốn
+         — cùng quy ước với cột Tỉ lệ tồn kho, không phải một dấu mới.
+
+         MỖI CON SỐ MỘT <span> RIÊNG, xếp trong một lưới bề rộng cố định
+         (chủ dự án chốt 13/09/2026: "cân lại cho thẳng theo cột thay vì để
+         thụt ra thụt vào") — chứ không phải một chuỗi nối bằng "·". Một
+         chuỗi nối thì "3 đơn" và "29 đơn" lệch nhau một ký tự, rồi mọi thứ
+         phía sau nó (doanh số, LN, QĐ) trôi theo, và mắt phải đọc lại từ đầu
+         mỗi dòng thay vì lướt dọc một cột. Cột ở đây là cột riêng của các
+         băng ngày — không bắt phải khớp lưới 19 cột của bảng chi tiết bên
+         dưới, vì băng ngày vốn đã là MỘT ô colSpan trải hết bề ngang. */
+      const soNgay = el("span", "soNgay");
+      soNgay.appendChild(el("span", "ngayO", soNguyen(ng.so_don) + " đơn"));
+      soNgay.appendChild(el("span", "ngayO", nghinTron(ng.doanh_so)));
+      soNgay.appendChild(el("span", "ngayO",
+        "LN " + nghinTron(ng.loi_nhuan || 0) + (ng.don_thieu_loi_nhuan ? " *" : "")));
+      soNgay.appendChild(el("span", "ngayO", "QĐ "
+        + (ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
+          ? "—" : nghinTron(ng.doanh_so_quy_doi))));
+      tdNgay.appendChild(soNgay);
       /* Tô CẢ BĂNG khi ngày ấy còn đơn chưa đủ thông tin (chủ dự án chốt
          13/09/2026) — đóng lại rồi thì dấu "*" bên trong một dòng chữ dài
          không đủ để mắt bắt được ngày nào còn việc. Cả băng đổi màu thì
