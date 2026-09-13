@@ -110,7 +110,22 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
      colSpan đuôi là `COT.length - 9`, không còn `- 8`. Vẫn phải tính TỪ
      `COT.length`: gõ cứng một con số là lần thêm cột kế tiếp hàng tổng lệch
      sang cột khác mà không có gì đỏ lên. */
-  ok('  · và colSpan sau đó tính từ COT.length', /COT\.length - 9/.test(JS), true);
+  /* Hàng tổng đơn nay có NĂM ô: [trống ×7] [Tổng bán] [Lợi nhuận — nút
+     bonus] [trống, tới trước Ghi chú] [Ghi chú — lý do bonus] [trống, phần
+     đuôi]. Lý do dời sang đúng cột Ghi chú (chủ dự án chốt 13/09/2026) — bản
+     trước nhét nó vào ô gộp bắt đầu từ cột Quy đổi, tức một câu chữ nằm đè
+     lên vùng của bốn cột tiền.
+
+     Không gõ cứng con số nào: mọi colSpan tính từ `COT.indexOf(...)`, nên
+     thêm hay dời một cột là hàng tổng tự dịch theo. Gõ cứng là lần thêm cột
+     kế tiếp hàng tổng lệch sang cột khác mà không có gì đỏ lên. */
+  ok('  · và colSpan tính từ vị trí cột, không gõ cứng con số',
+     /COT\.indexOf\("Ghi chú"\) - COT\.indexOf\("Lợi nhuận"\) - 1/.test(JS), true);
+  ok('  · phần đuôi cũng vậy',
+     /COT\.length - COT\.indexOf\("Ghi chú"\) - 1/.test(JS), true);
+  ok('  · năm ô cộng lại phủ đủ 19 cột',
+     7 + 1 + 1 + (COT.indexOf('Ghi chú') - COT.indexOf('Lợi nhuận') - 1)
+       + 1 + (COT.length - COT.indexOf('Ghi chú') - 1), COT.length);
   ok('  · ô bonus đứng dưới đúng cột “Lợi nhuận”',
      /trTong\.appendChild\(el\("td", "oSo", nghinTron\(don\.tong_ban\)\)\);\s*\n[\s\S]{0,320}?trTong\.appendChild\(oBonus\(don\)\);/.test(JS), true);
   ok('  · ba ô cộng lại phủ đủ 19 cột', 7 + 1 + 1 + (COT.length - 9), COT.length);
@@ -514,7 +529,12 @@ console.log('\n13) Ba bộ lọc trên đầu cột — danh sách VIỆC, khôn
      khớp thứ đang nhìn thấy, mà người đọc không có cách nào biết nó nói về
      tập nào. */
   ok('đang lọc thì KHÔNG in hàng tổng đơn', /if \(loc\) continue;/.test(JS), true);
-  ok('  · và KHÔNG in băng ngày', /if \(!loc\) tbody\.appendChild\(trNgay\);/.test(JS), true);
+  ok('  · và KHÔNG in băng ngày (bảng thành danh sách việc phẳng)',
+     /if \(loc\) \{[\s\S]{0,400}?for \(const t of hangNgay\) tbody\.appendChild\(t\);\s*\n\s*continue;/.test(JS), true);
+  /* Đang lọc thì cũng KHÔNG có trình thả xuống nào: bắt người dùng mở từng
+     ngày mới thấy việc là đúng thứ bộ lọc sinh ra để tránh. */
+  ok('  · và không đóng ngày lại khi đang lọc',
+     /if \(loc\)[\s\S]{0,400}?continue;\s*\n\s*\}\s*\n\s*tbody\.appendChild\(trNgay\);/.test(JS), true);
   ok('  · ngày nào lọc xong không còn dòng thì bỏ hẳn, không để băng trơ trọi',
      /if \(!hangNgay\.length\) continue;/.test(JS), true);
 

@@ -394,18 +394,23 @@
   .nutBonus svg { width: 13px; height: 13px; display: block; }
   .nutBonus:hover { background: rgba(15,157,88,.14); color: #0f9d58; }
   .bangDon td.oLyDoBonus { color: #56637f; font-style: italic; }
-  /* Hộp nhập bung ra ĐÈ LÊN bảng, không chen vào bố cục: chen vào là đẩy
-     mọi dòng bên dưới xuống đúng lúc người dùng đang nhắm vào một dòng. */
-  .hopBonus { position: absolute; z-index: 5; top: 100%; left: 0;
-              display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-              background: #fff; border: 1px solid #d1d5db; border-radius: 10px;
-              padding: 8px 10px; box-shadow: 0 6px 20px rgba(17,24,39,.14);
-              white-space: normal; width: max-content; max-width: 460px; }
-  .oBonusTien { width: 76px; text-align: right; }
-  .oBonusLyDo { max-width: 180px; }
-  .oBonusKhac { width: 160px; }
-  .loiBonus { color: #c4361f; font-size: 12px; flex-basis: 100%; }
-  .loiBonus:empty { display: none; }
+  /* ---- Băng ngày = trình thả xuống (chủ dự án chốt 13/09/2026) ----
+     Đóng sẵn: một tháng có ~500 dòng, mở hết ra thì phải cuộn mới biết tháng
+     có mấy ngày. */
+  .hangNgay td { cursor: pointer; user-select: none; }
+  .hangNgay:hover td { background: #e0e7ff; }
+  .muiTenNgay { width: 12px; height: 12px; vertical-align: -1px; margin-right: 6px;
+                color: #6b7280; transform: rotate(90deg); transition: transform .12s; }
+  .hangNgay.dongLai .muiTenNgay { transform: rotate(0deg); }
+  .chuNgay { font-weight: 700; }
+  .soNgay { font-weight: 400; color: #3d4a63; margin-left: 12px; }
+  /* Ô nhập ngay tại chỗ, thay hộp nổi của bản đầu (chủ dự án chốt
+     13/09/2026: hộp che mất chính cái đơn đang cộng cho). */
+  .oSuaLyDo { border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 4px;
+              font-size: 12px; font-family: inherit; max-width: 100%; }
+  .bangDon td.thieuLyDo .oSuaLyDo { border-color: #c4361f; }
+  .oKhac { margin-top: 3px; width: 100%; }
+  .bangDon tr.dangSuaBonus > td { background: #fffbeb; }
   /* Kỳ ngoài phạm vi dữ liệu giá: một câu GIẢI THÍCH, không phải cảnh báo —
      nên màu xám như `.viDu`, không vàng như băng còn-nợ. Người dùng không có
      việc gì phải làm với nó. */

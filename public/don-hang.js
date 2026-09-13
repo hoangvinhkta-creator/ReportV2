@@ -285,6 +285,7 @@
        + '<path d="M10 11v6M14 11v6"/>',
     loc: '<path d="M3 5h18l-7 8v6l-4 2v-8Z"/>',
     cong: '<path d="M12 5v14M5 12h14"/>',
+    mo: '<path d="M9 6l6 6-6 6"/>',
   };
 
   /** Một icon line. `to` = bề dày nét, để icon nhỏ không bị đặc lại. */
@@ -341,104 +342,143 @@
     return b;
   }
 
-  /** Hộp nhập bonus. Mở NGAY TRONG hàng tổng của đơn, không phải một hộp
-   *  thoại giữa màn hình: người dùng đang đọc dọc theo một đơn cụ thể, và
-   *  một hộp che mất bảng thì họ không còn thấy đơn mình đang cộng cho.
+  /** Ô LÝ DO bonus — nằm dưới đúng cột Ghi chú của hàng tổng đơn. */
+  function oLyDoBonus(don) {
+    const td = el("td", "oLyDoBonus", don.bonus ? don.bonus.ly_do : "");
+    td.dataset.o = "lydo";
+    if (don.bonus && don.bonus.boi) {
+      td.title = "Bonus do " + don.bonus.boi + " cộng"
+        + (don.bonus.luc ? " lúc " + new Date(don.bonus.luc).toLocaleString("vi-VN") : "")
+        + ".";
+    }
+    return td;
+  }
+
+  /** Mở chế độ SỬA BONUS ngay trong hai ô của hàng tổng đơn.
    *
-   *  LÝ DO LÀ BẮT BUỘC — chặn ngay tại đây, trước khi gửi. Gateway và Engine
-   *  cũng chặn (ba lớp), nhưng chặn ở đây là chỗ DUY NHẤT nói được cho người
-   *  dùng biết ngay lúc họ đang gõ, thay vì trả về một lỗi đỏ sau một vòng
-   *  mạng.
+   *  Chủ dự án chốt 13/09/2026: bản trước bung một hộp thoại nổi đè lên bảng
+   *  ("tù quá") — nó che mất chính cái đơn đang cộng cho, và số tiền thì gõ ở
+   *  một chỗ khác hẳn cột nó sẽ hiện ra. Nay sửa TẠI CHỖ, đúng khuôn mà lượt
+   *  sửa Giá nhập/Nơi nhập của P4 đã chạy: ô số ở cột Lợi nhuận, ô lý do ở
+   *  cột Ghi chú, rời khỏi HÀNG là tự lưu.
+   *
+   *  Xoá bonus = xoá trắng ô số (hoặc gõ 0). Không cần nút Xoá riêng, và ô
+   *  quay về dấu `+` — đúng câu chủ dự án đòi.
    *
    *  Bốn lý do mặc định đọc từ ENGINE (`kq.bang.ly_do_bonus`), không gõ cứng
-   *  ở đây: thêm một lý do phải là sửa đúng một chỗ. Vẫn cho gõ lý do khác —
-   *  bốn cái kia là phím tắt cho bốn ca hay gặp, không phải một bộ phân loại
-   *  đóng. */
+   *  ở đây: thêm một lý do phải là sửa đúng một chỗ. Vẫn gõ được lý do khác —
+   *  bốn cái kia là phím tắt cho bốn ca hay gặp, không phải bộ phân loại đóng. */
   function moBonus(nut, kq) {
     const so_ct = nut.dataset.soCt;
     if (!so_ct || nut.disabled) return;
-    const td = nut.parentElement;
-    const tr = td.parentElement;
-    const cu = tr.querySelector(".hopBonus");
-    if (cu) { cu.remove(); return; }
+    const tr = nut.closest("tr");
+    if (!tr || tr.classList.contains("dangSuaBonus")) return;
+    if (dangSua && dangSua.huy) dangSua.huy();
+    tr.classList.add("dangSuaBonus");
+
+    const tdTien = nut.parentElement;
+    const tdLyDo = tr.querySelector('td[data-o="lydo"]');
+    const cuTien = tdTien.innerHTML, cuLyDo = tdLyDo.textContent;
+    const soCu = tdTien.querySelector(".soBonus");
+    const tienCu = soCu ? soCu.textContent.replace(/[^\d,]/g, "").replace(",", ".") : "";
 
     const dsLyDo = (kq.bang && Array.isArray(kq.bang.ly_do_bonus))
       ? kq.bang.ly_do_bonus : [];
-    const dangCo = td.querySelector(".soBonus");
-    const tienCu = dangCo ? dangCo.textContent.replace(/[^0-9,.]/g, "") : "";
-    const lyDoCu = (tr.querySelector(".oLyDoBonus") || {}).textContent || "";
 
-    const hop = el("div", "hopBonus");
-    const oTien = el("input", "oNhap oBonusTien");
+    tdTien.innerHTML = "";
+    const oTien = el("input", "oSuaGia");
     oTien.type = "text";
     oTien.inputMode = "decimal";
-    oTien.placeholder = "50";
     oTien.value = tienCu;
-    oTien.title = "Số tiền cộng thêm vào lợi nhuận, theo nghìn đồng.";
+    oTien.placeholder = "50";
+    oTien.title = "Cộng thêm vào lợi nhuận của đơn, theo nghìn đồng. "
+      + "Xoá trắng ô này là bỏ bonus.";
+    tdTien.appendChild(oTien);
 
-    const chon = el("select", "oNhap oBonusLyDo");
+    tdLyDo.textContent = "";
+    const chon = el("select", "oSuaLyDo");
     for (const t of [...dsLyDo, "Khác…"]) chon.appendChild(el("option", null, t));
-    const oKhac = el("input", "oNhap oBonusKhac");
+    const oKhac = el("input", "oSuaGia oKhac");
     oKhac.type = "text";
     oKhac.placeholder = "Lý do";
     oKhac.hidden = true;
-    /* Lý do cũ không nằm trong bốn cái mặc định thì mở sẵn ô gõ tay và điền
-       lại — nếu không, mở ra sửa số tiền là lý do lặng lẽ bị thay bằng lựa
-       chọn đầu danh sách. */
-    if (lyDoCu && !dsLyDo.includes(lyDoCu)) {
-      chon.value = "Khác…"; oKhac.hidden = false; oKhac.value = lyDoCu;
-    } else if (lyDoCu) chon.value = lyDoCu;
+    /* Lý do cũ ngoài bốn cái mặc định thì mở sẵn ô gõ tay và điền lại — nếu
+       không, mở ra sửa số tiền là lý do lặng lẽ bị thay bằng lựa chọn đầu
+       danh sách. */
+    if (cuLyDo && !dsLyDo.includes(cuLyDo)) {
+      chon.value = "Khác…"; oKhac.hidden = false; oKhac.value = cuLyDo;
+    } else if (cuLyDo) chon.value = cuLyDo;
     chon.addEventListener("change", () => {
       oKhac.hidden = chon.value !== "Khác…";
       if (!oKhac.hidden) oKhac.focus();
     });
+    tdLyDo.appendChild(chon);
+    tdLyDo.appendChild(oKhac);
 
-    const loi = el("span", "loiBonus");
-    const nutLuu = el("button", "nutNho", "Lưu");
-    nutLuu.type = "button";
-    const nutXoa = el("button", "nutNho", "Xoá");
-    nutXoa.type = "button";
-    nutXoa.hidden = !dangCo;
-    const nutHuy = el("button", "nutNho", "Huỷ");
-    nutHuy.type = "button";
+    const phien = { xong: false };
+    const traLai = () => {
+      phien.xong = true;
+      tdTien.innerHTML = cuTien;
+      tdLyDo.textContent = cuLyDo;
+      tr.classList.remove("dangSuaBonus");
+      dangSua = null;
+    };
+    dangSua = { tr, huy: traLai };
 
-    for (const x of [oTien, chon, oKhac, nutLuu, nutXoa, nutHuy, loi]) hop.appendChild(x);
-    td.appendChild(hop);
-    oTien.focus();
-    oTien.select();
+    async function luu() {
+      if (phien.xong) return;
+      const chu = oTien.value.trim().replace(/\s/g, "").replace(",", ".");
+      const n = chu === "" ? 0 : Number(chu);
+      if (!Number.isFinite(n) || n < 0) { oTien.focus(); oTien.select(); return; }
 
-    const dong = () => hop.remove();
-    nutHuy.addEventListener("click", dong);
-
-    async function gui(than) {
-      for (const x of [nutLuu, nutXoa, nutHuy]) x.disabled = true;
-      try {
-        const kq2 = await goiGhi("/api/bonus",
-          { ky: trangThai.ky, so_ct, line: trangThai.line, ...than });
-        apBangMoi(kq2);
-      } catch (e) {
-        for (const x of [nutLuu, nutXoa, nutHuy]) x.disabled = false;
-        loi.textContent = e.message;
+      /* Xoá trắng (hoặc 0) = BỎ bonus. Gửi `tien: null` — Gateway xoá hẳn bản
+         ghi, và ô quay về dấu `+`. */
+      const than = n === 0 ? { tien: null } : null;
+      if (!than) {
+        const ly_do = (chon.value === "Khác…" ? oKhac.value : chon.value).trim();
+        if (!ly_do) {
+          /* Đúng câu chủ dự án đòi: nhập tiền thì phải nhập cả lý do, thiếu
+             thì cảnh báo NGAY — không gửi đi rồi chờ một lỗi đỏ từ máy chủ. */
+          tdLyDo.classList.add("thieuLyDo");
+          $("loiDonHang").textContent = "Phải chọn hoặc gõ lý do được cộng bonus.";
+          (oKhac.hidden ? chon : oKhac).focus();
+          return;
+        }
+        tdLyDo.classList.remove("thieuLyDo");
       }
+      phien.xong = true;
+      tr.classList.add("hangDangGui");
+      let kq2;
+      try {
+        kq2 = await goiGhi("/api/bonus", { ky: trangThai.ky, so_ct, line: trangThai.line,
+          ...(than || { tien: Math.round(n * 1000),
+            ly_do: (chon.value === "Khác…" ? oKhac.value : chon.value).trim() }) });
+      } catch (e) {
+        tr.classList.remove("hangDangGui");
+        phien.xong = false;
+        $("loiDonHang").textContent = "Không lưu được bonus: " + e.message;
+        return;
+      }
+      tr.classList.remove("hangDangGui");
+      traLai();
+      apBangMoi(kq2);
     }
 
-    nutLuu.addEventListener("click", () => {
-      const chu = oTien.value.trim().replace(/\s/g, "").replace(",", ".");
-      const n = Number(chu);
-      if (!chu || !Number.isFinite(n) || n <= 0) {
-        loi.textContent = "Nhập số tiền lớn hơn 0.";
-        oTien.focus(); return;
-      }
-      const ly_do = (chon.value === "Khác…" ? oKhac.value : chon.value).trim();
-      if (!ly_do) {
-        /* Đúng câu chủ dự án đòi: "phải nhập thêm cả lí do được cộng, nếu
-           không sẽ hiện ngay cảnh báo". */
-        loi.textContent = "Phải chọn hoặc gõ lý do được cộng.";
-        (oKhac.hidden ? chon : oKhac).focus(); return;
-      }
-      gui({ tien: Math.round(n * 1000), ly_do });
+    /* Rời khỏi CẢ HÀNG thì tự lưu — cùng nếp với lượt sửa Giá nhập của P4.
+       Xét `relatedTarget` còn nằm trong `tr` hay không, không xét từng ô:
+       nhảy từ ô tiền sang ô lý do không phải "rời". */
+    tr.addEventListener("focusout", (e) => {
+      if (phien.xong) return;
+      if (!e.relatedTarget || !tr.contains(e.relatedTarget)) luu();
     });
-    nutXoa.addEventListener("click", () => gui({ tien: null }));
+    for (const x of [oTien, oKhac]) {
+      x.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); luu(); }
+        else if (ev.key === "Escape") { ev.preventDefault(); traLai(); }
+      });
+    }
+    oTien.focus();
+    oTien.select();
   }
 
   /** Ô BONUS trên hàng tổng của một đơn — chủ dự án chốt 12/09/2026.
@@ -1968,10 +2008,34 @@
     for (const ng of b.ngay) {
       /* Một hàng tiêu đề cho mỗi ngày — đúng cách file tay chia. Kèm luôn
          tổng của ngày để đọc dọc không phải tự cộng. */
+      /* Mỗi ngày là một TRÌNH THẢ XUỐNG (chủ dự án chốt 13/09/2026), đóng
+         sẵn: một tháng có ~500 dòng, mở hết ra thì phải cuộn mới biết tháng
+         có mấy ngày. Đóng lại thì cả tháng đọc được trong một màn hình, và
+         mở đúng ngày muốn soi.
+
+         Dùng một HÀNG BẢNG bấm được chứ không phải `<details>`: `<details>`
+         đặt trong `<tbody>` là HTML không hợp lệ, và trình duyệt sẽ ném nó
+         ra ngoài bảng — cột lệch hết. */
       const trNgay = el("tr", "hangNgay");
-      const tdNgay = el("td", null, nhanNgayDay(ng.ngay) + "  ·  " + soNguyen(ng.so_don)
-        + " đơn  ·  " + nghinTron(ng.doanh_so));
+      const tdNgay = el("td");
       tdNgay.colSpan = COT.length;
+      const muiTen = icon("mo", 2.4);
+      muiTen.classList.add("muiTenNgay");
+      tdNgay.appendChild(muiTen);
+      tdNgay.appendChild(el("span", "chuNgay", nhanNgayDay(ng.ngay)));
+      /* Ba con số ENGINE tính, màn hình chỉ đọc: số đơn, doanh số, lợi nhuận,
+         quy đổi. Dấu "*" ở lợi nhuận nghĩa là còn đơn chưa đủ giá vốn — cùng
+         quy ước với cột Tỉ lệ tồn kho, không phải một dấu mới. */
+      const soNgay = soNguyen(ng.so_don) + " đơn  ·  " + nghinTron(ng.doanh_so)
+        + "  ·  LN " + nghinTron(ng.loi_nhuan || 0)
+        + (ng.don_thieu_loi_nhuan ? " *" : "")
+        + "  ·  QĐ " + (ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
+          ? "—" : nghinTron(ng.doanh_so_quy_doi));
+      tdNgay.appendChild(el("span", "soNgay", soNgay));
+      if (ng.don_thieu_loi_nhuan) {
+        tdNgay.title = "Còn " + soNguyen(ng.don_thieu_loi_nhuan)
+          + " đơn chưa đủ giá vốn, nên lợi nhuận của ngày là con số SÀN.";
+      }
       trNgay.appendChild(tdNgay);
       /* Gom hàng của cả ngày rồi mới quyết định có in băng ngày hay không:
          lọc xong mà ngày ấy không còn dòng nào thì một băng ngày trơ trọi
@@ -2053,21 +2117,42 @@
            colSpan, nên phải cắt nó ra: một ô cho Lợi nhuận, phần còn lại
            gộp tiếp và mang câu lý do. */
         trTong.appendChild(oBonus(don));
-        const tdSau = el("td", "oLyDoBonus",
-          don.bonus ? don.bonus.ly_do : "");
-        if (don.bonus && don.bonus.boi) {
-          tdSau.title = "Bonus do " + don.bonus.boi + " cộng"
-            + (don.bonus.luc ? " lúc " + new Date(don.bonus.luc).toLocaleString("vi-VN") : "")
-            + ".";
-        }
-        tdSau.colSpan = COT.length - 9;
+        /* Lý do đứng dưới đúng cột GHI CHÚ (chủ dự án chốt 13/09/2026) — bản
+           trước nhét nó vào ô gộp bắt đầu từ cột Quy đổi, tức một câu chữ
+           nằm đè lên vùng của bốn cột tiền. Ghi chú mới là chỗ của nó, và
+           cột ấy vốn đã rộng cho chữ.
+
+           Ba ô gộp hai bên tính TỪ `COT.length` chứ không gõ cứng: thêm một
+           cột là mọi thứ tự động dịch theo. */
+        const tdGiua = el("td");
+        tdGiua.colSpan = COT.indexOf("Ghi chú") - COT.indexOf("Lợi nhuận") - 1;
+        trTong.appendChild(tdGiua);
+        trTong.appendChild(oLyDoBonus(don));
+        const tdSau = el("td");
+        tdSau.colSpan = COT.length - COT.indexOf("Ghi chú") - 1;
         trTong.appendChild(tdSau);
         hangNgay.push(trTong);
       }
 
       if (!hangNgay.length) continue;
-      if (!loc) tbody.appendChild(trNgay);
-      for (const t of hangNgay) tbody.appendChild(t);
+      if (loc) {
+        /* Đang lọc thì KHÔNG có trình thả xuống nào: bảng là một danh sách
+           việc phẳng, và bắt người dùng mở từng ngày mới thấy việc là đúng
+           thứ bộ lọc sinh ra để tránh. */
+        for (const t of hangNgay) tbody.appendChild(t);
+        continue;
+      }
+      tbody.appendChild(trNgay);
+      for (const t of hangNgay) { t.hidden = true; tbody.appendChild(t); }
+      trNgay.classList.add("dongLai");
+      trNgay.addEventListener("click", () => {
+        const mo = trNgay.classList.toggle("dongLai");
+        for (const t of hangNgay) t.hidden = mo;
+        /* Chiều cao bảng đổi → chỗ còn lại cho biểu đồ cũng đổi. Không gọi
+           lại thì mở một ngày ra là bảng tràn xuống dưới biểu đồ. */
+        dieuChinhCaoBang();
+        if (window.SucKhoe && window.SucKhoe.canhLai) window.SucKhoe.canhLai();
+      });
     }
     /* MỘT listener cho cả bảng, không gắn từng dòng: bảng một tháng có hàng
        nghìn ô, và gắn từng ô là hàng nghìn listener phải dọn mỗi lượt vẽ
