@@ -721,8 +721,22 @@ function kiemMoc(ten, gtThat, doiSo) {
        không được sót lại ở đâu. */
     const MA = doc('public/suc-khoe.js');
     ok('không còn nét đứt ở chuỗi kỳ trước', /stroke-dasharray/.test(MA), false);
-    ok('màu kỳ trước cùng họ xanh với trang chủ (không cam)',
-       /MAU_TRUOC = "#7da2e3"/.test(MA), true);
+    /* Kỳ trước là ĐƯỜNG NỀN, không phải một chuỗi ngang hàng: mắt phải bắt
+       được kỳ NAY trước rồi mới liếc sang cái để so. Bản trước dùng một sắc
+       xanh nhạt nên hai đường cạnh tranh nhau; chủ dự án chốt 13/09/2026 đổi
+       sang XÁM và nhạt hơn nữa.
+
+       Canh "là xám" chứ không ghim đúng một mã màu: ghim mã màu thì mỗi lượt
+       chỉnh sắc độ lại làm bài đỏ mà chẳng bắt được lỗi nào. Xám = ba kênh
+       R,G,B gần bằng nhau — thứ thật sự phải giữ, vì một màu CÓ sắc (xanh,
+       cam) sẽ lại tranh chú ý với đường kỳ nay. */
+    const mMau = MA.match(/MAU_TRUOC = "#([0-9a-f]{6})"/i);
+    ok('có khai màu kỳ trước', !!mMau, true);
+    const rgb = mMau ? [0, 2, 4].map((i) => parseInt(mMau[1].slice(i, i + 2), 16)) : [];
+    ok('  · và nó là XÁM (ba kênh gần bằng nhau), không phải một màu có sắc',
+       Math.max(...rgb) - Math.min(...rgb) <= 24, true);
+    ok('  · nhạt hơn hẳn đường kỳ nay, nhưng chưa chìm vào nền trắng',
+       rgb.every((v) => v >= 150 && v <= 215), true);
   }
 
   xong();

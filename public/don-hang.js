@@ -269,9 +269,42 @@
    *  đã được kiểm (`doiChieuKy` giữ dòng đã sửa tay khỏi bị đè), nhưng đường
    *  ghi `bc/quyetdinh/dong/<kỳ>` là việc của P3 lượt 2. Hiện ra mờ để thấy
    *  trước chỗ chứ không giả vờ bấm được rồi im lặng không làm gì. */
+  /* ICON VẼ THEO LINE, một màu — chủ dự án chốt 13/09/2026, thay cho emoji.
+   *
+   *  Emoji do HỆ ĐIỀU HÀNH vẽ: mỗi máy một hình, luôn nhiều màu, và không
+   *  nhận thuộc tính `color` nên không bao giờ hoà được với bảng — đúng chỗ
+   *  ✏️ 🗑 đang chọi lại tông xám của mọi thứ quanh nó.
+   *
+   *  `stroke="currentColor"` là cả điểm: icon đổi màu theo trạng thái của
+   *  nút chứa nó (xám lúc nghỉ, xanh lúc rê, đỏ ở nút Xoá), nên chỉ có MỘT
+   *  bản hình cho mọi trạng thái. Dựng bằng `innerHTML` với chuỗi hằng viết
+   *  ngay tại đây, không nhận dữ liệu nào từ ngoài. */
+  const ICON = {
+    sua: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    xoa: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>'
+       + '<path d="M10 11v6M14 11v6"/>',
+    loc: '<path d="M3 5h18l-7 8v6l-4 2v-8Z"/>',
+    cong: '<path d="M12 5v14M5 12h14"/>',
+  };
+
+  /** Một icon line. `to` = bề dày nét, để icon nhỏ không bị đặc lại. */
+  function icon(ten, to) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", String(to || 2));
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.innerHTML = ICON[ten] || "";
+    return svg;
+  }
+
   function nutDong(bieuTuong, nhan, bat, viec) {
     const td = el("td", "oIcon");
-    const b = el("button", "nutIcon", bieuTuong);
+    const b = el("button", "nutIcon" + (bieuTuong === "xoa" ? " nutXoa" : ""));
+    b.appendChild(icon(bieuTuong));
     b.type = "button";
     b.disabled = !bat;
     b.title = bat ? nhan
@@ -291,7 +324,8 @@
    *  lệ đọc lên y hệt một cái hỏng. Ba câu hỏi này vốn hỏi lần lượt, không
    *  hỏi cùng lúc. */
   function nutLoc(khoa) {
-    const b = el("button", "nutLoc" + (trangThai.loc === khoa ? " locDang" : ""), "⌄");
+    const b = el("button", "nutLoc" + (trangThai.loc === khoa ? " locDang" : ""));
+    b.appendChild(icon("loc", 2.2));
     b.type = "button";
     b.title = trangThai.loc === khoa ? "Đang lọc — bấm để bỏ lọc" : LOC[khoa].nhan;
     b.setAttribute("aria-label", LOC[khoa].nhan);
@@ -427,7 +461,8 @@
       td.appendChild(so);
     }
     if (!laQuanTri()) return td;
-    const b = el("button", "nutBonus", don.bonus ? "✎" : "+");
+    const b = el("button", "nutBonus");
+    b.appendChild(icon(don.bonus ? "sua" : "cong", 2.4));
     b.type = "button";
     b.title = don.bonus ? "Sửa hoặc xoá bonus của đơn này"
       : "Cộng thêm lợi nhuận cho đơn này (khách qua kho lấy, NCC giao hộ…)";
@@ -993,7 +1028,7 @@
    *  `đv` là đơn vị GÕ VÀO, không phải đơn vị lưu: KPI gõ bằng nghìn đồng
    *  (chủ dự án gõ "2.700.000" cho 2 tỷ 7), nhánh Firebase lưu bằng đồng. */
   const O_KPI = [
-    { khoa: "kpi", nhan: "KPI", dv: null, buoc: "1",
+    { khoa: "kpi", nhan: "KPI", dv: null, buoc: "1", phanCach: true,
       gt: "Mục tiêu doanh số QUY ĐỔI của line trong tháng, tính bằng nghìn đồng." },
     { khoa: "he_so_pt", nhan: "Hệ số quy đổi", dv: "%", buoc: "0.1",
       gt: "Tỉ suất lợi nhuận mục tiêu của line. Doanh số quy đổi của mỗi dòng "
@@ -1008,6 +1043,24 @@
    *  không quyết định con số nào cả, chỉ quyết định dấu phẩy đứng ở đâu. */
   const soVaoO = (khoa, gt) =>
     gt === null || gt === undefined ? "" : String(khoa === "kpi" ? gt / 1000 : gt);
+
+  /** Chấm phân cách hàng nghìn cho ô KPI (chủ dự án chốt 13/09/2026).
+   *
+   *  CHỈ ô KPI. Hai ô hệ số là phần trăm một-hai chữ số có phần lẻ (`7,5`) —
+   *  chấm ở đó vô nghĩa, và tệ hơn: `7.5` đọc ra "bảy nghìn năm" hay "bảy
+   *  phẩy năm" tuỳ người, đúng kiểu mơ hồ không được có trên một ô tiền.
+   *
+   *  Ô đổi sang `type="text"`: `type="number"` KHÔNG hiện được dấu phân cách
+   *  (trình duyệt tự chuẩn hoá giá trị và vứt mọi ký tự lạ). Đổi lại phải tự
+   *  chặn ký tự không phải số ở `guiKpi` — nó vốn đã làm thế.
+   *
+   *  Định dạng lúc RỜI ô, gỡ ra lúc VÀO ô. Định dạng ngay trong lúc gõ thì
+   *  mỗi lần chèn một dấu chấm là con trỏ nhảy về cuối, nên sửa một chữ số ở
+   *  giữa thành ra không sửa được. */
+  const chamNghin = (chu) => {
+    const so = String(chu).replace(/[^\d]/g, "");
+    return so ? so.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+  };
 
   function veDaiKpi(khung, kq) {
     /* Tab [Tổng hợp] không có dải setup: ở đó không có MỘT line nào để đặt hệ
@@ -1058,11 +1111,23 @@
       const nhan = el("label");
       nhan.appendChild(document.createTextNode(o.nhan));
       const oN = el("input", "oKpi");
-      oN.type = "number";
-      oN.step = o.buoc;
-      oN.min = "0";
+      if (o.phanCach) {
+        oN.type = "text";
+        oN.inputMode = "numeric";
+        oN.value = chamNghin(soVaoO(o.khoa, gt));
+        oN.addEventListener("focus", () => { oN.value = oN.value.replace(/\./g, ""); });
+        oN.addEventListener("blur", () => { oN.value = chamNghin(oN.value); });
+        /* Cờ đi CÙNG ô, không suy lại từ tên trường ở chỗ đọc: chỗ đọc mà tự
+           đoán "ô nào có dấu phân cách" là hai nơi phải khớp nhau, và lệch
+           một nơi thì hoặc `1.500.000` thành `NaN`, hoặc `7.5` thành `75`. */
+        oN.dataset.phanCach = "1";
+      } else {
+        oN.type = "number";
+        oN.step = o.buoc;
+        oN.min = "0";
+        oN.value = soVaoO(o.khoa, gt);
+      }
       oN.dataset.o = o.khoa;
-      oN.value = soVaoO(o.khoa, gt);
       oN.disabled = !duoc;
       /* Viền xanh = con số này là RIÊNG của kỳ đang xem, không phải mặc định.
          Không có dấu này thì người sửa không biết mình vừa đổi cho MỘT tháng
@@ -1198,7 +1263,16 @@
    *  nhau, và Gateway đọc theo kiểu đúng như vậy: `null` rút lại, vắng mặt là
    *  không nhắc tới. */
   async function guiKpi(dai, o) {
-    const tho = o.value.trim();
+    /* Bỏ dấu phân cách trước khi đọc số — CHỈ ở ô thật sự có nó.
+       Ô KPI hiện `1.500.000`, mà `Number("1.500.000")` ra `NaN`, và một `NaN`
+       đi vào đường ghi KPI là hỏng mọi con số quy đổi của line.
+       Nhưng bỏ chấm ở MỌI ô thì tệ hơn hẳn: hai ô hệ số là `type="number"`,
+       và `.value` của chúng luôn dùng DẤU CHẤM làm dấu thập phân (`"7.5"`)
+       bất kể trình duyệt hiện ra `7,5`. Bỏ chấm ở đó là hệ số 7,5% lặng lẽ
+       thành 75% — sai gấp mười trên mọi con số quy đổi của line. */
+    const tho = o.dataset.phanCach
+      ? o.value.trim().replace(/\./g, "")
+      : o.value.trim();
     const than = { line: trangThai.line };
     /* Có `ky` = ghi đè riêng kỳ ấy; vắng `ky` = đặt mặc định cho MỌI kỳ. Đúng
        hai chế độ của nút trên dải, không có chế độ thứ ba. */
@@ -1958,8 +2032,8 @@
              gộp ra, không phải một dòng của sổ, nên không có khoá bền để
              gắn quyết định vào. */
           const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.trong_pham_vi_ma !== false;
-          tr.appendChild(nutDong("✏️", "Sửa dòng", suaDuoc, "sua"));
-          tr.appendChild(nutDong("🗑", "Xoá dòng", suaDuoc, "xoa"));
+          tr.appendChild(nutDong("sua", "Sửa dòng", suaDuoc, "sua"));
+          tr.appendChild(nutDong("xoa", "Xoá dòng", suaDuoc, "xoa"));
           if (d.khoa) tr.dataset.khoaDong = d.khoa;
           if (d.da_sua_tay) tr.classList.add("hangSuaTay");
           hangDon.push(tr);
