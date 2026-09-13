@@ -17,6 +17,7 @@ import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
 import { apDungKpi, hanhKpi, kiemBangKpi, BANG_KPI_HAT_GIONG } from "./kpi.mjs";
 import { apDungBonus, LY_DO_BONUS } from "./bonus.mjs";
+import { dungKhoiSheet, COT_NGAY, COT_TIEN, HANG_DAU } from "./day-sheet.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
@@ -348,5 +349,26 @@ export default class extends WorkerEntrypoint {
    *  nhầm hằng số sẽ làm bài kế tiếp hỏng theo cách rất khó lần. */
   async bangKpiHatGiong() {
     return JSON.parse(JSON.stringify(BANG_KPI_HAT_GIONG));
+  }
+
+  /** Bảng đơn hàng của một line → các khối ô để ghi sang Google Sheet.
+   *
+   *  Gateway KHÔNG tự dựng ma trận này, và trình duyệt lại càng không: bố
+   *  cục cột, phép chia 1.000, và luật "chỉ dòng đầu của đơn mang ngày/số
+   *  BH/khách" đều là luật nghiệp vụ (LUẬT SỐ 1). Gateway nhận khối đã xong
+   *  rồi mang đi — xem `src/sheet.js`.
+   *
+   *  Ném khi vượt trần dòng. Để nó ném: đẩy sang Sheet một tháng thiếu dòng
+   *  mà trên Sheet không có gì báo là thiếu thì tệ hơn hẳn một lượt đẩy hỏng
+   *  có câu lỗi. */
+  async dungKhoiSheet(bang) {
+    return dungKhoiSheet(bang);
+  }
+
+  /** Ba hằng bố cục Sheet, để Gateway phủ định dạng đúng cột mà không khai
+   *  lại một bản thứ hai — hai bản là hai bản trôi khỏi nhau, và chỗ trôi ở
+   *  đây là cột tiền mất định dạng hoặc cột ngày hiện ra số 46235. */
+  async boCucSheet() {
+    return { cot_ngay: COT_NGAY, cot_tien: COT_TIEN.slice(), hang_dau: HANG_DAU };
   }
 }

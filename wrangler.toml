@@ -43,6 +43,17 @@ zone_name = "tinphatcrm.com"
 enabled = true
 invocation_logs = true
 
+# ---- Lượt đẩy Google Sheet tự động (13/09/2026) ----
+#
+# Chủ dự án chốt 17h30 giờ VN mỗi ngày. Cron của Cloudflare chạy theo UTC và
+# KHÔNG có ô khai múi giờ, nên 17:30 +07:00 phải quy đổi tay thành 10:30 UTC.
+# Cùng ngày, không lùi ngày — 17h30 trừ 7 tiếng vẫn nằm trong ngày ấy.
+#
+# Đổi giờ thì sửa ĐÚNG ở đây và nhớ quy đổi lại; `kiem/day-sheet.js` canh con
+# số này khớp với 17h30 để không ai sửa một nửa.
+[triggers]
+crons = ["30 10 * * *"]
+
 # ---- Cửa chặn của bộ kiểm (CLAUDE.md: "Bộ kiểm hỏng là build hỏng") ----
 #
 # ĐỂ Ở ĐÂY chứ không để trong ô "Build command" trên dashboard Cloudflare, và

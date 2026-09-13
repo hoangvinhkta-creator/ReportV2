@@ -1316,6 +1316,148 @@
     khung.appendChild(dai);
   }
 
+  /* ================= Dải đẩy sang Google Sheet (13/09/2026) =================
+   *
+   * Chủ dự án chốt: mỗi tháng tạo một Sheet mới cho từng nhân viên, dán link
+   * vào đây một lần, rồi 17h30 hằng ngày app tự ghi sang.
+   *
+   * LUẬT SỐ 1: ô này chỉ NHẬN một chuỗi và GỬI nó đi. Không một ô nào của
+   * bảng được dựng ở đây — Engine dựng toàn bộ ma trận
+   * (`engine/src/day-sheet.mjs`), kể cả phép chia 1.000 và luật "chỉ dòng
+   * đầu của đơn mang ngày/số BH/khách". Trình duyệt còn không biết Sheet có
+   * bao nhiêu cột.
+   *
+   * Kiểm hình thức link thì ĐƯỢC làm ở đây (CLAUDE.md cho phép "kiểm tra
+   * hình thức trước khi gửi") — nhưng Gateway vẫn kiểm lại, và Gateway mới
+   * là chỗ quyết định. Bản ở đây chỉ để người dán biết ngay mình thiếu #gid
+   * mà không phải đợi một vòng mạng. */
+
+  /** Ngày giờ ngắn cho dấu "đã đẩy lúc" — định dạng, không phải nghiệp vụ. */
+  function lucNgan(ms) {
+    const d = new Date(Number(ms));
+    if (!Number.isFinite(d.getTime())) return null;
+    const hai = (n) => String(n).padStart(2, "0");
+    return hai(d.getDate()) + "/" + hai(d.getMonth() + 1) + " "
+      + hai(d.getHours()) + ":" + hai(d.getMinutes());
+  }
+
+  function veDaiSheet(khung, kq) {
+    if (trangThai.line === null) return;
+    /* Chỉ Quản trị thấy dải này. Quản lí ĐỌC được link (rules mở cho cả hai
+       vai) nhưng không đổi và không đẩy được, nên hiện ra một dải chỉ để
+       khoá lại là thêm nhiễu cho người không có việc gì ở đó — khác hẳn dải
+       KPI, nơi con số hiển thị mới là thứ đáng đọc. */
+    if (!laQuanTri()) return;
+
+    const cai = kq.sheet || null;
+    const dai = el("div", "daiSheet");
+
+    const nhan = el("label");
+    nhan.appendChild(el("span", "nhanSheet", "Sheet tháng này"));
+    const oL = el("input", "oSheet");
+    oL.type = "url";
+    oL.placeholder = "Dán link Google Sheet của " + trangThai.line
+      + " tháng " + trangThai.ky + " (link phải có #gid)";
+    oL.value = (cai && cai.link) || "";
+    oL.title = "Mở ĐÚNG tab cần ghi rồi copy link trên thanh địa chỉ.\n"
+      + "App ghi từ dòng 3 xuống, cột A–J và O–S.\n"
+      + "Dòng 1 (công thức của bạn), dòng 2 (tiêu đề) và cột K–N không bị chạm tới.\n\n"
+      + "Xoá trắng ô này là bỏ setup của tháng — tháng này sẽ không đẩy đi đâu nữa.";
+    nhan.appendChild(oL);
+    dai.appendChild(nhan);
+
+    const nut = el("button", "nutNhoKpi", "Đẩy sang Sheet");
+    nut.type = "button";
+    nut.disabled = !(cai && cai.link);
+    nut.title = cai && cai.link
+      ? "Ghi ngay bộ số đang xem sang Sheet. Lượt tự động vẫn chạy 17h30 mỗi ngày."
+      : "Dán link ở ô bên trái trước đã.";
+    nut.addEventListener("click", () => dayNgay(dai, nut));
+    dai.appendChild(nut);
+
+    /* Dấu vết lượt đẩy gần nhất — hai trạng thái tách bạch, không gộp làm
+       một: đẩy hỏng thì phải thấy CÂU LỖI, không phải thấy một dấu "đã đẩy"
+       cũ mèm rồi tưởng mọi thứ vẫn chạy. */
+    if (cai && cai.day_loi) {
+      dai.appendChild(el("span", "sheetLoi", "Lượt đẩy gần nhất hỏng: " + cai.day_loi));
+    } else if (cai && cai.day_luc) {
+      const l = lucNgan(cai.day_luc);
+      if (l) dai.appendChild(el("span", "ghiChuKpi", "Đã đẩy lúc " + l));
+    } else if (cai && cai.link) {
+      dai.appendChild(el("span", "ghiChuKpi", "Chưa đẩy lần nào"));
+    }
+
+    dai.addEventListener("change", (e) => {
+      if (e.target === oL) guiSheetLink(dai, oL);
+    });
+    /* Enter = lưu ngay, cùng nhịp dải KPI: `change` chỉ bắn khi rời ô, mà
+       người dán link xong thường bấm Enter rồi ngồi nhìn. */
+    dai.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target === oL) { e.preventDefault(); oL.blur(); }
+    });
+
+    khung.appendChild(dai);
+  }
+
+  /** Lưu (hoặc rút) link Sheet của (kỳ, line) đang xem. */
+  async function guiSheetLink(dai, oL) {
+    const link = oL.value.trim();
+    /* Kiểm hình thức TRƯỚC khi đi mạng — nhưng chỉ đúng hai điều kiện hiển
+       nhiên, và Gateway vẫn kiểm lại đủ. Đây là phép lịch sự với người đang
+       gõ, không phải một cửa chặn. */
+    if (link && !/^https:\/\/docs\.google\.com\/spreadsheets\//.test(link)) {
+      $("loiDonHang").textContent = "Link phải là một bảng tính Google.";
+      return;
+    }
+    if (link && !/[#?&]gid=\d+/.test(link)) {
+      $("loiDonHang").textContent = "Link thiếu #gid — mở đúng tab cần ghi rồi "
+        + "copy lại link trên thanh địa chỉ.";
+      return;
+    }
+
+    dai.classList.add("dangGui");
+    try {
+      await goiGhi("/api/sheet-link", {
+        line: trangThai.line, ky: trangThai.ky, link: link === "" ? null : link,
+      });
+    } catch (e) {
+      dai.classList.remove("dangGui");
+      $("loiDonHang").textContent = "Không lưu được link Sheet: " + e.message;
+      return;
+    }
+    dai.classList.remove("dangGui");
+    $("loiDonHang").textContent = "";
+    /* Vẽ lại để nút "Đẩy sang Sheet" mở/khoá theo đúng trạng thái vừa lưu —
+       dải này chỉ có MỘT ô nên không vướng bài học "vẽ lại muộn" của dải
+       KPI (ở đó tiêu điểm còn nhảy sang ô kế tiếp). */
+    taiKy({ imLang: true });
+  }
+
+  /** Đẩy ngay (kỳ, line) đang xem sang Sheet. */
+  async function dayNgay(dai, nut) {
+    nut.disabled = true;
+    const truoc = nut.textContent;
+    nut.textContent = "Đang đẩy…";
+    $("loiDonHang").textContent = "";
+    try {
+      const kq = await goiGhi("/api/day-sheet", {
+        line: trangThai.line, ky: trangThai.ky,
+      });
+      nut.textContent = kq.bo_qua
+        ? "Chưa khai link"
+        : "Xong — " + soNguyen(kq.so_dong) + " dòng sang \"" + kq.ten_tab + "\"";
+    } catch (e) {
+      nut.textContent = truoc;
+      nut.disabled = false;
+      /* Câu lỗi của Google đi thẳng ra đây (Gateway đã dịch sang việc phải
+         làm) — đó là thứ duy nhất giúp sửa được "chưa chia sẻ file". */
+      $("loiDonHang").textContent = "Đẩy sang Sheet hỏng: " + e.message;
+      return;
+    }
+    /* Vẽ lại sau một nhịp để người bấm kịp đọc câu "Xong — N dòng". */
+    setTimeout(() => { if (dai.isConnected) taiKy({ imLang: true }); }, 2500);
+  }
+
   /** Gửi một con số của dải setup.
    *
    *  Ô trống = RÚT LẠI con số (`null`), không phải "gõ số 0". Hai thứ khác
@@ -1899,6 +2041,11 @@
        trong tháng vẫn phải đặt được KPI cho nó — nếu không thì line mới (hoặc
        tháng đầu của một line) là chỗ duy nhất không đặt được mục tiêu. */
     veDaiKpi(khung, kq);
+    /* Dải Sheet cũng dựng TRƯỚC phép kiểm "có đơn nào không", và cùng lý do:
+       một line chưa có đơn vẫn phải dán được link cho tháng này. Thêm một lý
+       do riêng — đẩy một line RỖNG là việc có nghĩa: nó xoá sạch dải dữ liệu
+       cũ trên Sheet, đúng thứ cần khi một đơn bị xoá hết. */
+    veDaiSheet(khung, kq);
 
     if (!b.ngay.length) {
       demLaiConNo(false);

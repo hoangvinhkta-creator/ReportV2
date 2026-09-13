@@ -1,5 +1,6 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
 import { docDb, docDbNong, ghiDb, vaDb, xoaDb } from './firebase.js';
+import { phanTichLink, daySangTab, dinhDangCot, LoiSheet } from './sheet.js';
 import {
   docNguonTracking, docMaBangGia, ghiPhanLoai, cauLoiPhanLoai, docMinNgay, LoiTracking,
 } from './tracking.js';
@@ -185,7 +186,11 @@ function boc(canVai, chay) {
       nhatKy({ rid, uid: nguoi ? nguoi.uid : null,
                duong: new URL(request.url).pathname, ma, ly,
                ms: Date.now() - batDau });
-      return jsonPhanHoi({ loi: CAU_LOI[ma] || "Có lỗi phía máy chủ.", rid }, ma, rid);
+      /* `choNguoi` chỉ có mặt khi handler tự viết một câu dành cho người đọc
+         (xem `LoiXacThuc` ở src/auth.js) — hiện chỉ đường đẩy Sheet dùng tới.
+         Mọi lỗi khác vẫn ra đúng câu chung, không lộ gì thêm. */
+      const cauCho = e instanceof LoiXacThuc && e.choNguoi ? e.choNguoi : null;
+      return jsonPhanHoi({ loi: cauCho || CAU_LOI[ma] || "Có lỗi phía máy chủ.", rid }, ma, rid);
     }
   };
 }
@@ -348,6 +353,15 @@ const DUONG_NGAY_CONG = "bc/quyetdinh/cong";
    quyết định của người, khoá theo SỐ CHỨNG TỪ — xem `engine/src/bonus.mjs`
    cho toàn bộ lý do. */
 const DUONG_BONUS = "bc/quyetdinh/bonus";
+
+/* Link Google Sheet đích của từng (kỳ, line) — chủ dự án chốt 13/09/2026:
+   mỗi tháng tạo một Sheet mới cho từng nhân viên rồi dán link vào tab line.
+   Khoá theo KỲ chứ không chỉ theo line, vì đó đúng là cách anh làm việc:
+   sang tháng mới ô trống trở lại, không ai lỡ ghi đè lên file tháng trước.
+
+   Nhánh `bc/quyetdinh` cho vai quantri|quanly ĐỌC (rules đã chạy sẵn), còn
+   GHI thì chỉ qua Gateway và chỉ vai `quantri` — xem `datSheetLink`. */
+const DUONG_SHEET = "bc/quyetdinh/sheet";
 
 /** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
  *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
@@ -823,7 +837,7 @@ async function dungBangDonHang(env, ky, line, rid) {
      bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
      con số không ai nhìn. */
   const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong, bonus,
-         kqNguon, doanhSoKyTruoc] = await Promise.all([
+         kqNguon, doanhSoKyTruoc, sheetLink] = await Promise.all([
     docDb("bc/dong/" + ky, env),
     huaBangLine,
     /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
@@ -850,6 +864,11 @@ async function dungBangDonHang(env, ky, line, rid) {
     docDb(DUONG_BONUS + "/" + ky, env),
     huaNguon,
     line ? null : docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid),
+    /* Link Sheet đích của ĐÚNG (kỳ, line) đang xem. Chỉ tab của một line mới
+       có ô này — tab [Tổng hợp] không đẩy đi đâu cả, nên không đọc.
+       Đọc kèm ở đây thay vì mở một route riêng cho màn hình gọi: một lượt
+       mạng nữa cho một chuỗi ngắn là đổi tốc độ lấy đúng con số không. */
+    line ? docDb(DUONG_SHEET + "/" + ky + "/" + line, env) : null,
   ]);
   const ms_doc = Date.now() - dong0;
 
@@ -920,8 +939,15 @@ async function dungBangDonHang(env, ky, line, rid) {
        đầu như lượt này. */
     nhatKy({ rid, duong: "/api/don-hang", ky, line: line || null,
              ms_doc, ms_gia, ms_engine: Date.now() - eng0 });
+    /* Đọc link không được thì để `null` và KHÔNG chặn bảng — cùng lối cột
+       quy đổi đã chọn ở trên. Mất ô dán link một lượt còn hơn mất cả bảng vì
+       một nhánh phụ không trả lời. */
+    const sheet = sheetLink && sheetLink.ok && sheetLink.val
+      ? { link: sheetLink.val.link || null, day_luc: sheetLink.val.day_luc || null,
+          day_loi: sheetLink.val.day_loi || null }
+      : null;
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
-             trong_pham_vi_ma: trongPhamVi };
+             trong_pham_vi_ma: trongPhamVi, sheet };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
@@ -1423,6 +1449,167 @@ const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
   return kemBangMoi(env, ky, than, rid, { ghi: true, ky, so_ct });
 });
 
+/* =================== ĐẨY SANG GOOGLE SHEET (13/09/2026) ===================
+ *
+ * Chủ dự án chốt: mỗi tháng tạo một Sheet mới cho từng nhân viên, dán link
+ * vào tab line tương ứng, rồi 17h30 hằng ngày app tự ghi sang — cộng một nút
+ * bấm tay cho lượt vừa tải sổ xong, khỏi phải chờ tới giờ.
+ *
+ * VÌ SAO LINK LÀ DỮ LIỆU SỬA ĐƯỢC TRÊN MÀN HÌNH, khác hẳn repo Marketing:
+ * bên đó `SHEET_ID` nằm trong `wrangler.toml` và đổi nó phải qua một commit,
+ * vì nhánh `mkt/*` cho MỌI nhân viên ghi thẳng từ trình duyệt — ai đổi được
+ * ID là lặng lẽ đổi được đích đến của cả bảng giá. Bên này nhánh
+ * `bc/quyetdinh` chỉ ghi được qua Gateway, và đường ghi dưới đây chỉ mở cho
+ * vai `quantri`. Ba rào còn lại, chốt cùng chủ dự án trước khi làm: mỗi lượt
+ * đổi link ghi nhật ký kèm uid, màn hình luôn hiện rõ đang đẩy sang file
+ * nào, và link phải mang `#gid` nên không có chuyện đoán nhầm tab.
+ *
+ * Dữ liệu đi qua đây NẶNG hơn bảng giá bên Marketing — có tên khách, số điện
+ * thoại, địa chỉ. Chốt chặn cuối vẫn là quyền chia sẻ của chính file Sheet;
+ * không dòng mã nào ở đây che được việc bấm nhầm "Bất kỳ ai có liên kết".
+ */
+
+/** Đẩy MỘT (kỳ, line) sang Sheet đã khai. Dùng chung cho nút bấm tay và cho
+ *  lượt chạy tự động — một đường duy nhất, để hai lối vào không thể lệch
+ *  nhau về luật.
+ *
+ *  Trả `{ bo_qua: "..." }` khi line chưa khai link: đó KHÔNG phải lỗi, đó là
+ *  trạng thái thường của một line chủ dự án chưa setup tháng này. */
+async function dayMotLine(env, ky, line, rid) {
+  const duong = DUONG_SHEET + "/" + ky + "/" + line;
+  const cai = await docDb(duong, env);
+  if (!cai.ok) throw new LoiXacThuc(503, "khong-doc-duoc-sheet-link:" + chiTietLoi(cai));
+  const link = cai.val && cai.val.link;
+  if (!link) return { bo_qua: "chua-khai-link", ky, line };
+
+  const dia = phanTichLink(link);
+  if (dia.loi) throw new LoiXacThuc(400, "link-hong:" + dia.loi, dia.loi);
+
+  /* Dựng bảng bằng ĐÚNG đường màn hình đang dùng — không có đường thứ hai.
+     Một đường thứ hai là chỗ để con số trên Sheet và con số trên màn hình
+     lệch nhau mà không ai đối chiếu. */
+  const kq = await dungBangDonHang(env, ky, line, rid);
+
+  /* Nguồn giá hỏng thì DỪNG, không đẩy. Bảng vẫn hiện được trên màn hình
+     (người xem thấy ngay mấy cột trống và biết vì sao), nhưng ghi xuống
+     Sheet thì khác hẳn: nó ĐÈ mất bộ số đúng của lượt trước bằng một bộ
+     thiếu giá vốn, và trên Sheet không có gì nói là thiếu. */
+  if (kq.loi_nguon_ma) throw new LoiXacThuc(503, "nguon-gia-hong:" + kq.loi_nguon_ma);
+  if (kq.loi_nguon_kpi) throw new LoiXacThuc(503, "nguon-kpi-hong:" + kq.loi_nguon_kpi);
+
+  let khoi, boCuc;
+  try {
+    [khoi, boCuc] = await Promise.all([
+      env.REPORT_ENGINE.dungKhoiSheet(kq.bang),
+      env.REPORT_ENGINE.boCucSheet(),
+    ]);
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-khoi-sheet:" + (e && e.message));
+  }
+
+  const ra = await daySangTab(env, { id: dia.id, gid: dia.gid, khoi: khoi.khoi },
+                              { hangDau: khoi.hang_dau });
+
+  /* Định dạng chạy SAU và không chặn kết quả: ô đã mang số đúng rồi, định
+     dạng hỏng thì cùng lắm là cột ngày hiện ra 46235. Nuốt lỗi ở đây nhưng
+     GHI nhật ký — im lặng hoàn toàn thì không ai biết vì sao bảng xấu. */
+  if (khoi.so_dong) {
+    try {
+      await dinhDangCot(env, {
+        id: dia.id, gid: dia.gid, cotNgay: boCuc.cot_ngay, cotTien: boCuc.cot_tien,
+        hangDau: khoi.hang_dau, hangCuoi: khoi.hang_cuoi,
+      });
+    } catch (e) {
+      nhatKy({ rid, duong: "/api/day-sheet", ky, line,
+               canh_bao: "dinh-dang-hong:" + (e && (e.vi || e.message)) });
+    }
+  }
+
+  /* Dấu vết lượt đẩy nằm CẠNH link, để màn hình nói được "lần cuối lúc nào".
+     `day_loi: null` xoá dấu lỗi của lượt trước — không xoá thì một lượt hỏng
+     hôm qua còn kêu mãi sau khi đã sửa xong. */
+  await vaDb(duong, { day_luc: { ".sv": "timestamp" }, day_loi: null,
+                      day_so_dong: ra.so_dong }, env);
+
+  return { ky, line, ten_tab: ra.ten_tab, so_dong: ra.so_dong };
+}
+
+/* =================== POST /api/sheet-link ===================
+ * Khai (hoặc rút) link Sheet đích của một (kỳ, line).
+ *
+ * CHỈ QUẢN TRỊ — cùng mức `dat-kpi`: đổi link là đổi ĐÍCH ĐẾN của toàn bộ số
+ * liệu một line, kèm tên khách và số điện thoại.
+ */
+const datSheetLink = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const line = than && typeof than.line === "string" ? than.line.trim() : "";
+  if (!line || line.length > 60) throw new LoiXacThuc(400, "line-khong-hop-le");
+  if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
+  const ky = than && than.ky;
+  if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+
+  const duong = DUONG_SHEET + "/" + ky + "/" + line;
+
+  /* Ô trống = RÚT LẠI link, về "chưa setup tháng này" — xoá hẳn bản ghi chứ
+     không ghi `link: null`, cùng quy ước `gia-dung` và `dat-cong` đã chọn. */
+  if (than.link === null || than.link === "") {
+    const x = await xoaDb(duong, env);
+    if (!x.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-sheet-link:" + chiTietLoi(x));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/sheet-link", ky, line, viec: "xoa" });
+    return { ghi: true, ky, line, link: null };
+  }
+
+  const dia = phanTichLink(than.link);
+  /* Từ chối NGAY lúc lưu, không đợi tới lượt đẩy mới hỏng: người dán link
+     đang nhìn màn hình lúc này, còn lượt 17h30 thì không ai ngồi đó. */
+  if (dia.loi) throw new LoiXacThuc(400, "link-hong:" + dia.loi, dia.loi);
+
+  const link = String(than.link).trim();
+  if (link.length > 500) throw new LoiXacThuc(400, "link-qua-dai");
+
+  const r = await vaDb(duong, {
+    link,
+    /* Dấu vết đi CÙNG lượt ghi — ba rào đã chốt với chủ dự án, đây là rào
+       thứ nhất: mỗi lượt đổi đích đến biết được của ai và lúc nào. */
+    boi: nguoi.email || nguoi.uid,
+    luc: { ".sv": "timestamp" },
+    day_loi: null,
+  }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-sheet-link:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/sheet-link", ky, line, sheet_id: dia.id });
+  return { ghi: true, ky, line, link };
+});
+
+/* =================== POST /api/day-sheet ===================
+ * Đẩy ngay một (kỳ, line) — nút trên dải setup. Chỉ Quản trị.
+ */
+const daySheet = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const line = than && typeof than.line === "string" ? than.line.trim() : "";
+  if (!line || line.length > 60) throw new LoiXacThuc(400, "line-khong-hop-le");
+  if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
+  const ky = than && than.ky;
+  if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+
+  try {
+    const ra = await dayMotLine(env, ky, line, rid);
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/day-sheet", ky, line,
+             so_dong: ra.so_dong ?? null, bo_qua: ra.bo_qua ?? null });
+    return ra;
+  } catch (e) {
+    /* Lỗi của Google có câu chữ dành cho người đọc (`LoiSheet.vi`) — đưa
+       nguyên câu ấy ra màn hình, vì nó nói ĐÚNG việc phải làm ("chia sẻ file
+       cho service account"). Khác hẳn lỗi nội bộ, thứ chỉ vào nhật ký.
+       Ghi luôn xuống Firebase để lượt mở màn hình sau còn thấy. */
+    if (e instanceof LoiSheet) {
+      await vaDb(DUONG_SHEET + "/" + ky + "/" + line, { day_loi: e.vi }, env);
+      throw new LoiXacThuc(e.ma === 503 ? 503 : 400, "sheet:" + e.vi, e.vi);
+    }
+    throw e;
+  }
+});
+
 const API_ROUTES = new Map([
   ["GET /api/me", layMe],
   ["GET /api/bao-cao/suc-khoe", laySucKhoeCongTy],
@@ -1440,6 +1627,8 @@ const API_ROUTES = new Map([
   ["POST /api/gia-dung", datGiaDung],
   ["POST /api/nap-kpi", napKpi],
   ["POST /api/bonus", datBonus],
+  ["POST /api/sheet-link", datSheetLink],
+  ["POST /api/day-sheet", daySheet],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn
@@ -1554,9 +1743,75 @@ async function xuLy(request, env) {
   return env.ASSETS.fetch(request);
 }
 
+/* =================== Lượt đẩy Sheet tự động (cron) ===================
+ *
+ * 17h30 giờ VN mỗi ngày — `wrangler.toml` khai `30 10 * * *` (UTC+7).
+ *
+ * Đẩy kỳ HIỆN TẠI và kỳ LIỀN TRƯỚC. Kỳ trước có mặt vì đầu tháng chủ dự án
+ * còn sửa sổ tháng cũ vài hôm; chỉ đẩy kỳ hiện tại thì những lượt sửa ấy
+ * nằm lại trên màn hình mà không bao giờ sang tới Sheet. Line nào chưa khai
+ * link thì `dayMotLine` trả `bo_qua` — không phải lỗi, và cũng không gọi
+ * Google lượt nào.
+ *
+ * "Hiện tại" tính theo giờ VN chứ không theo UTC: 17h30 VN là 10h30 UTC
+ * cùng ngày, nhưng một lượt chạy tay lúc khuya sẽ lệch sang tháng trước nếu
+ * lấy tháng theo UTC. Kỳ là một khái niệm của người dùng, nên đọc theo múi
+ * giờ của người dùng.
+ *
+ * MỘT LINE HỎNG KHÔNG ĐƯỢC LÀM DỪNG CÁC LINE CÒN LẠI — chạy tuần tự và bắt
+ * lỗi từng lượt. Lỗi ghi xuống `day_loi` cạnh link để lượt mở màn hình sau
+ * còn thấy, và vào nhật ký để `wrangler tail` đọc được ngay.
+ */
+const VN_LECH_MS = 7 * 3600 * 1000;
+
+/** Kỳ "YYYY-MM" theo giờ VN, lùi `luiThang` tháng. */
+function kyVN(luc, luiThang) {
+  const d = new Date(luc + VN_LECH_MS);
+  const m = d.getUTCMonth() - (luiThang || 0);
+  const t = new Date(Date.UTC(d.getUTCFullYear(), m, 1));
+  return t.getUTCFullYear() + "-" + String(t.getUTCMonth() + 1).padStart(2, "0");
+}
+
+async function dayTheoLich(env, luc, rid) {
+  if (!env.REPORT_ENGINE) { nhatKy({ rid, duong: "cron/day-sheet", ly: "thieu-engine" }); return; }
+
+  const bangLine = await docDb("bc/quyetdinh/line", env);
+  if (!bangLine.ok || !bangLine.val || !Array.isArray(bangLine.val.thu_tu)) {
+    nhatKy({ rid, duong: "cron/day-sheet", ly: "khong-doc-duoc-bang-line" });
+    return;
+  }
+
+  let day = 0, boQua = 0, hong = 0;
+  for (const ky of [kyVN(luc, 0), kyVN(luc, 1)]) {
+    for (const line of bangLine.val.thu_tu) {
+      try {
+        const ra = await dayMotLine(env, ky, line, rid);
+        if (ra.bo_qua) { boQua++; continue; }
+        day++;
+        nhatKy({ rid, duong: "cron/day-sheet", ky, line, so_dong: ra.so_dong });
+      } catch (e) {
+        hong++;
+        const vi = e instanceof LoiSheet ? e.vi : ((e && (e.ly || e.message)) || "khong-ro");
+        /* Ghi lỗi cạnh link, nuốt lỗi của chính lượt ghi ấy: không ghi được
+           dấu lỗi thì vẫn phải chạy tiếp line sau. */
+        try { await vaDb(DUONG_SHEET + "/" + ky + "/" + line, { day_loi: vi }, env); }
+        catch (e2) { /* nhật ký bên dưới đã nói đủ */ }
+        nhatKy({ rid, duong: "cron/day-sheet", ky, line, loi: vi });
+      }
+    }
+  }
+  nhatKy({ rid, duong: "cron/day-sheet", xong: true, day, bo_qua: boQua, hong });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const res = await xuLy(request, env);
     return withSecurityHeaders(res);
+  },
+
+  /** Cloudflare gọi hàm này theo `[triggers] crons` của `wrangler.toml`. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(dayTheoLich(env, (event && event.scheduledTime) || Date.now(),
+                              crypto.randomUUID()));
   },
 };

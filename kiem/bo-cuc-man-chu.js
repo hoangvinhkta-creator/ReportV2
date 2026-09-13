@@ -291,9 +291,10 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
 
      Đếm bằng con số tuyệt đối chứ không "≥ 3": một lượt sửa tại chỗ mới mà
      quên `imLang` sẽ làm bài này đỏ, và đó đúng là lúc cần biết. */
-  ok('  · và TÁM lượt vẽ lại êm (gán mã · 4 lượt KPI của P5 · ngày công của '
-     + 'P6 · 1 lượt dự phòng trong apBangMoi) đều gọi nó với tuỳ chọn ấy',
-     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 8);
+  ok('  · và MƯỜI lượt vẽ lại êm (gán mã · 4 lượt KPI của P5 · ngày công của '
+     + 'P6 · 1 lượt dự phòng trong apBangMoi · 2 lượt của dải đẩy Sheet) đều '
+     + 'gọi nó với tuỳ chọn ấy',
+     (JS.match(/taiKy\(\{\s*imLang:\s*true\s*\}\)/g) || []).length, 10);
 
   /* ── Đường NHANH của sửa/xoá một dòng (chủ dự án chốt 12/09/2026: "hiển
      thị kết quả ngay lập tức thay vì phải đợi") ──
@@ -620,7 +621,12 @@ console.log('\n14) Giao diện — nút phẳng, icon vẽ theo line, ô KPI có
      hẳn — bỏ SẠCH mọi dấu hiệu thì không ai biết chỗ nào gõ được. */
   for (const [ten, luat] of [['KPI/hệ số', '\\.daiKpi \\.oKpi \\{'],
                              ['ngày công', '\\.bangTongHop input\\.oNgayCong \\{'],
-                             ['"Đặt riêng tháng này"', '\\.daiKpi \\.nutNhoKpi \\{']]) {
+                             /* Khớp lỏng phần đuôi selector: dải đẩy Sheet
+                                (13/09/2026) dùng chung khuôn nút này nên hai
+                                selector đứng chung một luật. Ghim dấu `{`
+                                ngay sau tên lớp thì bài đỏ vì một chuyện
+                                không liên quan gì tới "nút có phẳng không". */
+                             ['"Đặt riêng tháng này"', '\\.daiKpi \\.nutNhoKpi[^{]*\\{']]) {
     const khoi = (cssS.match(new RegExp(luat + '[^}]*\\}')) || [''])[0];
     ok('ô ' + ten + ' không còn nền trắng',
        /background:\s*(transparent|none)/.test(khoi), true);

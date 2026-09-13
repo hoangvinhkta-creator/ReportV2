@@ -542,17 +542,47 @@
   .daiKpi .datKpi { font-weight: 600; }
   .daiKpi .datKpi.thieu { color: #92400e; font-weight: 400; }
   .daiKpi .ghiChuKpi { color: #6b7280; font-size: 12px; }
-  .daiKpi .nutNhoKpi {
+  .daiKpi .nutNhoKpi, .daiSheet .nutNhoKpi {
     font: inherit; font-size: 12px; font-weight: 600; padding: 2px 8px; cursor: pointer;
     border: 1px solid transparent; border-radius: 8px; background: none; color: #3d4a63;
     transition: background .12s, color .12s;
   }
-  .daiKpi .nutNhoKpi:hover { background: rgba(29,91,234,.10); color: #1d5bea; }
+  .daiKpi .nutNhoKpi:hover, .daiSheet .nutNhoKpi:hover:not(:disabled) {
+    background: rgba(29,91,234,.10); color: #1d5bea;
+  }
+  /* Nút đẩy khoá khi chưa dán link — nói bằng màu chứ không chỉ bằng `title`,
+     vì một nút trông bấm được mà bấm không ăn là lời hứa hỏng. */
+  .daiSheet .nutNhoKpi:disabled { color: #9aa3b2; cursor: not-allowed; }
   .daiKpi.dangGui { opacity: .55; }
   /* Quản lí ĐỌC được dải này (rules của bc/quyetdinh mở cho cả hai vai) nhưng
      không đặt được — Gateway chặn. Khoá ô sẵn và nói lý do ở `title` thay vì
      để họ gõ rồi ăn 403: một ô gõ được mà lưu không được là lời hứa hỏng. */
   .daiKpi .oKpi:disabled { background: none; color: #6b7280; cursor: not-allowed; }
+
+  /* ---- Dải đẩy sang Google Sheet (13/09/2026) ----
+     Một hàng RIÊNG dưới dải KPI, không chen vào cùng hàng: dải KPI là mấy ô
+     số ngắn đọc lướt được, còn ô này là một link dài. Nhét chung thì hàng
+     xuống dòng loạn xạ và mấy con số KPI bị đẩy đi mỗi lượt mỗi chỗ.
+     Chỉ Quản trị thấy dải này (don-hang.js), nên không có trạng thái khoá. */
+  .daiSheet {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 0 0 6px; margin: -4px 0 8px; font-size: 13px;
+  }
+  .daiSheet label { display: flex; align-items: center; gap: 6px; flex: 1 1 420px; }
+  .daiSheet .nhanSheet { color: #6b7280; white-space: nowrap; }
+  .daiSheet .oSheet {
+    font: inherit; flex: 1 1 auto; min-width: 0; padding: 3px 7px;
+    border: 1px solid transparent; border-radius: 6px; background: transparent;
+    color: inherit; transition: border-color .12s, background .12s;
+  }
+  .daiSheet .oSheet:hover { border-color: #cbd5e1; }
+  .daiSheet .oSheet:focus { border-color: #1d5bea; background: #fff; outline: none; }
+  .daiSheet .oSheet::placeholder { color: #9aa3b2; }
+  /* Lỗi lượt đẩy gần nhất: đỏ thật, không phải vàng "còn nợ" — số trên Sheet
+     đang CŨ mà không có gì khác trên màn hình nói ra điều đó. */
+  .daiSheet .sheetLoi { color: #b91c1c; font-size: 12px; }
+  .daiSheet .ghiChuKpi { color: #6b7280; font-size: 12px; }
+  .daiSheet.dangGui { opacity: .55; }
 
   /* ---- Khung nạp bộ số KPI lượt đầu (P5) ----
      Vàng nhạt như băng "còn nợ": có việc cần làm, nhưng không phải sự cố. */
