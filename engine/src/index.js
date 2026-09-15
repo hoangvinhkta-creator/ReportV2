@@ -5,7 +5,7 @@
  */
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { gopSoBanHang } from "./gop-ban-hang.mjs";
-import { gopTheoLine, gopLineTheoThoiGian } from "./line.mjs";
+import { gopTheoLine, gopLineTheoThoiGian, gopLineTheoNgay } from "./line.mjs";
 import { gopSucKhoeCongTy } from "./gop-theo-thoi-gian.mjs";
 import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
@@ -164,7 +164,7 @@ export default class extends WorkerEntrypoint {
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
                          ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc,
-                         bangCong, quyetDinhBonus, doanhSoLineNamTruoc) {
+                         bangCong, quyetDinhBonus, doanhSoLineNamTruoc, mtd) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -196,7 +196,7 @@ export default class extends WorkerEntrypoint {
        trống đúng một khoảng giữa hai lượt deploy, không sai số nào. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc);
+      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc, mtd);
     return bang;
   }
 
@@ -207,7 +207,7 @@ export default class extends WorkerEntrypoint {
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
                           bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong,
-                          quyetDinhBonus, doanhSoLineNamTruoc) {
+                          quyetDinhBonus, doanhSoLineNamTruoc, mtd) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
@@ -232,7 +232,7 @@ export default class extends WorkerEntrypoint {
        không giải thích. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc);
+      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc, mtd);
     return bang;
   }
 
@@ -349,6 +349,21 @@ export default class extends WorkerEntrypoint {
    *  nhầm hằng số sẽ làm bài kế tiếp hỏng theo cách rất khó lần. */
   async bangKpiHatGiong() {
     return JSON.parse(JSON.stringify(BANG_KPI_HAT_GIONG));
+  }
+
+  /** Cây `bc/ky` một kỳ + bảng line → doanh số theo LINE × TỪNG NGÀY, kèm
+   *  tổng của từng line.
+   *
+   *  Nguyên liệu của vế "tính tới hôm nay" ở hai cột so sánh — xem
+   *  `gopLineTheoNgay` bên `line.mjs` cho toàn bộ lý do.
+   *
+   *  Gateway gọi hàm này THAY CHO `gopTheoLine` ở đường đọc kỳ mốc, nhưng
+   *  phải có đường LÙI về `gopTheoLine` khi nó ném: giữa hai lượt deploy
+   *  song song (bẫy số 4) một Gateway bản mới sẽ gặp Engine bản cũ chưa có
+   *  hàm này. Lùi về thì hai cột mất vế MTD trong ít phút — đúng hành vi cũ,
+   *  không phải một con số sai. */
+  async gopLineTheoNgay(cayKy, bangLine) {
+    return gopLineTheoNgay(cayKy, bangLine);
   }
 
   /** Bảng đơn hàng của một line → các khối ô để ghi sang Google Sheet.

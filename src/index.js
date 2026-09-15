@@ -755,19 +755,62 @@ async function docDoanhSoLineMoc(env, kyMoc, huaBangLine, rid, nhan) {
     const truTheoKy = await tinhTruXoaTay(env, mot);
     const cay = truTheoKy ? await env.REPORT_ENGINE.truVaoCayKy(mot, truTheoKy) : mot;
 
-    /* `gopTheoLine` là hàm Engine ĐÃ CÓ từ P2 — cố ý không mở một hàm Engine
-       mới cho việc này. Hàm mới thì Gateway bản mới gọi vào Engine bản cũ sẽ
-       nổ 503 giữa hai lượt deploy song song (bẫy số 4), chứ không chỉ để
-       trống một cột. */
+    /* `gopLineTheoNgay` trả CẢ tổng lẫn bản kê theo từng ngày — hạt ngày là
+       nguyên liệu của vế "tính tới hôm nay" (15/09/2026).
+
+       CÓ ĐƯỜNG LÙI, bắt buộc: đây là hàm Engine MỚI, nên giữa hai lượt
+       deploy song song một Gateway bản mới sẽ gặp Engine bản cũ chưa có nó
+       (bẫy số 4). Lùi về `gopTheoLine` — hàm đã có từ P2 — thì hai cột mất
+       vế MTD trong ít phút, đúng hành vi cũ, chứ không nổ 503 cả bảng. */
+    try {
+      const gn = await env.REPORT_ENGINE.gopLineTheoNgay(cay, bangLine);
+      return { tong: gn.tong || {}, theo_ngay: gn.theo_ngay || {} };
+    } catch (e) {
+      nhatKy({ rid, duong: "/api/don-hang",
+               canh_bao: (nhan || "ky-truoc") + "-khong-co-hat-ngay:" + (e && e.message) });
+    }
     const gop = await env.REPORT_ENGINE.gopTheoLine(cay, bangLine);
     const ra = {};
     for (const ten of Object.keys(gop.line || {})) ra[ten] = gop.line[ten].doanh_so;
-    return ra;
+    return { tong: ra, theo_ngay: null };
   } catch (e) {
     nhatKy({ rid, duong: "/api/don-hang",
              canh_bao: (nhan || "ky-truoc") + "-hong:" + (e && e.message) });
     return null;
   }
+}
+
+/* Lệch múi giờ VN so với UTC. Worker chạy ở UTC, còn "hôm nay" và "kỳ này"
+   là khái niệm của NGƯỜI DÙNG — đọc theo đồng hồ của họ. Dùng ở hai chỗ:
+   mốc cắt "tính tới hôm nay" ngay dưới đây, và lượt đẩy Sheet 17h30. Khai
+   MỘT bản, vì hai bản lệch nhau là hai màn hình nói hai ngày khác nhau. */
+const VN_LECH_MS = 7 * 3600 * 1000;
+
+/** Phần TỔNG của một kỳ mốc — đúng hình dạng `apDungKpi` vẫn nhận từ P6.
+ *  Giữ nguyên hình dạng ấy thay vì đổi chữ ký hàm Engine: cột "Vs. Tháng
+ *  trước" đang chạy đúng, và đổi kiểu tham số của nó là mời một lỗi im lặng
+ *  vào đúng chỗ không cần sửa. */
+const tongMoc = (m) => (m && m.tong) || null;
+
+/** Gói nguyên liệu "tính tới hôm nay" cho Engine.
+ *
+ *  `ngay_hom_nay` tính theo GIỜ VN, không theo UTC: Worker chạy ở UTC, nên
+ *  từ 7h tối VN trở đi `new Date()` đã sang ngày mới bên UTC và mốc cắt sẽ
+ *  nhảy sớm một ngày. Kỳ và ngày là khái niệm của NGƯỜI DÙNG, đọc theo múi
+ *  giờ của người dùng — cùng luật `kyVN()` của lượt đẩy Sheet đang theo.
+ *
+ *  Engine mới là nơi quyết định có ÁP mốc ấy hay không (kỳ đang xem phải
+ *  chứa hôm nay). Gateway chỉ nói "hôm nay là ngày mấy" — một sự thật về
+ *  đồng hồ, không phải một luật đọc số. */
+function goiMtd(kyTruocMoc, namTruocMoc) {
+  const d = new Date(Date.now() + VN_LECH_MS);
+  const hai = (n) => String(n).padStart(2, "0");
+  return {
+    ngay_hom_nay: d.getUTCFullYear() + "-" + hai(d.getUTCMonth() + 1) + "-"
+      + hai(d.getUTCDate()),
+    ky_truoc_theo_ngay: (kyTruocMoc && kyTruocMoc.theo_ngay) || null,
+    nam_truoc_theo_ngay: (namTruocMoc && namTruocMoc.theo_ngay) || null,
+  };
 }
 
 /* =================== GET /api/don-hang?ky=&line= ===================
@@ -950,11 +993,12 @@ async function dungBangDonHang(env, ky, line, rid) {
       nguon
         ? env.REPORT_ENGINE.dungBangDonKemMa(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal,
-          doanhSoNamTruoc)
+          minNgay, quyetDinh.val || {}, kpiVal, gdVal, tongMoc(doanhSoKyTruoc), congVal,
+          bonusVal, tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc))
         : env.REPORT_ENGINE.dungBangDonSuaTay(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal, doanhSoNamTruoc),
+          kpiVal, gdVal, ky, tongMoc(doanhSoKyTruoc), congVal, bonusVal,
+          tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc)),
     ]);
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ
@@ -1792,7 +1836,6 @@ async function xuLy(request, env) {
  * lỗi từng lượt. Lỗi ghi xuống `day_loi` cạnh link để lượt mở màn hình sau
  * còn thấy, và vào nhật ký để `wrangler tail` đọc được ngay.
  */
-const VN_LECH_MS = 7 * 3600 * 1000;
 
 /** Kỳ "YYYY-MM" theo giờ VN, lùi `luiThang` tháng. */
 function kyVN(luc, luiThang) {

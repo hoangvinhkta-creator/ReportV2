@@ -2067,24 +2067,49 @@
    *  trôi khỏi nhau, và chỗ trôi sẽ là một cột nói "—" còn cột kia nói "mới"
    *  cho cùng một line. */
   function oSoSanh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
+    const td = el("td", "oSo");
+    td.appendChild(veChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc));
+
+    /* VẾ THỨ HAI — "tính tới hôm nay" (chủ dự án chốt 15/09/2026). Cùng ô,
+       ngăn bằng dấu "/", không thêm cột và không thêm lời giải thích: anh
+       chốt "chia cột làm 2 phần… tôi có thể tự hiểu".
+
+       Chỉ có mặt khi Engine nói kỳ đang xem CHỨA hôm nay (`moc_mtd`). Tháng
+       đã đóng sổ thì "tới hôm nay" chính là trọn tháng, và in ra hai con số
+       bằng hệt nhau chỉ tổ làm người đọc đi tìm chỗ khác biệt. */
+    if (k && k[tenMoc + "_mtd"] !== undefined) {
+      td.appendChild(el("span", "vach", " / "));
+      /* Tên trường vế MTD chèn `_mtd` TRƯỚC hậu tố `_pt`:
+         `vs_thang_truoc_pt` → `vs_thang_truoc_mtd_pt`. Đúng tên Engine đặt —
+         `kiem/tong-hop.js` canh cặp tên này ở cả hai đầu. */
+      td.appendChild(veChenh(k, tenMoc + "_mtd", tenChenh.replace(/_pt$/, "_mtd_pt"),
+        cauChuaCo, cauMoi, nhanMoc + " (tới hôm nay)"));
+    }
+    return td;
+  }
+
+  /** Một vế phần trăm chênh, trong một <span>. Ba lý do trống, ba câu khác
+   *  nhau — và mỗi vế mang MÀU của riêng nó, vì hai vế có thể trái dấu (cả
+   *  tháng thì tụt, tính tới hôm nay lại tăng — đúng cái người ta cần thấy). */
+  function veChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
     const moc = k ? k[tenMoc] : undefined;
     if (!k || moc === null || moc === undefined) {
-      const td = el("td", "oSo", "—");
-      if (k) td.title = cauChuaCo;
-      return td;
+      const sp = el("span", null, "—");
+      if (k) sp.title = cauChuaCo;
+      return sp;
     }
     if (k[tenChenh] === null || k[tenChenh] === undefined) {
       /* Mốc bằng 0 mà tháng này có số: không chia được, nhưng cũng KHÔNG
          phải "chưa biết" — nói đúng chuyện đã xảy ra. */
-      const td = el("td", "oSo", "mới");
-      td.title = cauMoi;
-      return td;
+      const sp = el("span", null, "mới");
+      sp.title = cauMoi;
+      return sp;
     }
     const v = k[tenChenh];
-    const td = el("td", "oSo " + (v < 0 ? "vsGiam" : v > 0 ? "vsTang" : ""),
+    const sp = el("span", v < 0 ? "vsGiam" : v > 0 ? "vsTang" : null,
       (v > 0 ? "▲ +" : v < 0 ? "▼ " : "") + so1(v) + "%");
-    td.title = nhanMoc + ": " + nghinTron(moc) + " nghìn đ.";
-    return td;
+    sp.title = nhanMoc + ": " + nghinTron(moc) + " nghìn đ.";
+    return sp;
   }
 
   const oVsThangTruoc = (k) => oSoSanh(k, "doanh_so_ky_truoc", "vs_thang_truoc_pt",
