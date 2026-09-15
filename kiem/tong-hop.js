@@ -197,6 +197,76 @@ const GOC = path.resolve(__dirname, '..');
     ok('tổng KPI chỉ cộng line CÓ đơn, không cộng L2', b.tom_tat_kpi.tong.kpi, 1000000);
   }
 
+  /* ─────────── G2. So với năm trước ─────────── */
+
+  console.log('\nG2) So với năm trước — CÙNG THÁNG năm trước (chốt 15/09/2026)');
+  {
+    const lam = (nay, nam) => {
+      const b = bang(nay === null ? [] : [{ so_ct: 'BH1', line: 'L1', tong_ban: nay,
+        dong: [dong({ tong_ban: nay, loi_nhuan: 0 })] }]);
+      /* Mốc năm trước đi ở ĐUÔI, sau `bangCong` — đúng chỗ `apDungKpi` nhận
+         nó, và cũng là bài kiểm ngầm cho quy ước "thêm tham số ở đuôi". */
+      P.apDungKpi(b, BANG, '2026-09', {}, ['L1', 'L2'], null, null, nam);
+      return b.tom_tat_kpi.vs_line_nam.L1;
+    };
+    const len = lam(150, { L1: 100 });
+    ok('150 so với 100 = +50%', len.vs_nam_truoc_pt, 50);
+    ok('  · số năm trước đi kèm để màn hình nói ra được', len.doanh_so_nam_truoc, 100);
+    ok('tụt thì ra số ÂM', lam(80, { L1: 100 }).vs_nam_truoc_pt, -20);
+
+    /* Cùng CA ĐÁNG GIÁ NHẤT của "Vs. Tháng trước": một line năm ngoái có
+       bán, năm nay không có đơn nào. Nó không có mục trong `tom_tat_kpi.line`
+       nên cột phải đọc từ bảng riêng, không từ bản kê ấy. */
+    ok('line năm nay không bán gì vẫn ra −100%', lam(null, { L1: 500 }).vs_nam_truoc_pt, -100);
+
+    /* Ba trạng thái tách bạch, đúng như cột "Vs. Tháng trước". */
+    const khong = lam(100, null);
+    ok('không đọc được kỳ năm trước: cả hai trường đều null',
+       [khong.doanh_so_nam_truoc, khong.vs_nam_truoc_pt], [null, null]);
+    const khong0 = lam(100, { L1: 0 });
+    ok('năm trước = 0đ: KHÔNG chia được...', khong0.vs_nam_truoc_pt, null);
+    ok('  · nhưng số năm trước là 0 THẬT, để màn hình hiện "mới"',
+       khong0.doanh_so_nam_truoc, 0);
+
+    /* HAI CỘT KHÔNG ĐƯỢC LẪN NHAU. Truyền hai mốc KHÁC nhau và đòi hai con
+       số khác nhau — bài này bắt đúng lỗi copy-nhầm-tên-trường, thứ mà một
+       bài chỉ kiểm một cột sẽ không thấy. */
+    const b2 = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 200,
+      dong: [dong({ tong_ban: 200, loi_nhuan: 0 })] }]);
+    P.apDungKpi(b2, BANG, '2026-09', {}, ['L1'], { L1: 100 }, null, { L1: 400 });
+    ok('tháng trước 100 → +100%', b2.tom_tat_kpi.vs_line.L1.vs_thang_truoc_pt, 100);
+    ok('năm trước 400 → −50%, KHÔNG lẫn sang mốc kia',
+       b2.tom_tat_kpi.vs_line_nam.L1.vs_nam_truoc_pt, -50);
+    ok('hàng TỔNG cũng mang cả hai mốc',
+       [b2.tom_tat_kpi.tong.vs_thang_truoc_pt, b2.tom_tat_kpi.tong.vs_nam_truoc_pt],
+       [100, -50]);
+  }
+
+  /* ─────────── G3. Tỉ suất lợi nhuận ─────────── */
+
+  console.log('\nG3) Tỉ suất LN — lợi nhuận ÷ doanh số thuần (chốt 15/09/2026)');
+  {
+    const lam = (tongBan, loiNhuan) => {
+      const b = bang(tongBan === null ? [] : [{ so_ct: 'BH1', line: 'L1', tong_ban: tongBan,
+        dong: [dong({ tong_ban: tongBan, loi_nhuan: loiNhuan })] }]);
+      P.apDungKpi(b, BANG, '2026-09', {}, ['L1'], null, null, null);
+      return b.tom_tat_kpi;
+    };
+    ok('lãi 10 trên doanh số 100 = 10%', lam(100, 10).line.L1.ty_suat_loi_nhuan_pt, 10);
+    ok('  · và hàng TỔNG ra cùng con số', lam(100, 10).tong.ty_suat_loi_nhuan_pt, 10);
+
+    /* Bán mà không lãi đồng nào là 0% THẬT — khác hẳn "chưa bán gì". Hai ca
+       này ra hai thứ khác nhau, và gộp chúng làm một là cột nói dối. */
+    ok('bán mà không lãi = 0%, không phải "—"', lam(100, 0).line.L1.ty_suat_loi_nhuan_pt, 0);
+    ok('chưa bán gì thì KHÔNG có mục nào để mà chia',
+       Object.keys(lam(null, 0).line), []);
+    ok('  · và hàng TỔNG để null, không phải 0',
+       lam(null, 0).tong.ty_suat_loi_nhuan_pt, null);
+
+    /* Lỗ ra số ÂM, và đó là sự thật chứ không phải lỗi — không được kẹp về 0. */
+    ok('bán lỗ ra số ÂM', lam(100, -20).line.L1.ty_suat_loi_nhuan_pt, -20);
+  }
+
   console.log('\nH) "Chưa có số để so" và "tháng trước bằng 0" là HAI ca khác nhau');
   {
     const lam = (truoc) => {
@@ -265,19 +335,28 @@ const GOC = path.resolve(__dirname, '..');
 
   /* ─────────── K. 15 cột, đúng thứ tự ─────────── */
 
-  console.log('\nK) Đúng 15 cột, đúng thứ tự chủ dự án chốt 12/09/2026');
+  console.log('\nK) Đúng 18 cột, đúng thứ tự (chốt 12/09/2026, nới 15/09/2026)');
   {
     const kh = UI.match(/const COT_TONG_HOP = \[([\s\S]*?)\n    \];/);
     ok('tìm thấy danh sách cột', !!kh, true);
     const ten = [...(kh ? kh[1] : '').matchAll(/ten: "([^"]+)"/g)].map(m => m[1]);
-    ok('đúng 16 cột', ten.length, 16);
+    ok('đúng 18 cột', ten.length, 18);
     ok('đúng thứ tự, đúng tên', ten, [
       'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần',
-      'Lợi nhuận', 'Quy đổi', 'Tỉ lệ tồn kho',
-      'KPI', 'Đạt', 'Vs. Tháng trước',
+      'Lợi nhuận', 'Quy đổi', 'Tỉ suất LN', 'Tỉ lệ tồn kho',
+      'KPI', 'Đạt', 'Vs. Tháng trước', 'So với năm trước',
       'Thưởng', 'Ngày công', 'Lương cứng',
       'Phụ cấp', 'Tổng lương', 'Ghi chú',
     ]);
+    /* Tỉ suất LN đứng NGAY SAU Quy đổi, tức ngay cạnh hai cột nó chia —
+       Lợi nhuận và Doanh số thuần cách nó đúng một ô. Đối chiếu tay không
+       phải rê mắt qua nửa bảng. */
+    ok('Tỉ suất LN đứng ngay sau Quy đổi',
+       ten.indexOf('Tỉ suất LN'), ten.indexOf('Quy đổi') + 1);
+    /* Và "So với năm trước" đứng NGAY SAU "Vs. Tháng trước": hai cột trả lời
+       hai câu cùng dạng, đọc cạnh nhau mới so được đà ngắn hạn với mùa vụ. */
+    ok('So với năm trước đứng ngay sau Vs. Tháng trước',
+       ten.indexOf('So với năm trước'), ten.indexOf('Vs. Tháng trước') + 1);
     /* Tên cột KHÔNG còn mang "(nghìn đ)" (chủ dự án chốt 12/09/2026), và
        đoạn giải thích dưới bảng cũng bỏ — nên đơn vị chỉ còn MỘT chỗ để nói:
        đầu `title` của chính cột tiền ấy. Mất nó là bảng không còn nói đơn vị
@@ -364,12 +443,21 @@ const GOC = path.resolve(__dirname, '..');
        cột "Vs. Tháng trước" không có mặt ở đó, và lấy nó ở mọi lượt là bắt
        mỗi lần mở một tab line trả thêm mấy lượt đọc cho một con số không ai
        nhìn. */
+    /* Từ 15/09/2026 là HAI lượt đọc — kỳ liền trước và cùng tháng năm trước
+       — nên đếm cả hai: bỏ sót một cái là tab line lại phải trả thêm một
+       lượt đọc Firebase cho con số không ai nhìn ở đó. */
     ok('chỉ lấy khi ở tab [Tổng hợp], không lấy ở tab line',
-       /line\s*\n?\s*\? null\s*\n?\s*:\s*(await\s+)?docDoanhSoLineKyTruoc/.test(GW), true);
+       (GW.match(/line\s*\?\s*null\s*:\s*(await\s+)?docDoanhSoLineMoc/g) || []).length, 2);
+    ok('  · một lượt cho kỳ liền trước, một lượt cho cùng tháng năm trước',
+       /docDoanhSoLineMoc\(env, kyTruoc\(ky\)[\s\S]{0,600}docDoanhSoLineMoc\(env, namTruoc\(ky\)/.test(GW), true);
+    /* `namTruoc` chỉ trừ NĂM, không đụng tháng — 2026-01 phải ra 2025-01 chứ
+       không phải 2025-12. Lẫn nó với `kyTruoc` là cột mùa vụ so nhầm mốc. */
+    ok('  · namTruoc() giữ nguyên tháng, chỉ lùi năm',
+       /return String\(nam - 1\)\.padStart\(4, "0"\) \+ "-" \+ ky\.slice\(5, 7\);/.test(GW), true);
     /* Nguồn hỏng thì cột để trống, KHÔNG chặn cả bảng đơn — cùng kỷ luật với
        bảng KPI của P5. */
     ok('kỳ trước đọc hỏng thì trả null, không ném',
-       /catch \(e\) \{[\s\S]{0,240}ky-truoc-hong[\s\S]{0,80}return null;/.test(GW), true);
+       /catch \(e\) \{[\s\S]{0,300}\(nhan \|\| "ky-truoc"\) \+ "-hong:"[\s\S]{0,120}return null;/.test(GW), true);
     /* Trừ phần xoá tay: không trừ thì tháng trước đọc ra con số CAO HƠN thứ
        chính màn hình ấy hiện khi mở tháng đó. */
     ok('trừ phần xoá tay trước khi cộng', /tinhTruXoaTay\(env, mot\)/.test(GW), true);
@@ -385,9 +473,15 @@ const GOC = path.resolve(__dirname, '..');
        lại cái đuôi. */
     const ENG = doc('engine/src/index.js');
     ok('dungBangDonKemMa nhận tham số mới ở ĐUÔI',
-       /dungBangDonKemMa\([^)]*doanhSoLineKyTruoc,\s*\n?\s*bangCong, quyetDinhBonus\)/.test(ENG), true);
+       /dungBangDonKemMa\([^)]*bangCong, quyetDinhBonus, doanhSoLineNamTruoc\)/.test(ENG), true);
     ok('dungBangDonSuaTay cũng vậy',
-       /dungBangDonSuaTay\([^)]*doanhSoLineKyTruoc, bangCong,\s*\n?\s*quyetDinhBonus\)/.test(ENG), true);
+       /dungBangDonSuaTay\([^)]*quyetDinhBonus, doanhSoLineNamTruoc\)/.test(ENG), true);
+    /* Và `apDungKpi` cũng nhận nó ở đuôi, SAU `bangCong`. Chèn vào giữa —
+       cạnh `doanhSoLineKyTruoc`, chỗ nó thuộc về về nghĩa — là `bangCong`
+       nhận nhầm bảng doanh số, và lương cả công ty sai trong im lặng. */
+    ok('apDungKpi cũng nhận nó SAU bangCong, không chèn cạnh kỳ trước',
+       /apDungKpi\(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong,\s*\n?\s*doanhSoLineNamTruoc\)/
+         .test(doc('engine/src/kpi.mjs')), true);
   }
 
   /* ─────────── O. Hàng TỔNG ─────────── */
@@ -544,11 +638,11 @@ const GOC = path.resolve(__dirname, '..');
       L2: { doanh_so: 900000, so_don: 3, so_dong: 4, so_san_pham: 7, loi_nhuan: 90000,
             don_thieu_loi_nhuan: 0, doanh_so_quy_doi: 900000, don_thieu_quy_doi: 0,
             kpi: 1000000, dat_pt: 90, ty_le_ton_kho_pt: 40, doanh_so_chua_ro_nguon: 0,
-            doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20 },
+            ty_suat_loi_nhuan_pt: 10, doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20 },
       L1: { doanh_so: 100000, so_don: 1, so_dong: 1, so_san_pham: 1, loi_nhuan: 10000,
             don_thieu_loi_nhuan: 1, doanh_so_quy_doi: 100000, don_thieu_quy_doi: 1,
             kpi: null, dat_pt: null, ty_le_ton_kho_pt: null, doanh_so_chua_ro_nguon: 50000,
-            doanh_so_ky_truoc: 0, vs_thang_truoc_pt: null },
+            ty_suat_loi_nhuan_pt: 10, doanh_so_ky_truoc: 0, vs_thang_truoc_pt: null },
     };
     const kq = {
       tom_tat_line: { thu_tu: ['L1', 'L2', 'L3'], line: {} },
@@ -560,10 +654,21 @@ const GOC = path.resolve(__dirname, '..');
              −100%, đúng ca mà mục G ghim ở tầng Engine. */
           L3: { doanh_so_ky_truoc: 400000, vs_thang_truoc_pt: -100 },
         },
+        /* Cột "So với năm trước" (chủ dự án chốt 15/09/2026) — bảng RIÊNG,
+           cùng lý do `vs_line`: nó phủ cả line tháng này không có đơn nào.
+           Ba trạng thái khác nhau trên ba line, đúng ba câu màn hình phải
+           nói ra. */
+        vs_line_nam: {
+          L2: { doanh_so_nam_truoc: 600000, vs_nam_truoc_pt: 50 },
+          L1: { doanh_so_nam_truoc: null, vs_nam_truoc_pt: null },
+          L3: { doanh_so_nam_truoc: 0, vs_nam_truoc_pt: null },
+        },
         tong: { doanh_so: 1000000, so_don: 4, so_san_pham: 8, loi_nhuan: 100000,
                 doanh_so_quy_doi: 1000000, kpi: 1000000, dat_pt: 100,
                 ty_le_ton_kho_pt: 36, doanh_so_chua_ro_nguon: 50000,
-                doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 33.3 },
+                ty_suat_loi_nhuan_pt: 10,
+                doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 33.3,
+                doanh_so_nam_truoc: 800000, vs_nam_truoc_pt: 25 },
         luong: {
           line: {
             L2: { cach: 'B', he_so_thuong_pt: 0.45, moc_nong: 1,
@@ -597,9 +702,21 @@ const GOC = path.resolve(__dirname, '..');
        b.con.map((r) => r.con[0].textContent).includes('L3'), false);
     /* Lệch một ô ở một hàng là mọi con số từ đó trở đi đọc sang sai tên cột —
        lớp lỗi mà chỉ chạy thật mới thấy. */
-    ok('MỌI hàng đều đúng 16 ô', b.con.map((r) => r.con.length), [16, 16, 16, 16]);
+    ok('MỌI hàng đều đúng 18 ô', b.con.map((r) => r.con.length), [18, 18, 18, 18]);
 
     const chu = (i) => b.con[i].con.map((c) => c.textContent);
+    /* Tra ô theo TÊN CỘT, đọc từ chính hàng tiêu đề — không gõ cứng chỉ số.
+       Bản trước gõ cứng, và lượt thêm hai cột (Tỉ suất LN · So với năm
+       trước, 15/09/2026) làm HAI MƯƠI bài đỏ cùng lúc dù không bài nào hỏng
+       thật: mọi chỉ số từ cột thứ sáu trở đi trượt đi một hoặc hai chỗ. Tra
+       theo tên thì bài chỉ đỏ khi đúng thứ nó canh sai. */
+    const iC = (ten) => {
+      const i = b.con[0].con.findIndex((c) => c.textContent === ten);
+      if (i < 0) throw new Error('không thấy cột "' + ten + '" trên hàng tiêu đề');
+      return i;
+    };
+    const oCua = (hang, ten) => b.con[hang].con[iC(ten)];
+    const chuCua = (hang, ten) => oCua(hang, ten).textContent;
     ok('thứ tự hàng theo tom_tat_kpi.thu_tu, không theo tom_tat_line',
        [chu(1)[0], chu(2)[0]], ['L2', 'L1']);
     ok('hàng cuối là TỔNG', chu(3)[0], 'TỔNG');
@@ -608,15 +725,33 @@ const GOC = path.resolve(__dirname, '..');
     ok('L2 — số đơn, số sản phẩm, doanh số thuần',
        [chu(1)[1], chu(1)[2], chu(1)[3]], ['3', '7', '900']);
     ok('L2 — tỉ lệ tồn kho và Vs. tháng trước',
-       [chu(1)[6], chu(1)[9]], ['40,0%', '▲ +20,0%']);
-    ok('  · tăng thì mang lớp màu tăng', b.con[1].con[9].className, 'oSo vsTang');
+       [chuCua(1, 'Tỉ lệ tồn kho'), chuCua(1, 'Vs. Tháng trước')],
+       ['40,0%', '▲ +20,0%']);
+    ok('  · tăng thì mang lớp màu tăng',
+       oCua(1, 'Vs. Tháng trước').className, 'oSo vsTang');
+
+    /* ── Hai cột mới, chủ dự án chốt 15/09/2026 ── */
+    ok('L2 — Tỉ suất LN (Engine chia, màn hình chỉ đọc)',
+       chuCua(1, 'Tỉ suất LN'), '10,0%');
+    ok('L2 — So với năm trước', chuCua(1, 'So với năm trước'), '▲ +50,0%');
+    ok('  · và ô đó nói mốc đem ra so, không để người đọc tự đoán',
+       /Cùng tháng năm trước: 600 nghìn đ/.test(oCua(1, 'So với năm trước').title), true);
+    ok('L1 — CHƯA CÓ số năm trước → "—"', chuCua(2, 'So với năm trước'), '—');
+    ok('  · và nói rõ vì sao (sổ chỉ có từ 01/2025)',
+       /sổ chỉ có từ 01\/2025/.test(oCua(2, 'So với năm trước').title), true);
+    /* Tử số của L1 còn thiếu mấy đơn chưa đủ giá vốn, nên tỉ suất là con số
+       SÀN — phải dán nhãn "*", đúng quy ước cột Lợi nhuận ngay bên trái. */
+    ok('L1 — Tỉ suất LN dán nhãn thiếu bằng dấu *', chuCua(2, 'Tỉ suất LN'), '10,0% *');
 
     /* Line THIẾU dữ liệu: ba cách trống khác nhau, ba câu khác nhau. */
     ok('L1 — lợi nhuận và quy đổi dán nhãn thiếu bằng dấu *',
-       [chu(2)[4], chu(2)[5]], ['10 *', '100 *']);
-    ok('L1 — chưa biết nơi nhập nào → "—", KHÔNG phải 0%', chu(2)[6], '—');
-    ok('  · và ô đó nói vì sao', /không có dữ liệu giá vốn/.test(b.con[2].con[6].title), true);
-    ok('L1 — tháng trước 0đ → "mới", KHÔNG phải "—"', chu(2)[9], 'mới');
+       [chuCua(2, 'Lợi nhuận'), chuCua(2, 'Quy đổi')], ['10 *', '100 *']);
+    ok('L1 — chưa biết nơi nhập nào → "—", KHÔNG phải 0%',
+       chuCua(2, 'Tỉ lệ tồn kho'), '—');
+    ok('  · và ô đó nói vì sao',
+       /không có dữ liệu giá vốn/.test(oCua(2, 'Tỉ lệ tồn kho').title), true);
+    ok('L1 — tháng trước 0đ → "mới", KHÔNG phải "—"',
+       chuCua(2, 'Vs. Tháng trước'), 'mới');
 
 
     /* ── Nhóm cột lương ── */
@@ -624,37 +759,50 @@ const GOC = path.resolve(__dirname, '..');
     /* L2 — cách B, có đủ mọi thứ. Ô Ngày công là Ô NHẬP (đang là quantri) nên
        `textContent` rỗng; con số nằm ở `value` của <input> con. */
     ok('L2 — Thưởng / Lương cứng / Phụ cấp / Tổng lương',
-       [chu(1)[10], chu(1)[12], chu(1)[13], chu(1)[14]],
+       [chuCua(1, 'Thưởng'), chuCua(1, 'Lương cứng'),
+        chuCua(1, 'Phụ cấp'), chuCua(1, 'Tổng lương')],
        ['4.550', '4.846', '780', '10.176']);
-    const oNhap = b.con[1].con[11].con[0];
+    const oNhap = oCua(1, 'Ngày công').con[0];
     ok('L2 — ô Ngày công là một <input>', !!oNhap, true);
     ok('  · mang đúng số đã nhập', oNhap.value, '28');
     ok('  · và khoá theo tên line để lượt ghi biết sửa ai', oNhap.dataset.line, 'L2');
     ok('L2 — Ghi chú nói hệ số thực tế VÀ thưởng nóng đã gồm trong cột Thưởng',
-       chu(1)[15], '0,45% · đã gồm 500 thưởng mốc 1,5 tỷ');
-    ok('  · và KHÔNG còn chữ "Cách A/Cách B"', /Cách [AB]/.test(chu(1)[15]), false);
+       chuCua(1, 'Ghi chú'), '0,45% · đã gồm 500 thưởng mốc 1,5 tỷ');
+    ok('  · và KHÔNG còn chữ "Cách A/Cách B"',
+       /Cách [AB]/.test(chuCua(1, 'Ghi chú')), false);
 
     /* L1 — cùng một hàng, HAI lý do trống khác nhau, hai câu khác nhau. */
-    ok('L1 — chưa có quy đổi nên Thưởng "—"', chu(2)[10], '—');
-    ok('  · và ô đó nói vì sao', /chưa tính được thưởng/.test(b.con[2].con[10].title), true);
-    ok('L1 — chưa nhập ngày công nên Lương cứng "—"', chu(2)[12], '—');
-    ok('  · và ô đó nói một câu KHÁC', /Chưa nhập ngày công/.test(b.con[2].con[12].title), true);
-    ok('L1 — Ghi chú nói vì sao chưa có số', chu(2)[15], 'chưa tính được thưởng');
+    ok('L1 — chưa có quy đổi nên Thưởng "—"', chuCua(2, 'Thưởng'), '—');
+    ok('  · và ô đó nói vì sao',
+       /chưa tính được thưởng/.test(oCua(2, 'Thưởng').title), true);
+    ok('L1 — chưa nhập ngày công nên Lương cứng "—"', chuCua(2, 'Lương cứng'), '—');
+    ok('  · và ô đó nói một câu KHÁC',
+       /Chưa nhập ngày công/.test(oCua(2, 'Lương cứng').title), true);
+    ok('L1 — Ghi chú nói vì sao chưa có số', chuCua(2, 'Ghi chú'), 'chưa tính được thưởng');
 
     /* L3 — hệ số không thuộc cách nào (Nội thành 2%): cả nhóm trống, kể cả ô
        Ngày công, và KHÔNG dựng ô nhập cho nó. */
     /* TỔNG — cộng ba cột tiền, bỏ trống Ngày công và Ghi chú. */
-    ok('TỔNG — ba cột tiền có số', [chu(3)[10], chu(3)[12], chu(3)[13], chu(3)[14]],
+    ok('TỔNG — ba cột tiền có số',
+       [chuCua(3, 'Thưởng'), chuCua(3, 'Lương cứng'),
+        chuCua(3, 'Phụ cấp'), chuCua(3, 'Tổng lương')],
        ['4.550', '4.846', '780', '10.176']);
-    ok('  · Ngày công để TRỐNG (cộng ngày công nhiều line là vô nghĩa)', chu(3)[11], '');
-    ok('  · Ghi chú cũng để trống', chu(3)[15], '');
+    ok('  · Ngày công để TRỐNG (cộng ngày công nhiều line là vô nghĩa)',
+       chuCua(3, 'Ngày công'), '');
+    ok('  · Ghi chú cũng để trống', chuCua(3, 'Ghi chú'), '');
+    /* Hàng TỔNG cũng phải có hai cột mới — bỏ sót chúng ở đây là một hàng
+       TỔNG lệch ô so với các hàng trên, đúng lớp lỗi bài "MỌI hàng đều đúng
+       18 ô" đang canh. */
+    ok('TỔNG — Tỉ suất LN và So với năm trước',
+       [chuCua(3, 'Tỉ suất LN'), chuCua(3, 'So với năm trước')],
+       ['10,0%', '▲ +25,0%']);
 
     /* Highlight ba mức khi vượt KPI. */
-    ok('đạt 90% thì KHÔNG tô', b.con[1].con[8].className, 'oSo ');
+    ok('đạt 90% thì KHÔNG tô', oCua(1, 'Đạt').className, 'oSo ');
 
     /* Cột quy đổi được tô — chủ dự án yêu cầu highlight đúng cột này. */
-    ok('ô cột quy đổi mang lớp highlight', b.con[1].con[5].className, 'oSo oQuyDoi');
-    ok('  · và tiêu đề cột ấy cũng vậy', b.con[0].con[5].className, 'oQuyDoi');
+    ok('ô cột quy đổi mang lớp highlight', oCua(1, 'Quy đổi').className, 'oSo oQuyDoi');
+    ok('  · và tiêu đề cột ấy cũng vậy', oCua(0, 'Quy đổi').className, 'oQuyDoi');
   }
 
   xong();

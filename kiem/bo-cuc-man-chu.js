@@ -126,6 +126,32 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
   ok('  · năm ô cộng lại phủ đủ 19 cột',
      7 + 1 + 1 + (COT.indexOf('Ghi chú') - COT.indexOf('Lợi nhuận') - 1)
        + 1 + (COT.length - COT.indexOf('Ghi chú') - 1), COT.length);
+  /* ── Băng ngày xếp thẳng theo cột (chủ dự án chốt 15/09/2026) ──
+     Bản trước là MỘT ô `colSpan` trải hết bề ngang, bên trong có lưới bốn
+     cột riêng: các băng ngày thẳng hàng VỚI NHAU nhưng không thẳng với bảng
+     bên dưới. Nay là bảy ô thật, nên "doanh số của ngày" nằm đúng trên trục
+     cột Tổng bán. */
+  ok('băng ngày KHÔNG còn là một ô colSpan trải hết bảng',
+     /tdNgay\.colSpan = COT\.length/.test(JS), false);
+  ok('  · và lưới bốn cột riêng của nó đã bỏ', /soNgay|ngayO/.test(JS + CSS), false);
+  ok('  · nhãn "LN" đã bỏ (đứng dưới đúng tên cột rồi thì là chữ thừa)',
+     /"LN " \+ nghinTron/.test(JS), false);
+  ok('  · nhãn "QĐ" cũng vậy', /"QĐ "/.test(JS), false);
+  /* Bảy ô cộng lại phải phủ ĐÚNG 19 cột, và mọi colSpan tính từ
+     `COT.indexOf(...)` — gõ cứng là lần dời cột kế tiếp băng ngày trượt sang
+     cột khác mà không có gì đỏ lên. */
+  ok('khoảng giữa tính từ vị trí cột, không gõ cứng',
+     /tdGiua\.colSpan = iTong - iBH - 1/.test(JS), true);
+  ok('  · phần đuôi cũng vậy', /tdSau\.colSpan = COT\.length - iQd - 1/.test(JS), true);
+  ok('  · bảy ô cộng lại phủ đủ 19 cột',
+     1 + 1 + (COT.indexOf('Tổng bán') - COT.indexOf('Số BH') - 1) + 1 + 1 + 1
+       + (COT.length - COT.indexOf('Quy đổi') - 1), COT.length);
+  /* Bốn con số đứng dưới ĐÚNG bốn cột chủ dự án nêu tên. Ghim quan hệ thứ
+     tự chứ không ghim chỉ số: thêm một cột vào giữa bảng vẫn phải đúng. */
+  ok('  · Quy đổi đứng ngay sau Lợi nhuận, ngay sau Tổng bán',
+     [COT.indexOf('Lợi nhuận') - COT.indexOf('Tổng bán'),
+      COT.indexOf('Quy đổi') - COT.indexOf('Lợi nhuận')], [1, 1]);
+
   ok('  · ô bonus đứng dưới đúng cột “Lợi nhuận”',
      /trTong\.appendChild\(el\("td", "oSo", nghinTron\(don\.tong_ban\)\)\);\s*\n[\s\S]{0,320}?trTong\.appendChild\(oBonus\(don\)\);/.test(JS), true);
   ok('  · ba ô cộng lại phủ đủ 19 cột', 7 + 1 + 1 + (COT.length - 9), COT.length);
@@ -147,6 +173,14 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
      RONG[COT.indexOf('Ghi chú')] > Math.max(RONG[COT.indexOf('Hãng')],
        RONG[COT.indexOf('Ngành hàng')]), true);
   ok('mọi bề rộng đều là số dương', RONG.every((w) => Number.isFinite(w) && w > 0), true);
+  /* Cột Ngày phải đủ chỗ cho BĂNG NGÀY, thứ từ 15/09/2026 nằm trong chính
+     cột này: mũi tên 12px + lề 6px + nhãn đủ năm in đậm ("01/08/2026", ~68px
+     ở cỡ chữ 12) + 16px đệm ≈ 102px. Bảng `table-layout: fixed` và mọi ô
+     `overflow: hidden` nên thiếu chỗ là CẮT ĐUÔI, không xuống dòng — băng
+     ngày sẽ hiện "01/08/2…" mà không có gì đỏ lên. Ghim một cái SÀN có
+     nghĩa vật lý, không ghim con số hiện tại: nới rộng thêm thì vẫn xanh. */
+  ok('cột Ngày đủ rộng cho băng ngày (mũi tên + ngày đủ năm)',
+     RONG[COT.indexOf('Ngày')] >= 102, true);
   ok('bảng đơn khai table-layout: fixed',
      /\.bangDon\s*\{[^}]*table-layout:\s*fixed/.test(HTML), true);
   ok('ô bảng đơn có overflow: hidden (bố cục cố định KHÔNG tự cắt chữ tràn)',

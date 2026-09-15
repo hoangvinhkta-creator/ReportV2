@@ -434,19 +434,18 @@
                 color: #6b7280; transform: rotate(90deg); transition: transform .12s; }
   .hangNgay.dongLai .muiTenNgay { transform: rotate(0deg); }
   .chuNgay { font-weight: 700; }
-  /* Lưới CỐ ĐỊNH bề rộng cho bốn con số của băng ngày (chủ dự án chốt
-     13/09/2026: "cân lại cho thẳng theo cột thay vì thụt ra thụt vào").
-     `display: inline-grid` với `grid-template-columns` cố định — không dùng
-     flex + gap: flex chỉ đảm bảo KHOẢNG CÁCH đều, không đảm bảo MỖI Ô bắt
-     đầu ở cùng một vị trí khi nội dung dài ngắn khác nhau giữa các ngày; grid
-     với cột cố định thì có. `tabular-nums` giữ mọi chữ số cùng bề rộng, nên
-     hai số cùng bậc (hàng nghìn/hàng chục nghìn) không bị lệch bởi phông chữ
-     tỉ lệ. Bốn cột đủ rộng cho dòng dài nhất đã gặp (12 đơn, "159.950", "LN
-     9.950 *", "QĐ 132.667") mà không phải đổi theo dữ liệu từng tháng — cố
-     định là cả điểm của việc canh thẳng. */
-  .soNgay { display: inline-grid; grid-template-columns: 64px 92px 118px 118px;
-            column-gap: 16px; margin-left: 14px; font-variant-numeric: tabular-nums; }
-  .soNgay .ngayO { text-align: right; font-weight: 400; color: #3d4a63; }
+  /* Băng ngày nay là BẢY Ô THẬT xếp đúng cột của bảng chi tiết (chủ dự án
+     chốt 15/09/2026), không còn một ô `colSpan` chứa lưới bốn cột riêng.
+     Nhờ vậy "doanh số của ngày" nằm đúng trên trục cột Tổng bán, và mắt
+     không phải nhảy ngang để đối chiếu.
+
+     `tabular-nums` giữ mọi chữ số cùng bề rộng, nên hai số cùng bậc
+     (hàng nghìn / hàng chục nghìn) không lệch nhau vì phông chữ tỉ lệ.
+     Bề rộng thì không phải khai ở đây nữa — `<colgroup>` của chính bảng lo,
+     đúng cái đã có sẵn. */
+  .hangNgay > td { font-variant-numeric: tabular-nums; }
+  .hangNgay > td.oSo { font-weight: 400; color: #3d4a63; }
+  .hangNgay > td.oNgayBang { white-space: nowrap; }
   /* Ô nhập ngay tại chỗ, thay hộp nổi của bản đầu (chủ dự án chốt
      13/09/2026: hộp che mất chính cái đơn đang cộng cho). */
   .oSuaLyDo { border: 1px solid #d1d5db; border-radius: 6px; padding: 2px 4px;

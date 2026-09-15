@@ -332,6 +332,18 @@ function kyTruoc(ky) {
   return String(n).padStart(4, "0") + "-" + String(t).padStart(2, "0");
 }
 
+/** Cùng THÁNG của năm trước — cột "So với năm trước" (chủ dự án chốt
+ *  15/09/2026).
+ *
+ *  Chỉ trừ năm đi 1, không đụng tháng: đó đúng là phép so mùa vụ anh cần
+ *  ("so sánh cùng tháng của năm trước"). 2026-01 → 2025-01, không phải
+ *  2025-12 — khác hẳn `kyTruoc` ở ngay trên. */
+function namTruoc(ky) {
+  const nam = Number(ky.slice(0, 4));
+  if (!Number.isFinite(nam)) return null;
+  return String(nam - 1).padStart(4, "0") + "-" + ky.slice(5, 7);
+}
+
 /** Hai nhánh của P5. Khai LẠI ở đây dưới dạng chuỗi, không import từ
  *  `engine/src/kpi.mjs` — hai Worker cố ý KHÔNG dùng chung đồ thị module
  *  (đó chính là điểm của Service Binding), và mọi đường `bc/…` khác trong
@@ -724,8 +736,8 @@ const layKyCoDon = boc(true, async ({ env }) => {
  *  ấy đang hiện khi mở tháng đó — và cột chênh lệch sai đúng bằng phần đã
  *  xoá, im lặng.
  */
-async function docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid) {
-  const truoc = kyTruoc(ky);
+async function docDoanhSoLineMoc(env, kyMoc, huaBangLine, rid, nhan) {
+  const truoc = kyMoc;
   if (!truoc) return null;
   try {
     /* Khởi động lượt đọc của RIÊNG mình trước, rồi mới chờ bảng line: hàm
@@ -752,7 +764,8 @@ async function docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid) {
     for (const ten of Object.keys(gop.line || {})) ra[ten] = gop.line[ten].doanh_so;
     return ra;
   } catch (e) {
-    nhatKy({ rid, duong: "/api/don-hang", canh_bao: "ky-truoc-hong:" + (e && e.message) });
+    nhatKy({ rid, duong: "/api/don-hang",
+             canh_bao: (nhan || "ky-truoc") + "-hong:" + (e && e.message) });
     return null;
   }
 }
@@ -824,7 +837,7 @@ async function dungBangDonHang(env, ky, line, rid) {
       (e) => { if (!(e instanceof LoiTracking)) throw e; return { nguon: null, ly: e.ly }; })
     : { nguon: null, ly: null }));
 
-  /* `bc/quyetdinh/line` chưa có kết quả lúc này, nên `docDoanhSoLineKyTruoc`
+  /* `bc/quyetdinh/line` chưa có kết quả lúc này, nên `docDoanhSoLineMoc`
      nhận LỜI HỨA của nó chứ không nhận giá trị. Nhờ thế nó khởi động lượt
      đọc `bc/ky/<kỳ trước>` của riêng mình NGAY, song song với bảy lượt bên
      dưới, rồi mới chờ bảng line ở đúng chỗ thật sự cần. Đưa nó xuống một
@@ -837,7 +850,7 @@ async function dungBangDonHang(env, ky, line, rid) {
      bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
      con số không ai nhìn. */
   const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong, bonus,
-         kqNguon, doanhSoKyTruoc, sheetLink] = await Promise.all([
+         kqNguon, doanhSoKyTruoc, doanhSoNamTruoc, sheetLink] = await Promise.all([
     docDb("bc/dong/" + ky, env),
     huaBangLine,
     /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
@@ -863,7 +876,15 @@ async function dungBangDonHang(env, ky, line, rid) {
        mãi mãi (đúng bài học `bc/khach` của P3). */
     docDb(DUONG_BONUS + "/" + ky, env),
     huaNguon,
-    line ? null : docDoanhSoLineKyTruoc(env, ky, huaBangLine, rid),
+    line ? null : docDoanhSoLineMoc(env, kyTruoc(ky), huaBangLine, rid, "ky-truoc"),
+    /* Cùng tháng năm trước — cột "So với năm trước". Cùng lối và cùng lý do
+       như dòng trên: CHỈ tab [Tổng hợp] cần, nên tab của một line không phải
+       trả thêm một lượt đọc Firebase cho con số không ai nhìn.
+
+       Hai lượt đọc này đi SONG SONG với nhau và với bảy lượt còn lại, nên
+       thêm cột không thêm một nhịp chờ nào — chúng chỉ chờ cùng một bảng
+       line mà cả hai đều cần. */
+    line ? null : docDoanhSoLineMoc(env, namTruoc(ky), huaBangLine, rid, "nam-truoc"),
     /* Link Sheet đích của ĐÚNG (kỳ, line) đang xem. Chỉ tab của một line mới
        có ô này — tab [Tổng hợp] không đẩy đi đâu cả, nên không đọc.
        Đọc kèm ở đây thay vì mở một route riêng cho màn hình gọi: một lượt
@@ -929,10 +950,11 @@ async function dungBangDonHang(env, ky, line, rid) {
       nguon
         ? env.REPORT_ENGINE.dungBangDonKemMa(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
-          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal)
+          minNgay, quyetDinh.val || {}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal,
+          doanhSoNamTruoc)
         : env.REPORT_ENGINE.dungBangDonSuaTay(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
-          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal),
+          kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal, doanhSoNamTruoc),
     ]);
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ

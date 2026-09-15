@@ -210,10 +210,15 @@ const GOC = path.resolve(__dirname, '..');
 
     /* Gateway phải TRUYỀN hai nhánh xuống Engine — đọc rồi mà không truyền là
        đúng lớp lỗi này, ở tầng dưới một bậc. */
+    /* Không ghim dấu `)` đóng ở cuối: danh sách tham số này còn dài ra ở
+       ĐUÔI mỗi lần thêm một cột đọc-thêm-một-kỳ (bẫy số 4 bắt thêm ở đuôi,
+       không chèn vào giữa — xem `apDungKpi`). Ghim dấu đóng là bài này đỏ
+       vì một lượt thêm cột hợp lệ, trong khi thứ nó canh — đúng THỨ TỰ mấy
+       tham số đang có — vẫn nguyên. */
     ok('Gateway truyền bảng KPI + tick vào dungBangDonKemMa',
-       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal\)/.test(GW), true);
+       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal/.test(GW), true);
     ok('  · và vào cả đường ngoài phạm vi khớp mã (dungBangDonSuaTay)',
-       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal\)/.test(GW), true);
+       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal/.test(GW), true);
   }
 
   /* ─────────── G. Ô tick không mở oan màn gán mã ─────────── */
@@ -600,14 +605,20 @@ const GOC = path.resolve(__dirname, '..');
     const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
     const rong = JSON.parse('[' + (mRong ? mRong[1] : '') + ']');
     ok('cột Mã sản phẩm hẹp lại còn 200px', rong[3], 200);
-    ok('  · và tổng bề rộng KHÔNG đổi (phần cắt đi chia sang cột khác)',
-       rong.reduce((a, b2) => a + b2, 0), 1822);
+    ok('  · và tổng bề rộng đúng con số đã chốt (không tự hụt đi)',
+       rong.reduce((a, b2) => a + b2, 0), 1868);
     /* 1822 là tổng ĐANG CHẠY từ P4, ghim để lượt chỉnh cột nào cũng phải là
        một phép CHIA LẠI, không phải một phép nới. Chính lượt 12/09/2026 này
        suýt trượt: cắt 60px khỏi hai cột mà chỉ trả lại 50px, và 10px hụt ấy
        không nhìn ra được bằng mắt — bảng chỉ hẹp đi một chút rồi
        `table-layout: fixed` chia lại theo tỉ lệ, đúng lỗi P4 đã sửa. Thật sự
-       cần bảng rộng hơn thì sửa con số này, có chủ ý. */
+       cần bảng rộng hơn thì sửa con số này, có chủ ý.
+
+       1822 → 1868 ngày 15/09/2026, và đây LÀ một lượt nới có chủ ý chứ không
+       phải một phép chia lại: băng ngày dời vào trong cột Ngày (trước đó nó
+       là một ô `colSpan` trải hết bảng), nên cột ấy phải nới 58 → 104 để
+       chứa đủ mũi tên cộng nhãn ngày đủ năm. Không cột nào bị cắt bớt để bù
+       — cắt bớt mới là thứ bài này chặn. */
   }
 
   /* ───── P. Sửa/xoá một dòng: máy chủ trả LUÔN bảng đã tính lại ───── */

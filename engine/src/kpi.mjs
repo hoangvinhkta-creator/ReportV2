@@ -324,6 +324,27 @@ function tyLeTonKho(o) {
   return lamTron(o.doanh_so_tu_kho * 100 / o.doanh_so);
 }
 
+/** Tỉ suất lợi nhuận — cột chủ dự án chốt 15/09/2026.
+ *
+ *  Công thức anh nêu nguyên văn: "tổng lợi nhuận chia cho tổng giá bán mỗi
+ *  nhân viên". `doanh_so` ở đây LÀ tổng giá bán ấy — doanh số thuần, tức
+ *  cột "Doanh số thuần" đang hiện ngay cạnh, sau khi đã trừ chiết khấu và
+ *  áp sửa tay. Cùng một đại lượng file Summary tay của anh đang chia
+ *  (`G4/E4`, lợi nhuận trên Tổng bán), nên hai bảng ra cùng con số.
+ *
+ *  `null` khi doanh số bằng 0 — chia cho 0 ra vô cực, và một line chưa bán
+ *  gì thì "tỉ suất" không có nghĩa nào cả. KHÔNG trả 0: 0% nghĩa là bán mà
+ *  không lãi đồng nào, khác hẳn "chưa bán".
+ *
+ *  Con số này CÓ THỂ ÂM và đó là thật, không phải lỗi: một tháng toàn hàng
+ *  trả lại hoặc bán lỗ ra lợi nhuận âm. Không kẹp về 0. */
+function tySuatLoiNhuan(o) {
+  if (!(o.doanh_so > 0)) return null;
+  const ln = Number(o.loi_nhuan);
+  if (!Number.isFinite(ln)) return null;
+  return lamTron(ln * 100 / o.doanh_so);
+}
+
 /** Chênh phần trăm giữa tháng này và tháng trước — cột "Vs. Tháng trước".
  *
  *  Chủ dự án chốt 12/09/2026: so bằng DOANH SỐ THUẦN. Chọn đại lượng ấy có
@@ -547,6 +568,7 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
          hiện "chưa đặt KPI", không hiện "0%" (hai câu khác nhau hẳn). */
       dat_pt: laSoDuong(h.kpi) ? lamTron(o.doanh_so_quy_doi * 100 / h.kpi) : null,
       ty_le_ton_kho_pt: tyLeTonKho(o),
+      ty_suat_loi_nhuan_pt: tySuatLoiNhuan(o),
     };
   }
 
@@ -565,7 +587,7 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
  *  sách line CHÍNH THỨC, khai tường minh (xem `line.mjs`). Suy thứ tự từ
  *  những line có đơn thì một line chưa chạy tháng này sẽ biến khỏi bảng
  *  [Tổng hợp] thay vì hiện ra với số 0 và mức KPI của nó. */
-export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
+export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc, doanhSoLineNamTruoc) {
   const cua = (tomTatKpi && tomTatKpi.line) || {};
   const ds = Array.isArray(thuTu) ? thuTu : Object.keys(cua);
 
@@ -595,13 +617,16 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
      tháng này không có đơn nào. Lọc theo line có mặt tháng này là so một
      tháng đủ với một tháng đã bị cắt bớt — con số chênh sẽ dương lên một
      cách giả tạo đúng bằng phần bị cắt. */
-  let truoc = null;
-  if (laObjThuong(doanhSoLineKyTruoc)) {
-    truoc = 0;
-    for (const v of Object.values(doanhSoLineKyTruoc)) {
-      if (typeof v === "number" && Number.isFinite(v)) truoc = lamTron(truoc + v);
+  const congMoc = (m) => {
+    if (!laObjThuong(m)) return null;
+    let t = 0;
+    for (const v of Object.values(m)) {
+      if (typeof v === "number" && Number.isFinite(v)) t = lamTron(t + v);
     }
-  }
+    return t;
+  };
+  const truoc = congMoc(doanhSoLineKyTruoc);
+  const namTruoc = congMoc(doanhSoLineNamTruoc);
 
   return {
     doanh_so, so_don,
@@ -615,8 +640,11 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
     doanh_so_tu_kho: g.doanh_so_tu_kho,
     doanh_so_chua_ro_nguon: g.doanh_so_chua_ro_nguon,
     ty_le_ton_kho_pt: tyLeTonKho(g),
+    ty_suat_loi_nhuan_pt: tySuatLoiNhuan({ doanh_so, loi_nhuan: g.loi_nhuan }),
     doanh_so_ky_truoc: truoc,
     vs_thang_truoc_pt: chenhPhanTram(doanh_so, truoc),
+    doanh_so_nam_truoc: namTruoc,
+    vs_nam_truoc_pt: chenhPhanTram(doanh_so, namTruoc),
   };
 }
 
@@ -634,8 +662,33 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
  *  KPI tự phình theo những line không chạy tháng này — đúng thứ `title` của
  *  ô "Đạt" đang hứa là không xảy ra. */
 export function vsThangTruocTheoLine(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
+  return soVoiMoc(tomTatKpi, thuTu, doanhSoLineKyTruoc,
+                  "doanh_so_ky_truoc", "vs_thang_truoc_pt");
+}
+
+/** Cột "So với năm trước" — CÙNG THÁNG của năm trước, chủ dự án chốt
+ *  15/09/2026.
+ *
+ *  Dùng lại nguyên bộ máy của "Vs. Tháng trước", đổi mỗi cái mốc đem ra so.
+ *  Hai cột trả lời hai câu khác hẳn nhau và đều cần: tháng trước bắt được
+ *  đà ngắn hạn, còn cùng kỳ năm trước là thứ duy nhất nhìn qua được MÙA VỤ
+ *  — tháng 2 luôn thấp hơn tháng 1 vì Tết, và so với tháng 1 thì năm nào
+ *  cũng ra một con số âm chẳng nói lên điều gì.
+ *
+ *  Doanh số thuần có đủ từ 01/2025 (xem `chenhPhanTram`), nên kỳ 09/2026 so
+ *  được ngay với 09/2025 — không phải chờ thêm tháng nào. */
+export function vsNamTruocTheoLine(tomTatKpi, thuTu, doanhSoLineNamTruoc) {
+  return soVoiMoc(tomTatKpi, thuTu, doanhSoLineNamTruoc,
+                  "doanh_so_nam_truoc", "vs_nam_truoc_pt");
+}
+
+/** Bộ máy chung của hai cột trên. Một bản chứ không hai: hai bản sao của
+ *  cùng một vòng lặp là hai chỗ để luật "gộp cả hai nguồn tên" trôi khỏi
+ *  nhau, và chỗ trôi ấy làm một line vừa sập hẳn biến mất khỏi đúng cột
+ *  đáng nhìn nhất. */
+function soVoiMoc(tomTatKpi, thuTu, doanhSoMoc, tenMoc, tenChenh) {
   const cua = (tomTatKpi && tomTatKpi.line) || {};
-  const truoc = laObjThuong(doanhSoLineKyTruoc) ? doanhSoLineKyTruoc : null;
+  const moc = laObjThuong(doanhSoMoc) ? doanhSoMoc : null;
   /* Gộp cả hai nguồn tên: danh sách line chính thức, VÀ line thực sự có đơn
      trong kỳ. Line thứ hai lọt ra ngoài danh sách chính thức là dấu hiệu
      bảng line thiếu — nhưng nó vẫn hiện trên bảng, nên nó vẫn phải có ô. */
@@ -644,9 +697,9 @@ export function vsThangTruocTheoLine(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
   const ra = {};
   for (const t of ten) {
     const nay = (cua[t] && cua[t].doanh_so) || 0;
-    const tr = truoc && typeof truoc[t] === "number" && Number.isFinite(truoc[t])
-      ? truoc[t] : null;
-    ra[t] = { doanh_so_ky_truoc: tr, vs_thang_truoc_pt: chenhPhanTram(nay, tr) };
+    const m = moc && typeof moc[t] === "number" && Number.isFinite(moc[t])
+      ? moc[t] : null;
+    ra[t] = { [tenMoc]: m, [tenChenh]: chenhPhanTram(nay, m) };
   }
   return ra;
 }
@@ -688,7 +741,8 @@ export function sapLineTheoDoanhSo(tomTatKpi, thuTu) {
  *  rỗng: `van_de`/`thieu_bang` đi kèm để màn hình nói thẳng vì sao cột ấy
  *  trống — đúng ba trạng thái tách bạch của CLAUDE.md ("có / không có /
  *  CHƯA BIẾT vì nguồn hỏng"). */
-export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong) {
+export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong,
+                          doanhSoLineNamTruoc) {
   /* Vắng hẳn bảng KPI và bảng KPI SAI là hai chuyện khác nhau, nên báo bằng
      hai trường khác nhau. Vắng là trạng thái bình thường trước lượt nạp hạt
      giống đầu tiên; sai là một nhánh dữ liệu có người sửa tay làm hỏng. */
@@ -697,11 +751,20 @@ export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc,
   const dung = thieu_bang || van_de.length ? null : bangKpi;
 
   dienDoanhSoQuyDoi(bang, dung, ky, giaDung);
-  bang.tom_tat_kpi.tong = gopKpiToanCongTy(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc);
+  bang.tom_tat_kpi.tong = gopKpiToanCongTy(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc,
+                                           doanhSoLineNamTruoc);
   /* Thứ tự line của tab [Tổng hợp] đi KÈM bản kê, không để màn hình tự sắp
      (P6 — xem `sapLineTheoDoanhSo`). */
   bang.tom_tat_kpi.thu_tu = sapLineTheoDoanhSo(bang.tom_tat_kpi, thuTu);
   bang.tom_tat_kpi.vs_line = vsThangTruocTheoLine(bang.tom_tat_kpi, thuTu, doanhSoLineKyTruoc);
+  /* Tham số `doanhSoLineNamTruoc` đứng CUỐI danh sách, sau `bangCong`, dù về
+     nghĩa nó thuộc cùng nhóm với `doanhSoLineKyTruoc`. Cố ý: thêm tham số ở
+     cuối thì một Gateway bản CŨ gọi Engine bản MỚI vẫn chạy đúng (nó không
+     truyền, ta nhận `undefined`, cột để trống), còn chèn vào giữa là mọi
+     tham số sau nó lệch một chỗ — `bangCong` nhận nhầm bảng doanh số, và
+     lương cả công ty tính sai trong im lặng. Đúng bẫy số 4 của ROADMAP. */
+  bang.tom_tat_kpi.vs_line_nam = vsNamTruocTheoLine(bang.tom_tat_kpi, thuTu,
+                                                    doanhSoLineNamTruoc);
   /* Lương chạy CUỐI CÙNG, sau khi bản kê theo line đã có đủ `he_so_pt`,
      `dat_pt` và `doanh_so_quy_doi` — nó chia trên cả ba. Chạy trước là tính
      thưởng trên một bảng chưa điền xong. */
