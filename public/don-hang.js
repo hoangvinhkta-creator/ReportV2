@@ -148,7 +148,18 @@
      không xê dịch một pixel.
 
      Phải đúng 19 số, đúng thứ tự `COT` — `kiem/bo-cuc-man-chu.js` canh cặp. */
-  const RONG_COT = [58, 78, 92, 200, 44, 100, 82, 90, 104, 96,
+  /* Cột Ngày nới 58 → 104 (15/09/2026). Băng ngày nay nằm TRONG cột này chứ
+     không còn là một ô `colSpan` trải hết bảng, nên nó phải chứa đủ mũi tên
+     đóng/mở (12px + 6px lề) cộng nhãn ngày ĐỦ NĂM in đậm ("01/08/2026",
+     ~68px ở cỡ chữ 12) cộng 16px đệm hai bên — tức ~102px. Bảng khai
+     `table-layout: fixed` và mọi ô `overflow: hidden`, nên thiếu chỗ không
+     xuống dòng mà CẮT ĐUÔI: để 58 thì mỗi băng ngày hiện ra "01/08/2…".
+
+     Giữ nhãn đủ năm thay vì rút về DD/MM cho vừa cột hẹp: đó là chốt
+     12/09/2026 của chủ dự án — băng ngày là chỗ duy nhất còn neo bảng vào
+     một mốc thời gian thật khi ai đó chụp màn hình gửi đi. Nới cột là cái
+     giá rẻ hơn hẳn việc bỏ mốc ấy. */
+  const RONG_COT = [104, 78, 92, 200, 44, 100, 82, 90, 104, 96,
     132, 108, 132, 150, 92, 112, 84, 34, 34];
 
   /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
@@ -1680,6 +1691,10 @@
       { ten: "Quy đổi", lop: "oQuyDoi",
         gt: "Nghìn đồng. Lợi nhuận từng dòng ÷ hệ số quy đổi của line. Đặt hệ số ở dải "
           + "setup trên tab của chính line đó." },
+      { ten: "Tỉ suất LN",
+        gt: "Lợi nhuận chia cho Doanh số thuần của chính line đó, trong tháng "
+          + "đang xem. Đối chiếu tay được: lấy đúng hai cột ngay bên trái chia "
+          + "cho nhau. Âm nghĩa là tháng ấy lỗ — không phải lỗi." },
       { ten: "Tỉ lệ tồn kho",
         gt: "Doanh số thuần của những dòng có Nơi nhập = “Kho”, chia cho doanh "
           + "số thuần của line. Đối chiếu tay được: lọc cột Nơi nhập trong tab "
@@ -1689,6 +1704,11 @@
       { ten: "Vs. Tháng trước",
         gt: "Doanh số thuần tháng này so với CHÍNH line đó tháng liền trước, "
           + "tính bằng phần trăm chênh." },
+      { ten: "So với năm trước",
+        gt: "Doanh số thuần tháng này so với CÙNG THÁNG năm trước của chính "
+          + "line đó. Đây là cột nhìn qua được mùa vụ — tháng 2 luôn thấp hơn "
+          + "tháng 1 vì Tết, nên so với tháng liền trước thì năm nào cũng ra "
+          + "một con số âm không nói lên điều gì." },
       { ten: "Thưởng", lop: "oPhu",
         gt: "Nghìn đồng. Doanh số quy đổi × hệ số thưởng của bậc đang đạt, cộng thưởng "
           + "nóng nếu chạm mốc. Bậc lấy theo HỆ SỐ QUY ĐỔI của line: 7,5% là "
@@ -1736,6 +1756,10 @@
        không có đơn nào — mà đúng những line ấy mới là chỗ con số −100% đáng
        nhìn nhất (xem `vsThangTruocTheoLine` bên Engine). */
     const vsCua = (tkpi && tkpi.vs_line) || {};
+    /* Cùng lý do bảng riêng như `vs_line`: nó phủ cả line tháng này không có
+       đơn nào. Để `{}` khi bản Engine đang chạy chưa có trường ấy — giữa hai
+       lượt deploy song song (bẫy số 4) cột chỉ trống, không nổ. */
+    const vsNamCua = (tkpi && tkpi.vs_line_nam) || {};
 
     for (const ten of thuTu) {
       /* Line KHÔNG có đơn nào và KHÔNG có dòng nào thì giấu — cùng luật và
@@ -1781,12 +1805,14 @@
       }
       r.appendChild(oQd);
 
+      r.appendChild(oTySuat(k));
       r.appendChild(oTonKho(k));
 
       r.appendChild(el("td", "oSo", k && k.kpi !== null && k.kpi !== undefined
         ? nghinTron(k.kpi) : "—"));
       r.appendChild(oDat(k));
       r.appendChild(oVsThangTruoc(vsCua[ten] || null));
+      r.appendChild(oVsNamTruoc(vsNamCua[ten] || null));
       oLuong(r, luongCua[ten] || null, ten, k, duocNhap);
       b.appendChild(r);
     }
@@ -1803,6 +1829,7 @@
       r.appendChild(el("td", "oSo", nghinTron(t.doanh_so)));
       r.appendChild(el("td", "oSo", nghinTron(t.loi_nhuan)));
       r.appendChild(el("td", "oSo oQuyDoi", nghinTron(t.doanh_so_quy_doi)));
+      r.appendChild(oTySuat(t));
       r.appendChild(oTonKho(t));
       r.appendChild(el("td", "oSo", t.kpi !== null && t.kpi !== undefined
         ? nghinTron(t.kpi) : "—"));
@@ -1814,6 +1841,7 @@
         + "không cộng cả 10 line.";
       r.appendChild(tdDat);
       r.appendChild(oVsThangTruoc(t));
+      r.appendChild(oVsNamTruoc(t));
 
       /* Hàng TỔNG cộng ba cột TIỀN, bỏ trống Ngày công và Ghi chú: cộng ngày
          công của nhiều line ra một con số không có nghĩa nào (26 + 26 + 24 =
@@ -2006,28 +2034,68 @@
     return td;
   }
 
-  /** Ô "Vs. Tháng trước". Ba lý do trống, ba câu khác nhau. */
-  function oVsThangTruoc(k) {
-    const truoc = k ? k.doanh_so_ky_truoc : undefined;
-    if (!k || truoc === null || truoc === undefined) {
+  /** Ô "Tỉ suất LN" — lợi nhuận ÷ doanh số thuần (chủ dự án chốt 15/09/2026).
+   *
+   *  Con số do ENGINE chia, màn hình chỉ đọc (LUẬT SỐ 1): một phép chia trên
+   *  hai cột tiền vẫn là một công thức tính tiền, và làm nó ở đây là mở đúng
+   *  cái cửa CLAUDE.md đóng. */
+  function oTySuat(k) {
+    const v = k ? k.ty_suat_loi_nhuan_pt : undefined;
+    if (v === null || v === undefined) {
       const td = el("td", "oSo", "—");
-      if (k) td.title = "Chưa có số của tháng liền trước để so.";
+      /* Chưa bán gì thì không có gì để chia — khác hẳn "bán mà không lãi
+         đồng nào", thứ hiện ra đúng 0,0%. */
+      if (k) td.title = "Line này chưa có doanh số trong tháng, nên không có gì để chia.";
       return td;
     }
-    if (k.vs_thang_truoc_pt === null || k.vs_thang_truoc_pt === undefined) {
-      /* Tháng trước bằng 0 mà tháng này có số: không chia được, nhưng cũng
-         KHÔNG phải "chưa biết" — nói đúng chuyện đã xảy ra. */
-      const td = el("td", "oSo", "mới");
-      td.title = "Tháng liền trước line này chưa có doanh số nào, nên không "
-        + "có gì để chia.";
-      return td;
+    const td = el("td", "oSo", so1(v) + "%");
+    if (k && k.don_thieu_loi_nhuan) {
+      /* Tử số đang thiếu phần của mấy đơn chưa đủ giá vốn, nên tỉ suất là
+         con số SÀN — cùng quy ước dấu "*" của cột Lợi nhuận ngay bên trái. */
+      td.textContent += " *";
+      td.title = "Còn " + soNguyen(k.don_thieu_loi_nhuan)
+        + " đơn chưa đủ giá vốn nên chưa vào lợi nhuận, tỉ suất thật có thể cao hơn.";
     }
-    const v = k.vs_thang_truoc_pt;
-    const td = el("td", "oSo " + (v < 0 ? "vsGiam" : v > 0 ? "vsTang" : ""),
-      (v > 0 ? "▲ +" : v < 0 ? "▼ " : "") + so1(v) + "%");
-    td.title = "Tháng liền trước: " + nghinTron(truoc) + " nghìn đ.";
     return td;
   }
+
+  /** Ô so sánh với một MỐC thời gian. Ba lý do trống, ba câu khác nhau.
+   *
+   *  Một hàm cho cả "Vs. Tháng trước" lẫn "So với năm trước": hai cột khác
+   *  nhau đúng ở cái mốc đem ra so, còn ba trạng thái (chưa có số / mốc bằng
+   *  0 / có số) thì giống hệt. Hai bản sao là hai chỗ để ba trạng thái ấy
+   *  trôi khỏi nhau, và chỗ trôi sẽ là một cột nói "—" còn cột kia nói "mới"
+   *  cho cùng một line. */
+  function oSoSanh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
+    const moc = k ? k[tenMoc] : undefined;
+    if (!k || moc === null || moc === undefined) {
+      const td = el("td", "oSo", "—");
+      if (k) td.title = cauChuaCo;
+      return td;
+    }
+    if (k[tenChenh] === null || k[tenChenh] === undefined) {
+      /* Mốc bằng 0 mà tháng này có số: không chia được, nhưng cũng KHÔNG
+         phải "chưa biết" — nói đúng chuyện đã xảy ra. */
+      const td = el("td", "oSo", "mới");
+      td.title = cauMoi;
+      return td;
+    }
+    const v = k[tenChenh];
+    const td = el("td", "oSo " + (v < 0 ? "vsGiam" : v > 0 ? "vsTang" : ""),
+      (v > 0 ? "▲ +" : v < 0 ? "▼ " : "") + so1(v) + "%");
+    td.title = nhanMoc + ": " + nghinTron(moc) + " nghìn đ.";
+    return td;
+  }
+
+  const oVsThangTruoc = (k) => oSoSanh(k, "doanh_so_ky_truoc", "vs_thang_truoc_pt",
+    "Chưa có số của tháng liền trước để so.",
+    "Tháng liền trước line này chưa có doanh số nào, nên không có gì để chia.",
+    "Tháng liền trước");
+
+  const oVsNamTruoc = (k) => oSoSanh(k, "doanh_so_nam_truoc", "vs_nam_truoc_pt",
+    "Chưa có số của cùng tháng năm trước để so — sổ chỉ có từ 01/2025.",
+    "Cùng tháng năm trước line này chưa có doanh số nào, nên không có gì để chia.",
+    "Cùng tháng năm trước");
 
   function veBang(kq) {
     const khung = $("veDonHang");
@@ -2254,33 +2322,60 @@
          đặt trong `<tbody>` là HTML không hợp lệ, và trình duyệt sẽ ném nó
          ra ngoài bảng — cột lệch hết. */
       const trNgay = el("tr", "hangNgay");
-      const tdNgay = el("td");
-      tdNgay.colSpan = COT.length;
+
+      /* Băng ngày xếp thẳng theo ĐÚNG CỘT của bảng chi tiết bên dưới (chủ dự
+         án chốt 15/09/2026): ngày ở cột Ngày, số đơn ở cột Số BH, doanh số ở
+         cột Tổng bán, lợi nhuận ở cột Lợi nhuận, quy đổi ở cột Quy đổi.
+
+         Bản trước là MỘT ô `colSpan` trải hết bề ngang, bên trong có một lưới
+         bốn cột cố định riêng. Lưới ấy giữ được các băng ngày thẳng hàng VỚI
+         NHAU, nhưng không thẳng với bảng bên dưới — nên mắt vẫn phải nhảy
+         ngang để đối chiếu "doanh số của ngày" với cột Tổng bán. Nay dùng ô
+         thật, nên hai thứ ấy nằm đúng trên một trục.
+
+         Hệ quả gọn kèm theo: BỎ nhãn "LN" và "QĐ". Chúng sinh ra chỉ để phân
+         biệt bốn con số trong một chuỗi nối; đứng dưới đúng tên cột rồi thì
+         chúng thành chữ thừa (chủ dự án chốt cùng ngày).
+
+         Mọi colSpan tính TỪ `COT.indexOf(...)`, không gõ cứng — cùng luật
+         hàng TỔNG của đơn đang theo, và `kiem/bo-cuc-man-chu.js` canh. Gõ
+         cứng là lần thêm hay dời cột kế tiếp băng ngày lệch sang cột khác mà
+         không có gì đỏ lên. */
+      const iBH = COT.indexOf("Số BH");
+      const iTong = COT.indexOf("Tổng bán");
+      const iLn = COT.indexOf("Lợi nhuận");
+      const iQd = COT.indexOf("Quy đổi");
+
+      /* Ô Ngày — mũi tên đóng/mở và nhãn ngày. */
+      const tdNgay = el("td", "oNgayBang");
       const muiTen = icon("mo", 2.4);
       muiTen.classList.add("muiTenNgay");
       tdNgay.appendChild(muiTen);
       tdNgay.appendChild(el("span", "chuNgay", nhanNgayDay(ng.ngay)));
-      /* Bốn con số ENGINE tính, màn hình chỉ đọc: số đơn, doanh số, lợi
-         nhuận, quy đổi. Dấu "*" ở lợi nhuận nghĩa là còn đơn chưa đủ giá vốn
-         — cùng quy ước với cột Tỉ lệ tồn kho, không phải một dấu mới.
+      trNgay.appendChild(tdNgay);
 
-         MỖI CON SỐ MỘT <span> RIÊNG, xếp trong một lưới bề rộng cố định
-         (chủ dự án chốt 13/09/2026: "cân lại cho thẳng theo cột thay vì để
-         thụt ra thụt vào") — chứ không phải một chuỗi nối bằng "·". Một
-         chuỗi nối thì "3 đơn" và "29 đơn" lệch nhau một ký tự, rồi mọi thứ
-         phía sau nó (doanh số, LN, QĐ) trôi theo, và mắt phải đọc lại từ đầu
-         mỗi dòng thay vì lướt dọc một cột. Cột ở đây là cột riêng của các
-         băng ngày — không bắt phải khớp lưới 19 cột của bảng chi tiết bên
-         dưới, vì băng ngày vốn đã là MỘT ô colSpan trải hết bề ngang. */
-      const soNgay = el("span", "soNgay");
-      soNgay.appendChild(el("span", "ngayO", soNguyen(ng.so_don) + " đơn"));
-      soNgay.appendChild(el("span", "ngayO", nghinTron(ng.doanh_so)));
-      soNgay.appendChild(el("span", "ngayO",
-        "LN " + nghinTron(ng.loi_nhuan || 0) + (ng.don_thieu_loi_nhuan ? " *" : "")));
-      soNgay.appendChild(el("span", "ngayO", "QĐ "
-        + (ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
-          ? "—" : nghinTron(ng.doanh_so_quy_doi))));
-      tdNgay.appendChild(soNgay);
+      /* Bốn con số ENGINE tính, màn hình chỉ đọc. Dấu "*" ở lợi nhuận nghĩa
+         là còn đơn chưa đủ giá vốn — cùng quy ước với cột Tỉ lệ tồn kho,
+         không phải một dấu mới. */
+      trNgay.appendChild(el("td", "oSo", soNguyen(ng.so_don) + " đơn"));
+      /* Khoảng giữa Số BH và Tổng bán: Nơi nhập · Mã sản phẩm · SL · Giá
+         nhập · Giá bán — không con số nào của băng ngày thuộc về chúng. */
+      const tdGiua = el("td");
+      tdGiua.colSpan = iTong - iBH - 1;
+      trNgay.appendChild(tdGiua);
+
+      trNgay.appendChild(el("td", "oSo", nghinTron(ng.doanh_so)));
+      trNgay.appendChild(el("td", "oSo",
+        nghinTron(ng.loi_nhuan || 0) + (ng.don_thieu_loi_nhuan ? " *" : "")));
+      trNgay.appendChild(el("td", "oSo oQuyDoi",
+        ng.doanh_so_quy_doi === null || ng.doanh_so_quy_doi === undefined
+          ? "—" : nghinTron(ng.doanh_so_quy_doi)));
+
+      /* Phần đuôi: từ sau Quy đổi tới hết bảng. */
+      const tdSau = el("td");
+      tdSau.colSpan = COT.length - iQd - 1;
+      trNgay.appendChild(tdSau);
+
       /* Tô CẢ BĂNG khi ngày ấy còn đơn chưa đủ thông tin (chủ dự án chốt
          13/09/2026) — đóng lại rồi thì dấu "*" bên trong một dòng chữ dài
          không đủ để mắt bắt được ngày nào còn việc. Cả băng đổi màu thì
@@ -2291,10 +2386,12 @@
       if (ng.don_thieu_loi_nhuan) {
         const lop = lopCanhBao("ngayThieu");
         if (lop) trNgay.classList.add(lop);
-        tdNgay.title = "Còn " + soNguyen(ng.don_thieu_loi_nhuan)
+        /* `title` đặt lên CẢ HÀNG, không lên một ô: hàng nay có bảy ô rời
+           thay vì một ô gộp, nên gắn vào một ô là câu giải thích chỉ hiện ra
+           khi rê đúng ô ấy. */
+        trNgay.title = "Còn " + soNguyen(ng.don_thieu_loi_nhuan)
           + " đơn chưa đủ giá vốn, nên lợi nhuận của ngày là con số SÀN.";
       }
-      trNgay.appendChild(tdNgay);
       /* Gom hàng của cả ngày rồi mới quyết định có in băng ngày hay không:
          lọc xong mà ngày ấy không còn dòng nào thì một băng ngày trơ trọi
          không có gì bên dưới là dòng nhiễu thuần tuý. */

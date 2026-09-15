@@ -95,13 +95,33 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
   `doanh_so === 0`.
 - Thứ tự line lấy theo `thu_tu` của bảng line trên Firebase (DỮ LIỆU).
 
-Tab đầu **[Tổng hợp]** nay có **15 cột** (P6 lượt 1, 12/09/2026), sắp
+**LƯỢT 15/09/2026 — hai cột mới ở [Tổng hợp], băng ngày xếp thẳng cột:**
+
+- **Tỉ suất LN** (ngay sau Quy đổi) = lợi nhuận ÷ **doanh số thuần** của
+  chính line. Cùng đại lượng file Summary tay đang chia (`G4/E4`). Âm là
+  thật (tháng lỗ), không kẹp về 0; `null` khi chưa bán gì — khác hẳn 0%
+  ("bán mà không lãi đồng nào").
+- **So với năm trước** (ngay sau Vs. Tháng trước) = doanh số thuần so
+  **CÙNG THÁNG** năm trước. `namTruoc()` chỉ lùi NĂM, không đụng tháng —
+  2026-01 → 2025-01, khác hẳn `kyTruoc()`. Đây là cột duy nhất nhìn qua
+  được mùa vụ: tháng 2 luôn thấp hơn tháng 1 vì Tết.
+- Cả hai đi qua `apDungKpi`, tham số `doanhSoLineNamTruoc` đặt ở **ĐUÔI**
+  chữ ký sau `bangCong` (bẫy số 4 — chèn vào giữa là `bangCong` nhận nhầm
+  bảng doanh số và lương cả công ty sai trong im lặng).
+- **Băng ngày ở tab line** nay là **bảy ô thật** xếp đúng cột của bảng chi
+  tiết (ngày → Ngày, số đơn → Số BH, doanh số → Tổng bán, LN → Lợi nhuận,
+  QĐ → Quy đổi), bỏ nhãn "LN"/"QĐ". Cột Ngày nới **58 → 104px** cho đủ mũi
+  tên + nhãn ngày đủ năm; tổng bề rộng bảng 1822 → **1868**.
+
+Tab đầu **[Tổng hợp]** nay có **18 cột** (P6 lượt 1, 12/09/2026; nới
+15/09/2026), sắp
 theo **doanh số thuần giảm dần**, cộng hàng TỔNG do Engine cộng:
 
 ```
 Line · Số đơn · Số sản phẩm · Doanh số thuần · Lợi nhuận ·
-Doanh số quy đổi (tô nền) · Tỉ lệ tồn kho · KPI · Đạt · Vs. Tháng trước ·
-Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương
+Quy đổi (tô nền) · Tỉ suất LN · Tỉ lệ tồn kho · KPI · Đạt ·
+Vs. Tháng trước · So với năm trước ·
+Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương · Ghi chú
 ```
 
 Lượt 2 (cùng ngày) thêm cột thứ **16 — Ghi chú**, và năm cột lương đã có

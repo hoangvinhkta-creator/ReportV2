@@ -164,7 +164,7 @@ export default class extends WorkerEntrypoint {
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
                          ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc,
-                         bangCong, quyetDinhBonus) {
+                         bangCong, quyetDinhBonus, doanhSoLineNamTruoc) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
@@ -196,7 +196,7 @@ export default class extends WorkerEntrypoint {
        trống đúng một khoảng giữa hai lượt deploy, không sai số nào. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc, bangCong);
+      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc);
     return bang;
   }
 
@@ -207,7 +207,7 @@ export default class extends WorkerEntrypoint {
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
                           bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong,
-                          quyetDinhBonus) {
+                          quyetDinhBonus, doanhSoLineNamTruoc) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
@@ -232,7 +232,7 @@ export default class extends WorkerEntrypoint {
        không giải thích. */
     apDungKpi(bang, bangKpi, ky, giaDung,
       bangLine && Array.isArray(bangLine.thu_tu) ? bangLine.thu_tu : null,
-      doanhSoLineKyTruoc, bangCong);
+      doanhSoLineKyTruoc, bangCong, doanhSoLineNamTruoc);
     return bang;
   }
 
