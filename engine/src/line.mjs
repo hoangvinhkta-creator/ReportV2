@@ -296,6 +296,55 @@ export function gopTheoLine(cayKy, bang) {
   };
 }
 
+/** Doanh số theo LINE × TỪNG NGÀY — nguyên liệu của phép so "tính tới hôm
+ *  nay" (chủ dự án chốt 15/09/2026).
+ *
+ *  VÌ SAO CẦN HẠT NGÀY: so doanh số nửa tháng này với TRỌN tháng trước thì
+ *  cột "Vs. Tháng trước" chắc chắn âm suốt nửa đầu mỗi tháng, và âm vì lịch
+ *  chứ không vì bán kém — tức nó vô dụng đúng lúc người ta cần nhìn nhất.
+ *  Cắt mốc rồi mới cộng thì hai vế cùng số ngày.
+ *
+ *  Làm được mà không phải nạp lại sổ là nhờ `bc/ky` vốn giữ hạt (nhân viên,
+ *  NGÀY) — chốt của P2, và đây là lần đầu hạt ngày ấy trả công.
+ *
+ *  Trả CẢ tổng lẫn bản kê theo ngày trong một lượt: hai lượt gọi cho cùng
+ *  một cây là hai lần đi qua Service Binding cho một phép cộng.
+ *
+ *  KHÔNG dùng lại `gopTheoLine()` rồi cộng thêm: hàm ấy còn kiểm bảng line,
+ *  dựng `nguon`, `chua_xep` và bất biến khớp tổng — cả một bộ máy cho một
+ *  bản kê hai tầng. Nhưng phép XẾP LINE thì dùng chung đúng `xepLine()`, để
+ *  hai đường không bao giờ xếp một cái tên vào hai line khác nhau. */
+export function gopLineTheoNgay(cayKy, bang) {
+  if (!cayKy || typeof cayKy !== "object") throw new Error("line: can cay bc/ky");
+  const van_de = kiemBangLine(bang);
+  if (van_de.length) {
+    const e = new Error("line: bang anh xa khong dung duoc");
+    e.ma = "bang-line-khong-hop-le";
+    e.van_de = van_de;
+    throw e;
+  }
+
+  const tong = {};
+  const theo_ngay = {};
+
+  for (const ky of Object.keys(cayKy)) {
+    const theoNv = cayKy[ky];
+    if (!theoNv || typeof theoNv !== "object") continue;
+    for (const nv of Object.keys(theoNv)) {
+      const cuaNgay = theoNv[nv];
+      if (!cuaNgay || typeof cuaNgay !== "object") continue;
+      const tenLine = xepLine(nv, bang);
+      const m = (theo_ngay[tenLine] ||= {});
+      for (const ngay of Object.keys(cuaNgay)) {
+        const ds = Number((cuaNgay[ngay] || {}).doanh_so) || 0;
+        m[ngay] = lamTron((m[ngay] || 0) + ds);
+        tong[tenLine] = lamTron((tong[tenLine] || 0) + ds);
+      }
+    }
+  }
+  return { tong, theo_ngay };
+}
+
 /* ─────────── Gộp theo line × đơn vị thời gian (bảng xếp hạng Dashboard) ─────────── */
 
 /** Cây `bc/ky` + bảng line → doanh số/số đơn của TỪNG LINE theo tháng và theo

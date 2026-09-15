@@ -216,9 +216,9 @@ const GOC = path.resolve(__dirname, '..');
        vì một lượt thêm cột hợp lệ, trong khi thứ nó canh — đúng THỨ TỰ mấy
        tham số đang có — vẫn nguyên. */
     ok('Gateway truyền bảng KPI + tick vào dungBangDonKemMa',
-       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, doanhSoKyTruoc, congVal, bonusVal/.test(GW), true);
+       /minNgay, quyetDinh\.val \|\| \{\}, kpiVal, gdVal, tongMoc\(doanhSoKyTruoc\), congVal,\s*\n?\s*bonusVal/.test(GW), true);
     ok('  · và vào cả đường ngoài phạm vi khớp mã (dungBangDonSuaTay)',
-       /kpiVal, gdVal, ky, doanhSoKyTruoc, congVal, bonusVal/.test(GW), true);
+       /kpiVal, gdVal, ky, tongMoc\(doanhSoKyTruoc\), congVal, bonusVal/.test(GW), true);
   }
 
   /* ─────────── G. Ô tick không mở oan màn gán mã ─────────── */

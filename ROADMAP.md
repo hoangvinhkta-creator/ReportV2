@@ -105,6 +105,25 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
   **CÙNG THÁNG** năm trước. `namTruoc()` chỉ lùi NĂM, không đụng tháng —
   2026-01 → 2025-01, khác hẳn `kyTruoc()`. Đây là cột duy nhất nhìn qua
   được mùa vụ: tháng 2 luôn thấp hơn tháng 1 vì Tết.
+- **Vế "tính tới hôm nay" (MTD)** — cùng ngày. Mỗi ô so sánh mang **HAI**
+  con số ngăn bằng `/`: so cả tháng, rồi so cùng số ngày. Chủ dự án nêu
+  đúng vấn đề: nửa đầu tháng, so 15 ngày với trọn 30 ngày thì cột luôn âm
+  vì lịch chứ không vì bán kém.
+  - Mốc cắt là **NGÀY HÔM NAY** (anh chọn giữa hai phương án). Hệ quả phải
+    nhớ: hôm nào chưa kịp tải sổ thì mấy ngày thiếu tính là 0 đồng, và vế
+    MTD tụt vì thiếu dữ liệu chứ không phải vì bán kém.
+  - Chỉ áp khi kỳ đang xem **chứa** hôm nay (`tom_tat_kpi.moc_mtd`). Tháng
+    đã đóng sổ thì "tới hôm nay" là trọn tháng — in hai số bằng nhau chỉ tổ
+    làm người đọc đi tìm chỗ khác biệt.
+  - Làm được mà không nạp lại sổ là nhờ `bc/ky` giữ hạt **(nhân viên,
+    NGÀY)** từ P2 — lần đầu hạt ngày ấy trả công. RPC mới
+    `gopLineTheoNgay`, và Gateway có **đường lùi** về `gopTheoLine` khi
+    Engine bản cũ chưa có nó (bẫy số 4): mất vế MTD ít phút, không nổ 503.
+  - ⚠️ **Cắt theo NGÀY TRONG THÁNG, không so cả chuỗi `YYYY-MM-DD`** — hai
+    vế nằm ở hai THÁNG khác nhau. So cả chuỗi thì `2026-08-20 < 2026-09-15`
+    nên ngày 20/08 lọt vào phép cộng "tới ngày 15", và vế MTD ra đúng bằng
+    vế cả tháng. Lỗi này đã viết ra rồi bị bài kiểm bắt; `kiem/tong-hop.js`
+    G2b ghim nó.
 - Cả hai đi qua `apDungKpi`, tham số `doanhSoLineNamTruoc` đặt ở **ĐUÔI**
   chữ ký sau `bangCong` (bẫy số 4 — chèn vào giữa là `bangCong` nhận nhầm
   bảng doanh số và lương cả công ty sai trong im lặng).

@@ -242,6 +242,89 @@ const GOC = path.resolve(__dirname, '..');
        [100, -50]);
   }
 
+  /* ─────────── G2b. "Tính tới hôm nay" (MTD) ─────────── */
+
+  console.log('\nG2b) Tính tới hôm nay — cắt mốc rồi mới cộng (chốt 15/09/2026)');
+  {
+    /* Kỳ đang xem là 2026-09, hôm nay 15/09. Line L1 bán 100 trong kỳ.
+       Tháng trước bán 60 trong nửa đầu và 140 trong nửa sau — trọn tháng 200,
+       nhưng tới ngày 15 mới có 60. Hai vế phải ra hai con số KHÁC nhau:
+       −50% nếu so cả tháng, +66,7% nếu so cùng số ngày. Đây đúng là vấn đề
+       chủ dự án nêu ("so full tháng thì chắc chắn thấp hơn"). */
+    const theoNgay = { L1: { '2026-08-10': 60, '2026-08-20': 140 } };
+    const lam = (homNay, ky) => {
+      const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+        dong: [dong({ tong_ban: 100, loi_nhuan: 0 })] }]);
+      P.apDungKpi(b, BANG, ky || '2026-09', {}, ['L1'], { L1: 200 }, null, null,
+        { ngay_hom_nay: homNay, ky_truoc_theo_ngay: theoNgay, nam_truoc_theo_ngay: null });
+      return b.tom_tat_kpi;
+    };
+
+    const t = lam('2026-09-15');
+    ok('vế cả tháng vẫn là cả tháng', t.vs_line.L1.vs_thang_truoc_pt, -50);
+    ok('vế tới hôm nay chỉ cộng tới 15/08', t.vs_line.L1.doanh_so_ky_truoc_mtd, 60);
+    ok('  · nên ra +66,7% chứ không phải −50%',
+       t.vs_line.L1.vs_thang_truoc_mtd_pt, 66.67);
+    ok('Engine nói ra mốc đã cắt, để màn hình biết có vế thứ hai hay không',
+       t.moc_mtd, '2026-09-15');
+
+    /* Ngày mốc phải TÍNH VÀO, không bị bỏ. Cắt "< mốc" thay vì "<= mốc" là
+       mất trọn một ngày bán ở cả hai vế so sánh, im lặng. */
+    const bienTren = (() => {
+      const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+        dong: [dong({ tong_ban: 100, loi_nhuan: 0 })] }]);
+      P.apDungKpi(b, BANG, '2026-09', {}, ['L1'], { L1: 200 }, null, null,
+        { ngay_hom_nay: '2026-09-10',
+          ky_truoc_theo_ngay: { L1: { '2026-08-10': 60 } }, nam_truoc_theo_ngay: null });
+      return b.tom_tat_kpi.vs_line.L1.doanh_so_ky_truoc_mtd;
+    })();
+    ok('ngày ĐÚNG BẰNG mốc vẫn được tính vào', bienTren, 60);
+
+    /* LỖI ĐÃ VIẾT RA RỒI BỊ BẮT LẠI, ghim để không tái diễn: so CẢ CHUỖI
+       "YYYY-MM-DD" thay vì so ngày-trong-tháng. Mốc "2026-09-15" và ngày
+       "2026-08-20" — so cả chuỗi thì 08 < 09 nên ngày 20/08 lọt vào phép
+       cộng "tới ngày 15", và vế MTD ra đúng bằng vế cả tháng. Cột mới thành
+       một bản sao vô nghĩa của cột cũ, không có gì báo.
+
+       Bài này chỉ xanh khi phép cắt so NGÀY TRONG THÁNG: 20 > 15 nên ngày
+       20/08 bị loại, còn lại đúng 60. */
+    ok('cắt theo NGÀY TRONG THÁNG, không so cả chuỗi ngày (hai vế khác tháng)',
+       t.vs_line.L1.doanh_so_ky_truoc_mtd < 200, true);
+
+    /* KỲ ĐÃ ĐÓNG SỔ: không gắn vế MTD. "Tới hôm nay" của một tháng đã qua
+       chính là trọn tháng, và in hai con số bằng hệt nhau chỉ tổ làm người
+       đọc đi tìm chỗ khác biệt. */
+    const cu = lam('2026-09-15', '2026-08');
+    ok('kỳ không chứa hôm nay thì KHÔNG có mốc', cu.moc_mtd, null);
+    ok('  · và không gắn vế MTD vào ô nào',
+       cu.vs_line.L1.doanh_so_ky_truoc_mtd, undefined);
+
+    /* Không có bản kê ngày (Engine cũ, đường lùi của Gateway) thì cũng
+       KHÔNG gắn — cột về đúng hành vi cũ, không phải một con số sai. */
+    const khongHat = (() => {
+      const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+        dong: [dong({ tong_ban: 100, loi_nhuan: 0 })] }]);
+      P.apDungKpi(b, BANG, '2026-09', {}, ['L1'], { L1: 200 }, null, null,
+        { ngay_hom_nay: '2026-09-15', ky_truoc_theo_ngay: null, nam_truoc_theo_ngay: null });
+      return b.tom_tat_kpi.vs_line.L1;
+    })();
+    ok('thiếu bản kê ngày thì không gắn vế MTD',
+       khongHat.doanh_so_ky_truoc_mtd, undefined);
+    ok('  · nhưng vế cả tháng vẫn nguyên', khongHat.vs_thang_truoc_pt, -50);
+
+    /* Hàng TỔNG cộng MỌI line của bảng mốc, đúng kỷ luật vế cả tháng đang
+       theo — lọc theo line có đơn tháng này là so một tháng đủ với một tháng
+       đã bị cắt bớt. */
+    const b2 = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+      dong: [dong({ tong_ban: 100, loi_nhuan: 0 })] }]);
+    P.apDungKpi(b2, BANG, '2026-09', {}, ['L1'], { L1: 200 }, null, null,
+      { ngay_hom_nay: '2026-09-15',
+        ky_truoc_theo_ngay: { L1: { '2026-08-10': 60 }, L2: { '2026-08-12': 40 } },
+        nam_truoc_theo_ngay: null });
+    ok('hàng TỔNG cộng cả line tháng này không có đơn (L2)',
+       b2.tom_tat_kpi.tong.doanh_so_ky_truoc_mtd, 100);
+  }
+
   /* ─────────── G3. Tỉ suất lợi nhuận ─────────── */
 
   console.log('\nG3) Tỉ suất LN — lợi nhuận ÷ doanh số thuần (chốt 15/09/2026)');
@@ -473,14 +556,14 @@ const GOC = path.resolve(__dirname, '..');
        lại cái đuôi. */
     const ENG = doc('engine/src/index.js');
     ok('dungBangDonKemMa nhận tham số mới ở ĐUÔI',
-       /dungBangDonKemMa\([^)]*bangCong, quyetDinhBonus, doanhSoLineNamTruoc\)/.test(ENG), true);
+       /dungBangDonKemMa\([^)]*quyetDinhBonus, doanhSoLineNamTruoc, mtd\)/.test(ENG), true);
     ok('dungBangDonSuaTay cũng vậy',
-       /dungBangDonSuaTay\([^)]*quyetDinhBonus, doanhSoLineNamTruoc\)/.test(ENG), true);
+       /dungBangDonSuaTay\([^)]*quyetDinhBonus, doanhSoLineNamTruoc, mtd\)/.test(ENG), true);
     /* Và `apDungKpi` cũng nhận nó ở đuôi, SAU `bangCong`. Chèn vào giữa —
        cạnh `doanhSoLineKyTruoc`, chỗ nó thuộc về về nghĩa — là `bangCong`
        nhận nhầm bảng doanh số, và lương cả công ty sai trong im lặng. */
     ok('apDungKpi cũng nhận nó SAU bangCong, không chèn cạnh kỳ trước',
-       /apDungKpi\(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong,\s*\n?\s*doanhSoLineNamTruoc\)/
+       /apDungKpi\(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong,\s*\n?\s*doanhSoLineNamTruoc, mtd\)/
          .test(doc('engine/src/kpi.mjs')), true);
   }
 
@@ -648,7 +731,11 @@ const GOC = path.resolve(__dirname, '..');
       tom_tat_line: { thu_tu: ['L1', 'L2', 'L3'], line: {} },
       bang: { tom_tat_kpi: { line, thu_tu: ['L2', 'L1', 'L3'], thieu_bang: false, van_de: [],
         vs_line: {
-          L2: { doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20 },
+          /* Hai vế TRÁI DẤU — đúng ca cột này sinh ra để bắt: so cả tháng
+             thì tụt, mà tính tới hôm nay lại tăng. Mỗi vế phải mang màu của
+             RIÊNG nó, không lấy màu chung của ô. */
+          L2: { doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20,
+                doanh_so_ky_truoc_mtd: 1200000, vs_thang_truoc_mtd_pt: -25 },
           L1: { doanh_so_ky_truoc: 0, vs_thang_truoc_pt: null },
           /* L3 chưa có đơn tháng này, nhưng tháng trước bán 400 — phải ra
              −100%, đúng ca mà mục G ghim ở tầng Engine. */
@@ -659,7 +746,8 @@ const GOC = path.resolve(__dirname, '..');
            Ba trạng thái khác nhau trên ba line, đúng ba câu màn hình phải
            nói ra. */
         vs_line_nam: {
-          L2: { doanh_so_nam_truoc: 600000, vs_nam_truoc_pt: 50 },
+          L2: { doanh_so_nam_truoc: 600000, vs_nam_truoc_pt: 50,
+                doanh_so_nam_truoc_mtd: 300000, vs_nam_truoc_mtd_pt: 200 },
           L1: { doanh_so_nam_truoc: null, vs_nam_truoc_pt: null },
           L3: { doanh_so_nam_truoc: 0, vs_nam_truoc_pt: null },
         },
@@ -668,7 +756,9 @@ const GOC = path.resolve(__dirname, '..');
                 ty_le_ton_kho_pt: 36, doanh_so_chua_ro_nguon: 50000,
                 ty_suat_loi_nhuan_pt: 10,
                 doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 33.3,
-                doanh_so_nam_truoc: 800000, vs_nam_truoc_pt: 25 },
+                doanh_so_nam_truoc: 800000, vs_nam_truoc_pt: 25,
+                doanh_so_ky_truoc_mtd: 500000, vs_thang_truoc_mtd_pt: 100,
+                doanh_so_nam_truoc_mtd: 500000, vs_nam_truoc_mtd_pt: 100 },
         luong: {
           line: {
             L2: { cach: 'B', he_so_thuong_pt: 0.45, moc_nong: 1,
@@ -716,7 +806,13 @@ const GOC = path.resolve(__dirname, '..');
       return i;
     };
     const oCua = (hang, ten) => b.con[hang].con[iC(ten)];
-    const chuCua = (hang, ten) => oCua(hang, ten).textContent;
+    /* Ô so sánh từ 15/09/2026 chứa các <span> con (hai vế ngăn bằng "/"),
+       nên `textContent` của chính ô là rỗng — phải gom chữ của cả cây con.
+       Ô thường thì không có con và trả về đúng chữ của nó như cũ. */
+    const docChu = (n) => (n.textContent || (n.con || []).map(docChu).join(''));
+    const chuCua = (hang, ten) => docChu(oCua(hang, ten));
+    /* Vế đầu của một ô so sánh — nơi mang màu tăng/giảm và `title` của mốc. */
+    const veDau = (hang, ten) => oCua(hang, ten).con[0];
     ok('thứ tự hàng theo tom_tat_kpi.thu_tu, không theo tom_tat_line',
        [chu(1)[0], chu(2)[0]], ['L2', 'L1']);
     ok('hàng cuối là TỔNG', chu(3)[0], 'TỔNG');
@@ -726,22 +822,44 @@ const GOC = path.resolve(__dirname, '..');
        [chu(1)[1], chu(1)[2], chu(1)[3]], ['3', '7', '900']);
     ok('L2 — tỉ lệ tồn kho và Vs. tháng trước',
        [chuCua(1, 'Tỉ lệ tồn kho'), chuCua(1, 'Vs. Tháng trước')],
-       ['40,0%', '▲ +20,0%']);
-    ok('  · tăng thì mang lớp màu tăng',
-       oCua(1, 'Vs. Tháng trước').className, 'oSo vsTang');
+       ['40,0%', '▲ +20,0% / ▼ -25,0%']);
+    ok('  · tăng thì mang lớp màu tăng', veDau(1, 'Vs. Tháng trước').className, 'vsTang');
 
     /* ── Hai cột mới, chủ dự án chốt 15/09/2026 ── */
     ok('L2 — Tỉ suất LN (Engine chia, màn hình chỉ đọc)',
        chuCua(1, 'Tỉ suất LN'), '10,0%');
-    ok('L2 — So với năm trước', chuCua(1, 'So với năm trước'), '▲ +50,0%');
+    ok('L2 — So với năm trước', chuCua(1, 'So với năm trước'), '▲ +50,0% / ▲ +200,0%');
     ok('  · và ô đó nói mốc đem ra so, không để người đọc tự đoán',
-       /Cùng tháng năm trước: 600 nghìn đ/.test(oCua(1, 'So với năm trước').title), true);
+       /Cùng tháng năm trước: 600 nghìn đ/.test(veDau(1, 'So với năm trước').title), true);
     ok('L1 — CHƯA CÓ số năm trước → "—"', chuCua(2, 'So với năm trước'), '—');
     ok('  · và nói rõ vì sao (sổ chỉ có từ 01/2025)',
-       /sổ chỉ có từ 01\/2025/.test(oCua(2, 'So với năm trước').title), true);
+       /sổ chỉ có từ 01\/2025/.test(veDau(2, 'So với năm trước').title), true);
     /* Tử số của L1 còn thiếu mấy đơn chưa đủ giá vốn, nên tỉ suất là con số
        SÀN — phải dán nhãn "*", đúng quy ước cột Lợi nhuận ngay bên trái. */
     ok('L1 — Tỉ suất LN dán nhãn thiếu bằng dấu *', chuCua(2, 'Tỉ suất LN'), '10,0% *');
+
+    /* ── Vế "tính tới hôm nay", chủ dự án chốt 15/09/2026 ──
+       Cùng ô, ngăn bằng "/", không thêm cột và không thêm lời giải thích. */
+    ok('L2 — ô Vs. Tháng trước mang HAI vế ngăn bằng "/"',
+       chuCua(1, 'Vs. Tháng trước'), '▲ +20,0% / ▼ -25,0%');
+    ok('  · và So với năm trước cũng vậy',
+       chuCua(1, 'So với năm trước'), '▲ +50,0% / ▲ +200,0%');
+    /* MỖI VẾ MANG MÀU RIÊNG. Đây là điểm của cả cột: cả tháng thì tụt, tính
+       tới hôm nay lại tăng — lấy một màu chung cho cả ô là xoá mất đúng
+       thông tin người ta mở bảng ra để tìm. */
+    const oVs = oCua(1, 'Vs. Tháng trước');
+    ok('  · vế cả tháng xanh (tăng), vế tới hôm nay đỏ (giảm)',
+       [oVs.con[0].className, oVs.con[2].className], ['vsTang', 'vsGiam']);
+    ok('  · dấu ngăn là một span riêng, không dính vào con số nào',
+       [oVs.con[1].className, oVs.con[1].textContent], ['vach', ' / ']);
+    ok('  · và vế thứ hai nói rõ mốc của nó ở title',
+       /Tháng liền trước \(tới hôm nay\): 1\.200 nghìn đ/.test(oVs.con[2].title), true);
+
+    /* Line KHÔNG có vế MTD (Engine không gắn vì kỳ đã đóng sổ, hoặc line ấy
+       không có bản kê ngày): ô chỉ MỘT vế, KHÔNG có dấu "/" lửng lơ. */
+    ok('L1 — không có vế MTD thì không in dấu "/"',
+       chuCua(2, 'Vs. Tháng trước').includes('/'), false);
+    ok('  · và ô ấy đúng một span', oCua(2, 'Vs. Tháng trước').con.length, 1);
 
     /* Line THIẾU dữ liệu: ba cách trống khác nhau, ba câu khác nhau. */
     ok('L1 — lợi nhuận và quy đổi dán nhãn thiếu bằng dấu *',
@@ -795,7 +913,7 @@ const GOC = path.resolve(__dirname, '..');
        18 ô" đang canh. */
     ok('TỔNG — Tỉ suất LN và So với năm trước',
        [chuCua(3, 'Tỉ suất LN'), chuCua(3, 'So với năm trước')],
-       ['10,0%', '▲ +25,0%']);
+       ['10,0%', '▲ +25,0% / ▲ +100,0%']);
 
     /* Highlight ba mức khi vượt KPI. */
     ok('đạt 90% thì KHÔNG tô', oCua(1, 'Đạt').className, 'oSo ');

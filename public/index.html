@@ -558,6 +558,12 @@
      để họ gõ rồi ăn 403: một ô gõ được mà lưu không được là lời hứa hỏng. */
   .daiKpi .oKpi:disabled { background: none; color: #6b7280; cursor: not-allowed; }
 
+  /* Dấu ngăn hai vế của ô so sánh — "cả tháng / tính tới hôm nay" (chủ dự án
+     chốt 15/09/2026). Xám nhạt để nó là một dấu NGĂN chứ không đọc như một
+     ký tự của con số; hai con số hai bên vẫn giữ màu tăng/giảm của riêng
+     chúng, vì chúng có thể trái dấu và đó đúng là thứ đáng nhìn. */
+  .bangTongHop .vach { color: #c4cbd6; font-weight: 400; }
+
   /* ---- Dải đẩy sang Google Sheet (13/09/2026) ----
      Một hàng RIÊNG dưới dải KPI, không chen vào cùng hàng: dải KPI là mấy ô
      số ngắn đọc lướt được, còn ô này là một link dài. Nhét chung thì hàng

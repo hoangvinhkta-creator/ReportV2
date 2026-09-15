@@ -666,6 +666,85 @@ export function vsThangTruocTheoLine(tomTatKpi, thuTu, doanhSoLineKyTruoc) {
                   "doanh_so_ky_truoc", "vs_thang_truoc_pt");
 }
 
+/* ─────────── "Tính tới hôm nay" (MTD), chủ dự án chốt 15/09/2026 ───────────
+ *
+ * Nửa đầu mỗi tháng, so doanh số 15 ngày với TRỌN 30 ngày tháng trước thì
+ * cột luôn âm — âm vì lịch, không vì bán kém. Chủ dự án nói đúng vấn đề:
+ * "hôm nay mới đến 15/10 nhưng so với tháng trước đang so full tháng thì
+ * chắc chắn sẽ thấp hơn".
+ *
+ * Nên MỖI CỘT mang HAI con số, ngăn bằng dấu "/" ngay trong chính ô ấy
+ * (anh chốt: "chia cột làm 2 phần… không cần phải giải thích số liệu, tôi
+ * có thể tự hiểu"): so cả tháng, rồi so cùng số ngày.
+ *
+ * MỐC CẮT LÀ NGÀY HÔM NAY, anh chọn giữa hai phương án. Hệ quả phải nhớ:
+ * hôm nào chưa kịp tải sổ thì mấy ngày thiếu ấy tính là 0 đồng, và vế MTD
+ * tụt xuống vì thiếu dữ liệu chứ không phải vì bán kém. Phương án kia (cắt
+ * tới ngày cuối CÓ dữ liệu) không có nhược điểm đó nhưng anh đã cân nhắc và
+ * chọn phương án này — "tính tới hôm nay" đúng nghĩa đen hơn.
+ *
+ * CHỈ áp khi kỳ đang xem CHỨA ngày hôm nay. Một tháng đã đóng sổ thì "tới
+ * hôm nay" chính là trọn tháng, và in ra hai con số bằng hệt nhau chỉ tổ
+ * làm người đọc đi tìm xem chúng khác nhau chỗ nào.
+ */
+
+/** Cộng doanh số của một line tới hết NGÀY TRONG THÁNG của mốc.
+ *
+ *  So NGÀY TRONG THÁNG (hai ký tự cuối), KHÔNG so cả chuỗi "YYYY-MM-DD" —
+ *  và đây là một lỗi đã viết ra rồi bị bài kiểm bắt lại, đáng ghi:
+ *
+ *    mốc  "2026-09-15"   (hôm nay, kỳ đang xem)
+ *    ngày "2026-08-20"   (một ngày của kỳ MỐC — tháng KHÁC)
+ *
+ *  So cả chuỗi thì `"2026-08-20" < "2026-09-15"`, nên ngày 20/08 lọt vào
+ *  phép cộng "tới ngày 15" và vế MTD ra đúng bằng vế cả tháng — cột mới trở
+ *  thành một bản sao vô nghĩa của cột cũ, không có gì báo. Bản chất: hai vế
+ *  so sánh NẰM Ở HAI THÁNG KHÁC NHAU, nên thứ duy nhất đem so được là ngày
+ *  thứ mấy trong tháng.
+ *
+ *  So hai ký tự cuối bằng chuỗi là đủ và đúng: chúng luôn có đệm số 0
+ *  ("01"…"31"), nên thứ tự chuỗi trùng thứ tự số.
+ *
+ *  Trả `null` khi line ấy không có bản kê ngày nào: "không có dữ liệu để
+ *  cắt" khác hẳn "cắt ra 0 đồng", và màn hình hiện hai câu khác nhau. */
+function congToiMoc(theoNgayCuaLine, moc) {
+  if (!laObjThuong(theoNgayCuaLine)) return null;
+  const ngayMoc = String(moc).slice(8, 10);
+  let t = 0;
+  for (const ngay of Object.keys(theoNgayCuaLine)) {
+    if (String(ngay).slice(8, 10) > ngayMoc) continue;
+    const v = Number(theoNgayCuaLine[ngay]);
+    if (Number.isFinite(v)) t = lamTron(t + v);
+  }
+  return t;
+}
+
+/** Kỳ "YYYY-MM" có chứa ngày "YYYY-MM-DD" không. */
+const ngayTrongKy = (ngay, ky) =>
+  typeof ngay === "string" && typeof ky === "string"
+  && /^\d{4}-\d{2}-\d{2}$/.test(ngay) && ngay.slice(0, 7) === ky;
+
+/** Gắn vế MTD vào một bảng so sánh đã dựng (`vs_line` hoặc `vs_line_nam`).
+ *
+ *  Sửa TẠI CHỖ chứ không dựng bảng thứ hai: hai bảng song song cho cùng một
+ *  cột là hai chỗ để danh sách line trôi khỏi nhau, và line nào có ở bảng
+ *  này mà thiếu ở bảng kia sẽ hiện ra một nửa ô trống không ai giải thích
+ *  được. */
+function ganMtd(bangSo, tomTatKpi, theoNgayMoc, moc, tenMoc, tenChenh) {
+  if (!laObjThuong(theoNgayMoc)) return;
+  const cua = (tomTatKpi && tomTatKpi.line) || {};
+  for (const ten of Object.keys(bangSo)) {
+    /* Tử số là doanh số của chính line trong kỳ đang xem. KHÔNG cắt lại nó
+       theo mốc: kỳ đang xem vốn không thể có dòng nào của ngày mai, nên nó
+       ĐÃ là "tính tới hôm nay". Cắt thêm một lần nữa chỉ thêm một chỗ để
+       lệch với cột Doanh số thuần ngay bên cạnh. */
+    const nay = (cua[ten] && cua[ten].doanh_so) || 0;
+    const m = congToiMoc(theoNgayMoc[ten], moc);
+    bangSo[ten][tenMoc] = m;
+    bangSo[ten][tenChenh] = chenhPhanTram(nay, m);
+  }
+}
+
 /** Cột "So với năm trước" — CÙNG THÁNG của năm trước, chủ dự án chốt
  *  15/09/2026.
  *
@@ -742,7 +821,7 @@ export function sapLineTheoDoanhSo(tomTatKpi, thuTu) {
  *  trống — đúng ba trạng thái tách bạch của CLAUDE.md ("có / không có /
  *  CHƯA BIẾT vì nguồn hỏng"). */
 export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc, bangCong,
-                          doanhSoLineNamTruoc) {
+                          doanhSoLineNamTruoc, mtd) {
   /* Vắng hẳn bảng KPI và bảng KPI SAI là hai chuyện khác nhau, nên báo bằng
      hai trường khác nhau. Vắng là trạng thái bình thường trước lượt nạp hạt
      giống đầu tiên; sai là một nhánh dữ liệu có người sửa tay làm hỏng. */
@@ -765,6 +844,34 @@ export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc,
      lương cả công ty tính sai trong im lặng. Đúng bẫy số 4 của ROADMAP. */
   bang.tom_tat_kpi.vs_line_nam = vsNamTruocTheoLine(bang.tom_tat_kpi, thuTu,
                                                     doanhSoLineNamTruoc);
+
+  /* Vế "tính tới hôm nay" gắn thêm vào hai bảng vừa dựng. Chỉ khi kỳ đang
+     xem CHỨA hôm nay — tháng đã đóng sổ thì "tới hôm nay" là trọn tháng, và
+     hai con số bằng hệt nhau chỉ tổ làm người đọc đi tìm chỗ khác biệt. */
+  const moc = mtd && mtd.ngay_hom_nay;
+  bang.tom_tat_kpi.moc_mtd = ngayTrongKy(moc, ky) ? moc : null;
+  if (bang.tom_tat_kpi.moc_mtd) {
+    ganMtd(bang.tom_tat_kpi.vs_line, bang.tom_tat_kpi, mtd.ky_truoc_theo_ngay, moc,
+           "doanh_so_ky_truoc_mtd", "vs_thang_truoc_mtd_pt");
+    ganMtd(bang.tom_tat_kpi.vs_line_nam, bang.tom_tat_kpi, mtd.nam_truoc_theo_ngay, moc,
+           "doanh_so_nam_truoc_mtd", "vs_nam_truoc_mtd_pt");
+    /* Hàng TỔNG: cộng MỌI line của bảng mốc, đúng kỷ luật `gopKpiToanCongTy`
+       đang theo với vế cả tháng — lọc theo line có mặt tháng này là so một
+       tháng đủ với một tháng đã bị cắt bớt. */
+    const congHet = (m) => {
+      if (!laObjThuong(m)) return null;
+      let t = 0;
+      for (const ten of Object.keys(m)) t = lamTron(t + (congToiMoc(m[ten], moc) || 0));
+      return t;
+    };
+    const t = bang.tom_tat_kpi.tong;
+    if (t) {
+      t.doanh_so_ky_truoc_mtd = congHet(mtd.ky_truoc_theo_ngay);
+      t.vs_thang_truoc_mtd_pt = chenhPhanTram(t.doanh_so, t.doanh_so_ky_truoc_mtd);
+      t.doanh_so_nam_truoc_mtd = congHet(mtd.nam_truoc_theo_ngay);
+      t.vs_nam_truoc_mtd_pt = chenhPhanTram(t.doanh_so, t.doanh_so_nam_truoc_mtd);
+    }
+  }
   /* Lương chạy CUỐI CÙNG, sau khi bản kê theo line đã có đủ `he_so_pt`,
      `dat_pt` và `doanh_so_quy_doi` — nó chia trên cả ba. Chạy trước là tính
      thưởng trên một bảng chưa điền xong. */

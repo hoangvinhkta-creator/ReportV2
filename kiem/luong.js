@@ -298,8 +298,12 @@ const GOC = path.resolve(__dirname, '..');
        nối vào SAU nó, đúng luật "thêm vào ĐUÔI" của bẫy số 4. Điều phải canh
        vẫn là: ngày công có tới được Engine hay không, và nó phải nằm sau
        `doanhSoKyTruoc` chứ không bị ai chèn lên trước. */
+    /* Từ 15/09/2026 Gateway bọc mốc kỳ trước qua `tongMoc()` — cùng một thứ
+       (bảng {line: doanh số}), chỉ là nó lấy ra từ gói `{tong, theo_ngay}`
+       của lượt đọc mới. Điều bài này canh KHÔNG đổi: `congVal` phải đứng
+       ngay SAU mốc kỳ trước, không ai được chèn lên trước nó. */
     ok('  · và truyền xuống Engine sau doanhSoKyTruoc (bẫy số 4)',
-       /doanhSoKyTruoc, congVal[,)]/.test(GW), true);
+       /tongMoc\(doanhSoKyTruoc\), congVal[,)]/.test(GW), true);
     ok('đường nhánh nằm dưới bc/quyetdinh (thừa hưởng rules đang chạy)',
        L.DUONG_NGAY_CONG, 'bc/quyetdinh/cong');
   }
