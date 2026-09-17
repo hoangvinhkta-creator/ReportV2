@@ -720,7 +720,51 @@ function kiemMoc(ten, gtThat, doiSo) {
        còn phân biệt bằng MÀU — chú giải vì vậy là bắt buộc, và nét đứt cũ
        không được sót lại ở đâu. */
     const MA = doc('public/suc-khoe.js');
-    ok('không còn nét đứt ở chuỗi kỳ trước', /stroke-dasharray/.test(MA), false);
+    /* Soi HÀM VẼ CHUỖI, không soi cả file: từ 17/09/2026 có một nét đứt hợp
+       lệ ở chỗ khác — vạch "hôm nay" (`vachHomNay`), và nét đứt ở đó đúng là
+       thứ tách nó khỏi hai đường số. Cấm cả file là bắt người sau xoá đúng
+       cái vạch vừa thêm. Thứ bài này canh không đổi: HAI CHUỖI SỐ phải cùng
+       là đường liền, chỉ phân biệt bằng màu. */
+    const thanVeChuoi = MA.slice(MA.indexOf('function veChuoi('),
+                                 MA.indexOf('function veBieuDo('));
+    ok('không còn nét đứt ở chuỗi kỳ trước',
+       /stroke-dasharray/.test(thanVeChuoi), false);
+    ok('  · và vạch "hôm nay" thì CÓ nét đứt (nó là mốc, không phải chuỗi số)',
+       /function vachHomNay\([\s\S]{0,1400}stroke-dasharray/.test(MA), true);
+
+    /* ── Vạch "hôm nay", chủ dự án chốt 17/09/2026 ──
+       Sổ có thể mang dòng ghi ngày ở TƯƠNG LAI, và trên biểu đồ chúng trông
+       y hệt một ngày đã bán thật. Vạch đứng là thứ duy nhất tách được "đã
+       xảy ra" khỏi "ghi trước". */
+    ok('vạch chỉ vẽ ở đơn vị NGÀY',
+       /trangThai\.donVi !== "ngay"\) return null;/.test(MA), true);
+    ok('  · và chỉ khi (năm, tháng) đang xem ĐÚNG là tháng hiện tại',
+       /d\.getFullYear\(\) !== nam \|\| d\.getMonth\(\) \+ 1 !== Number\(thang\)/.test(MA), true);
+    ok('  · màu RIÊNG, không dùng lại sắc của hai đường số',
+       /MAU_HOM_NAY = "(#[0-9a-f]{6})"/i.test(MA)
+       && !new RegExp('MAU_(NAY|TRUOC) = "' + (MA.match(/MAU_HOM_NAY = "(#[0-9a-f]{6})"/i) || [])[1] + '"', 'i').test(MA),
+       true);
+    /* CẢ HAI biểu đồ — lớn bên trái và cụm ô nhỏ bên phải. Bỏ sót một bên là
+       hai khối cạnh nhau nói hai chuyện khác nhau về cùng một tháng. */
+    ok('biểu đồ LỚN có vạch', /vachHomNay\(x, c\.ngayHomNay/.test(MA), true);
+    ok('cụm ô NHỎ cũng có vạch', /vachHomNay\(x, ngayHomNay/.test(MA), true);
+    /* Ô nhỏ KHÔNG in nhãn "hôm nay": mười ô cạnh nhau thì mười cái nhãn ấy
+       đọc ra như nhiễu, và vạch đỏ lặp ở cùng một chỗ đã tự nói nó là gì. */
+    ok('  · nhưng ô nhỏ không in nhãn chữ',
+       /vachHomNay\(x, ngayHomNay, LE_MINI_TREN, nenDuoi, false,/.test(MA), true);
+    /* Trục ô nhỏ DỪNG ở ngày cuối CÓ SỐ của cả cụm, không kéo hết tháng. Hôm
+       nay vượt quá mốc ấy thì `x(ngay)` rơi ra NGOÀI khung — phải bỏ vẽ, chứ
+       kẹp về mép thì người đọc tưởng có dữ liệu tới tận đó. */
+    ok('  · và bỏ vẽ khi hôm nay vượt quá mốc cuối của trục',
+       /if \(vtMax !== undefined && vtMax !== null && ngay > vtMax\) return "";/.test(MA), true);
+    ok('  · ô nhỏ truyền đúng mốc trục của CỤM vào phép chặn ấy',
+       /vachHomNay\(x, ngayHomNay, LE_MINI_TREN, nenDuoi, false, k\.vtMaxMini \|\| k\.vtMax\)/.test(MA), true);
+    ok('  · còn biểu đồ lớn thì CÓ nhãn (nó đứng một mình)',
+       /vachHomNay\(x, c\.ngayHomNay, LE_TREN, LE_TREN \+ CAO_VE, true, c\.vtMax\)/.test(MA), true);
+    /* Vạch phải nằm SAU lưới và TRƯỚC hai đường số — nó là nền tham chiếu,
+       đường số phải vẽ đè lên nó chứ không ngược lại. */
+    ok('  · và vẽ TRƯỚC hai đường số (đường phải nằm đè lên vạch)',
+       MA.indexOf('vachHomNay(x, c.ngayHomNay') < MA.indexOf('veChuoi(c.diemTruoc'), true);
     /* Kỳ trước là ĐƯỜNG NỀN, không phải một chuỗi ngang hàng: mắt phải bắt
        được kỳ NAY trước rồi mới liếc sang cái để so. Bản trước dùng một sắc
        xanh nhạt nên hai đường cạnh tranh nhau; chủ dự án chốt 13/09/2026 đổi

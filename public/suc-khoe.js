@@ -96,6 +96,11 @@
      được hình dáng, nhưng không còn giành sự chú ý. */
   const MAU_TRUOC = "#b9c0cc";
 
+  /* Vạch "hôm nay" — đỏ, và cố ý KHÔNG dùng lại sắc nào của hai đường số:
+     nó không phải một chuỗi dữ liệu, nó là cái mốc để đọc hai chuỗi kia.
+     Trùng màu là mắt xếp nó vào cùng nhóm với chúng. */
+  const MAU_HOM_NAY = "#dc2626";
+
   /* `RONG` là bề rộng của HỆ TOẠ ĐỘ, không phải bề rộng trên màn: SVG khai
      `width: 100%` nên nó co giãn theo cột. `CAO_MAC_DINH` chỉ là bản lùi khi
      chưa đo được màn hình (trước lượt bố cục đầu tiên, hay trong bộ kiểm
@@ -346,6 +351,9 @@
     return '<svg viewBox="0 0 ' + RONG + " " + CAO + '" width="100%" height="100%" role="img" aria-label="'
       + thoat(c.nhanKhung) + '">'
       + luoi + nhan
+      /* Vạch "hôm nay" nằm SAU lưới và TRƯỚC hai đường số — nó là nền tham
+         chiếu, đường số phải vẽ đè lên nó chứ không ngược lại. */
+      + vachHomNay(x, c.ngayHomNay, LE_TREN, LE_TREN + CAO_VE, true, c.vtMax)
       + veChuoi(c.diemTruoc, c.layGiaTri, x, y, MAU_TRUOC, true, (p) => c.moTa(p, c.namTruoc))
       + veChuoi(c.diemNay, c.layGiaTri, x, y, MAU_NAY, false, (p) => c.moTa(p, c.namNay))
       + khoiTb
@@ -448,6 +456,10 @@
        hình dạng hết so được với nhau. */
     const nhip = Math.max(1, (k.vtMaxMini || k.vtMax) - 1);
     const x = (vt) => LE_MINI_TRAI + ((vt - 1) / nhip) * RONG_VE_MINI;
+    /* Ô nhỏ KHÔNG có nhãn "hôm nay" — mười ô cạnh nhau thì mười cái nhãn ấy
+       đọc ra như nhiễu, và vạch đỏ lặp ở cùng một vị trí trên cả cụm đã tự
+       nói nó là gì. Biểu đồ lớn giữ nhãn vì nó đứng một mình. */
+    const ngayHomNay = ngayHomNayTrongKhung(trangThai.nam, trangThai.thang);
     const y = (v) => LE_MINI_TREN + CAO_VE_MINI - (v / yMax) * CAO_VE_MINI;
 
     const doan = [], toaDo = [];
@@ -478,6 +490,7 @@
       + chiSo + '" aria-label="Xu hướng ' + thoat(ten) + '">'
       + '<line x1="' + LE_MINI_TRAI + '" x2="' + (RONG_MINI - LE_MINI_PHAI) + '" y1="' + nenDuoi + '" y2="' + nenDuoi
       + '" stroke="#e5e7eb" stroke-width="1"/>'
+      + vachHomNay(x, ngayHomNay, LE_MINI_TREN, nenDuoi, false, k.vtMaxMini || k.vtMax)
       + '<path d="' + doan.map((g) => duongCong(g.x, g.y)).join(" ")
       + '" fill="none" stroke="' + MAU_NAY + '" stroke-width="1.5" stroke-linecap="round"/>'
       + cham
@@ -624,6 +637,54 @@
    *  cho cả hai biểu đồ ("theo ngày · tháng 9/2026"). `tenKyCua(n)` là HÀM
    *  (không phải chuỗi cố định) vì chấm "TB" cần gọi nó cho CẢ nam lẫn
    *  namTruoc, không chỉ năm đang xem. */
+  /** NGÀY TRONG THÁNG của hôm nay, nếu (năm, tháng) đang xem đúng là tháng
+   *  hiện tại. Ngược lại `null`.
+   *
+   *  Vì sao cần (chủ dự án chốt 17/09/2026): sổ có thể mang dòng ghi ngày ở
+   *  TƯƠNG LAI, và trên biểu đồ chúng trông y hệt một ngày đã bán thật. Một
+   *  vạch đứng ở hôm nay là thứ duy nhất tách được "đã xảy ra" khỏi "ghi
+   *  trước".
+   *
+   *  Đọc đồng hồ TRÌNH DUYỆT chứ không hỏi máy chủ: đây là "hôm nay trên máy
+   *  người đang nhìn", một sự thật về cái đồng hồ chứ không phải một luật
+   *  đọc số — và bắt cả một vòng mạng cho một vạch kẻ là đổi tốc độ lấy
+   *  không gì. Máy của chủ dự án ở VN nên nó trùng đúng mốc `ngay_hom_nay`
+   *  mà Engine dùng cho vế "tính tới hôm nay" của bảng.
+   *
+   *  CHỈ ở đơn vị NGÀY. Tab [Tháng]/[Quý] không có vạch — ở đó một vạch
+   *  "hôm nay" không trả lời câu hỏi nào (chủ dự án chốt cùng ngày). */
+  function ngayHomNayTrongKhung(nam, thang) {
+    if (trangThai.donVi !== "ngay") return null;
+    const d = new Date();
+    if (d.getFullYear() !== nam || d.getMonth() + 1 !== Number(thang)) return null;
+    return d.getDate();
+  }
+
+  /** Vạch đứng "hôm nay" + nhãn, trong hệ toạ độ của biểu đồ gọi nó.
+   *
+   *  Nét ĐỨT và mảnh: nó là một mốc tham chiếu, không phải một chuỗi số —
+   *  vẽ đậm bằng đường doanh số là hai thứ tranh nhau chỗ nhìn. Vẽ TRƯỚC các
+   *  đường (bên gọi đặt nó ngay sau lưới) nên đường số luôn nằm đè lên. */
+  function vachHomNay(x, ngay, yTren, yDuoi, coNhan, vtMax) {
+    if (ngay === null) return "";
+    /* Trục của ô nhỏ DỪNG ở vị trí cuối cùng CÓ SỐ của cả cụm, không kéo hết
+       tháng như biểu đồ lớn (xem `veMiniDuong`). Hôm nay vượt quá mốc ấy thì
+       `x(ngay)` rơi RA NGOÀI khung vẽ — một vạch đỏ lửng lơ bên phải ô.
+
+       Bỏ vẽ chứ không kẹp về mép: vạch này sinh ra để tách "đã xảy ra" khỏi
+       "ghi trước", mà khi không dòng nào vượt quá hôm nay thì cả biểu đồ đã
+       nằm trong quá khứ — không còn gì để tách, và một vạch dính mép phải
+       chỉ làm người đọc tưởng có dữ liệu tới tận đó. */
+    if (vtMax !== undefined && vtMax !== null && ngay > vtMax) return "";
+    const px = x(ngay).toFixed(1);
+    return '<line x1="' + px + '" x2="' + px + '" y1="' + yTren + '" y2="' + yDuoi
+      + '" stroke="' + MAU_HOM_NAY + '" stroke-width="1" stroke-dasharray="3 3"/>'
+      + (coNhan
+        ? '<text x="' + px + '" y="' + (yTren - 3) + '" font-size="10" fill="' + MAU_HOM_NAY
+          + '" text-anchor="middle">hôm nay</text>'
+        : "");
+  }
+
   function dungKhung(nam) {
     const dv = trangThai.donVi;
     if (dv === "thang") {
@@ -717,6 +778,10 @@
         taDayDu: bd.taDayDu, donViDiem: k.donViDiem,
         tenKyNay: k.tenKyCua(nam), tenKyTruoc: k.tenKyCua(namTruoc),
         nhanKhung, cao: caoHeToaDo,
+        /* Vạch "hôm nay" chỉ có mặt ở tab [Ngày] và đúng tháng hiện tại —
+           `ngayHomNayTrongKhung` trả `null` ở mọi ca khác, và `vachHomNay`
+           hiểu `null` là không vẽ gì. */
+        ngayHomNay: ngayHomNayTrongKhung(nam, trangThai.thang),
       }) + "</div>";
     const oCg = $("skChuGiai");
     if (oCg) oCg.innerHTML = chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);

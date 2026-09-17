@@ -325,6 +325,63 @@ const GOC = path.resolve(__dirname, '..');
        b2.tom_tat_kpi.tong.doanh_so_ky_truoc_mtd, 100);
   }
 
+  /* ─────────── G2c. Tiến độ thời gian + tỉ suất dưới mục tiêu ─────────── */
+
+  console.log('\nG2c) Tiến độ tháng và tỉ suất dưới hệ số (chốt 17/09/2026)');
+  {
+    const lam = (homNay, ky, heSo, loiNhuan) => {
+      const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+        dong: [dong({ tong_ban: 100, loi_nhuan: loiNhuan })] }]);
+      P.apDungKpi(b, { mac_dinh: { L1: { kpi: 1000, he_so_pt: heSo } }, ky: {} },
+        ky, {}, ['L1'], null, null, null, { ngay_hom_nay: homNay });
+      return b.tom_tat_kpi;
+    };
+
+    /* Chủ dự án nêu nguyên văn: "ngày 15 là đã 50% thời gian của tháng rồi".
+       Tháng 9 có 30 ngày, nên 15/30 = 50%. Ngày hôm nay TÍNH VÀO. */
+    ok('15/09 trong tháng 30 ngày = 50% tiến độ',
+       lam('2026-09-15', '2026-09', 10, 0).tien_do_pt, 50);
+    /* Tháng 31 ngày ra một con số KHÁC — bài này chỉ xanh khi mẫu số lấy
+       đúng số ngày của chính tháng ấy, không gõ cứng 30. */
+    ok('15/08 trong tháng 31 ngày KHÁC 50%',
+       lam('2026-08-15', '2026-08', 10, 0).tien_do_pt, 48.39);
+    /* Tháng 2 năm nhuận: 29 ngày. `Date.UTC(nam, thang, 0)` biết năm nhuận,
+       không phải gõ bảng. */
+    ok('29/02/2028 (năm nhuận) = 100% tiến độ',
+       lam('2028-02-29', '2028-02', 10, 0).tien_do_pt, 100);
+    ok('ngày cuối tháng = 100%', lam('2026-09-30', '2026-09', 10, 0).tien_do_pt, 100);
+
+    /* Kỳ đã đóng sổ: KHÔNG xét tiến độ. "Kịp tiến độ" của một tháng đã qua
+       chính là "đạt 100%", thứ ba mức tô cũ đã nói rồi. */
+    ok('kỳ không chứa hôm nay thì không có tiến độ',
+       lam('2026-09-15', '2026-08', 10, 0).tien_do_pt, null);
+    /* Không có mốc nào (bản Gateway cũ chưa truyền) cũng vậy. */
+    ok('thiếu mốc hôm nay thì cũng null', (() => {
+      const b = bang([{ so_ct: 'BH1', line: 'L1', tong_ban: 100,
+        dong: [dong({ tong_ban: 100, loi_nhuan: 0 })] }]);
+      P.apDungKpi(b, BANG, '2026-09', {}, ['L1'], null, null, null, null);
+      return b.tom_tat_kpi.tien_do_pt;
+    })(), null);
+
+    /* Tỉ suất thực so với hệ số quy đổi MỤC TIÊU của line. */
+    ok('lãi 6 trên 100 với hệ số 7,5% → DƯỚI mục tiêu',
+       lam('2026-09-15', '2026-09', 7.5, 6).line.L1.ty_suat_duoi_he_so, true);
+    ok('lãi 9 trên 100 với hệ số 7,5% → đạt mục tiêu',
+       lam('2026-09-15', '2026-09', 7.5, 9).line.L1.ty_suat_duoi_he_so, false);
+    /* ĐÚNG BẰNG hệ số KHÔNG phải "dưới" — biên phải rõ, không thì một line
+       bán đúng tỉ suất mục tiêu vẫn bị bôi đỏ. */
+    ok('lãi đúng 7,5 trên 100 → KHÔNG dưới mục tiêu',
+       lam('2026-09-15', '2026-09', 7.5, 7.5).line.L1.ty_suat_duoi_he_so, false);
+    /* `null` chứ không `false` khi thiếu một vế: "chưa biết" và "đạt mục
+       tiêu" là hai chuyện khác nhau, và tô trắng cho cả hai thì người đọc
+       không phân biệt được. */
+    ok('chưa đặt hệ số thì null, KHÔNG phải false',
+       lam('2026-09-15', '2026-09', 0, 6).line.L1.ty_suat_duoi_he_so, null);
+    /* Hàng TỔNG không có một hệ số duy nhất nên KHÔNG mang cờ này. */
+    ok('hàng TỔNG không mang cờ dưới-hệ-số',
+       lam('2026-09-15', '2026-09', 7.5, 6).tong.ty_suat_duoi_he_so, undefined);
+  }
+
   /* ─────────── G3. Tỉ suất lợi nhuận ─────────── */
 
   console.log('\nG3) Tỉ suất LN — lợi nhuận ÷ doanh số thuần (chốt 15/09/2026)');
@@ -427,7 +484,7 @@ const GOC = path.resolve(__dirname, '..');
     ok('đúng thứ tự, đúng tên', ten, [
       'Line', 'Số đơn', 'Số sản phẩm', 'Doanh số thuần',
       'Lợi nhuận', 'Quy đổi', 'Tỉ suất LN', 'Tỉ lệ tồn kho',
-      'KPI', 'Đạt', 'Vs. Tháng trước', 'So với năm trước',
+      'KPI', 'Đạt', 'Vs. Tháng trước', 'Vs. Năm trước',
       'Thưởng', 'Ngày công', 'Lương cứng',
       'Phụ cấp', 'Tổng lương', 'Ghi chú',
     ]);
@@ -439,7 +496,7 @@ const GOC = path.resolve(__dirname, '..');
     /* Và "So với năm trước" đứng NGAY SAU "Vs. Tháng trước": hai cột trả lời
        hai câu cùng dạng, đọc cạnh nhau mới so được đà ngắn hạn với mùa vụ. */
     ok('So với năm trước đứng ngay sau Vs. Tháng trước',
-       ten.indexOf('So với năm trước'), ten.indexOf('Vs. Tháng trước') + 1);
+       ten.indexOf('Vs. Năm trước'), ten.indexOf('Vs. Tháng trước') + 1);
     /* Tên cột KHÔNG còn mang "(nghìn đ)" (chủ dự án chốt 12/09/2026), và
        đoạn giải thích dưới bảng cũng bỏ — nên đơn vị chỉ còn MỘT chỗ để nói:
        đầu `title` của chính cột tiền ấy. Mất nó là bảng không còn nói đơn vị
@@ -721,15 +778,20 @@ const GOC = path.resolve(__dirname, '..');
       L2: { doanh_so: 900000, so_don: 3, so_dong: 4, so_san_pham: 7, loi_nhuan: 90000,
             don_thieu_loi_nhuan: 0, doanh_so_quy_doi: 900000, don_thieu_quy_doi: 0,
             kpi: 1000000, dat_pt: 90, ty_le_ton_kho_pt: 40, doanh_so_chua_ro_nguon: 0,
-            ty_suat_loi_nhuan_pt: 10, doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20 },
+            ty_suat_loi_nhuan_pt: 10, ty_suat_duoi_he_so: true, he_so_pt: 7.5,
+            doanh_so_ky_truoc: 750000, vs_thang_truoc_pt: 20 },
       L1: { doanh_so: 100000, so_don: 1, so_dong: 1, so_san_pham: 1, loi_nhuan: 10000,
             don_thieu_loi_nhuan: 1, doanh_so_quy_doi: 100000, don_thieu_quy_doi: 1,
             kpi: null, dat_pt: null, ty_le_ton_kho_pt: null, doanh_so_chua_ro_nguon: 50000,
-            ty_suat_loi_nhuan_pt: 10, doanh_so_ky_truoc: 0, vs_thang_truoc_pt: null },
+            ty_suat_loi_nhuan_pt: 10, ty_suat_duoi_he_so: false, he_so_pt: 10,
+            doanh_so_ky_truoc: 0, vs_thang_truoc_pt: null },
     };
     const kq = {
       tom_tat_line: { thu_tu: ['L1', 'L2', 'L3'], line: {} },
       bang: { tom_tat_kpi: { line, thu_tu: ['L2', 'L1', 'L3'], thieu_bang: false, van_de: [],
+        /* Tháng đang chạy dở, đã trôi 50% thời gian — mốc "kịp tiến độ" của
+           cột Đạt (chủ dự án chốt 17/09/2026). */
+        tien_do_pt: 50,
         vs_line: {
           /* Hai vế TRÁI DẤU — đúng ca cột này sinh ra để bắt: so cả tháng
              thì tụt, mà tính tới hôm nay lại tăng. Mỗi vế phải mang màu của
@@ -792,7 +854,14 @@ const GOC = path.resolve(__dirname, '..');
        b.con.map((r) => r.con[0].textContent).includes('L3'), false);
     /* Lệch một ô ở một hàng là mọi con số từ đó trở đi đọc sang sai tên cột —
        lớp lỗi mà chỉ chạy thật mới thấy. */
-    ok('MỌI hàng đều đúng 18 ô', b.con.map((r) => r.con.length), [18, 18, 18, 18]);
+    /* Hàng tiêu đề có 18 Ô nhưng phủ 20 CỘT (hai ô mang colSpan = 2); hàng
+       thân có đủ 20 ô. Lệch một ô ở một hàng là mọi con số từ đó trở đi đọc
+       sang sai tên cột — lớp lỗi chỉ chạy thật mới thấy. */
+    ok('hàng tiêu đề 18 ô, phủ đủ 20 cột',
+       [b.con[0].con.length,
+        b.con[0].con.reduce((t, c) => t + (c.colSpan || 1), 0)], [18, 20]);
+    ok('MỌI hàng thân đều đúng 20 ô',
+       b.con.slice(1).map((r) => r.con.length), [20, 20, 20]);
 
     const chu = (i) => b.con[i].con.map((c) => c.textContent);
     /* Tra ô theo TÊN CỘT, đọc từ chính hàng tiêu đề — không gõ cứng chỉ số.
@@ -800,19 +869,22 @@ const GOC = path.resolve(__dirname, '..');
        trước, 15/09/2026) làm HAI MƯƠI bài đỏ cùng lúc dù không bài nào hỏng
        thật: mọi chỉ số từ cột thứ sáu trở đi trượt đi một hoặc hai chỗ. Tra
        theo tên thì bài chỉ đỏ khi đúng thứ nó canh sai. */
+    /* Chỉ số Ô THÂN của một cột — cộng dồn `colSpan` của các tiêu đề đứng
+       trước. Từ 17/09/2026 hai cột so sánh mang `colSpan = 2` (ô trái cả
+       tháng, ô phải tới hôm nay), nên chỉ số TIÊU ĐỀ không còn bằng chỉ số ô
+       THÂN — lấy thẳng chỉ số tiêu đề là mọi cột sau chúng đọc lệch. */
     const iC = (ten) => {
-      const i = b.con[0].con.findIndex((c) => c.textContent === ten);
-      if (i < 0) throw new Error('không thấy cột "' + ten + '" trên hàng tiêu đề');
-      return i;
+      let i = 0;
+      for (const c of b.con[0].con) {
+        if (c.textContent === ten) return i;
+        i += c.colSpan || 1;
+      }
+      throw new Error('không thấy cột "' + ten + '" trên hàng tiêu đề');
     };
     const oCua = (hang, ten) => b.con[hang].con[iC(ten)];
-    /* Ô so sánh từ 15/09/2026 chứa các <span> con (hai vế ngăn bằng "/"),
-       nên `textContent` của chính ô là rỗng — phải gom chữ của cả cây con.
-       Ô thường thì không có con và trả về đúng chữ của nó như cũ. */
-    const docChu = (n) => (n.textContent || (n.con || []).map(docChu).join(''));
-    const chuCua = (hang, ten) => docChu(oCua(hang, ten));
-    /* Vế đầu của một ô so sánh — nơi mang màu tăng/giảm và `title` của mốc. */
-    const veDau = (hang, ten) => oCua(hang, ten).con[0];
+    /* Ô PHỤ của một cột so sánh — vế "tới hôm nay", ngay bên phải ô chính. */
+    const oPhuCua = (hang, ten) => b.con[hang].con[iC(ten) + 1];
+    const chuCua = (hang, ten) => oCua(hang, ten).textContent;
     ok('thứ tự hàng theo tom_tat_kpi.thu_tu, không theo tom_tat_line',
        [chu(1)[0], chu(2)[0]], ['L2', 'L1']);
     ok('hàng cuối là TỔNG', chu(3)[0], 'TỔNG');
@@ -822,44 +894,53 @@ const GOC = path.resolve(__dirname, '..');
        [chu(1)[1], chu(1)[2], chu(1)[3]], ['3', '7', '900']);
     ok('L2 — tỉ lệ tồn kho và Vs. tháng trước',
        [chuCua(1, 'Tỉ lệ tồn kho'), chuCua(1, 'Vs. Tháng trước')],
-       ['40,0%', '▲ +20,0% / ▼ -25,0%']);
-    ok('  · tăng thì mang lớp màu tăng', veDau(1, 'Vs. Tháng trước').className, 'vsTang');
+       ['40,0%', '+20,0%']);
+    ok('  · tăng thì mang lớp màu tăng', oCua(1, 'Vs. Tháng trước').className, 'oSo vsTang');
 
     /* ── Hai cột mới, chủ dự án chốt 15/09/2026 ── */
     ok('L2 — Tỉ suất LN (Engine chia, màn hình chỉ đọc)',
        chuCua(1, 'Tỉ suất LN'), '10,0%');
-    ok('L2 — So với năm trước', chuCua(1, 'So với năm trước'), '▲ +50,0% / ▲ +200,0%');
+    ok('L2 — Vs. Năm trước', chuCua(1, 'Vs. Năm trước'), '+50,0%');
     ok('  · và ô đó nói mốc đem ra so, không để người đọc tự đoán',
-       /Cùng tháng năm trước: 600 nghìn đ/.test(veDau(1, 'So với năm trước').title), true);
-    ok('L1 — CHƯA CÓ số năm trước → "—"', chuCua(2, 'So với năm trước'), '—');
+       /Cùng tháng năm trước: 600 nghìn đ/.test(oCua(1, 'Vs. Năm trước').title), true);
+    ok('L1 — CHƯA CÓ số năm trước → "—"', chuCua(2, 'Vs. Năm trước'), '—');
     ok('  · và nói rõ vì sao (sổ chỉ có từ 01/2025)',
-       /sổ chỉ có từ 01\/2025/.test(veDau(2, 'So với năm trước').title), true);
+       /sổ chỉ có từ 01\/2025/.test(oCua(2, 'Vs. Năm trước').title), true);
     /* Tử số của L1 còn thiếu mấy đơn chưa đủ giá vốn, nên tỉ suất là con số
        SÀN — phải dán nhãn "*", đúng quy ước cột Lợi nhuận ngay bên trái. */
     ok('L1 — Tỉ suất LN dán nhãn thiếu bằng dấu *', chuCua(2, 'Tỉ suất LN'), '10,0% *');
 
     /* ── Vế "tính tới hôm nay", chủ dự án chốt 15/09/2026 ──
        Cùng ô, ngăn bằng "/", không thêm cột và không thêm lời giải thích. */
-    ok('L2 — ô Vs. Tháng trước mang HAI vế ngăn bằng "/"',
-       chuCua(1, 'Vs. Tháng trước'), '▲ +20,0% / ▼ -25,0%');
-    ok('  · và So với năm trước cũng vậy',
-       chuCua(1, 'So với năm trước'), '▲ +50,0% / ▲ +200,0%');
-    /* MỖI VẾ MANG MÀU RIÊNG. Đây là điểm của cả cột: cả tháng thì tụt, tính
-       tới hôm nay lại tăng — lấy một màu chung cho cả ô là xoá mất đúng
-       thông tin người ta mở bảng ra để tìm. */
-    const oVs = oCua(1, 'Vs. Tháng trước');
-    ok('  · vế cả tháng xanh (tăng), vế tới hôm nay đỏ (giảm)',
-       [oVs.con[0].className, oVs.con[2].className], ['vsTang', 'vsGiam']);
-    ok('  · dấu ngăn là một span riêng, không dính vào con số nào',
-       [oVs.con[1].className, oVs.con[1].textContent], ['vach', ' / ']);
-    ok('  · và vế thứ hai nói rõ mốc của nó ở title',
-       /Tháng liền trước \(tới hôm nay\): 1\.200 nghìn đ/.test(oVs.con[2].title), true);
+    ok('L2 — vế cả tháng và vế tới hôm nay nằm ở HAI Ô rời',
+       [chuCua(1, 'Vs. Tháng trước'), oPhuCua(1, 'Vs. Tháng trước').textContent],
+       ['+20,0%', '-25,0%']);
+    ok('  · và Vs. Năm trước cũng vậy',
+       [chuCua(1, 'Vs. Năm trước'), oPhuCua(1, 'Vs. Năm trước').textContent],
+       ['+50,0%', '+200,0%']);
+    /* KHÔNG còn mũi tên ▲▼ (chủ dự án chốt 17/09/2026) — màu đã nói đúng
+       điều mũi tên nói, và bỏ nó thì con số bắt đầu ngay ở mép ô nên cả cột
+       thẳng lề. */
+    ok('  · không còn mũi tên ▲▼ ở ô nào',
+       /[▲▼]/.test(b.con.map((r) => r.con.map((c) => c.textContent).join('')).join('')), false);
 
-    /* Line KHÔNG có vế MTD (Engine không gắn vì kỳ đã đóng sổ, hoặc line ấy
-       không có bản kê ngày): ô chỉ MỘT vế, KHÔNG có dấu "/" lửng lơ. */
-    ok('L1 — không có vế MTD thì không in dấu "/"',
-       chuCua(2, 'Vs. Tháng trước').includes('/'), false);
-    ok('  · và ô ấy đúng một span', oCua(2, 'Vs. Tháng trước').con.length, 1);
+    /* MÀU ĐẶT TRÊN <td>, KHÔNG trên <span> — một lỗi đã phải sửa: bản trước
+       bọc con số vào <span class="vsTang"> trong khi CSS khai
+       `.bangTongHop td.vsTang`, nên class gắn đúng mà không luật nào khớp và
+       cả hai cột đen sì. Bài kiểm cũ chỉ soi tên class nên không thấy. Nay
+       canh lớp nằm trên CHÍNH Ô, đúng thứ CSS với tới. */
+    ok('  · vế cả tháng xanh (tăng), vế tới hôm nay đỏ (giảm) — lớp trên chính ô',
+       [oCua(1, 'Vs. Tháng trước').className,
+        oPhuCua(1, 'Vs. Tháng trước').className], ['oSo vsTang', 'oSo vsGiam']);
+    ok('  · và vế thứ hai nói rõ mốc của nó ở title',
+       /Tháng liền trước \(tới hôm nay\): 1\.200 nghìn đ/
+         .test(oPhuCua(1, 'Vs. Tháng trước').title), true);
+
+    /* Line KHÔNG có vế MTD (kỳ đã đóng sổ): ô phụ để TRỐNG, không phải "—".
+       "—" nghĩa là có chỗ cho một con số mà chưa biết nó; ở đây thì tháng đã
+       xong nên vế ấy không tồn tại. */
+    ok('L1 — không có vế MTD thì ô phụ để trống',
+       oPhuCua(2, 'Vs. Tháng trước').textContent, '');
 
     /* Line THIẾU dữ liệu: ba cách trống khác nhau, ba câu khác nhau. */
     ok('L1 — lợi nhuận và quy đổi dán nhãn thiếu bằng dấu *',
@@ -912,11 +993,33 @@ const GOC = path.resolve(__dirname, '..');
        TỔNG lệch ô so với các hàng trên, đúng lớp lỗi bài "MỌI hàng đều đúng
        18 ô" đang canh. */
     ok('TỔNG — Tỉ suất LN và So với năm trước',
-       [chuCua(3, 'Tỉ suất LN'), chuCua(3, 'So với năm trước')],
-       ['10,0%', '▲ +25,0% / ▲ +100,0%']);
+       [chuCua(3, 'Tỉ suất LN'), chuCua(3, 'Vs. Năm trước')],
+       ['10,0%', '+25,0%']);
+
+    /* ── Hai màu mới, chủ dự án chốt 17/09/2026 ──
+       L1 có tỉ suất 10% và hệ số 10% (fixture BANG) nên KHÔNG dưới mục tiêu;
+       L2 cố tình đặt cờ để canh chiều còn lại. */
+    ok('L2 — tỉ suất dưới hệ số thì ô mang lớp tô đỏ',
+       oCua(1, 'Tỉ suất LN').className, 'oSo tySuatThap');
+    ok('  · và ô đó nói mốc đem ra so',
+       /Thấp hơn hệ số quy đổi của line \(7,5%\)/.test(oCua(1, 'Tỉ suất LN').title), true);
+    ok('L1 — không dưới hệ số thì KHÔNG tô', oCua(2, 'Tỉ suất LN').className, 'oSo');
+
+    /* Cột Đạt: mức thứ tư, xanh NHẠT, chỉ cho line chưa đạt 100% mà đang
+       theo kịp thời gian đã trôi. L2 đạt 90% với tiến độ 50% → kịp. */
+    ok('L2 — đạt 90% mà mới trôi 50% tháng → tô mức tiến độ',
+       oCua(1, 'Đạt').className, 'oSo datTienDo');
+    ok('  · và ô đó nói cả hai con số',
+       /tháng đã trôi 50,0% thời gian, quy đổi đã đạt 90,0% KPI/
+         .test(oCua(1, 'Đạt').title), true);
 
     /* Highlight ba mức khi vượt KPI. */
-    ok('đạt 90% thì KHÔNG tô', oCua(1, 'Đạt').className, 'oSo ');
+    /* 90% KHÔNG chạm ba mức cũ (100/110/120) — bài này canh đúng điều ấy, và
+       nay nói rõ nó bằng cách loại trừ ba tên lớp cũ thay vì đòi ô trắng
+       trơn: từ 17/09/2026 một ô dưới 100% VẪN có thể mang lớp `datTienDo`,
+       và đó là đúng. */
+    ok('đạt 90% thì KHÔNG chạm ba mức vượt KPI',
+       /dat1(00|10|20)/.test(oCua(1, 'Đạt').className), false);
 
     /* Cột quy đổi được tô — chủ dự án yêu cầu highlight đúng cột này. */
     ok('ô cột quy đổi mang lớp highlight', oCua(1, 'Quy đổi').className, 'oSo oQuyDoi');

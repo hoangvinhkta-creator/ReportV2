@@ -124,6 +124,32 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
     nên ngày 20/08 lọt vào phép cộng "tới ngày 15", và vế MTD ra đúng bằng
     vế cả tháng. Lỗi này đã viết ra rồi bị bài kiểm bắt; `kiem/tong-hop.js`
     G2b ghim nó.
+**LƯỢT 17/09/2026 — bốn góp ý sau khi mở thật:**
+
+- **Vạch "hôm nay" trên biểu đồ.** Sổ có thể mang dòng ghi ngày ở TƯƠNG
+  LAI, và trên biểu đồ chúng trông y hệt một ngày đã bán thật. Vạch đứng
+  đỏ nét đứt ở cả biểu đồ lớn lẫn cụm ô nhỏ, **chỉ ở tab [Ngày]** và chỉ
+  khi đang xem đúng tháng hiện tại. Ô nhỏ không in nhãn chữ (mười ô cạnh
+  nhau thì mười nhãn đọc ra như nhiễu), và **bỏ vẽ khi hôm nay vượt quá
+  mốc cuối của trục** — trục ô nhỏ dừng ở ngày cuối CÓ SỐ, nên không chặn
+  là vạch rơi ra ngoài khung.
+- **"So với năm trước" → "Vs. Năm trước".** Hai vế tách thành **hai ô
+  THẬT** (tiêu đề `colSpan = 2`, hai cột con không tên) thay vì hai
+  `<span>` ngăn bằng `/` — hai span thì độ dài số khác nhau đẩy nhau lệch
+  lề. Bảng: 18 ô tiêu đề phủ **20 cột**. Bỏ mũi tên ▲▼, giữ dấu `+`/`−`.
+  - ⚠️ **Màu xanh/đỏ từng hỏng hẳn** giữa hai lượt: khi tách ô thành hai
+    vế (15/09) màu chuyển sang `<span>` trong khi CSS khai
+    `.bangTongHop td.vsTang` — class gắn đúng, không luật nào khớp, cả hai
+    cột đen sì. Bài kiểm DOM không bắt được vì nó chỉ soi tên class. Nay
+    màu về lại `<td>` và bài kiểm canh đúng chỗ ấy.
+- **Tỉ suất LN tô đỏ khi dưới hệ số quy đổi của line.** Cờ
+  `ty_suat_duoi_he_so` do Engine đặt (`null` — không phải `false` — khi
+  thiếu một vế). Hàng TỔNG không mang cờ: mười line mười hệ số.
+- **Cột Đạt thêm mức thứ tư, xanh NHẠT**: chưa đạt 100% nhưng theo kịp
+  thời gian đã trôi của tháng (`tien_do_pt`, ngày dương lịch, hôm nay
+  tính vào). Ba mức 100/110/120% giữ nguyên. `null` ở tháng đã đóng sổ —
+  ở đó "kịp tiến độ" chính là "đạt 100%".
+
 - Cả hai đi qua `apDungKpi`, tham số `doanhSoLineNamTruoc` đặt ở **ĐUÔI**
   chữ ký sau `bangCong` (bẫy số 4 — chèn vào giữa là `bangCong` nhận nhầm
   bảng doanh số và lương cả công ty sai trong im lặng).
@@ -139,7 +165,7 @@ theo **doanh số thuần giảm dần**, cộng hàng TỔNG do Engine cộng:
 ```
 Line · Số đơn · Số sản phẩm · Doanh số thuần · Lợi nhuận ·
 Quy đổi (tô nền) · Tỉ suất LN · Tỉ lệ tồn kho · KPI · Đạt ·
-Vs. Tháng trước · So với năm trước ·
+Vs. Tháng trước · Vs. Năm trước ·
 Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương · Ghi chú
 ```
 
