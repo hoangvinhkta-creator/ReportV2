@@ -1701,14 +1701,24 @@
           + "của line rồi cộng cột Tổng bán." },
       { ten: "KPI", gt: "Nghìn đồng." },
       { ten: "Đạt", gt: "Doanh số quy đổi ÷ KPI." },
-      { ten: "Vs. Tháng trước",
+      /* Hai cột so sánh mang HAI ô mỗi hàng — trái là so cả tháng, phải là
+         so tới hôm nay (chủ dự án chốt 17/09/2026: "chia thành 2 cột rõ ràng
+         tránh lệch lề"). `span: 2` cho tiêu đề trải ngang hai cột con; hai
+         cột con KHÔNG có tên riêng, đúng chốt của anh.
+
+         Bản trước nhét hai con số vào MỘT ô ngăn bằng "/" — chúng lệch lề
+         nhau vì độ dài số khác nhau, và một cột số mà mỗi hàng bắt đầu ở một
+         chỗ thì mắt không lướt dọc được. */
+      { ten: "Vs. Tháng trước", span: 2,
         gt: "Doanh số thuần tháng này so với CHÍNH line đó tháng liền trước, "
-          + "tính bằng phần trăm chênh." },
-      { ten: "So với năm trước",
+          + "tính bằng phần trăm chênh. Ô trái: so cả tháng. Ô phải: so cùng "
+          + "số ngày, tính tới hôm nay." },
+      { ten: "Vs. Năm trước", span: 2,
         gt: "Doanh số thuần tháng này so với CÙNG THÁNG năm trước của chính "
           + "line đó. Đây là cột nhìn qua được mùa vụ — tháng 2 luôn thấp hơn "
           + "tháng 1 vì Tết, nên so với tháng liền trước thì năm nào cũng ra "
-          + "một con số âm không nói lên điều gì." },
+          + "một con số âm không nói lên điều gì. Ô trái: cả tháng. Ô phải: "
+          + "tới hôm nay." },
       { ten: "Thưởng", lop: "oPhu",
         gt: "Nghìn đồng. Doanh số quy đổi × hệ số thưởng của bậc đang đạt, cộng thưởng "
           + "nóng nếu chạm mốc. Bậc lấy theo HỆ SỐ QUY ĐỔI của line: 7,5% là "
@@ -1733,6 +1743,7 @@
     const tr = el("tr");
     for (const c of COT_TONG_HOP) {
       const th = el("th", c.lop || null, c.ten);
+      if (c.span) th.colSpan = c.span;
       if (c.gt) th.title = c.gt;
       if (c.cho) { th.classList.add("oCho"); th.title = CHO_CONG_THUC; }
       tr.appendChild(th);
@@ -1760,6 +1771,10 @@
        đơn nào. Để `{}` khi bản Engine đang chạy chưa có trường ấy — giữa hai
        lượt deploy song song (bẫy số 4) cột chỉ trống, không nổ. */
     const vsNamCua = (tkpi && tkpi.vs_line_nam) || {};
+    /* Phần trăm thời gian đã trôi của tháng — MỘT con số cho cả bảng, Engine
+       tính (`tien_do_pt`). `null` ở tháng đã đóng sổ, và cột Đạt hiểu đúng
+       `null` là "không xét tiến độ". */
+    const tienDo = tkpi ? tkpi.tien_do_pt : null;
 
     for (const ten of thuTu) {
       /* Line KHÔNG có đơn nào và KHÔNG có dòng nào thì giấu — cùng luật và
@@ -1810,9 +1825,9 @@
 
       r.appendChild(el("td", "oSo", k && k.kpi !== null && k.kpi !== undefined
         ? nghinTron(k.kpi) : "—"));
-      r.appendChild(oDat(k));
-      r.appendChild(oVsThangTruoc(vsCua[ten] || null));
-      r.appendChild(oVsNamTruoc(vsNamCua[ten] || null));
+      r.appendChild(oDat(k, tienDo));
+      oVsThangTruoc(r, vsCua[ten] || null);
+      oVsNamTruoc(r, vsNamCua[ten] || null);
       oLuong(r, luongCua[ten] || null, ten, k, duocNhap);
       b.appendChild(r);
     }
@@ -1833,15 +1848,15 @@
       r.appendChild(oTonKho(t));
       r.appendChild(el("td", "oSo", t.kpi !== null && t.kpi !== undefined
         ? nghinTron(t.kpi) : "—"));
-      const tdDat = oDat(t);
+      const tdDat = oDat(t, tienDo);
       /* Tổng KPI chỉ cộng line CÓ MẶT trong kỳ — so tổng quy đổi của 3 line
          với KPI của cả 10 line là một tỉ lệ vô nghĩa. Nói ra ở `title` để
          người đối chiếu tay không phải tự đoán. */
       tdDat.title = "Tổng KPI chỉ cộng những line có đơn trong tháng này, "
         + "không cộng cả 10 line.";
       r.appendChild(tdDat);
-      r.appendChild(oVsThangTruoc(t));
-      r.appendChild(oVsNamTruoc(t));
+      oVsThangTruoc(r, t);
+      oVsNamTruoc(r, t);
 
       /* Hàng TỔNG cộng ba cột TIỀN, bỏ trống Ngày công và Ghi chú: cộng ngày
          công của nhiều line ra một con số không có nghĩa nào (26 + 26 + 24 =
@@ -1902,14 +1917,31 @@
    *  quy đổi" đã có nền tô riêng, tô cả hàng sẽ đè lên nó và xoá mất tín hiệu
    *  cũ. Ba mốc cũng đúng ba mốc đổi bậc thưởng, nên màu ở đây đọc được thành
    *  "line này vừa lên một bậc thưởng". */
-  function oDat(k) {
+  function oDat(k, tienDo) {
     if (!k || k.dat_pt === null || k.dat_pt === undefined) {
       /* "Chưa đặt KPI" và "đạt 0%" là hai câu khác nhau. */
       return el("td", "oSo", "—");
     }
     const d = k.dat_pt;
-    const lop = d >= 120 ? "dat120" : d >= 110 ? "dat110" : d >= 100 ? "dat100" : "";
-    return el("td", "oSo " + lop, so1(d) + "%");
+    /* Ba mức cũ giữ nguyên. THÊM một mức thứ tư, XANH NHẠT HƠN HẲN, cho
+       line chưa đạt 100% nhưng đang theo kịp thời gian đã trôi của tháng
+       (chủ dự án chốt 17/09/2026: "ngày 15 là đã 50% thời gian của tháng
+       rồi, nếu KPI đạt 50% thì tức là kịp tiến độ").
+
+       Nhạt hơn hẳn là CÓ CHỦ Ý: "đang ổn giữa chừng" và "đã vượt KPI" là hai
+       tin khác nhau, và cùng một sắc xanh thì nhìn lướt hoá thành một.
+
+       `tienDo` là `null` khi kỳ đang xem không chứa hôm nay — tháng đã đóng
+       sổ thì "kịp tiến độ" chính là "đạt 100%", thứ mức `dat100` đã nói. */
+    const kip = tienDo !== null && tienDo !== undefined && d < 100 && d >= tienDo;
+    const lop = d >= 120 ? "dat120" : d >= 110 ? "dat110" : d >= 100 ? "dat100"
+      : kip ? "datTienDo" : "";
+    const td = el("td", "oSo " + lop, so1(d) + "%");
+    if (kip) {
+      td.title = "Kịp tiến độ: tháng đã trôi " + so1(tienDo)
+        + "% thời gian, quy đổi đã đạt " + so1(d) + "% KPI.";
+    }
+    return td;
   }
 
   /** Sáu ô cuối: Thưởng · Ngày công · Lương cứng · Phụ cấp · Tổng lương · Ghi chú.
@@ -2048,7 +2080,14 @@
       if (k) td.title = "Line này chưa có doanh số trong tháng, nên không có gì để chia.";
       return td;
     }
-    const td = el("td", "oSo", so1(v) + "%");
+    const td = el("td", "oSo" + (k && k.ty_suat_duoi_he_so ? " tySuatThap" : ""),
+      so1(v) + "%");
+    if (k && k.ty_suat_duoi_he_so) {
+      /* Cờ do ENGINE đặt, màn hình không tự so hai số (LUẬT SỐ 1) — xem
+         `duoiHeSo()` bên `kpi.mjs`. */
+      td.title = "Thấp hơn hệ số quy đổi của line (" + so1(k.he_so_pt)
+        + "%) — tức bán dưới tỉ suất mục tiêu.";
+    }
     if (k && k.don_thieu_loi_nhuan) {
       /* Tử số đang thiếu phần của mấy đơn chưa đủ giá vốn, nên tỉ suất là
          con số SÀN — cùng quy ước dấu "*" của cột Lợi nhuận ngay bên trái. */
@@ -2066,58 +2105,68 @@
    *  0 / có số) thì giống hệt. Hai bản sao là hai chỗ để ba trạng thái ấy
    *  trôi khỏi nhau, và chỗ trôi sẽ là một cột nói "—" còn cột kia nói "mới"
    *  cho cùng một line. */
-  function oSoSanh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
-    const td = el("td", "oSo");
-    td.appendChild(veChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc));
+  /** HAI ô cho một cột so sánh: trái là so cả tháng, phải là so tới hôm nay.
+   *
+   *  Hai `<td>` THẬT chứ không hai `<span>` trong một ô (chủ dự án chốt
+   *  17/09/2026). Hai span thì độ dài số khác nhau đẩy nhau lệch lề, và một
+   *  cột số mà mỗi hàng bắt đầu ở một chỗ thì mắt không lướt dọc được. Hai ô
+   *  thật thì trình duyệt canh cột, không phải mình canh.
+   *
+   *  Ô phải để TRỐNG khi Engine không gắn vế MTD (kỳ đã đóng sổ) — trống chứ
+   *  không "—": "—" nghĩa là có chỗ cho một con số mà chưa biết nó, còn ở
+   *  đây thì tháng đã xong nên vế ấy không tồn tại. */
+  function oSoSanh(r, k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
+    r.appendChild(oChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc));
 
-    /* VẾ THỨ HAI — "tính tới hôm nay" (chủ dự án chốt 15/09/2026). Cùng ô,
-       ngăn bằng dấu "/", không thêm cột và không thêm lời giải thích: anh
-       chốt "chia cột làm 2 phần… tôi có thể tự hiểu".
-
-       Chỉ có mặt khi Engine nói kỳ đang xem CHỨA hôm nay (`moc_mtd`). Tháng
-       đã đóng sổ thì "tới hôm nay" chính là trọn tháng, và in ra hai con số
-       bằng hệt nhau chỉ tổ làm người đọc đi tìm chỗ khác biệt. */
     if (k && k[tenMoc + "_mtd"] !== undefined) {
-      td.appendChild(el("span", "vach", " / "));
       /* Tên trường vế MTD chèn `_mtd` TRƯỚC hậu tố `_pt`:
          `vs_thang_truoc_pt` → `vs_thang_truoc_mtd_pt`. Đúng tên Engine đặt —
          `kiem/tong-hop.js` canh cặp tên này ở cả hai đầu. */
-      td.appendChild(veChenh(k, tenMoc + "_mtd", tenChenh.replace(/_pt$/, "_mtd_pt"),
+      r.appendChild(oChenh(k, tenMoc + "_mtd", tenChenh.replace(/_pt$/, "_mtd_pt"),
         cauChuaCo, cauMoi, nhanMoc + " (tới hôm nay)"));
+    } else {
+      r.appendChild(el("td", "oSo", ""));
     }
-    return td;
   }
 
-  /** Một vế phần trăm chênh, trong một <span>. Ba lý do trống, ba câu khác
-   *  nhau — và mỗi vế mang MÀU của riêng nó, vì hai vế có thể trái dấu (cả
-   *  tháng thì tụt, tính tới hôm nay lại tăng — đúng cái người ta cần thấy). */
-  function veChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
+  /** Một ô phần trăm chênh. Ba lý do trống, ba câu khác nhau.
+   *
+   *  KHÔNG còn mũi tên ▲▼ (chủ dự án chốt 17/09/2026): màu đã nói đúng điều
+   *  mũi tên nói, và bỏ nó đi thì con số bắt đầu ngay ở mép ô nên cả cột
+   *  thẳng lề. Dấu `+`/`−` của chính con số vẫn còn, nên ô vẫn đọc được cả
+   *  khi in đen trắng.
+   *
+   *  Màu đặt trên `<td>` chứ không `<span>` — và đây là một lỗi đã phải sửa:
+   *  bản trước bọc con số vào `<span class="vsTang">` trong khi CSS khai
+   *  `.bangTongHop td.vsTang`, nên class gắn đúng mà không luật nào khớp và
+   *  cả hai cột đen sì. Bài kiểm DOM không bắt được vì nó chỉ soi tên class. */
+  function oChenh(k, tenMoc, tenChenh, cauChuaCo, cauMoi, nhanMoc) {
     const moc = k ? k[tenMoc] : undefined;
     if (!k || moc === null || moc === undefined) {
-      const sp = el("span", null, "—");
-      if (k) sp.title = cauChuaCo;
-      return sp;
+      const td = el("td", "oSo", "—");
+      if (k) td.title = cauChuaCo;
+      return td;
     }
     if (k[tenChenh] === null || k[tenChenh] === undefined) {
       /* Mốc bằng 0 mà tháng này có số: không chia được, nhưng cũng KHÔNG
          phải "chưa biết" — nói đúng chuyện đã xảy ra. */
-      const sp = el("span", null, "mới");
-      sp.title = cauMoi;
-      return sp;
+      const td = el("td", "oSo", "mới");
+      td.title = cauMoi;
+      return td;
     }
     const v = k[tenChenh];
-    const sp = el("span", v < 0 ? "vsGiam" : v > 0 ? "vsTang" : null,
-      (v > 0 ? "▲ +" : v < 0 ? "▼ " : "") + so1(v) + "%");
-    sp.title = nhanMoc + ": " + nghinTron(moc) + " nghìn đ.";
-    return sp;
+    const td = el("td", "oSo " + (v < 0 ? "vsGiam" : v > 0 ? "vsTang" : ""),
+      (v > 0 ? "+" : "") + so1(v) + "%");
+    td.title = nhanMoc + ": " + nghinTron(moc) + " nghìn đ.";
+    return td;
   }
 
-  const oVsThangTruoc = (k) => oSoSanh(k, "doanh_so_ky_truoc", "vs_thang_truoc_pt",
+  const oVsThangTruoc = (r, k) => oSoSanh(r, k, "doanh_so_ky_truoc", "vs_thang_truoc_pt",
     "Chưa có số của tháng liền trước để so.",
     "Tháng liền trước line này chưa có doanh số nào, nên không có gì để chia.",
     "Tháng liền trước");
 
-  const oVsNamTruoc = (k) => oSoSanh(k, "doanh_so_nam_truoc", "vs_nam_truoc_pt",
+  const oVsNamTruoc = (r, k) => oSoSanh(r, k, "doanh_so_nam_truoc", "vs_nam_truoc_pt",
     "Chưa có số của cùng tháng năm trước để so — sổ chỉ có từ 01/2025.",
     "Cùng tháng năm trước line này chưa có doanh số nào, nên không có gì để chia.",
     "Cùng tháng năm trước");

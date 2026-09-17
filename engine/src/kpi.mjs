@@ -338,6 +338,13 @@ function tyLeTonKho(o) {
  *
  *  Con số này CÓ THỂ ÂM và đó là thật, không phải lỗi: một tháng toàn hàng
  *  trả lại hoặc bán lỗ ra lợi nhuận âm. Không kẹp về 0. */
+/** Tỉ suất thực có dưới tỉ suất mục tiêu không. `null` khi thiếu một vế. */
+function duoiHeSo(tySuat, heSo) {
+  if (tySuat === null || tySuat === undefined) return null;
+  if (!laSoDuong(heSo)) return null;
+  return tySuat < heSo;
+}
+
 function tySuatLoiNhuan(o) {
   if (!(o.doanh_so > 0)) return null;
   const ln = Number(o.loi_nhuan);
@@ -569,6 +576,20 @@ export function dienDoanhSoQuyDoi(bang, bangKpi, ky, giaDung) {
       dat_pt: laSoDuong(h.kpi) ? lamTron(o.doanh_so_quy_doi * 100 / h.kpi) : null,
       ty_le_ton_kho_pt: tyLeTonKho(o),
       ty_suat_loi_nhuan_pt: tySuatLoiNhuan(o),
+      /* Tỉ suất thực có THẤP HƠN tỉ suất MỤC TIÊU của line không (chủ dự án
+         chốt 17/09/2026 — màn hình bôi đỏ ô ấy).
+
+         Cờ tính ở ĐÂY chứ không để màn hình so hai số: "thế nào là dưới mục
+         tiêu" là một luật đọc số, và hệ số quy đổi là con số đang chia ra cả
+         cột Quy đổi lẫn cột Thưởng. Một ngày nào đó luật ấy có ngoại lệ
+         (line gia dụng chẳng hạn) thì sửa một chỗ, không phải đi tìm trong
+         sáu nghìn dòng HTML.
+
+         `null` — KHÔNG phải `false` — khi thiếu một trong hai vế: chưa đặt
+         hệ số, hoặc line chưa bán gì nên không có tỉ suất. "Chưa biết" và
+         "đạt mục tiêu" là hai chuyện khác nhau, và tô trắng cho cả hai thì
+         người đọc không phân biệt được. */
+      ty_suat_duoi_he_so: duoiHeSo(tySuatLoiNhuan(o), h.he_so_pt),
     };
   }
 
@@ -641,6 +662,9 @@ export function gopKpiToanCongTy(tomTatKpi, thuTu, doanhSoLineKyTruoc, doanhSoLi
     doanh_so_chua_ro_nguon: g.doanh_so_chua_ro_nguon,
     ty_le_ton_kho_pt: tyLeTonKho(g),
     ty_suat_loi_nhuan_pt: tySuatLoiNhuan({ doanh_so, loi_nhuan: g.loi_nhuan }),
+    /* Hàng TỔNG KHÔNG có cờ "dưới hệ số": mười line mười hệ số khác nhau,
+       nên không có một mục tiêu nào để so tổng với. Để vắng mặt hẳn thay vì
+       `false` — `false` đọc ra "đã đạt mục tiêu", một câu không ai nói. */
     doanh_so_ky_truoc: truoc,
     vs_thang_truoc_pt: chenhPhanTram(doanh_so, truoc),
     doanh_so_nam_truoc: namTruoc,
@@ -717,6 +741,31 @@ function congToiMoc(theoNgayCuaLine, moc) {
     if (Number.isFinite(v)) t = lamTron(t + v);
   }
   return t;
+}
+
+/** Phần trăm thời gian ĐÃ TRÔI QUA của kỳ, tính theo ngày dương lịch —
+ *  cột "Đạt" tô xanh nhạt khi doanh số quy đổi theo kịp con số này (chủ dự
+ *  án chốt 17/09/2026: "ngày 15 là đã 50% thời gian của tháng rồi, nếu KPI
+ *  đạt 50% thì tức là kịp tiến độ").
+ *
+ *  Ngày dương lịch chứ không ngày công: KPI là mục tiêu của cả tháng, không
+ *  của riêng những hôm đi làm — và ngày công thì mỗi line một con số, nên
+ *  lấy nó làm mẫu số là mười line có mười cái thước đo khác nhau.
+ *
+ *  Ngày hôm nay TÍNH VÀO tử số (ngày 15 của tháng 30 ngày ra 50%): hôm nay
+ *  là một ngày đang bán, không phải một ngày chưa tới.
+ *
+ *  `null` khi kỳ đang xem không chứa hôm nay — tháng đã đóng sổ thì "kịp
+ *  tiến độ" chính là "đạt 100%", thứ ba mức tô cũ đã nói rồi. */
+function tienDoKy(moc, ky) {
+  if (!ngayTrongKy(moc, ky)) return null;
+  const nam = Number(ky.slice(0, 4)), thang = Number(ky.slice(5, 7));
+  /* Ngày 0 của tháng SAU = ngày cuối của tháng này. Không gõ bảng 30/31 và
+     không tự xử lý năm nhuận — `Date.UTC` biết cả hai. */
+  const soNgay = new Date(Date.UTC(nam, thang, 0)).getUTCDate();
+  const homNay = Number(String(moc).slice(8, 10));
+  if (!(soNgay > 0) || !(homNay > 0)) return null;
+  return lamTron(Math.min(homNay, soNgay) * 100 / soNgay);
 }
 
 /** Kỳ "YYYY-MM" có chứa ngày "YYYY-MM-DD" không. */
@@ -850,6 +899,10 @@ export function apDungKpi(bang, bangKpi, ky, giaDung, thuTu, doanhSoLineKyTruoc,
      hai con số bằng hệt nhau chỉ tổ làm người đọc đi tìm chỗ khác biệt. */
   const moc = mtd && mtd.ngay_hom_nay;
   bang.tom_tat_kpi.moc_mtd = ngayTrongKy(moc, ky) ? moc : null;
+  /* Phần trăm thời gian đã trôi của tháng — mốc "kịp tiến độ" của cột Đạt.
+     Một con số cho CẢ BẢNG (mọi line cùng một cái lịch), nên để ở gốc
+     `tom_tat_kpi` chứ không nhân bản vào từng line. */
+  bang.tom_tat_kpi.tien_do_pt = tienDoKy(moc, ky);
   if (bang.tom_tat_kpi.moc_mtd) {
     ganMtd(bang.tom_tat_kpi.vs_line, bang.tom_tat_kpi, mtd.ky_truoc_theo_ngay, moc,
            "doanh_so_ky_truoc_mtd", "vs_thang_truoc_mtd_pt");

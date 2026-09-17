@@ -253,6 +253,15 @@
   .bangTongHop td.dat100 { background: #dcfce7; color: #14532d; font-weight: 600; }
   .bangTongHop td.dat110 { background: #86efac; color: #14532d; font-weight: 600; }
   .bangTongHop td.dat120 { background: #22c55e; color: #052e16; font-weight: 700; }
+  /* Mức thứ tư: chưa đạt 100% KPI nhưng ĐANG KỊP tiến độ thời gian của
+     tháng (chủ dự án chốt 17/09/2026). Nhạt hơn `dat100` hẳn một bậc và
+     KHÔNG in đậm — "đang ổn giữa chừng" không được đọc ra như "đã vượt
+     KPI"; cùng một sắc xanh đậm thì nhìn lướt hoá thành một tin. */
+  .bangTongHop td.datTienDo { background: #f0fdf4; color: #166534; }
+  /* Tỉ suất lợi nhuận THẤP HƠN hệ số quy đổi của line — bán dưới tỉ suất
+     mục tiêu. Đỏ nền nhạt chứ không chỉ đỏ chữ: cột này nằm giữa một dãy
+     cột số, và đỏ chữ đơn thuần lẫn vào cột Vs. bên phải cũng đang đỏ chữ. */
+  .bangTongHop td.tySuatThap { background: #fef2f2; color: #b91c1c; font-weight: 600; }
 
   /* Ô nhập ngày công nằm TRONG ô bảng, không phải một cột riêng — cùng lối ô
      tick gia dụng của P5 nằm trong ô Mã sản phẩm. */
