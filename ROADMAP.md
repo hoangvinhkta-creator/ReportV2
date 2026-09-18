@@ -158,6 +158,46 @@ Ba luật của hàng tab, canh bằng `kiem/bo-cuc-man-chu.js`:
   QĐ → Quy đổi), bỏ nhãn "LN"/"QĐ". Cột Ngày nới **58 → 104px** cho đủ mũi
   tên + nhãn ngày đủ năm; tổng bề rộng bảng 1822 → **1868**.
 
+**LƯỢT 18/09/2026 — cột Nơi nhập "về NCC dù kho có hàng": chẩn đoán và vá**
+
+Chủ dự án hỏi thẳng: luật là "kho có hàng thì Nơi nhập ghi Kho, giá nhập
+vẫn lấy Min" — sao nhiều model vẫn ghi tên NCC? Kết luận sau khi soi cả
+hai repo:
+
+- **Luật bên V2 ĐÚNG.** `chonNoiNhap()` ghi Kho khi `inventory_unit_cost
+  > 0` hoặc tồn kho đang giữ Min, không phụ thuộc ai giữ giá rẻ nhất.
+- **Dữ liệu vào là thứ thiếu.** Tracking chỉ ghi `tk` (giá tồn theo ngày)
+  từ bản luật `min-2`, deploy **12/09/2026 14:33**. Bản ghi `min_ngay`
+  chụp TRƯỚC giờ đó không có khoá này; hợp đồng trả `null`, V2 hiểu là
+  "kho không có hàng" và xếp về NCC. Ngày bán bị ảnh hưởng: **01–11/09**
+  (giá vốn chỉ có từ `MOC_KHOP_MA`). **Từ 12/09 trở đi đúng, không cần
+  vá** — tăng `rv` làm vân tay mọi mã lệch một lượt nên lượt cron đầu ghi
+  lại cả bảng. Tiền KHÔNG sai đồng nào; chỉ cột Nơi nhập và "Tỉ lệ tồn
+  kho" thấp hơn thật.
+- `dungLaiMinNgay()` bên Tracking **không vá được** — nó bỏ qua mọi ngày
+  đã có bản ngày, đúng như nó phải thế.
+
+Chủ dự án chốt **B kèm D**, duyệt việc viết code bên Tracking, khoảng vá
+từ **01/09/2026**:
+
+- **B — vá quá khứ bên Tracking** (PR Tracking #48): `vaTonKhoMinNgay()`
+  + `POST /api/min-ngay/va-tk` (quản trị, ≤14 ngày một lượt, bắt buộc lý
+  do). Dựng lại bảng tại ngày, so vân tay với `fp` đã lưu, **khớp mới hỏi
+  engine** và chỉ ghi `tk` + `tkb` (dấu vá); không đụng `g`/`fp`/`rv`/`ev`,
+  không đụng bản `min-2`; lệch vân tay thì bỏ qua và đếm
+  (`bo.vanTayLech`) — không đoán. Hợp đồng `daily-min-v1` thêm
+  **`inventory_known`** (`false` cho bản `min-1` chưa vá).
+- **D — V2 nói "chưa biết" thay vì im lặng** (lượt này): Engine đặt cờ
+  `kho_chua_ro` khi `inventory_known === false` và dòng đang mang tên NCC;
+  màn hình gạch chấm nâu dưới nơi nhập + `title` giải thích. Sửa tay tắt
+  cờ (người đã quyết). Thiếu trường (Tracking bản cũ) → cờ `false`, không
+  nổ — bẫy số 4: Tracking deploy TRƯỚC V2.
+- **Không cần tải lại sổ**: Nơi nhập tính lúc ĐỌC từ bản ghi giá, sổ chỉ
+  giữ dòng bán. Sau khi gọi va-tk, mở lại V2 là thấy; sửa tay vẫn thắng.
+
+Việc còn lại là của người: gọi `va-tk` cho `01/09 → 11/09` sau khi
+Tracking deploy xong, rồi mở tab line kỳ 09/2026 kiểm cột Nơi nhập.
+
 Tab đầu **[Tổng hợp]** nay có **18 cột** (P6 lượt 1, 12/09/2026; nới
 15/09/2026), sắp
 theo **doanh số thuần giảm dần**, cộng hàng TỔNG do Engine cộng:

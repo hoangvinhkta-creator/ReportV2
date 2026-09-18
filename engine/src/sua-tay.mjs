@@ -88,6 +88,8 @@ export function apDungSuaTay(bang, quyetDinh) {
              vì kho còn hàng" không còn đúng về ô này nữa. Để nguyên cờ là
              để màn hình nói một câu mâu thuẫn với chính con chữ bên cạnh. */
           d.noi_nhap_tu_kho = false;
+          /* Cùng lý do: chữ của NGƯỜI thì không còn là phỏng đoán của máy. */
+          d.kho_chua_ro = false;
         }
         giu.push(d);
       }

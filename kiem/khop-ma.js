@@ -493,17 +493,18 @@ const GOC = path.resolve(__dirname, '..');
   const nguonHd = (x) => (typeof x === 'string'
     ? { source_type: 'SUPPLIER', source_id: x }
     : { source_type: x.t, source_id: x.id });
-  const bgN = (nguon, gia, kho) => ({ product_code: '65C6K', effective_date: '2026-09-08',
+  const bgN = (nguon, gia, kho, biet) => ({ product_code: '65C6K', effective_date: '2026-09-08',
     min_price: gia === undefined ? 5250 : gia, price_status: 'AVAILABLE',
     day_status: 'FINAL', observed_on: '2026-09-08', carried_from: null,
     min_sources: nguon.map(nguonHd),
-    ...(kho === undefined ? {} : { inventory_unit_cost: kho }) });
+    ...(kho === undefined ? {} : { inventory_unit_cost: kho }),
+    ...(biet === undefined ? {} : { inventory_known: biet }) });
 
-  const noiNhapCua = (nguon, gia, kho) => {
+  const noiNhapCua = (nguon, gia, kho, biet) => {
     const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
     K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
     K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND',
-      records: [bgN(nguon, gia, kho)], errors: [] });
+      records: [bgN(nguon, gia, kho, biet)], errors: [] });
     for (const ng of b.ngay) for (const don of ng.don) for (const x of don.dong)
       if (x.ma_san_pham === 'Tivi TCL 65C6K') return { o: x, bang: b };
     return { o: null, bang: b };
@@ -614,6 +615,30 @@ const GOC = path.resolve(__dirname, '..');
 
   /* Luật ưu tiên im lặng không chạy là lỗi không ai thấy — bản kê phải nói
      tên nào cả kỳ không gặp lần nào. */
+  /* ── "CHƯA HỎI" khác "KHO KHÔNG CÓ HÀNG" (18/09/2026) ──
+     Bản ghi trước `min-2` không mang giá tồn, và trên đó nhánh NCC là một
+     PHỎNG ĐOÁN. Tracking nói ra điều ấy qua `inventory_known`; màn hình phải
+     dán nhãn, không để tên NCC đọc như một câu chắc chắn. */
+  ok('hợp đồng nói CHƯA HỎI tồn kho + máy chọn NCC → cờ "chưa rõ" bật',
+    noiNhapCua(['Việt Hải'], 5250, null, false).o.kho_chua_ro, true);
+  ok('  · nơi nhập vẫn là NCC (không bịa "Kho")',
+    noiNhapCua(['Việt Hải'], 5250, null, false).o.noi_nhap, 'Việt Hải');
+  ok('hợp đồng nói ĐÃ HỎI, kho không hàng → không phải phỏng đoán, cờ tắt',
+    noiNhapCua(['Việt Hải'], 5250, null, true).o.kho_chua_ro, false);
+  ok('chưa hỏi nhưng kho giữ Min (nhánh INVENTORY) → đã ra Kho, cờ tắt',
+    noiNhapCua([KHO, 'Việt Hải'], 5250, null, false).o.kho_chua_ro, false);
+  /* Tracking bản CŨ chưa trả trường này: không biết thì KHÔNG dán nhãn —
+     bôi "chưa rõ" lên cả bảng giữa hai lượt deploy là nhiễu thuần tuý. */
+  ok('thiếu trường (Tracking cũ) → không dán nhãn',
+    noiNhapCua(['Việt Hải'], 5250, null).o.kho_chua_ro, false);
+  ok('không có giá Min → không có nơi nhập → không có gì để "chưa rõ"', (() => {
+    const b = D.dungBangDon(DONG, {}, BANG_LINE, null);
+    K.khopMaChoBangDon(b, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
+    K.dienGiaNhap(b, { currency_unit: 'VND_THOUSAND', records: [], errors: [] });
+    for (const ng of b.ngay) for (const don of ng.don) for (const y of don.dong)
+      if (y.ma_san_pham === 'Tivi TCL 65C6K') return !!y.kho_chua_ro;
+  })(), false);
+
   ok('bản kê nói tên ưu tiên nào cả kỳ không gặp',
     noiNhapCua(['Việt Hải']).bang.tom_tat_gia.ncc_uu_tien_khong_gap,
     ['Điện tử 179', 'Thăng Long', 'Trung Xuân', 'Văn Quân']);
