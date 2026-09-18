@@ -600,7 +600,15 @@ export function dienGiaNhap(bang, minNgay) {
            trước. Đó là hướng an toàn: thà không nói gì còn hơn gán một nơi
            nhập không có bằng chứng. */
         kho: typeof r.inventory_unit_cost === "number" && r.inventory_unit_cost > 0
-          ? Math.round(r.inventory_unit_cost * NGHIN) : null });
+          ? Math.round(r.inventory_unit_cost * NGHIN) : null,
+        /* `inventory_known` (Tracking, 18/09/2026): `kho: null` ở trên có
+           nghĩa "kho không có hàng" hay chỉ là "chưa ai hỏi"? Bản ghi trước
+           `min-2` là loại thứ hai, và với nó thì nhánh NCC bên dưới là một
+           phỏng đoán chứ không phải một câu trả lời — màn hình phải NÓI RA.
+           `null` khi Tracking bản cũ chưa trả trường này: không biết thì
+           không dán nhãn, tránh bôi "chưa rõ" lên cả bảng giữa hai lượt
+           deploy (bẫy số 4). */
+        kho_biet: typeof r.inventory_known === "boolean" ? r.inventory_known : null });
     else lyDo.set(k, r.price_status || "NO_DATA");
   }
   for (const e of Array.isArray(mn.errors) ? mn.errors : []) {
@@ -698,6 +706,11 @@ export function dienGiaNhap(bang, minNgay) {
            "Tuấn Ngoan" mà tooltip vẫn nói "hàng xuất từ kho". */
         d.gia_ton_kho = g.kho;
         d.noi_nhap_tu_kho = d.noi_nhap === NHAN_TON_KHO;
+        /* Chữ NCC ở cột Nơi nhập là PHỎNG ĐOÁN khi hợp đồng nói thẳng là chưa
+           hỏi ô Tồn. Cờ này bật đúng ca ấy — và tắt khi đã ra "Kho" (nhánh
+           `min_sources` INVENTORY vẫn chắc chắn) hay không có nơi nhập nào. */
+        d.kho_chua_ro = g.kho_biet === false && d.noi_nhap !== null
+          && d.noi_nhap !== NHAN_TON_KHO;
         if (d.noi_nhap && HANG_UU_TIEN.has(chuanNcc(d.noi_nhap))) nccDaThay.add(chuanNcc(d.noi_nhap));
         d.ly_do_chua_gia = null;
         coGia++;

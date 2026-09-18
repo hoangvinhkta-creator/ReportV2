@@ -233,7 +233,12 @@ const GOC = path.resolve(__dirname, '..');
     const dong = moiDong(b);
     /* Dựng đúng trạng thái `dienGiaNhap()` để lại khi kho còn hàng: ô ghi
        "Kho" kèm cờ nói chữ ấy do MÁY chọn. */
-    for (const d of dong) { d.noi_nhap = 'Kho'; d.noi_nhap_tu_kho = true; d.gia_ton_kho = 9000000; }
+    for (const d of dong) {
+      d.noi_nhap = 'Kho'; d.noi_nhap_tu_kho = true; d.gia_ton_kho = 9000000;
+      /* Cờ "nơi nhập là phỏng đoán" (18/09/2026) — cùng số phận với cờ
+         "máy chọn Kho": chữ của người thì không còn là phỏng đoán của máy. */
+      d.kho_chua_ro = true;
+    }
     S.apDungSuaTay(b, { [KA]: { noi_nhap: 'Tuấn Ngoan' } });
 
     const da = moiDong(b).find((d) => d.khoa === KA);
@@ -243,6 +248,8 @@ const GOC = path.resolve(__dirname, '..');
        ngay cạnh một ô ghi "Tuấn Ngoan" — một câu SAI trên màn hình tiền. */
     ok('  · và cờ "máy chọn Kho" TẮT theo', da.noi_nhap_tu_kho, false);
     ok('dòng không ai động vào thì giữ nguyên cờ', chua.noi_nhap_tu_kho, true);
+    ok('cờ "nơi nhập là phỏng đoán" cũng TẮT ở dòng bị gõ đè', da.kho_chua_ro, false);
+    ok('  · và giữ nguyên ở dòng không ai động', chua.kho_chua_ro, true);
   }
 
   /* ─────────── Dòng LỖ — và ba loại âm THEO THIẾT KẾ phải đứng ngoài ─────────── */

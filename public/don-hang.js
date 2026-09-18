@@ -680,6 +680,19 @@
           + (d.nguon_gia === "sua-tay" ? "" : " Cột Giá nhập vẫn lấy giá Min "
             + "của ngày bán, không lấy giá kho.");
       }
+      /* Tên NCC đang đứng đây là một PHỎNG ĐOÁN: bản ghi giá của ngày này có
+         trước khi Tracking ghi tồn kho theo ngày (12/09/2026), nên máy không
+         biết hôm ấy kho có hàng hay không và đành lấy NCC giữ giá Min. Nói ra
+         chứ không để nó đọc như một câu chắc chắn (chủ dự án chốt 18/09/2026).
+         Cờ do Engine đặt từ `inventory_known` của hợp đồng; sửa tay là Engine
+         tắt — chữ của người không phải phỏng đoán của máy. */
+      if (d.kho_chua_ro) {
+        td.classList.add("noiNhapChuaRo");
+        td.title = "Chưa biết hôm ấy kho có hàng hay không — bản ghi giá của "
+          + "ngày này có trước khi Tracking ghi tồn kho theo ngày (12/09/2026), "
+          + "nên nơi nhập tạm lấy theo NCC giữ giá Min. Chạy lượt vá tồn kho "
+          + "bên Tracking là ô này tự đúng.";
+      }
       return td;
     }
     /* Phụ phí cố định không có khái niệm "nơi nhập" (không phải một NCC
