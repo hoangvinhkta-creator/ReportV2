@@ -26,7 +26,7 @@ import { coCauNganhHang } from "./co-cau.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.14.0-co-cau-nganh-hang";
+const PHIEN_BAN = "0.15.0-co-cau-gop-nganh";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,

@@ -59,7 +59,48 @@ export const SO_NGANH_TOI_DA = 8;
 export const NGUONG_HANG_PT = 5;
 
 export const NHAN_KHAC = "Khác";
-export const NHAN_CHUA_PHAN_LOAI = "Chưa phân loại";
+/** Nhãn của cột chưa gán mã. Chủ dự án chốt viết tắt 19/09/2026 — trục ngang
+ *  chỉ có chừng bảy chữ cho mỗi cột, và "Chưa phân loại" bị cắt thành
+ *  "Chưa phân lo…". Câu đầy đủ vẫn nằm ở phần rê chuột và ở dòng độ phủ
+ *  dưới biểu đồ, nên không có chỗ nào để hiểu nhầm. */
+export const NHAN_CHUA_PHAN_LOAI = "NONE";
+
+/** GỘP / ĐỔI NHÃN NGÀNH HÀNG — chủ dự án chốt 19/09/2026.
+ *
+ *  `category_label` của Tracking là chữ người gõ tay, và trên trục ngang mỗi
+ *  cột chỉ có chừng bảy chữ. Ba cái tên thật bị cắt cụt ngoài đời
+ *  ("Lọc không khí kh…", "Gia dụng - B…") nên chủ dự án chốt viết tắt.
+ *
+ *  Khớp theo CHUỖI ĐÃ CHUẨN HOÁ (bỏ dấu, bỏ ký tự lạ) chứ không so nguyên
+ *  văn: tên thật có thể mang đủ kiểu đuôi ("Gia dụng - Bosch", "Gia dụng -
+ *  Electrolux") và bảng này không nên phải biết trước từng cái.
+ *
+ *  ĐÂY LÀ PHÉP GỘP, KHÔNG CHỈ ĐỔI NHÃN: hai ngành cùng rơi vào một nhãn thì
+ *  số của chúng CỘNG LẠI thành một cột. "LKK chung cho cả lọc không khí và
+ *  hút ẩm" đúng là điều chủ dự án yêu cầu. Cột gộp giữ `ten_goc` — danh sách
+ *  tên thật — để phần rê chuột nói ra nó gồm những gì.
+ *
+ *  Thứ tự trong mảng LÀ thứ tự xét: luật đầu tiên khớp thì thắng. */
+const GOP_NGANH = [
+  { nhan: "LKK", khop: (k) => k.includes("lockhongkhi") || k.includes("hutam") },
+  { nhan: "Gia dụng", khop: (k) => k.startsWith("giadung") },
+];
+
+/* Bỏ dấu tiếng Việt rồi xoá sạch ký tự ngoài a-z0-9 — chỉ để TRA BẢNG trên,
+   không dùng cho bất kỳ phép khớp mã hàng nào. */
+function khoaNganh(s) {
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Nhãn hiển thị của một ngành — sau khi áp bảng gộp. */
+export function nhanNganh(ten) {
+  const k = khoaNganh(ten);
+  if (!k) return ten;
+  for (const l of GOP_NGANH) if (l.khop(k)) return l.nhan;
+  return ten;
+}
 /** Dòng đã khớp mã (nên có ngành) nhưng bảng giá để trống `brand`.
  *
  *  Tách hẳn khỏi "Chưa phân loại": cái kia là CHƯA GÁN MÃ — việc của người
@@ -97,6 +138,8 @@ export function laDongTinhCoCau(d) {
  *  không phải lồng hai vòng lặp trên dữ liệu thật. */
 function demTho(bang) {
   const o = new Map();
+  /* nhãn sau khi gộp → những tên THẬT đã dồn vào đó, cho phần rê chuột. */
+  const tenGoc = {};
   let ds_tong = 0, may_tong = 0;
   let ds_chua = 0, may_chua = 0;
 
@@ -117,9 +160,15 @@ function demTho(bang) {
         ds_tong = lamTron(ds_tong + ds);
         may_tong += may;
 
-        const nganh = typeof d.nganh_hang === "string" && d.nganh_hang.trim()
+        const nganhTho = typeof d.nganh_hang === "string" && d.nganh_hang.trim()
           ? d.nganh_hang.trim() : null;
-        if (!nganh) { ds_chua = lamTron(ds_chua + ds); may_chua += may; continue; }
+        if (!nganhTho) { ds_chua = lamTron(ds_chua + ds); may_chua += may; continue; }
+
+        /* Gộp/đổi nhãn NGAY TẠI ĐÂY, trước mọi phép cộng: gộp sau khi đã xếp
+           hạng thì hai ngành nhỏ gộp lại có thể vượt cả tám ngành đứng riêng
+           mà không được lên trục. */
+        const nganh = nhanNganh(nganhTho);
+        if (nganh !== nganhTho) (tenGoc[nganh] ||= new Set()).add(nganhTho);
 
         const hang = typeof d.hang === "string" && d.hang.trim()
           ? d.hang.trim() : NHAN_CHUA_RO_HANG;
@@ -128,7 +177,7 @@ function demTho(bang) {
     }
   }
 
-  return { o, ds_tong, may_tong, ds_chua, may_chua };
+  return { o, ds_tong, may_tong, ds_chua, may_chua, tenGoc };
 }
 
 /** Cộng một chiều của `demTho` lại theo ngành. */
@@ -186,26 +235,39 @@ function dungMotChiTieu(truong, nay, truoc) {
   /* ── Dựng cột cho một tháng, theo đúng danh sách đã chốt ── */
   const dungCot = (m) => {
     const cot = [];
+
+    /* Cộng CẢ HAI chỉ tiêu cho mọi mảng, không chỉ chỉ tiêu đang vẽ.
+       Chủ dự án chốt 19/09/2026: bấm vào một mảng thì card bên phải hiện
+       "số lượng VÀ doanh số, hiện tại so với cùng kỳ" — bốn con số cho đúng
+       một mảng. Tra chúng ở cấu trúc của chỉ tiêu kia thì hỏng ngay ca
+       thường gặp nhất: một hãng đứng riêng ở bảng doanh số có thể đã bị gộp
+       vào "Khác" ở bảng số máy, và card sẽ không tìm thấy nó. */
     const lay = (thuocNganh) => {
-      const rieng = new Map(), gomKhac = [];
-      let tong = 0;
+      const rieng = new Map();
+      const tong = { doanh_so: 0, so_may: 0 };
       for (const c of m.o.values()) {
         if (!thuocNganh(c)) continue;
-        tong = lamTron(tong + c[truong]);
-        rieng.set(c.hang, lamTron((rieng.get(c.hang) || 0) + c[truong]));
+        tong.doanh_so = lamTron(tong.doanh_so + c.doanh_so);
+        tong.so_may += c.so_may;
+        const cu = rieng.get(c.hang) || { doanh_so: 0, so_may: 0 };
+        cu.doanh_so = lamTron(cu.doanh_so + c.doanh_so);
+        cu.so_may += c.so_may;
+        rieng.set(c.hang, cu);
       }
-      return { rieng, gomKhac, tong };
+      return { rieng, tong };
     };
 
     const themCot = (ten, thuocNganh, la_khac) => {
       const { rieng, tong } = lay(thuocNganh);
       const dsHang = hangCua.get(ten) || [];
       const hang = [];
-      let daKe = 0;
+      const daKe = { doanh_so: 0, so_may: 0 };
       for (const h of dsHang) {
-        const v = rieng.get(h) || 0;
-        hang.push({ ten: h, gia_tri: v, la_khac: false });
-        daKe = lamTron(daKe + v);
+        const v = rieng.get(h) || { doanh_so: 0, so_may: 0 };
+        hang.push({ ten: h, gia_tri: v[truong],
+                    doanh_so: v.doanh_so, so_may: v.so_may, la_khac: false });
+        daKe.doanh_so = lamTron(daKe.doanh_so + v.doanh_so);
+        daKe.so_may += v.so_may;
       }
       /* Phần còn lại của cột gom thành MỘT mảng "Khác", nhưng giữ nguyên
          danh sách bên trong: chủ dự án chốt "di chuột vào đó thấy đủ thông
@@ -213,15 +275,27 @@ function dungMotChiTieu(truong, nay, truoc) {
       const conLai = [];
       for (const [h, v] of rieng) {
         if (dsHang.indexOf(h) >= 0) continue;
-        if (v > 0) conLai.push({ ten: h, gia_tri: v });
+        if (v.doanh_so > 0 || v.so_may > 0) {
+          conLai.push({ ten: h, gia_tri: v[truong], doanh_so: v.doanh_so, so_may: v.so_may });
+        }
       }
-      const duKhac = lamTron(tong - daKe);
-      if (duKhac > 0 || conLai.length) {
+      const du = { doanh_so: lamTron(tong.doanh_so - daKe.doanh_so),
+                   so_may: tong.so_may - daKe.so_may };
+      if (du[truong] > 0 || conLai.length) {
         conLai.sort((a, b) => (b.gia_tri - a.gia_tri)
           || (a.ten < b.ten ? -1 : a.ten > b.ten ? 1 : 0));
-        hang.push({ ten: NHAN_KHAC, gia_tri: duKhac, la_khac: true, gom: conLai });
+        hang.push({ ten: NHAN_KHAC, gia_tri: du[truong],
+                    doanh_so: du.doanh_so, so_may: du.so_may,
+                    la_khac: true, gom: conLai });
       }
-      cot.push({ ten, gia_tri: tong, la_khac: !!la_khac, hang });
+      const o = { ten, gia_tri: tong[truong],
+                  doanh_so: tong.doanh_so, so_may: tong.so_may,
+                  la_khac: !!la_khac, hang };
+      /* Cột gộp từ nhiều ngành thật thì nói ra gồm những gì — không thì
+         "LKK" là một nhãn không ai biết đang cộng của cái gì. */
+      const goc = m.tenGoc && m.tenGoc[ten];
+      if (goc && goc.size) o.ten_goc = [...goc].sort();
+      cot.push(o);
     };
 
     for (const ten of nganhRieng) themCot(ten, (c) => c.nganh === ten, false);
@@ -233,6 +307,7 @@ function dungMotChiTieu(truong, nay, truoc) {
     const tongCaThang = truong === "doanh_so" ? m.ds_tong : m.may_tong;
     if (chua > 0) {
       cot.push({ ten: NHAN_CHUA_PHAN_LOAI, gia_tri: chua,
+                 doanh_so: m.ds_chua, so_may: m.may_chua,
                  la_chua_phan_loai: true, hang: [] });
     }
     return { cot, tong: tongCaThang, chua_phan_loai: chua };
