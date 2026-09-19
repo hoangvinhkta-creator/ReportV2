@@ -402,6 +402,16 @@ function namTruoc(ky) {
  *  hai repo. */
 const DUONG_BANG_KPI = "bc/quyetdinh/kpi";
 const DUONG_GIA_DUNG = "bc/quyetdinh/gia-dung";
+/** Phân loại thủ công — hãng + ngành hàng cho tên hàng KHÔNG có mã bảng giá.
+ *
+ *  Nhánh RIÊNG của Báo cáo, cố ý không ghi sang Tracking như `/api/gan-ma`
+ *  vẫn làm. Lý do: những tên này KHÔNG có mặt hàng nào trên bảng giá để
+ *  trỏ vào — ghi sang `inv/map` thì trỏ vào đâu, còn thêm một `board/<mã>`
+ *  là bịa ra một mặt hàng trên bảng giá dùng chung của ba app.
+ *
+ *  Khoá là `khoa_ten` (quyết định về MỘT MẶT HÀNG — CLAUDE.md), nên nhánh
+ *  này nhỏ và áp cho mọi kỳ. Xem `engine/src/phan-loai.mjs`. */
+const DUONG_PHAN_LOAI = "bc/quyetdinh/phan-loai";
 /* Nhánh ngày công của P6. Cùng lý do đặt dưới `bc/quyetdinh` như hai nhánh
    trên: đây là con số NGƯỜI nhập tay, và nhánh đó đã có rules đang chạy nên
    nhánh con thừa hưởng sẵn — không phải sửa rules rồi publish tay. */
@@ -984,7 +994,8 @@ async function dungBangDonHang(env, ky, line, rid) {
      bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
      con số không ai nhìn. */
   const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong, bonus,
-         kqNguon, doanhSoKyTruoc, doanhSoNamTruoc, sheetLink, coGiaVon] = await Promise.all([
+         kqNguon, doanhSoKyTruoc, doanhSoNamTruoc, sheetLink, coGiaVon,
+         phanLoai] = await Promise.all([
     docDb("bc/dong/" + ky, env),
     huaBangLine,
     /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
@@ -1032,6 +1043,11 @@ async function dungBangDonHang(env, ky, line, rid) {
        `.then()` của nó nên lỗi chảy sẵn vào đợt; từ 19/09/2026 bảng giá
        không móc vào đó nữa, nên phải nối lại đường chảy ấy ở đây. */
     huaPhamVi,
+    /* Phân loại thủ công — đọc TRỌN nhánh, không theo kỳ, cùng lối và cùng
+       lý do với `bc/quyetdinh/gia-dung` ngay trên: quyết định về MỘT MẶT
+       HÀNG thì áp cho mọi kỳ, tức không có cách nào chia nó theo kỳ. Nhánh
+       nhỏ — mỗi mặt hàng đúng một khoá ngắn. */
+    docDb(DUONG_PHAN_LOAI, env),
   ]);
   const ms_doc = Date.now() - dong0;
 
@@ -1060,6 +1076,16 @@ async function dungBangDonHang(env, ky, line, rid) {
   const gdVal = giaDung.ok ? (giaDung.val || {}) : {};
   const congVal = bangCong.ok ? (bangCong.val || {}) : {};
   const bonusVal = bonus.ok ? (bonus.val || {}) : {};
+  /* Đọc không được thì coi như CHƯA CÓ quyết định nào, và nói ra ở nhật ký —
+     KHÔNG chặn cả bảng đơn. Cùng lối cột quy đổi: mất hai cái nhãn một lượt
+     còn hơn mất cả bảng vì một nhánh phụ không trả lời. Không cái nào trong
+     bảng là TIỀN, nên không có con số nào sai đi vì thiếu nó. */
+  let loi_nguon_phan_loai = null;
+  if (!phanLoai.ok) {
+    loi_nguon_phan_loai = chiTietLoi(phanLoai);
+    nhatKy({ rid, duong: "/api/don-hang", canh_bao: "phan-loai:" + loi_nguon_phan_loai });
+  }
+  const plVal = phanLoai.ok ? (phanLoai.val || {}) : {};
 
   /* ── Đợt 2 — giá vốn theo NGÀY BÁN. Phải chờ đợt 1 thật: hỏi Engine mã nào
      có mặt trong kỳ (cần `dong` + bảng giá), rồi mới hỏi Tracking giá của
@@ -1097,11 +1123,12 @@ async function dungBangDonHang(env, ky, line, rid) {
         ? env.REPORT_ENGINE.dungBangDonKemMa(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, nguon, ky,
           minNgay, quyetDinh.val || {}, kpiVal, gdVal, tongMoc(doanhSoKyTruoc), congVal,
-          bonusVal, tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc))
+          bonusVal, tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc),
+          plVal)
         : env.REPORT_ENGINE.dungBangDonSuaTay(
           dong.val || {}, khach.val || {}, bangLine.val, line || null, quyetDinh.val || {},
           kpiVal, gdVal, ky, tongMoc(doanhSoKyTruoc), congVal, bonusVal,
-          tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc)),
+          tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc), plVal),
     ]);
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ
@@ -1121,7 +1148,7 @@ async function dungBangDonHang(env, ky, line, rid) {
        theo ngày không". Đổi tên chứ không giữ hai tên: hai tên cho một cờ là
        hai chỗ để lượt sửa sau chọn nhầm. */
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
-             co_gia_von: coGiaVon, sheet };
+             loi_nguon_phan_loai, co_gia_von: coGiaVon, sheet };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
@@ -1422,6 +1449,129 @@ const datGiaDung = boc("quantri", async ({ nguoi, request, env, rid }) => {
 
   nhatKy({ rid, uid: nguoi.uid, duong: "/api/gia-dung", khoa, gia_dung: than.gia_dung });
   return { ghi: true, khoa, gia_dung: than.gia_dung };
+});
+
+/* =================== GET /api/phan-loai/muc ===================
+ * Danh sách hãng và ngành hàng CÓ THẬT trên bảng giá Tracking — nguồn của
+ * trình phân loại thủ công.
+ *
+ * Danh sách ĐÓNG, và đó là điểm cả đường này đứng hay đổ. CLAUDE.md cấm dựng
+ * bộ phân loại thương hiệu thứ hai; luật ấy không bị nới bởi "người dùng tự
+ * gõ" — một ô gõ tự do CHÍNH LÀ một danh sách hãng thứ hai, chỉ là nó được
+ * gõ dần mỗi lần một dòng, và không ai thấy nó lớn lên. Nên màn hình CHỌN,
+ * và `POST /api/phan-loai` bên dưới đối chiếu lại đúng danh sách này.
+ *
+ * Tracking hỏng thì 503, KHÔNG trả danh sách rỗng: một trình chọn rỗng đọc
+ * lên thành "Tracking không có hãng nào" (CLAUDE.md — nguồn hỏng thì báo
+ * lỗi). Engine ném cho đúng ca ấy; ở đây chỉ dịch ra mã lỗi.
+ */
+const layMucPhanLoai = boc(true, async ({ env, rid }) => {
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+  /* Bản Engine cũ (khoảng giữa hai lượt deploy song song — bẫy số 4) chưa có
+     cửa này. Nói thẳng bằng một mã lỗi riêng thay vì để `undefined is not a
+     function` nổ thành 503 không tên. */
+  if (!env.REPORT_ENGINE.mucPhanLoai)
+    throw new LoiXacThuc(503, "engine-chua-co-muc-phan-loai");
+
+  let nguon;
+  try {
+    nguon = await docNguonTracking(env);
+  } catch (e) {
+    if (!(e instanceof LoiTracking)) throw e;
+    nhatKy({ rid, duong: "/api/phan-loai/muc", canh_bao: "tracking-hong:" + e.ly });
+    throw new LoiXacThuc(503, "tracking-hong:" + e.ly);
+  }
+  try {
+    return await env.REPORT_ENGINE.mucPhanLoai(nguon);
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-muc-phan-loai:" + (e && e.message));
+  }
+});
+
+/* =================== POST /api/phan-loai ===================
+ * Gán hãng + ngành hàng cho MỘT MẶT HÀNG không có mã bảng giá, hoặc rút lại.
+ *
+ * Chủ dự án chốt 19/09/2026. Đường này HẸP HƠN `/api/gan-ma`: nó không cho
+ * ra mã, không cho ra giá vốn, không đụng `inv/map`. Xem đầu file
+ * `engine/src/phan-loai.mjs` cho lý do nó tồn tại bên cạnh gán mã.
+ *
+ * Khoá do ENGINE dựng và đi kèm mỗi dòng (`khoa_ten`); màn hình gửi lại đúng
+ * chuỗi ấy và KHÔNG tự dựng khoá — công thức khoá là một luật khớp mã (LUẬT
+ * SỐ 1). Cùng lối `datGiaDung`, kể cả phép soi khuôn `N_[A-Z0-9]*`.
+ *
+ * ĐỐI CHIẾU LẠI DANH SÁCH ĐÓNG Ở ĐÂY, không tin trình chọn. Trình chọn là
+ * màn hình, và màn hình thì sửa được bằng Console. Chốt duy nhất giữ cho
+ * nhánh này không thành một danh sách hãng thứ hai phải nằm ở phía máy chủ.
+ *
+ * Chuỗi ghi xuống là chuỗi CHÍNH TẮC lấy từ bảng giá, không phải chuỗi màn
+ * hình gửi lên: "samsung" gõ lệch hoa thường mà ghi nguyên là một hãng thứ
+ * mười một không có màu, đứng riêng một mảng cạnh Samsung thật.
+ *
+ * Cả hai vai, cùng mức `/api/gan-ma`: đây là hai cái NHÃN, không phải tiền.
+ */
+const datPhanLoai = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const khoa = than && typeof than.khoa === "string" ? than.khoa.trim() : "";
+  if (!khoa || khoa.length > 120) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+  if (!/^N_[A-Z0-9]*$/.test(khoa)) throw new LoiXacThuc(400, "khoa-khong-hop-le");
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  const xin = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const hangXin = xin(than.hang), nganhXin = xin(than.nganh);
+  if ((hangXin && hangXin.length > 120) || (nganhXin && nganhXin.length > 120))
+    throw new LoiXacThuc(400, "qua-dai");
+
+  /* RÚT LẠI = xoá hẳn bản ghi, không ghi hai ô rỗng. Cùng kỷ luật
+     `datGiaDung`: nhánh này chỉ nên chứa những mặt hàng ĐANG có quyết định,
+     không thì "có mặt trong nhánh" hết còn nghĩa và nhánh phình theo số lần
+     người ta bấm thử. */
+  if (!hangXin && !nganhXin) {
+    const r = await xoaDb(DUONG_PHAN_LOAI + "/" + khoa, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-phan-loai:" + chiTietLoi(r));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/phan-loai", khoa, rut: true });
+    return { ghi: true, khoa, hang: null, nganh: null };
+  }
+
+  if (!env.REPORT_ENGINE.mucPhanLoai)
+    throw new LoiXacThuc(503, "engine-chua-co-muc-phan-loai");
+  let muc;
+  try {
+    muc = await env.REPORT_ENGINE.mucPhanLoai(await docNguonTracking(env));
+  } catch (e) {
+    if (e instanceof LoiTracking) {
+      nhatKy({ rid, duong: "/api/phan-loai", canh_bao: "tracking-hong:" + e.ly });
+      throw new LoiXacThuc(503, "tracking-hong:" + e.ly);
+    }
+    throw new LoiXacThuc(503, "engine-loi-muc-phan-loai:" + (e && e.message));
+  }
+
+  /* Dò không phân biệt hoa thường rồi lấy CHUỖI CHÍNH TẮC của bảng giá —
+     xem phần đầu khối chú thích. */
+  const chinhTac = (ds, v) => {
+    if (!v) return null;
+    const k = v.toLowerCase();
+    return ds.find((x) => x.toLowerCase() === k) || null;
+  };
+  const hang = chinhTac(muc.hang, hangXin);
+  const nganh = chinhTac(muc.nganh, nganhXin);
+  /* `choNguoi` — ngoại lệ có chủ ý với "lý do nội bộ không ra màn hình", cùng
+     lối đường đẩy Google Sheet đã mở. Đây đúng là lỗi NGƯỜI DÙNG sửa được, và
+     là ca họ sẽ gặp thật: giấu nó sau câu chung "Dữ liệu gửi lên không hợp
+     lệ" là để một người vừa chọn xong đứng đoán mình sai ở đâu. Câu chữ tự
+     viết, KHÔNG nhét nguyên văn phản hồi của Tracking vào. */
+  const cauNgoai = (ten) => ten + " này không có trên bảng giá Tracking. "
+    + "Thêm bên Bảng giá trước, rồi quay lại chọn.";
+  if (hangXin && !hang)
+    throw new LoiXacThuc(400, "hang-khong-co-tren-bang-gia", cauNgoai("Hãng"));
+  if (nganhXin && !nganh)
+    throw new LoiXacThuc(400, "nganh-khong-co-tren-bang-gia", cauNgoai("Ngành hàng"));
+
+  const r = await vaDb(DUONG_PHAN_LOAI + "/" + khoa,
+    { hang, nganh, boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-phan-loai:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/phan-loai", khoa, hang, nganh });
+  return { ghi: true, khoa, hang, nganh };
 });
 
 /* =================== POST /api/nap-kpi ===================
@@ -2228,6 +2378,8 @@ const API_ROUTES = new Map([
   ["GET /api/don-hang", layDonHang],
   ["GET /api/ma-bang-gia", layMaBangGia],
   ["POST /api/gan-ma", ganMa],
+  ["GET /api/phan-loai/muc", layMucPhanLoai],
+  ["POST /api/phan-loai", datPhanLoai],
   ["POST /api/sua-dong", suaDong],
   ["POST /api/dat-kpi", datKpi],
   ["POST /api/dat-cong", datCong],
