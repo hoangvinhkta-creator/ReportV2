@@ -127,6 +127,59 @@ const GOC = path.resolve(__dirname, '..');
        /năm trước không có/.test(FE), true);
   }
 
+  console.log('\nB3) Bốn chỗ chủ dự án chốt lại sau lượt mở thật thứ hai');
+  {
+    /* 1 — NÚT LỌC LÊN HÀNG TRÊN, HAI DÒNG GIẢI THÍCH DƯỚI BIỂU ĐỒ BỎ ĐI.
+       Cả hai ăn chiều cao của một khối vốn đã chật; nửa phải của hàng tiêu
+       đề thì bỏ không. */
+    ok('dải nút đặt vào hàng TIÊU ĐỀ', /cha\.insertBefore\(dai, oTieuDe\)/.test(FE), true);
+    ok('  · không còn đắp lên trên biểu đồ',
+       /oVe\.appendChild\(veDaiNut/.test(FE_SACH), false);
+    /* Dải này nằm NGOÀI `oVe`, tức ngoài thứ `veRuot()` dọn mỗi lượt — nên
+       phải có một đường gỡ riêng, không thì nút của tháng cũ treo lại. */
+    ok('  · và có đường gỡ riêng khi đổi tháng', /function boDaiNut/.test(FE), true);
+    ok('  · gọi lúc đang tải tháng mới', /boDaiNut\(\);/.test(FE), true);
+    ok('không còn hai dòng độ phủ DƯỚI biểu đồ',
+       /veChuGiaiDoPhu/.test(FE), false);
+    /* Nhưng con số độ phủ KHÔNG mất — nó vào card. Bỏ hẳn nó là biểu đồ so
+       hai tháng gán mã khác nhau mà không nói (CLAUDE.md). */
+    ok('  · nhưng độ phủ vẫn hiện, trong card', /veDoPhu\(kq\)/.test(FE), true);
+    ok('  · và cảnh báo lệch độ phủ vẫn còn', /function chipLechDoPhu/.test(FE), true);
+
+    /* 2 — MÀU: MỘT HÃNG MỘT MÀU Ở MỌI CỘT, KHÔNG BIẾN THỂ SẮC ĐỘ.
+       Bản trước làm nhạt cả cột năm trước bằng `opacity`. Đó đúng là một
+       biến thể sắc độ của màu hãng — mảng Samsung ở cột phải không ra đúng
+       màu Samsung, tức màu nói sai điều nó sinh ra để nói. */
+    ok('mảng cột năm trước KHÔNG bị làm nhạt',
+       /\.mangCoCau\.mangTruoc\s*\{[^}]*opacity/.test(CSS), false);
+    ok('  · và không mảng nào mang opacity',
+       /\.mangCoCau[^{]*\{[^}]*opacity/.test(CSS), false);
+    /* Tín hiệu "tháng nào" phải nằm NGOÀI mảng màu — hai thứ xám, không
+       đụng tới bảng màu hãng. */
+    ok('  · thay bằng vạch chân cột', /\.chanCot\b/.test(CSS) && /chanCotTruoc/.test(FE), true);
+    ok('  · và số tỉ trọng riêng cho từng cột', /nhanPtTruoc/.test(FE), true);
+    ok('  · vạch chân vẽ cả khi cột cao 0', FE.indexOf('const chan = nut("rect"')
+       < FE.indexOf('if (ptCot <= 0) return;'), true);
+
+    /* 3 — RUỘT CỘT XẾP LỚN → BÉ TỪ ĐÁY LÊN. Phép sắp ở ENGINE, không ở đây:
+       màn hình vẽ đúng thứ tự nhận được (`kiem/co-cau.js` canh phép sắp). */
+    ok('màn hình KHÔNG tự sắp lại ruột cột',
+       /\.hang\.sort\(/.test(FE_SACH), false);
+
+    /* 4 — CARD KHÔNG CÓ THANH TRƯỢT. Nội dung bóp cho vừa, không cho cuộn. */
+    ok('card không còn overflow-y: auto',
+       /\.cardCoCau\s*\{[^}]*overflow-y:\s*auto/.test(CSS), false);
+    ok('  · danh sách hãng chia hai cột', /\.dsMauDoi[^{]*\{[^}]*grid-template-columns/.test(CSS), true);
+    /* `grid` chứ không `columns`: cột báo chí xếp dọc thì ô màu hai cột
+       lệch nhau, mà chủ dự án chốt "các ô màu phải nằm trên cùng 1 trục". */
+    ok('  · và KHÔNG dùng cột báo chí (ô màu sẽ lệch trục)',
+       /\.dsMauHang[^{]*\{[^}]*column-count/.test(CSS), false);
+    ok('hai nhãn phụ rút ngắn', /"Hãng nhỏ"/.test(FE) && /"None"/.test(FE), true);
+    ok('  · không còn lối viết dài', /Hãng nhỏ, đã gộp|Chưa gán mã \(NONE\)/.test(FE), false);
+    ok('  · và bỏ câu nhắc "bấm vào một mảng"',
+       /Bấm vào một mảng trên biểu đồ/.test(FE), false);
+  }
+
   console.log('\nC+D) Độ phủ và nguồn hỏng — nói ra, không giấu');
   {
     ok('màn hình vẽ độ phủ', /do_phu/.test(FE), true);

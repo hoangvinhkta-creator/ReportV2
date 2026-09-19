@@ -23,6 +23,10 @@
  * mảng cùng màu trong hai cột phải là CÙNG một hãng. Nên danh sách ngành và
  * danh sách hãng của mỗi ngành được chốt MỘT LẦN cho cả hai tháng.
  *
+ * THỨ TỰ trong cột thì không: mỗi cột tự xếp lớn → bé từ đáy lên (chủ dự án
+ * chốt 19/09/2026). Cùng TẬP hãng và cùng MÀU là đủ để hai cột so được với
+ * nhau; bắt chúng cùng thứ tự nữa thì mỗi cột riêng lẻ trông lộn xộn.
+ *
  * Chốt theo TỔNG HAI THÁNG, không theo riêng tháng đang xem: một hãng bán
  * mạnh năm ngoái mà năm nay nghỉ hẳn sẽ bị dồn vào "Khác" nếu chỉ xếp hạng
  * theo tháng này — và đó đúng là hãng người ta mở biểu đồ ra để tìm.
@@ -288,6 +292,27 @@ function dungMotChiTieu(truong, nay, truoc) {
                     doanh_so: du.doanh_so, so_may: du.so_may,
                     la_khac: true, gom: conLai });
       }
+      /* ── THỨ TỰ RUỘT CỘT: LỚN → BÉ, TỪ ĐÁY LÊN ĐỈNH ──
+         Chủ dự án chốt 19/09/2026, sau khi mở thật: "sắp xếp cơ cấu trong
+         cột đang lộn xộn, tôi muốn cơ cấu từ lớn đến bé sắp xếp theo chiều
+         từ dưới lên đỉnh cột".
+
+         Bản trước xếp ruột cột theo `dsHang` — thứ hạng tính trên TỔNG HAI
+         THÁNG. Về lý nó giữ cho hai cột cạnh nhau xếp cùng một thứ tự; về
+         mắt thì mỗi cột riêng lẻ trông đúng là lộn xộn, vì một hãng lớn của
+         tháng này có thể đứng dưới một hãng nó lớn gấp năm lần, chỉ vì năm
+         ngoái hãng kia bán mạnh.
+
+         Nay MỖI CỘT tự xếp theo giá trị CỦA CHÍNH NÓ. Cái mất đi là "hai
+         cột cùng thứ tự"; cái giữ lại — và là cái thật sự khiến hai cột so
+         được với nhau — là hai cột có CÙNG TẬP HÃNG và mỗi hãng MỘT màu cố
+         định (`public/mau-hang.js`). Mắt dò theo màu, không dò theo vị trí.
+
+         Bằng điểm thì so TÊN: hai lượt mở cùng một tháng phải ra cùng một
+         hình, không phụ thuộc thứ tự khoá Firebase. */
+      hang.sort((a, b) => (b.gia_tri - a.gia_tri)
+        || (a.ten < b.ten ? -1 : a.ten > b.ten ? 1 : 0));
+
       const o = { ten, gia_tri: tong[truong],
                   doanh_so: tong.doanh_so, so_may: tong.so_may,
                   la_khac: !!la_khac, hang };

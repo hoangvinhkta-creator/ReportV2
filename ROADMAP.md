@@ -75,6 +75,44 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (e) — bốn chỗ chủ dự án chốt lại sau lượt mở thứ hai.**
+
+Vẫn là biểu đồ cơ cấu, vẫn là những thứ chỉ lộ ra khi nhìn hình thật.
+
+1. **Nút [Chỉ phần đã phân loại] lên hàng trên; hai dòng độ phủ dưới
+   biểu đồ bỏ đi.** Cả hai ăn mất hai dòng chiều cao của một khối vốn đã
+   chật, trong khi nửa phải của hàng tiêu đề vẫn bỏ không. Con số độ phủ
+   KHÔNG mất — nó vào một dòng ở đáy card, và cảnh báo "hai tháng lệch
+   độ phủ" thành một chip ngắn cạnh nút. Bỏ hẳn hai thứ ấy là biểu đồ so
+   hai tháng gán mã khác nhau mà không nói (CLAUDE.md).
+2. **Một hãng MỘT màu ở mọi cột — không biến thể sắc độ.** Bảng màu của
+   lượt (d) đã đúng; chỗ sai còn lại là CSS làm nhạt cả cột năm trước
+   (`opacity: .48`). Tiện cho việc phân biệt hai tháng, nhưng nó đúng là
+   một biến thể sắc độ: mảng Samsung ở cột phải không ra đúng màu
+   Samsung. Nay hai cột tô y hệt nhau, và tín hiệu "tháng nào" chuyển
+   sang hai thứ XÁM, không đụng bảng màu hãng: **vạch chân cột** (đậm =
+   tháng này, nhạt = cùng kỳ) và **số tỉ trọng riêng dưới từng cột**.
+   Vạch chân vẽ cả khi cột cao 0 — một ngành năm nay không bán gì vẫn
+   phải thấy được chỗ nó đứng.
+3. **Ruột cột xếp LỚN → BÉ từ đáy lên.** Bản trước xếp theo thứ hạng
+   tính trên TỔNG HAI THÁNG, để hai cột cạnh nhau cùng thứ tự. Về lý thì
+   gọn; về mắt thì mỗi cột riêng lẻ trông lộn xộn, vì một hãng lớn của
+   tháng này có thể đứng dưới một hãng nó lớn gấp năm lần chỉ vì năm
+   ngoái hãng kia bán mạnh. Nay **mỗi cột tự xếp theo giá trị của chính
+   nó** (Engine, `themCot`). Cái mất đi là "hai cột cùng thứ tự"; cái
+   giữ lại — và là cái thật sự khiến hai cột so được với nhau — là cùng
+   TẬP hãng và một màu cố định cho mỗi hãng. Mắt dò theo màu, không dò
+   theo vị trí. Bài kiểm đổi theo: từ "thứ tự khớp hai tháng" sang "cùng
+   tập hãng" + "mỗi cột xếp lớn → bé".
+4. **Card không có thanh trượt.** Danh sách hãng chia hai cột bằng
+   `grid` (không phải `column-count`: cột báo chí xếp dọc thì ô màu hai
+   cột lệch nhau, mà chủ dự án chốt "các ô màu phải nằm trên cùng 1
+   trục"), hàng thấp hơn, card rộng thêm 44px, và ba câu nhắc dài rút
+   còn một cụm ngắn. Hai nhãn phụ: *"Hãng nhỏ, đã gộp"* → **Hãng nhỏ**,
+   *"Chưa gán mã (NONE)"* → **None**.
+
+---
+
 **LƯỢT 19/09/2026 (d) — sửa bố cục biểu đồ cơ cấu, sau khi mở thật.**
 
 Chủ dự án gửi ảnh: *"kích thước, bố cục biểu đồ đang quá nhỏ… thừa các
