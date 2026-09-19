@@ -19,10 +19,13 @@ import { apDungKpi, hanhKpi, kiemBangKpi, BANG_KPI_HAT_GIONG } from "./kpi.mjs";
 import { apDungBonus, LY_DO_BONUS } from "./bonus.mjs";
 import { dungKhoiSheet, COT_NGAY, COT_TIEN, HANG_DAU } from "./day-sheet.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
+import {
+  HANG_BAO_HANH, hangChinhThuc, dsKichHoat, donHuongDan, thuTuTiepTheo, BUOC_TOI_DA,
+} from "./bao-hanh.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.11.0-hat-giong-kpi";
+const PHIEN_BAN = "0.12.0-kich-hoat-bao-hanh";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -378,6 +381,55 @@ export default class extends WorkerEntrypoint {
    *  có câu lỗi. */
   async dungKhoiSheet(bang) {
     return dungKhoiSheet(bang);
+  }
+
+  /* ─────────── Kích hoạt bảo hành (19/09/2026) ───────────
+   *
+   * Bốn hàm dưới đây lên TRƯỚC lượt Gateway gọi chúng (bẫy số 4 —
+   * ROADMAP.md: hai Worker build SONG SONG khi merge, nên hàm Engine phải
+   * có mặt ở một lượt merge riêng trước đó). Lượt này là lượt "lên trước".
+   */
+
+  /** Bảng đơn đã dựng + quyết định kích hoạt + hướng dẫn thô → mọi thứ tab
+   *  [Kích hoạt bảo hành] cần, chia sẵn theo mười hãng. Xem `bao-hanh.mjs`.
+   *
+   *  GỘP hướng dẫn vào cùng một lượt gọi thay vì mở một hàm thứ hai: Gateway
+   *  đọc cả hai nhánh trong cùng một lượt mở màn hình, và một RPC nữa qua
+   *  Service Binding cho đúng một phép dọn dữ liệu là trả giá cho không.
+   *
+   *  `huongDanTho` là nhánh `bc/quyetdinh/bao-hanh` NGUYÊN BẢN — thứ người
+   *  sửa được thẳng trên Firebase Console. Engine dọn nó (`donHuongDan`), vì
+   *  "một hướng dẫn trông như thế nào" là luật, và luật thì ở đây. */
+  async dsKichHoatBaoHanh(bang, quyetDinhKichHoat, huongDanTho) {
+    const ds = dsKichHoat(bang, quyetDinhKichHoat);
+    const tho = huongDanTho && typeof huongDanTho === "object" ? huongDanTho : {};
+    const huong_dan = {};
+    for (const h of HANG_BAO_HANH) huong_dan[h] = donHuongDan(tho[h]);
+    return { ...ds, huong_dan };
+  }
+
+  /** Mười hãng có cổng kích hoạt bảo hành, đúng thứ tự tab con.
+   *
+   *  Gateway hỏi thay vì khai lại: danh sách hãng là một quyết định nghiệp
+   *  vụ, và hai bản là hai bản trôi khỏi nhau — chỗ trôi ở đây là một hãng
+   *  ghi được dữ liệu mà không tab nào hiện ra. */
+  async hangBaoHanh() {
+    return { thu_tu: HANG_BAO_HANH.slice(), buoc_toi_da: BUOC_TOI_DA };
+  }
+
+  /** Tên hãng CHÍNH THỨC của một chuỗi, `null` nếu không thuộc mười hãng.
+   *
+   *  Gateway gọi ở MỌI đường ghi, trước khi chạm Firebase: khoá nhánh phải
+   *  là tên chính thức, không phải chuỗi trình duyệt gửi lên. Một cách viết
+   *  thứ hai của cùng một hãng là hai nhánh dữ liệu cho cùng một thứ, và
+   *  người dùng chỉ thấy một nửa hướng dẫn mình vừa gõ. */
+  async chuanHoaHangBaoHanh(s) {
+    return hangChinhThuc(s);
+  }
+
+  /** Số thứ tự cho một bước MỚI thêm vào cuối danh sách hướng dẫn. */
+  async thuTuBuocTiepTheo(buoc) {
+    return thuTuTiepTheo(buoc);
   }
 
   /** Ba hằng bố cục Sheet, để Gateway phủ định dạng đúng cột mà không khai
