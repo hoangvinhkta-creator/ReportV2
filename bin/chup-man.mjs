@@ -92,7 +92,7 @@ LINE.forEach((ten, i) => {
 });
 
 const DON_HANG = {
-  ky: "2026-09", loi_nguon_ma: null, loi_nguon_kpi: null, trong_pham_vi_ma: true,
+  ky: "2026-09", loi_nguon_ma: null, loi_nguon_kpi: null, co_gia_von: true,
   tom_tat_line: { thu_tu: LINE, line: tomTatLine },
   bang: { line: null, ngay: [], tom_tat: {}, tom_tat_kpi: {
     line, vs_line, thu_tu: LINE, thieu_bang: false, van_de: [],

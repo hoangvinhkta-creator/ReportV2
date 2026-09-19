@@ -702,10 +702,10 @@ const GOC = path.resolve(__dirname, '..');
        /const trTong = el\("tr", "hangTongBang"\);[\s\S]{0,30}for \(const c of COT\)/.test(UI2), true);
 
     /* Ba con số phụ thuộc Tracking hiện "—" khi kỳ ngoài phạm vi hoặc nguồn
-       hỏng — dùng lại CHÍNH hai cờ `kq.trong_pham_vi_ma`/`kq.loi_nguon_ma`
+       hỏng — dùng lại CHÍNH hai cờ `kq.co_gia_von`/`kq.loi_nguon_ma`
        đang gác mọi ô Giá nhập khác trên bảng, không phải một phép đoán mới. */
     ok('  · "CHƯA BIẾT" (kỳ ngoài phạm vi / nguồn hỏng) hiện "—", không phải 0',
-       /const thieuNguon = kq\.trong_pham_vi_ma === false \|\| !!kq\.loi_nguon_ma;/.test(UI2), true);
+       /const thieuNguon = kq\.co_gia_von === false \|\| !!kq\.loi_nguon_ma;/.test(UI2), true);
     ok('  · Giá nhập/Lợi nhuận/Quy đổi đều đi qua cùng MỘT cửa "—"',
        (UI2.match(/thieuNguon \? "—"/g) || []).length, 1);
 

@@ -222,5 +222,50 @@ const GOC = path.resolve(__dirname, '..');
        /nhatKy\(\{[^}]*\buser\b/.test(kh), false);
   }
 
+  console.log('\nH) Kỳ cũ — khớp mã để phân loại (19/09/2026)');
+  {
+    /* Vì sao mục này nằm ở bộ kiểm của TAB BẢO HÀNH: chính tab này là lý do
+       mốc 09/2026 bị tách làm đôi. Không có nó thì máy bán tháng 8/2026 trở
+       về trước không có hãng, tức không xếp được vào cổng nào. */
+
+    /* Một lượt ĐỔI TÊN NỬA VỜI là lỗi im lặng tệ nhất ở đây: cờ cũ
+       `trong_pham_vi_ma` không còn được Gateway gửi, nên một chỗ nào đó còn
+       đọc nó sẽ luôn thấy `undefined` — tức luôn KHÁC `false`, tức mọi lời
+       nhắc về kỳ thiếu giá vốn lặng lẽ biến mất mà màn hình vẫn đẹp. */
+    for (const [ten, ma] of [['don-hang.js', DH], ['bao-hanh.js', FE], ['Gateway', GW]]) {
+      const sach = ma.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+      ok(ten + ' không còn đọc cờ cũ trong_pham_vi_ma',
+         /trong_pham_vi_ma/.test(sach), false);
+    }
+
+    /* Gateway phải THẬT SỰ gửi cờ mới — bài trên chỉ nói cờ cũ đã đi. */
+    ok('Gateway gửi cờ co_gia_von', /co_gia_von: coGiaVon/.test(GW), true);
+    /* Và đường /api/bao-hanh KHÔNG chuyển tiếp nó: tab bảo hành không hiện
+       một đồng tiền nào, nên "tháng này có giá vốn không" là dữ liệu bắn đi
+       cho không ai đọc. `loi_nguon_ma` thì phải có — Tracking hỏng là mười
+       tab cùng rỗng và màn hình phải nói ra (mục F). */
+    const bh = (GW.match(/const layBaoHanh = boc[\s\S]*?\n\}\);/) || [''])[0]
+      /* Bỏ chú thích trước khi dò: chính đoạn giải thích ngay trên handler CÓ
+         nhắc tên cờ, và nhắc là đúng — nó nói vì sao cờ ấy không có mặt. Thứ
+         phải vắng là mã thật. */
+      .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+    ok('  · đường /api/bao-hanh KHÔNG bắn kèm cờ ấy',
+       /co_gia_von/.test(bh), false);
+
+    /* Màn bảo hành KHÔNG còn câu "ngoài phạm vi khớp mã": kỳ cũ nay khớp mã
+       bình thường, nên câu ấy là một lời nói dối về chính màn đang có dữ
+       liệu. Nó cũng không cần nói gì về giá vốn — tab này không hiện đồng
+       tiền nào. */
+    ok('bao-hanh.js không còn nói "ngoài phạm vi khớp mã"',
+       /ngoài phạm vi khớp mã/.test(FE), false);
+
+    /* Và băng xám bên bảng đơn phải nói đúng ba cột còn trống. Nói thừa
+       Hãng/Ngành hàng là màn hình tự phủ nhận những ô đang có chữ. */
+    const bang = (DH.match(/nằm ngoài phạm vi dữ liệu GIÁ[\s\S]{0,400}?\)\);/g) || []).join(' ');
+    ok('băng xám của bảng đơn có nhắc đủ ba cột trống', bang.length > 0, true);
+    ok('  · và KHÔNG còn kể Hãng · Ngành hàng vào phần trống',
+       /để trống[^"]*Hãng/.test(bang), false);
+  }
+
   xong();
 })().catch((e) => { console.error('BÀI KIỂM CHẾT:', e); process.exit(1); });

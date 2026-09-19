@@ -693,14 +693,25 @@ const GOC = path.resolve(__dirname, '..');
          khoi.slice(0, khoi.indexOf('  ]);')).includes(d), true);
     }
 
-    /* Bảng giá ~400 KB và Min theo ngày vài nghìn bản ghi: kỳ ngoài phạm vi
-       khớp mã thì KHÔNG được kéo về. Nhưng cũng không được bắt bảy lượt đọc
-       kia ngồi chờ câu trả lời "kỳ này có trong phạm vi không" — nên phạm vi
-       đi bằng một lời hứa, và bảng giá móc vào `.then()` của nó. */
-    ok('kỳ ngoài phạm vi vẫn KHÔNG kéo bảng giá về',
-       /huaPhamVi\.then\(\(trong\) => \(trong[\s\S]{0,60}docNguonTracking\(env\)/.test(than), true);
-    ok('  · và bảy lượt đọc kia không phải chờ câu trả lời ấy',
+    /* BẢNG GIÁ NAY KÉO VỀ Ở MỌI KỲ (19/09/2026). Bản trước móc nó vào
+       `.then()` của lời hứa phạm vi để kỳ cũ khỏi tải ~400 KB "không dùng
+       được"; nay kỳ cũ dùng được — hãng và ngành hàng của từng dòng là thứ
+       tab [Kích hoạt bảo hành] cần ở mọi tháng.
+
+       Thứ KHÔNG được kéo về ở kỳ cũ vẫn là Min theo ngày (vài nghìn bản
+       ghi cho một kỳ chắc chắn không có giá vốn) — bài ngay dưới canh nó. */
+    ok('bảng giá không còn bị chặn theo kỳ',
+       /huaPhamVi\.then\(\(trong\)/.test(than), false);
+    ok('  · và nó khởi động ngay, không chờ câu trả lời phạm vi',
+       /const huaNguon = docNguonTracking\(env\)/.test(than), true);
+    ok('Min theo ngày thì VẪN chặn theo kỳ', /if \(nguon && coGiaVon\)/.test(than), true);
+    ok('  · và lời hứa phạm vi vẫn không bắt bảy lượt đọc kia ngồi chờ',
        than.indexOf('const huaPhamVi') < than.indexOf('await Promise.all(['), true);
+    /* Cửa lùi về tên RPC cũ: giữa hai lượt deploy song song (bẫy số 4) bản
+       Gateway mới này gặp Engine cũ chưa có `kyCoGiaVon`. Không lùi thì mọi
+       lượt mở bảng đơn trong khoảng ấy nổ 503. */
+    ok('hỏi kyCoGiaVon, có cửa lùi về kyCoKhopMa',
+       /env\.REPORT_ENGINE\.kyCoGiaVon[\s\S]{0,120}env\.REPORT_ENGINE\.kyCoKhopMa\(ky\)/.test(than), true);
 
     /* Tracking hỏng KHÔNG được làm hỏng cả bảng đơn (CLAUDE.md: doanh số, số
        đơn, khách hàng đọc được mà không cần bảng giá). Một lỗi thoát ra khỏi

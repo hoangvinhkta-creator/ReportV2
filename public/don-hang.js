@@ -592,7 +592,7 @@
     return h;
   }
 
-  function oMaSanPham(d, trongPhamVi, hanh) {
+  function oMaSanPham(d, coGiaVon, hanh) {
     const td = el("td", "oTen oMa");
     /* Ô tick đứng TRƯỚC tên hàng, và chỉ khi line này có hệ số gia dụng. Đặt
        trước vì nó là thứ mắt cần quét dọc theo cột; đặt sau tên hàng thì nó
@@ -600,7 +600,12 @@
        nhau) và không còn quét dọc được. */
     if (hanh && hanh.he_so_gia_dung_pt !== null && hanh.he_so_gia_dung_pt !== undefined
         && d.khoa_ten && !d.la_chiet_khau && !d.la_phu_phi_co_dinh
-        && trongPhamVi !== false) {
+        /* Ô tick GIA DỤNG vẫn khoá ở kỳ không có giá vốn, khác hẳn gán mã
+           ngay dưới. Nó chỉ đổi HỆ SỐ QUY ĐỔI, mà quy đổi cần lợi nhuận,
+           mà lợi nhuận cần giá vốn — bấm ở kỳ cũ là bấm một cái không đổi
+           một con số nào trên màn hình đang mở. Gán mã thì ngược lại: nó
+           điền Hãng và Ngành hàng ngay tại chỗ. */
+        && coGiaVon !== false) {
       td.appendChild(tickGiaDung(d));
       if (d.la_gia_dung) td.classList.add("laGiaDung");
     }
@@ -624,12 +629,14 @@
        `ma_bang_gia` nên vẫn hiện nguyên câu, đúng như cần. */
     if (d.la_chiet_khau || d.la_phu_phi_co_dinh) { td.className = "oTen"; return td; }
 
-    /* Kỳ ngoài phạm vi: ô hiện y như một ô chữ thường, không tô, không bấm
-       được. Chốt ở MỘT CỜ của cả lượt đọc chứ không suy từ hình dạng từng
-       dòng — lời hứa "tháng cũ không làm phiền" khi ấy không phụ thuộc vào
-       việc mọi dòng có sạch trường khớp mã hay không. */
-    if (trongPhamVi === false) { td.className = "oTen"; return td; }
+    /* KHÔNG còn cửa chặn theo kỳ ở đây (19/09/2026). Bản trước trả về sớm
+       với kỳ cũ — ô hiện phẳng, không tô, không bấm được — vì khi ấy gán mã
+       ở kỳ cũ không ra được đồng giá vốn nào.
 
+       Nay nó ra HÃNG và NGÀNH HÀNG, thứ tab [Kích hoạt bảo hành] cần ở mọi
+       tháng. Và công gán không bị phí: quyết định gán tên hàng ghi vào
+       `inv/map` của Tracking, áp cho MỌI kỳ — gán một lần ở tháng 3/2025 là
+       tháng 9/2026 cũng khớp theo. Chủ dự án chốt "hiện, để gán dần". */
     td.dataset.o = "ma";
     td.dataset.ten = d.ma_san_pham;
     if (d.khoa_ten) td.dataset.khoa = d.khoa_ten;
@@ -1671,12 +1678,12 @@
         "Bảng KPI trên Firebase có " + soNguyen(tkpi.van_de.length)
         + " chỗ không dùng được nên quy đổi để trống. Chỗ sai: "
         + tkpi.van_de.map((v) => (v.vi || "?") + " (" + v.ma + ")").join(" · ")));
-    } else if (kq.trong_pham_vi_ma === false) {
+    } else if (kq.co_gia_von === false) {
       ve.appendChild(el("p", "ghiChuPhamVi",
-        "Kỳ này nằm ngoài phạm vi dữ liệu giá của Tracking (chỉ có từ tháng "
+        "Kỳ này nằm ngoài phạm vi dữ liệu GIÁ của Tracking (chỉ có từ tháng "
         + "09/2026). Quy đổi cần lợi nhuận, lợi nhuận cần giá vốn — nên hai "
-        + "cột Doanh số quy đổi và Đạt KPI để trống. Doanh số thuần và số đơn "
-        + "không bị ảnh hưởng."));
+        + "cột Doanh số quy đổi và Đạt KPI để trống. Doanh số thuần, số đơn, "
+        + "và hai cột Hãng · Ngành hàng không bị ảnh hưởng."));
     }
 
     /* 15 cột, đúng thứ tự chủ dự án chốt 12/09/2026 (P6). Khai thành MỘT
@@ -2230,11 +2237,16 @@
        được). Nhưng vẫn nói MỘT CÂU vì sao mấy cột kia trống: ô trống không
        giải thích và "không có" là hai chuyện khác nhau. Câu này màu xám,
        không phải cảnh báo. */
-    if (kq.trong_pham_vi_ma === false) {
+    if (kq.co_gia_von === false) {
+      /* Câu này viết lại 19/09/2026, và vế đổi là vế quan trọng: kỳ cũ NAY
+         VẪN được khớp mã, nên Mã · Hãng · Ngành hàng có số. Thứ còn trống
+         đúng là ba cột cần `min_ngay`. Để nguyên câu cũ là màn hình nói dối
+         về chính những cột đang có chữ. */
       khung.appendChild(el("p", "ghiChuPhamVi",
-        "Kỳ này nằm ngoài phạm vi dữ liệu giá của Tracking (chỉ có từ tháng "
-        + "09/2026), nên các cột Mã · Giá nhập · Lợi nhuận · Hãng · Ngành hàng "
-        + "để trống. Doanh số và số đơn không bị ảnh hưởng."));
+        "Kỳ này nằm ngoài phạm vi dữ liệu GIÁ của Tracking (chỉ có từ tháng "
+        + "09/2026), nên ba cột Giá nhập · Lợi nhuận · Nơi nhập để trống. "
+        + "Mã sản phẩm, Hãng và Ngành hàng vẫn khớp bình thường — gán mã ở "
+        + "đây ăn cho mọi tháng."));
     }
 
     /* ── BỘ LỌC ──
@@ -2346,15 +2358,15 @@
     const tongLine = tkpi && tkpi.line ? tkpi.line[trangThai.line] : null;
     if (!loc && tongLine) {
       /* Ba con số phụ thuộc Tracking (giá nhập, lợi nhuận, quy đổi) hiện "—"
-         khi kỳ ngoài phạm vi khớp mã hoặc nguồn giá hỏng lượt này — CHƯA
-         BIẾT khác "bằng 0" (CLAUDE.md). `kq.trong_pham_vi_ma`/`kq.loi_nguon_ma`
-         là hai cờ ĐÃ CÓ, dùng chung với mọi ô Giá nhập khác trên bảng, không
-         phải một phép đoán mới ở đây.
+         khi kỳ không có giá vốn hoặc nguồn giá hỏng lượt này — CHƯA BIẾT
+         khác "bằng 0" (CLAUDE.md). `kq.co_gia_von`/`kq.loi_nguon_ma` là hai
+         cờ ĐÃ CÓ, dùng chung với mọi ô Giá nhập khác trên bảng, không phải
+         một phép đoán mới ở đây.
 
          Còn biết được MỘT PHẦN thì hiện số kèm "*", đúng quy ước băng ngày
          và dải KPI đang dùng — không bịa một quy ước thứ hai cho cùng một
          ý nghĩa. */
-      const thieuNguon = kq.trong_pham_vi_ma === false || !!kq.loi_nguon_ma;
+      const thieuNguon = kq.co_gia_von === false || !!kq.loi_nguon_ma;
       const soHoacGach = (so, thieu) => thieuNguon ? "—" : nghinTron(so) + (thieu ? " *" : "");
 
       const mKy = String(trangThai.ky || "").match(/^(\d{4})-(\d{2})$/);
@@ -2513,7 +2525,7 @@
           const tdNoi = oNoiNhap(d);
           tdNoi.dataset.o = "noi";
           tr.appendChild(tdNoi);
-          tr.appendChild(oMaSanPham(d, kq.trong_pham_vi_ma, hanhKpi));
+          tr.appendChild(oMaSanPham(d, kq.co_gia_von, hanhKpi));
           tr.appendChild(oSoLuong(d));
           const tdGia = oGiaNhap(d);
           tdGia.dataset.o = "gia";
@@ -2537,7 +2549,11 @@
           /* Hai nút mở từ P5. Dòng chiết khấu KHÔNG sửa được: nó do Engine
              gộp ra, không phải một dòng của sổ, nên không có khoá bền để
              gắn quyết định vào. */
-          const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.trong_pham_vi_ma !== false;
+          /* Sửa/Xoá dòng vẫn khoá ở kỳ không có giá vốn, KHÔNG đi theo
+             gán mã. Ô sửa tay sửa Giá nhập và Nơi nhập — hai thứ kỳ cũ
+             không có, nên mở nó ra là mời người dùng gõ vào hai ô sẽ không
+             hiện ra ở đâu cả. */
+          const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.co_gia_von !== false;
           tr.appendChild(nutDong("sua", "Sửa dòng", suaDuoc, "sua"));
           tr.appendChild(nutDong("xoa", "Xoá dòng", suaDuoc, "xoa"));
           if (d.khoa) tr.dataset.khoaDong = d.khoa;
