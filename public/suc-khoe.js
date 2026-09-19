@@ -913,6 +913,12 @@
     oVe.style.height = caoCot + "px";
     oPhai.style.height = caoCot + "px";
 
+    /* Cột phải vừa có chiều cao thật → biểu đồ cơ cấu đo lại và vẽ lại.
+       `veLai()` gọi nó TRƯỚC hàm này, nên lượt vẽ đầu của mỗi lượt mở trang
+       đo phải một cột chưa được ép chiều cao. Chỉ vẽ lại hình, không dựng
+       lại thẻ bên phải (xem `canhLai` bên co-cau.js). */
+    if (window.CoCau && window.CoCau.canhLai) window.CoCau.canhLai();
+
     /* Khung vẽ (phần còn lại của cột sau tiêu đề và chú giải) — `flex: 1`
        nên nó đúng bằng chỗ thừa, không phụ thuộc hình đang vẽ cao bao nhiêu. */
     const hopVe = $("skHopVe");
