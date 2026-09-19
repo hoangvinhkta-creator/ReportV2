@@ -11,7 +11,7 @@ import {
   xuLySoBanHang, phamViCayKy, kiemPhuSong, doiChieuKy, dungBangDon, tomTatLine,
 } from "./dong-hang.mjs";
 import {
-  khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoKhopMa, maCanGiaVon, cachVietMa,
+  khoaTenHang, khopMaChoBangDon, dienGiaNhap, kyCoGiaVon, maCanGiaVon, cachVietMa,
 } from "./khop-ma.mjs";
 import { apDungSuaTay, tinhTruDaXoa, truVaoCayKy } from "./sua-tay.mjs";
 import { ghepBTL, apDungBTL } from "./btl.mjs";
@@ -25,7 +25,7 @@ import {
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.12.0-kich-hoat-bao-hanh";
+const PHIEN_BAN = "0.13.0-khop-ma-moi-ky";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -176,9 +176,21 @@ export default class extends WorkerEntrypoint {
        xem `btl.mjs`. */
     apDungBTL(bang, ghepBTL(dongCuaKy, khachCuaKy));
     /* Giá vốn chỉ có nghĩa sau khi đã khớp mã, nên hai việc đi liền trong một
-       lượt. `minNgay` vắng mặt (Gateway chưa lấy được, hoặc kỳ ngoài phạm vi)
-       thì bỏ qua — cột Giá nhập ở lại "—", KHÔNG thành 0. */
-    if (minNgay) dienGiaNhap(bang, minNgay);
+       lượt. `minNgay` vắng mặt (Gateway chưa lấy được) thì bỏ qua — cột Giá
+       nhập ở lại "—", KHÔNG thành 0.
+
+       VẾ THỨ HAI, thêm 19/09/2026: kỳ trước `MOC_GIA_VON` cũng bỏ qua, dù
+       `minNgay` có mặt. Từ lượt này khớp mã chạy ở MỌI kỳ, nên Gateway gọi
+       `maCanGiaVon` cho cả kỳ cũ — nó trả rỗng, và `docMinNgay` thấy rỗng thì
+       trả về một đối tượng RỖNG chứ không phải `null`. Một đối tượng rỗng vẫn
+       là truthy, nên chỉ soi `minNgay` là `dienGiaNhap` chạy trên không có bản
+       ghi nào và dán "chưa tra ra giá" lên từng dòng của hai mươi tháng cũ —
+       tức biến một ô CỐ Ý để trống thành một lời than thiếu dữ liệu.
+
+       Cổng đặt ở ĐÂY chứ không ở Gateway: "kỳ nào có giá vốn" là một luật
+       nghiệp vụ (LUẬT SỐ 1), và để Gateway tự quyết là dựng bản thứ hai của
+       nó. */
+    if (minNgay && kyCoGiaVon(ky)) dienGiaNhap(bang, minNgay);
     /* SỬA TAY LÀ LỚP CUỐI. Nó phải thắng mọi con số máy vừa tính ra — chủ dự
        án chốt "sửa tay luôn thắng". Chạy trước `dienGiaNhap` thì lượt điền tự
        động sẽ đè ngược lại chính quyết định của người. */
@@ -257,13 +269,30 @@ export default class extends WorkerEntrypoint {
     return truVaoCayKy(cayKy, truTheoKy);
   }
 
-  /** Kỳ này có nằm trong phạm vi khớp mã / giá vốn không.
+  /** Kỳ này có GIÁ VỐN THEO NGÀY BÁN không.
    *
-   *  Gateway hỏi TRƯỚC khi đi lấy dữ liệu Tracking: kỳ ngoài phạm vi thì
-   *  không cần kéo bảng giá (~400 KB) lẫn Min theo ngày về làm gì. Mốc là
-   *  một LUẬT NGHIỆP VỤ nên nó ở Engine, không chép sang Gateway. */
+   *  Gateway hỏi để biết có đi lấy Min theo ngày hay không, và để màn hình
+   *  nói đúng câu vì sao cột Giá nhập trống. Mốc là một LUẬT NGHIỆP VỤ nên nó
+   *  ở Engine, không chép sang Gateway.
+   *
+   *  KHÔNG còn là cổng chặn khớp mã (19/09/2026) — khớp mã nay chạy ở mọi kỳ
+   *  để tab [Kích hoạt bảo hành] có HÃNG của từng dòng. Xem `MOC_GIA_VON`. */
+  async kyCoGiaVon(ky) {
+    return kyCoGiaVon(ky);
+  }
+
+  /** TÊN CŨ của hàm ngay trên — giữ lại có chủ đích, không phải sót.
+   *
+   *  Hai Worker build SONG SONG khi merge (bẫy số 4 — ROADMAP.md), nên giữa
+   *  hai lượt deploy sẽ có một khoảng bản Gateway CŨ gọi Engine MỚI. Bản
+   *  Gateway cũ hỏi đúng cái tên này; bỏ nó đi là mọi lượt mở bảng đơn trong
+   *  khoảng ấy nổ 503 chứ không phải chạy chậm hơn một chút.
+   *
+   *  Nó trả về cùng một câu trả lời như `kyCoGiaVon` — vì với bản Gateway cũ,
+   *  "có khớp mã" và "có giá vốn" vẫn là một. Xoá được sau khi Gateway mới đã
+   *  chạy ổn định. */
   async kyCoKhopMa(ky) {
-    return kyCoKhopMa(ky);
+    return kyCoGiaVon(ky);
   }
 
   /** Tập mã bảng giá cần hỏi Min theo ngày cho một kỳ.

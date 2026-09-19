@@ -329,34 +329,68 @@ const GOC = path.resolve(__dirname, '..');
   ok('bảng giá hỏng → cả lượt dựng bảng ném lỗi',
     nem(() => K.khopMaChoBangDon(bang4, { board: {} })), true);
 
-  /* ─────────── F. Mốc kỳ: trước 09/2026 KHÔNG khớp gì ─────────── */
+  /* ─────────── F. Mốc kỳ: KHỚP MÃ mọi kỳ, GIÁ VỐN từ 09/2026 ─────────── */
 
-  console.log('\nF) Mốc kỳ');
+  console.log('\nF) Mốc kỳ — một mốc, một việc');
 
-  ok('kỳ 09/2026 nằm trong phạm vi', K.kyCoKhopMa('2026-09'), true);
-  ok('kỳ sau đó cũng vậy', K.kyCoKhopMa('2026-10'), true);
-  ok('kỳ 08/2026 NGOÀI phạm vi', K.kyCoKhopMa('2026-08'), false);
-  ok('kỳ 2025 ngoài phạm vi', K.kyCoKhopMa('2025-12'), false);
-  ok('không phải chuỗi thì ngoài phạm vi', K.kyCoKhopMa(null), false);
+  /* Sửa 19/09/2026: mốc này trước đây gánh HAI việc bằng một con số (khớp mã
+     và giá vốn). Tab [Kích hoạt bảo hành] cần HÃNG của từng dòng ở mọi kỳ, mà
+     hãng thì đến từ phép khớp mã và không dính gì tới `min_ngay`. Nên mốc nay
+     chỉ còn gánh giá vốn, và bộ này canh đúng chỗ tách ấy. */
+
+  ok('kỳ 09/2026 có giá vốn', K.kyCoGiaVon('2026-09'), true);
+  ok('kỳ sau đó cũng vậy', K.kyCoGiaVon('2026-10'), true);
+  ok('kỳ 08/2026 KHÔNG có giá vốn', K.kyCoGiaVon('2026-08'), false);
+  ok('kỳ 2025 không có giá vốn', K.kyCoGiaVon('2025-12'), false);
+  ok('không phải chuỗi thì không có giá vốn', K.kyCoGiaVon(null), false);
+
+  /* Và mốc cũ không được lặng lẽ sống lại dưới một cái tên: hai mốc cho cùng
+     một quyết định là hai mốc trôi khỏi nhau. */
+  ok('không còn export kyCoKhopMa (một mốc, một tên)', K.kyCoKhopMa, undefined);
 
   {
     const b8 = D.dungBangDon(DONG, {}, BANG_LINE, null);
     K.khopMaChoBangDon(b8, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-08');
     const ds8 = [];
     for (const ng of b8.ngay) for (const d of ng.don) for (const x of d.dong) ds8.push(x);
-    ok('kỳ ngoài phạm vi: bảng đơn vẫn dựng đủ dòng', ds8.length > 0, true);
-    /* Điểm mấu chốt: KHÔNG chạy phép khớp, nên không dòng nào bị gắn "chưa
-       khớp". Chạy rồi trả "0 dòng khớp" là mời người dùng gán một đống mã mà
-       ở kỳ ấy gán xong cũng không ra được đồng giá vốn nào. */
-    ok('  · nhưng KHÔNG dòng nào bị gắn lý do chưa khớp',
-      ds8.some((d) => d.ly_do_chua_ma), false);
-    ok('  · và nói rõ là ngoài phạm vi, kèm mốc',
-      b8.tom_tat_ma, { ngoai_pham_vi: true, tu_ky: '2026-09' });
-    ok('  · không có bảng kê hàng chờ', b8.tom_tat_ma.chua_khop, undefined);
+    ok('kỳ cũ: bảng đơn vẫn dựng đủ dòng', ds8.length > 0, true);
 
+    /* ĐIỂM MẤU CHỐT MỚI, ngược hẳn bản trước: kỳ cũ nay VẪN được khớp mã, và
+       dòng khớp được phải có đủ hãng + ngành hàng. Đây là cả lý do của lượt
+       sửa — không có nó thì tab bảo hành không xếp được máy của tháng cũ vào
+       cổng nào. */
     const b9 = D.dungBangDon(DONG, {}, BANG_LINE, null);
     K.khopMaChoBangDon(b9, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09');
-    ok('kỳ trong phạm vi vẫn khớp như thường', b9.tom_tat_ma.tu_dong, 2);
+    ok('kỳ cũ khớp được ĐÚNG BẰNG kỳ mới', b8.tom_tat_ma.tu_dong, b9.tom_tat_ma.tu_dong);
+    ok('  · và kỳ mới vẫn khớp như trước lượt sửa', b9.tom_tat_ma.tu_dong, 2);
+    ok('  · dòng kỳ cũ có hãng', ds8.some((d) => d.hang), true);
+    ok('  · và có ngành hàng', ds8.some((d) => d.nganh_hang), true);
+    /* Hàng chờ gán mã cũng hiện ở kỳ cũ — chủ dự án chốt 19/09/2026 ("hiện,
+       để gán dần"), vì một lượt gán tên hàng ăn cho MỌI kỳ. */
+    ok('  · và có bảng kê hàng chờ như kỳ mới',
+      Array.isArray(b8.tom_tat_ma.chua_khop), true);
+
+    /* Nhưng GIÁ VỐN thì vẫn đúng mốc cũ, và cờ phải nói ra — màn hình cần
+       giải thích vì sao cột Giá nhập trống trong khi cột Hãng thì không. */
+    ok('kỳ cũ được đánh dấu là chưa có giá vốn',
+      b8.tom_tat_ma.ngoai_pham_vi_gia_von, true);
+    ok('  · kèm mốc để màn hình nói ra được', b8.tom_tat_ma.tu_ky_gia_von, '2026-09');
+    ok('kỳ mới thì không', b9.tom_tat_ma.ngoai_pham_vi_gia_von, false);
+
+    /* Và không một đồng giá vốn nào lọt vào kỳ cũ — `khopMaChoBangDon` không
+       đụng tới `gia_nhap`, còn `maCanGiaVon` không trả mã nào để đi hỏi. */
+    /* Soi trên HÀNG THẬT: dòng chiết khấu gộp vốn mang `gia_nhap: 0` từ lúc
+       `dungBangDon()` dựng nó (nó là một phép trừ, không phải một món hàng
+       phải tra giá), nên kể nó vào đây là bài kiểm đỏ vì một thứ không liên
+       quan tới lượt sửa này. */
+    const hangThat8 = ds8.filter((d) => !d.la_chiet_khau && !d.la_phu_phi_co_dinh);
+    ok('kỳ cũ: có hàng thật để soi', hangThat8.length > 0, true);
+    ok('  · và không dòng hàng nào có giá nhập',
+      hangThat8.some((d) => d.gia_nhap !== null && d.gia_nhap !== undefined), false);
+    ok('  · và maCanGiaVon trả rỗng (không có lượt hỏi min-ngay nào)',
+      K.maCanGiaVon(DONG, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-08'), []);
+    ok('  · trong khi kỳ mới vẫn có mã để hỏi',
+      K.maCanGiaVon(DONG, { board: BOARD, alias: ALIAS, inv_map: {} }, '2026-09').length > 0, true);
   }
 
   ok('mã cần hỏi giá: chỉ những mã đã khớp, khử trùng và sắp',
