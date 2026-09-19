@@ -371,9 +371,17 @@
   /* MỘT chú giải cho CẢ HAI biểu đồ — hai đường của chúng là cùng hai kỳ,
      lặp lại chú giải hai lần chỉ tổ rối. Đơn vị trục dọc khác nhau nên ghi
      riêng ở tiêu đề từng biểu đồ, không ghi ở đây. */
-  function chuGiai(tenNay, tenTruoc, coTruoc) {
+  /** Chú giải hai đường. `coNay`/`coTruoc` là CÓ VẼ ĐƯỜNG ẤY KHÔNG — không
+   *  phải "có kỳ ấy không".
+   *
+   *  `coNay` thêm 19/09/2026 cùng lượt mở khoá tab tháng chưa tới: ở đó năm
+   *  nay chưa có số nào, chỉ đường xám của năm trước được vẽ. Kể tên một
+   *  đường không hề có trên hình là mời người đọc đi tìm nó. */
+  function chuGiai(tenNay, tenTruoc, coTruoc, coNay) {
     return '<div class="chuGiaiSk">'
-      + '<span><i style="background:' + MAU_NAY + '"></i>' + thoat(tenNay) + "</span>"
+      + (coNay === false
+        ? '<span class="chuGiaiTrong">' + thoat(tenNay) + ": chưa có số</span>"
+        : '<span><i style="background:' + MAU_NAY + '"></i>' + thoat(tenNay) + "</span>")
       + (coTruoc ? '<span><i style="background:' + MAU_TRUOC + '"></i>' + thoat(tenTruoc) + "</span>" : "")
       + "</div>";
   }
@@ -797,7 +805,8 @@
         ngayHomNay: ngayHomNayTrongKhung(nam, trangThai.thang),
       }) + "</div>";
     const oCg = $("skChuGiai");
-    if (oCg) oCg.innerHTML = chuGiai("Năm " + nam, "Năm " + namTruoc, diemTruoc.length > 0);
+    if (oCg) oCg.innerHTML = chuGiai("Năm " + nam, "Năm " + namTruoc,
+      diemTruoc.length > 0, diemNay.length > 0);
   }
 
   /* ─────────── Cân chiều cao theo MÀN HÌNH THẬT ───────────

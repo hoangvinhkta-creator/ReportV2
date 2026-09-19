@@ -197,7 +197,10 @@ const GOC = path.resolve(__dirname, '..');
   console.log('\n8) Màn hình — lý do bắt buộc, bốn lựa chọn đọc từ Engine');
   {
     const UI = doc('public/don-hang.js');
-    ok('nút + chỉ hiện cho Quản trị', /if \(!laQuanTri\(\)\) \{/.test(UI), true);
+    /* Nút + chỉ hiện cho Quản trị — và từ 19/09/2026 cũng không hiện ở kỳ
+       CHƯA TỚI: bảng ở đó là số của cùng kỳ năm trước, và một lượt ghi bonus
+       sẽ nhắm vào một kỳ không có đơn nào (Gateway cũng chặn). */
+    ok('nút + chỉ hiện cho Quản trị', /if \(!laQuanTri\(\) \|\| chiDoc\) \{/.test(UI), true);
     /* Nút đứng TRƯỚC số. Đặt sau thì bề rộng nút bị cộng vào phần bên phải,
        nên con số bonus lùi trái đúng bằng một cái nút và không còn thẳng
        hàng với mọi con số khác của cột — "biến dạng dòng" chủ dự án thấy

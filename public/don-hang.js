@@ -514,7 +514,7 @@
        Nút dựng TRƯỚC cả nhánh sớm, để hàng không có bonus cũng chừa đúng
        ngần ấy chỗ bên trái — nếu không, hàng có và hàng không có bonus lệch
        nhau. */
-    if (!laQuanTri()) {
+    if (!laQuanTri() || chiDoc) {
       if (don.bonus) {
         const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
         so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
@@ -582,7 +582,7 @@
     h.checked = !!d.la_gia_dung;
     h.dataset.o = "gd";
     h.dataset.khoa = d.khoa_ten;
-    const duoc = laQuanTri();
+    const duoc = laQuanTri() && !chiDoc;
     h.disabled = !duoc;
     h.title = duoc
       ? "Mặt hàng này là GIA DỤNG — ăn hệ số quy đổi gia dụng thay vì hệ số "
@@ -637,6 +637,13 @@
        tháng. Và công gán không bị phí: quyết định gán tên hàng ghi vào
        `inv/map` của Tracking, áp cho MỌI kỳ — gán một lần ở tháng 3/2025 là
        tháng 9/2026 cũng khớp theo. Chủ dự án chốt "hiện, để gán dần". */
+    /* Kỳ chưa tới: ô hiện y như thường nhưng KHÔNG bấm được. Gán mã ở đây
+       ghi đúng (khoá theo tên hàng, không theo kỳ), nhưng bảng đang hiện là
+       của một tháng KHÁC tháng trên hàng tab — mời người dùng sửa dữ liệu
+       trong khi họ tưởng mình đang ở tháng 10 là một cái bẫy. Sang đúng
+       tháng ấy thì gán bình thường. */
+    if (chiDoc) return td;
+
     td.dataset.o = "ma";
     td.dataset.ten = d.ma_san_pham;
     if (d.khoa_ten) td.dataset.khoa = d.khoa_ten;
@@ -683,6 +690,7 @@
     const ten = truong === "hang" ? "hãng" : "ngành hàng";
 
     if (d.la_chiet_khau || d.la_phu_phi_co_dinh) return td;
+    if (chiDoc) return td;   // kỳ chưa tới — xem lý do ở `oMa`
 
     if (d.ma_bang_gia) {
       td.title = "Lấy từ bảng giá Tracking. Muốn đổi thì đổi bên Bảng giá.";
@@ -955,6 +963,9 @@
    * lại trang, nên vị trí cuộn và bố cục không đổi. Bề rộng cột đã chốt cố
    * định nên một ô đổi thành ô nhập cũng không đẩy được cột nào.
    */
+  /** Bảng đang hiện có phải chỉ để ĐỌC không (kỳ chưa tới). */
+  let chiDoc = false;
+
   let dangSua = null;          // { tr, khoa, huy }
 
   function thoatSua() { if (dangSua) dangSua.huy(); }
@@ -1244,7 +1255,7 @@
       return;
     }
 
-    const duoc = laQuanTri();
+    const duoc = laQuanTri() && !chiDoc;
     for (const o of O_KPI) {
       const gt = hanh ? hanh[o.khoa] : null;
       /* Ô hệ số gia dụng CHỈ hiện ở line có nó — và "có nó" là việc của dữ
@@ -1445,7 +1456,7 @@
        vai) nhưng không đổi và không đẩy được, nên hiện ra một dải chỉ để
        khoá lại là thêm nhiễu cho người không có việc gì ở đó — khác hẳn dải
        KPI, nơi con số hiển thị mới là thứ đáng đọc. */
-    if (!laQuanTri()) return;
+    if (!laQuanTri() || chiDoc) return;
 
     const cai = kq.sheet || null;
     const dai = el("div", "daiSheet");
@@ -1699,8 +1710,32 @@
    * Mọi con số ở đây do Engine tính (`tom_tat_kpi`); màn hình không cộng lại
    * một phép nào, kể cả hàng TỔNG (LUẬT SỐ 1).
    */
+  /** Băng nói rõ bảng đang hiện là số của CÙNG KỲ NĂM TRƯỚC.
+   *
+   *  Chủ dự án chốt 19/09/2026: "bảng tổng hợp ghi rõ (Số liệu cùng kì năm
+   *  trước)". Đặt ở ĐẦU vùng vẽ, không phải một dòng nhỏ dưới bảng: một
+   *  bảng số tiền mà người đọc tưởng là của tháng đang mở thì mọi con số
+   *  trong đó đều sai theo một cách không nhìn ra được. */
+  function bangKyTuongLai(kq) {
+    if (!kq.la_ky_tuong_lai) return null;
+    const p = el("p", "bangKyTruoc");
+    p.appendChild(el("strong", null, "Số liệu cùng kỳ năm trước"));
+    p.appendChild(el("span", null,
+      " — " + nhanKy(kq.ky) + " chưa tới, nên bảng này là số của "
+      + nhanKy(kq.ky_so_lieu) + ", để xem trước xu hướng. Chưa sửa được gì ở đây."));
+    return p;
+  }
+
+  /** "2026-10" → "T10/2026". */
+  function nhanKy(ky) {
+    const m = String(ky || "").match(/^(\d{4})-(\d{2})$/);
+    return m ? "T" + Number(m[2]) + "/" + m[1] : String(ky || "");
+  }
+
   function veTongHop(ve, kq) {
     ve.innerHTML = "";
+    const bangTl = bangKyTuongLai(kq);
+    if (bangTl) ve.appendChild(bangTl);
     /* Băng "còn N dòng chưa có mã" đếm những ô `td.maChuaCo` trong bảng đơn —
        mà tab này KHÔNG có bảng đơn. Không ẩn nó thì nó đứng lại với con số của
        tab line vừa xem, tức một câu nói về một bảng không còn trên màn hình.
@@ -1841,7 +1876,7 @@
     const luongCua = (luong && luong.line) || {};
     /* Chỉ Quản trị gõ được ngày công — cùng mức với KPI, vì nó là vế nhân của
        lương cứng và phụ cấp. Quản lí vẫn đọc được con số. */
-    const duocNhap = laQuanTri();
+    const duocNhap = laQuanTri() && !chiDoc;
 
     /* Thứ tự line: DOANH SỐ THUẦN GIẢM DẦN, do Engine sắp
        (`tom_tat_kpi.thu_tu`) — không sắp ở đây, vì "sắp theo cái gì" là một
@@ -2262,6 +2297,12 @@
     const khung = $("veDonHang");
     khung.innerHTML = "";
 
+    /* Băng "số của cùng kỳ năm trước" đứng TRÊN CÙNG, ở cả tab line chứ
+       không chỉ tab Tổng hợp: đây mới là bảng có cột tiền từng dòng, tức
+       chỗ đọc nhầm tháng thì đắt nhất. */
+    const bangTl = bangKyTuongLai(kq);
+    if (bangTl) khung.appendChild(bangTl);
+
     const b = kq.bang;
     const tkpi = b.tom_tat_kpi || null;
     const hanhKpi = tkpi ? tkpi.hanh : null;
@@ -2638,7 +2679,8 @@
              gán mã. Ô sửa tay sửa Giá nhập và Nơi nhập — hai thứ kỳ cũ
              không có, nên mở nó ra là mời người dùng gõ vào hai ô sẽ không
              hiện ra ở đâu cả. */
-          const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.co_gia_von !== false;
+          const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.co_gia_von !== false
+            && !chiDoc;
           tr.appendChild(nutDong("sua", "Sửa dòng", suaDuoc, "sua"));
           tr.appendChild(nutDong("xoa", "Xoá dòng", suaDuoc, "xoa"));
           if (d.khoa) tr.dataset.khoaDong = d.khoa;
@@ -2921,20 +2963,48 @@
     }
   }
 
-  /** Đủ 12 nút tháng, tháng chưa có dữ liệu thì `disabled`. Vẽ thiếu tháng
-   *  làm người dùng không phân biệt được "chưa tải lên" với "không có đơn". */
+  /** Tháng hiện tại theo giờ máy người dùng, dạng "YYYY-MM".
+   *
+   *  Chỉ để quyết một chuyện trên màn hình: nút tháng nào mở được. Cửa thật
+   *  vẫn ở Gateway (`laKyTuongLai`), thứ đọc đồng hồ máy chủ — máy người dùng
+   *  chỉnh sai ngày thì cùng lắm là một cái nút mở ra rồi máy chủ trả bảng
+   *  của kỳ đang hỏi, không có con số nào sai đi. */
+  function thangNay() {
+    const t = new Date();
+    return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0");
+  }
+
+  /** Đủ 12 nút tháng. Ba trạng thái, và ba thứ khác hẳn nhau:
+   *
+   *   · CÓ SỔ            → bấm được, bảng là số thật của tháng ấy.
+   *   · CHƯA TỚI         → bấm được từ 19/09/2026 (chủ dự án chốt), bảng là
+   *                        số CÙNG KỲ NĂM TRƯỚC, chỉ để đọc. Đây là tháng
+   *                        10-11-12 khi đang là tháng 9.
+   *   · ĐÃ QUA, KHÔNG SỔ → vẫn khoá. Ở đó "chưa tải lên" là một việc còn nợ,
+   *                        và mở nó ra hiện số năm ngoái là giấu mất việc ấy.
+   *
+   *  Vẽ thiếu tháng thì người dùng không phân biệt được "chưa tải lên" với
+   *  "không có đơn", nên luôn đủ 12 nút. */
   function veThang() {
     const hang = $("tabThang");
     hang.innerHTML = "";
     if (!trangThai.nam) return;
     const coDuLieu = new Set(trangThai.dsKy.nam[trangThai.nam] || []);
+    const moc = thangNay();
     for (let t = 1; t <= 12; t++) {
       const ky = trangThai.nam + "-" + String(t).padStart(2, "0");
       const co = coDuLieu.has(ky);
-      const nut = el("button", "tabNut tabNho" + (trangThai.ky === ky ? " tabDang" : ""), "T" + t);
+      const chuaToi = !co && ky > moc;
+      const nut = el("button", "tabNut tabNho" + (trangThai.ky === ky ? " tabDang" : "")
+        + (chuaToi ? " tabChuaToi" : ""), "T" + t);
       nut.type = "button";
-      nut.disabled = !co;
-      if (!co) nut.title = "Tháng " + t + "/" + trangThai.nam + " chưa có dòng hàng nào được tải lên";
+      nut.disabled = !co && !chuaToi;
+      if (chuaToi) {
+        nut.title = "Tháng " + t + "/" + trangThai.nam + " chưa tới — mở ra để xem "
+          + "số của cùng kỳ năm trước (chỉ đọc).";
+      } else if (!co) {
+        nut.title = "Tháng " + t + "/" + trangThai.nam + " chưa có dòng hàng nào được tải lên";
+      }
       nut.addEventListener("click", () => { doiCho({ ky }); });
       hang.appendChild(nut);
     }
@@ -2973,6 +3043,13 @@
    *  quên. */
   function veKetQua(kq) {
     bangCuoi = kq;
+    /* KỲ CHƯA TỚI: bảng đang hiện là số của CÙNG KỲ NĂM TRƯỚC (Gateway thay
+       nguồn — xem `layDonHang`). Mọi đường ghi phải đóng: một quyết định ghi
+       vào một kỳ chưa tới nằm im ở đó cho tới khi tháng ấy về rồi bất ngờ áp
+       lên sổ thật. Gateway cũng chặn ở phía nó (`chanKyTuongLai`) — màn hình
+       thì sửa được bằng Console, nên chốt thật phải ở bên kia; chỗ này chỉ
+       là để không mời người dùng bấm một cái nút sẽ báo lỗi. */
+    chiDoc = !!kq.chi_doc;
     const ve = $("veDonHang");
     const bocCu = ve.querySelector(".bocBang");
     const cuonCu = bocCu ? bocCu.scrollTop : 0;
