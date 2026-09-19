@@ -44,20 +44,39 @@
 
 const laObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
-/** Kỳ ĐẦU TIÊN có khớp mã và giá vốn. Trước mốc này KHÔNG khớp gì cả.
+/** Kỳ ĐẦU TIÊN có GIÁ VỐN THEO NGÀY BÁN.
  *
  *  Chủ dự án chốt 12/09/2026, và nó trùng đúng một giới hạn dữ liệu thật:
  *  `min_ngay` của Tracking chỉ có bản ghi ổn định từ khoảng 07/09/2026 (cron
  *  20 phút/lượt bắt đầu quãng đó). Kỳ trước mốc KHÔNG có giá vốn theo ngày để
  *  đối chiếu — không phải việc chưa làm, là giới hạn của chính nguồn.
  *
- *  Nên với những kỳ ấy, hỏi "còn bao nhiêu dòng chưa có mã" là một câu hỏi vô
- *  nghĩa: gán xong cũng không ra được đồng giá vốn nào. Băng cảnh báo ở đó chỉ
- *  mời người ta làm một việc không dùng được. */
-export const MOC_KHOP_MA = "2026-09";
+ *  ── MỘT MỐC, TRƯỚC ĐÂY GÁNH HAI VIỆC (sửa 19/09/2026) ──
+ *
+ *  Bản trước tên là `MOC_KHOP_MA` và nó chặn CẢ HAI thứ cùng lúc: khớp mã, và
+ *  giá vốn. Gộp được là vì hồi ấy khớp mã CHỈ để ra giá vốn — "gán xong cũng
+ *  không ra được đồng nào" là lý do viết ngay ở đây.
+ *
+ *  Vế ấy hết đúng từ 19/09/2026, khi tab [Kích hoạt bảo hành] cần HÃNG của
+ *  từng dòng để xếp máy vào đúng cổng bảo hành. Hãng và ngành hàng đến từ
+ *  `brand`/`category_label` của bảng giá — tức từ phép KHỚP MÃ, và chúng
+ *  không dính gì tới `min_ngay`. Một cái tivi bán tháng 3/2025 vẫn là tivi
+ *  Samsung hôm nay.
+ *
+ *  Nên mốc này nay chỉ còn gánh ĐÚNG MỘT việc, và tên nó nói đúng việc ấy.
+ *  Khớp mã thì chạy ở MỌI kỳ. Chủ dự án duyệt 19/09/2026, kèm hai hệ quả đã
+ *  nói trước: (a) ba con số của kỳ cũ dịch đi vì dòng phụ phí cố định thôi
+ *  bị đếm là hàng hoá — đó là sửa đúng, số cũ mới là số sai; (b) hàng chờ
+ *  gán mã hiện ra ở cả kỳ cũ, và đó là việc có ích vì một lượt gán ăn cho
+ *  MỌI kỳ. */
+export const MOC_GIA_VON = "2026-09";
 
-/** Kỳ này có nằm trong phạm vi khớp mã / giá vốn không. */
-export const kyCoKhopMa = (ky) => typeof ky === "string" && ky >= MOC_KHOP_MA;
+/** Kỳ này có giá vốn theo ngày bán không.
+ *
+ *  KHÔNG dùng để quyết định có khớp mã hay không — khớp mã chạy ở mọi kỳ
+ *  (xem `MOC_GIA_VON` ngay trên). Chỉ dùng để quyết định có đi hỏi
+ *  `min_ngay` và có điền giá vốn hay không. */
+export const kyCoGiaVon = (ky) => typeof ky === "string" && ky >= MOC_GIA_VON;
 
 /* Chuẩn hoá để TRA KHOÁ `inv/map`. Phải giống HỆT `normCode()` của Tracking
  * (`public/index.html`) và bản máy chủ trong `src/index.js` bên đó — lệch một
@@ -341,14 +360,15 @@ export function khopTenHang(ten, bo) {
  *  `gia_nhap`, `loi_nhuan`, `noi_nhap` KHÔNG đụng tới ở đây: chúng cần
  *  `POST /api/min-ngay` và thuộc lát cắt sau. */
 export function khopMaChoBangDon(bang, nguon, ky) {
-  /* Kỳ ngoài phạm vi thì KHÔNG khớp gì cả, và nói thẳng lý do. Cố ý không
-     chạy rồi trả "0 dòng khớp được": ở những kỳ ấy không có giá vốn theo ngày
-     để đối chiếu, nên một bảng kê hàng chờ chỉ mời người ta gán một đống mã
-     rồi vẫn không ra được đồng nào. Xem `MOC_KHOP_MA`. */
-  if (ky !== undefined && !kyCoKhopMa(ky)) {
-    bang.tom_tat_ma = { ngoai_pham_vi: true, tu_ky: MOC_KHOP_MA };
-    return bang;
-  }
+  /* KHỚP MÃ CHẠY Ở MỌI KỲ từ 19/09/2026 — không còn cổng chặn theo mốc ở đây.
+     Bản trước dừng hẳn với kỳ trước `MOC_KHOP_MA` (nay là `MOC_GIA_VON`) vì
+     khớp mã khi ấy CHỈ để ra giá vốn; nay nó còn để ra HÃNG và NGÀNH HÀNG,
+     hai thứ không dính gì tới `min_ngay`. Xem `MOC_GIA_VON`.
+
+     Giá vốn thì vẫn đúng mốc cũ, và nó được chặn ở HAI chỗ khác: `maCanGiaVon`
+     không trả mã nào cho kỳ cũ (nên không có lượt hỏi `min_ngay` nào), và
+     `dungBangDonKemMa` không gọi `dienGiaNhap`. Cột Giá nhập · Lợi nhuận ·
+     Nơi nhập của kỳ cũ vì vậy ở lại "—", không phải 0. */
   const bo = dungBoKhop(nguon);
 
   let tong = 0, tu_dong = 0, quyet_dinh = 0, bo_qua = 0;
@@ -409,6 +429,11 @@ export function khopMaChoBangDon(bang, nguon, ky) {
   const chua_khop = [...conNo.values()].sort((a, b) => b.so_dong - a.so_dong);
 
   bang.tom_tat_ma = {
+    /* Kỳ cũ nay VẪN được khớp mã, nhưng vẫn không có giá vốn — hai chuyện
+       khác nhau kể từ 19/09/2026, nên phải nói riêng. Màn hình đọc cờ này để
+       giải thích vì sao cột Giá nhập trống trong khi cột Hãng thì không. */
+    ngoai_pham_vi_gia_von: ky !== undefined && !kyCoGiaVon(ky),
+    tu_ky_gia_von: MOC_GIA_VON,
     tong_dong: tong,
     da_co_ma: tu_dong + quyet_dinh,
     tu_dong, quyet_dinh, bo_qua,
@@ -541,7 +566,10 @@ function chonNoiNhap(nguon, giaKho) {
  *  một tập mã cho cả kỳ dùng lại được cho mọi line — lọc theo line là mỗi lần
  *  bấm một lượt gọi mạng mới cho phần lớn là cùng dữ liệu. */
 export function maCanGiaVon(dongCuaKy, nguon, ky) {
-  if (ky !== undefined && !kyCoKhopMa(ky)) return [];
+  /* Cổng GIÁ VỐN, không phải cổng khớp mã (19/09/2026). Trả rỗng cho kỳ cũ,
+     và `docMinNgay` bên Gateway thấy danh sách rỗng thì trả về ngay KHÔNG đi
+     mạng — nên mở khớp mã cho kỳ cũ không thêm một lượt gọi `min-ngay` nào. */
+  if (ky !== undefined && !kyCoGiaVon(ky)) return [];
   const dong = laObj(dongCuaKy) ? dongCuaKy : {};
   const bo = dungBoKhop(nguon);
   const ra = new Set();

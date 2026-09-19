@@ -136,7 +136,11 @@ const b64u = (b) => Buffer.from(b).toString('base64')
     /* P4 — bộ này KHÔNG đặt `REPORT_API_KEY`, nên Gateway không gọi được
        Tracking và tự lùi về `dungBangDon()` trần. Đó chính là điều đáng canh
        ở đây: thiếu khoá thì đường tải sổ vẫn chạy trọn vẹn, không hỏng lây. */
-    async kyCoKhopMa(ky) { return K.kyCoKhopMa(ky); },
+    /* Engine giả mô phỏng ĐÚNG cửa lùi của Engine thật: tên cũ `kyCoKhopMa`
+       còn sống để bản Gateway cũ gọi được giữa hai lượt deploy (bẫy số 4), và
+       nó trả về câu trả lời của `kyCoGiaVon`. Bản Gateway trong bộ này vẫn là
+       bản cũ, nên nó hỏi đúng tên ấy. */
+    async kyCoKhopMa(ky) { return K.kyCoGiaVon(ky); },
     async dungBangDonSuaTay(a, b, c, d, qd) { return S.apDungSuaTay(D.dungBangDon(a, b, c, d), qd); },
     async maCanGiaVon(dong, n, ky) { return K.maCanGiaVon(dong, n, ky); },
   });
