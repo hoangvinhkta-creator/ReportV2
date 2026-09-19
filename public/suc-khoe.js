@@ -107,6 +107,14 @@
      chạy trên DOM giả) — bình thường chiều cao được TÍNH theo chỗ còn lại
      của màn hình, xem `canhCaoKhoi()`. */
   const RONG = 640, CAO_MAC_DINH = 200;
+  /** Cỡ chữ nhãn trục, TÍNH THEO HỆ TOẠ ĐỘ trên (không phải px trên màn).
+   *
+   *  Tách thành hằng vì từ 19/09/2026 nó không còn là chuyện riêng của biểu
+   *  đồ này: biểu đồ cơ cấu bên cạnh phải in chữ trục BẰNG ĐÚNG cỡ này (chủ
+   *  dự án chốt). Hai biểu đồ có hai hệ toạ độ khác nhau (640 và 1000) và
+   *  hai khung rộng khác nhau, nên "cùng font-size" trong CSS lại ra hai cỡ
+   *  khác nhau trên màn — xem `coChuTrucPx()`. */
+  const CO_CHU_TRUC = 10;
   /* `LE_TRAI` 64 → 40: nhãn trục nay viết gọn ("2B" thay "2.000.000") nên
      không cần chừa chỗ cho một chuỗi bảy ký tự nữa. 24 đơn vị lấy lại đi
      thẳng vào bề ngang hình vẽ. */
@@ -288,7 +296,7 @@
       luoi += '<line x1="' + LE_TRAI + '" x2="' + (RONG - LE_PHAI) + '" y1="' + gy.toFixed(1)
         + '" y2="' + gy.toFixed(1) + '" stroke="#e5e7eb" stroke-width="1"/>'
         + '<text x="' + (LE_TRAI - 8) + '" y="' + (gy + 4).toFixed(1)
-        + '" font-size="10" fill="#6b7280" text-anchor="end">' + c.nhanDoc(gt) + "</text>";
+        + '" font-size="' + CO_CHU_TRUC + '" fill="#6b7280" text-anchor="end">' + c.nhanDoc(gt) + "</text>";
     }
     const vtMin = c.vtMin, vtMax = c.vtMax, nhanTruc = c.nhanTruc;
 
@@ -306,7 +314,7 @@
     let nhan = "";
     for (const vt of moc) {
       nhan += '<text x="' + x(vt).toFixed(1) + '" y="' + (CAO - 8)
-        + '" font-size="10" fill="#6b7280" text-anchor="middle">' + thoat(nhanTruc(vt)) + "</text>";
+        + '" font-size="' + CO_CHU_TRUC + '" fill="#6b7280" text-anchor="middle">' + thoat(nhanTruc(vt)) + "</text>";
     }
 
     /* Chấm "TB" — trung bình CỦA CHUỖI ĐANG VẼ: mấy ngày ĐÃ CÓ của kỳ này,
@@ -328,7 +336,7 @@
     let khoiTb = '<line x1="' + xPhanCach.toFixed(1) + '" x2="' + xPhanCach.toFixed(1)
       + '" y1="' + LE_TREN + '" y2="' + (LE_TREN + CAO_VE) + '" stroke="#e5e7eb" stroke-width="1"/>'
       + '<text x="' + xTb.toFixed(1) + '" y="' + (CAO - 8)
-      + '" font-size="10" fill="#6b7280" text-anchor="middle">TB</text>';
+      + '" font-size="' + CO_CHU_TRUC + '" fill="#6b7280" text-anchor="middle">TB</text>';
     /* `layNhan` là HÀM, không phải chuỗi đã dựng sẵn — `tb` có thể là `null`
        (kỳ chưa có ngày nào), và `c.taDayDu(null)` sẽ ném lỗi (gọi
        toLocaleString trên null). Chỉ gọi nó SAU khi đã biết `tb` không
@@ -680,7 +688,7 @@
     return '<line x1="' + px + '" x2="' + px + '" y1="' + yTren + '" y2="' + yDuoi
       + '" stroke="' + MAU_HOM_NAY + '" stroke-width="1" stroke-dasharray="3 3"/>'
       + (coNhan
-        ? '<text x="' + px + '" y="' + (yTren - 3) + '" font-size="10" fill="' + MAU_HOM_NAY
+        ? '<text x="' + px + '" y="' + (yTren - 3) + '" font-size="' + CO_CHU_TRUC + '" fill="' + MAU_HOM_NAY
           + '" text-anchor="middle">hôm nay</text>'
         : "");
   }
@@ -1185,7 +1193,24 @@
     if (nguoiDung && !duLieu && trangThai.nam !== null) tai(nguoiDung);
   }
 
+  /** Cỡ chữ THẬT của nhãn trục biểu đồ trái, tính ra PX TRÊN MÀN.
+   *
+   *  Biểu đồ cơ cấu bên phải hỏi qua đây để in chữ trục bằng đúng cỡ ấy.
+   *  Đưa px chứ không đưa `CO_CHU_TRUC`: hai biểu đồ vẽ trong hai hệ toạ độ
+   *  khác nhau (640 ở đây, 1000 bên kia) và hai khung rộng khác nhau — cột
+   *  phải còn nhường 240px cho thẻ chi tiết — nên chép nguyên con số 10 sang
+   *  bên ấy là ra chữ nhỏ hơn hẳn. Đúng cái chủ dự án vừa chỉ ra.
+   *
+   *  `0` khi chưa đo được khung (trước lượt bố cục đầu, hay DOM giả của bộ
+   *  kiểm): bên kia có bản lùi của riêng nó. */
+  function coChuTrucPx() {
+    const hopVe = $("skHopVe");
+    const w = hopVe && hopVe.clientWidth ? hopVe.clientWidth : 0;
+    return w ? (CO_CHU_TRUC * w) / RONG : 0;
+  }
+
   window.SucKhoe = {
+    coChuTrucPx,
     /** Màn báo cáo báo sang: đang xem kỳ nào. `ky` dạng "2026-09". */
     datKy: function (ky) {
       if (typeof ky !== "string" || !/^\d{4}-\d{2}$/.test(ky)) return;
