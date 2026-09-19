@@ -26,6 +26,67 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 19/09/2026 — TAB THỨ HAI: [Kích hoạt bảo hành].**
+
+Chủ dự án yêu cầu một tab ĐỘC LẬP, ngang hàng với toàn bộ thứ đang có
+(nay gọi tên là tab **[Báo cáo bán hàng]**). Không thuộc phase nào của
+lộ trình chín phase — đây là một nhánh việc mới, và nó đi đúng kỷ luật
+"một lát cắt DỌC" của `CLAUDE.md`.
+
+Nó KHÔNG phải một cách xem doanh số khác. Nó là một **danh sách việc**:
+mỗi dòng còn ở đó nghĩa là còn một cái máy ngoài đời chưa được kích hoạt
+bảo hành trên cổng của hãng. Mười tab con theo hãng (Samsung · LG · Sony
+· Funiki · Toshiba · Panasonic · Casper · Hitachi · Daikin · Sharp), mỗi
+tab có: thông tin đăng nhập cổng hãng, hướng dẫn kích hoạt từng bước
+(chữ + ảnh), và bảng máy chưa kích hoạt của tháng đang chọn.
+
+**Tám câu hỏi đã hỏi chủ dự án trước khi gõ dòng code đầu (19/09/2026),
+và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một trong số chúng:**
+
+1. **Mật khẩu cổng hãng để ở đâu** → `bc/quyetdinh/bao-hanh/<hãng>`, tức
+   CẢ HAI VAI đọc thẳng được từ Realtime Database. Chủ dự án chọn sau khi
+   được nói rõ hệ quả ấy, và được hỏi giữa ba phương án (nhánh đóng kiểu
+   `bc/khach`, nhánh đóng chỉ quantri xem, hay để chung `bc/quyetdinh`).
+   Đây không phải khoá hạ tầng — khoá hạ tầng vẫn chỉ nằm ở Secret của
+   Worker.
+2. **Ảnh hướng dẫn để ở đâu** → **R2**, bucket `reportv2-huongdan`
+   (hỏi giữa R2 / base64 trong Firebase / Firebase Storage). Ảnh không
+   bao giờ đi thẳng từ R2 ra trình duyệt: mọi lượt xem qua
+   `GET /api/bao-hanh/anh`, đòi token như mọi đường khác.
+3. **Dòng chưa khớp mã bảng giá (không có hãng)** → **CHỈ mười tab**,
+   không thêm tab "chưa rõ hãng", và KHÔNG đoán hãng từ tên hàng
+   (CLAUDE.md cấm bộ phân loại thương hiệu thứ hai). Hệ quả: chúng không
+   thuộc tab nào — nên Engine **ĐẾM** chúng (`chua_ro_hang`) và màn hình
+   nói thẳng ra. Một cái máy biến mất khỏi danh sách việc trong im lặng
+   là đúng lớp lỗi tab này sinh ra để chặn.
+4. **Dòng nào vào danh sách** → mọi dòng bán thật của hãng, **kể cả dòng
+   chưa có IMEI** (ô IMEI để trống báo vàng — thiếu IMEI cũng là một
+   việc phải làm). Loại: chiết khấu, phụ phí cố định, bán trả lại. GIỮ
+   quà tặng 0 đồng — nó vẫn là một cái máy có bảo hành.
+5. **Bộ lọc tháng** → **dùng chung kỳ** với tab Báo cáo. Hàng năm/tháng
+   vì vậy dời ra NGOÀI `#manBaoCao`; không có bộ chọn tháng thứ hai.
+6. **Phân quyền** → cả hai vai TICK được (việc hằng ngày), chỉ `quantri`
+   sửa User/Pass và các bước hướng dẫn (cả phòng đọc theo một bản).
+7. **Tick nhầm** → công tắc "Hiện cả N máy đã kích hoạt" ngay trong tab,
+   bỏ tick được. Không phải mở Console.
+8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
+   liệt kê đủ các IMEI của dòng đó.
+
+**Hai lượt merge, đúng bẫy số 4:** PR #102 đưa Engine
+(`engine/src/bao-hanh.mjs` + 4 hàm RPC) lên TRƯỚC; lượt sau mới nối
+Gateway (6 đường `/api/`) + trang tĩnh (`public/bao-hanh.js`).
+
+⚠️ **Điều kiện deploy:** bucket R2 `reportv2-huongdan` phải tồn tại
+trước lượt deploy đầu của Gateway — `wrangler deploy` từ chối một binding
+trỏ tới bucket không có thật.
+
+**Khoá bền của trạng thái kích hoạt** là KHOÁ DÒNG của `CLAUDE.md` (số
+chứng từ + tên hàng chuẩn hoá + lần xuất hiện), ghi ở
+`bc/quyetdinh/kich-hoat/<kỳ>/<khoá>`. Nhập lại sổ một tháng thì tick ở
+nguyên chỗ cũ.
+
+---
+
 - **P2 — dữ liệu gốc + biểu đồ.** 20 tháng (01/2025–08/2026) đã nằm trên
   Firebase, Dashboard sức khoẻ kinh doanh (2 biểu đồ, vòng cơ cấu Line,
   lưới xu hướng) đọc đúng dữ liệu đó. Chủ dự án đã nghiệm thu.

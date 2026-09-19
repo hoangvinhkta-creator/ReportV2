@@ -56,7 +56,13 @@ const SECURITY_HEADERS = {
     // Tracking, xem src/index.js của repo đó).
     "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    // `blob:` thêm 19/09/2026 cho ảnh hướng dẫn kích hoạt bảo hành. Ảnh nằm
+    // trong R2 và đi ra qua `GET /api/bao-hanh/anh`, một đường ĐÒI token —
+    // mà `<img src>` thì không gắn được header `Authorization`. Nên màn hình
+    // `fetch()` lấy byte rồi dựng `URL.createObjectURL()`. `blob:` chỉ cho
+    // phép hiện thứ CHÍNH TRANG NÀY vừa dựng trong bộ nhớ, không mở thêm một
+    // nguồn ảnh bên ngoài nào.
+    "img-src 'self' data: blob:",
     "font-src 'self' data:",
     // identitytoolkit + securetoken (đăng nhập, làm mới token) — KHÔNG cần
     // *.firebasedatabase.app vì trình duyệt không đọc RTDB trực tiếp.
@@ -191,6 +197,46 @@ function boc(canVai, chay) {
          Mọi lỗi khác vẫn ra đúng câu chung, không lộ gì thêm. */
       const cauCho = e instanceof LoiXacThuc && e.choNguoi ? e.choNguoi : null;
       return jsonPhanHoi({ loi: cauCho || CAU_LOI[ma] || "Có lỗi phía máy chủ.", rid }, ma, rid);
+    }
+  };
+}
+
+/**
+ * Bọc một handler trả về BYTE THÔ, không phải JSON.
+ *
+ * Chỉ một đường dùng tới: `GET /api/bao-hanh/anh` — ảnh hướng dẫn kích hoạt.
+ * Cần một cửa riêng vì `boc()` gói mọi thứ vào `jsonPhanHoi()`, mà một tấm
+ * PNG gói trong JSON là một tấm PNG phải base64 lên gấp rưỡi rồi giải mã
+ * lại trong trình duyệt.
+ *
+ * GIỮ NGUYÊN thứ tự của `boc()` — xác thực → phân quyền → chạy → nhật ký —
+ * và mọi LỖI vẫn đi ra dạng JSON như mọi đường khác. Ảnh chỉ là đường
+ * THÀNH CÔNG; một cửa sau bỏ qua xác thực thì `kiem/dinh-tuyen.js` đã đỏ
+ * ngay ở bài "mọi đường trong API_ROUTES không kèm token → 401".
+ */
+function bocNhiPhan(canVai, chay) {
+  const vaiDuyNhat = typeof canVai === "string" ? canVai : null;
+  return async (request, env) => {
+    const rid = crypto.randomUUID();
+    const batDau = Date.now();
+    let nguoi = null, vai = null;
+    try {
+      nguoi = await xacThuc(request, env);
+      if (canVai) vai = doiVaiBaoCao(nguoi);
+      if (vaiDuyNhat && vai !== vaiDuyNhat)
+        throw new LoiXacThuc(403, "can-vai:" + vaiDuyNhat);
+
+      const res = await chay({ nguoi, vai, request, env, rid });
+      nhatKy({ rid, uid: nguoi.uid, duong: new URL(request.url).pathname,
+               ma: 200, ms: Date.now() - batDau });
+      return res;
+    } catch (e) {
+      const ma = e instanceof LoiXacThuc ? e.ma : 500;
+      const ly = (e && (e.ly || e.message)) || "khong-ro";
+      nhatKy({ rid, uid: nguoi ? nguoi.uid : null,
+               duong: new URL(request.url).pathname, ma, ly,
+               ms: Date.now() - batDau });
+      return jsonPhanHoi({ loi: CAU_LOI[ma] || "Có lỗi phía máy chủ.", rid }, ma, rid);
     }
   };
 }
@@ -374,6 +420,33 @@ const DUONG_BONUS = "bc/quyetdinh/bonus";
    Nhánh `bc/quyetdinh` cho vai quantri|quanly ĐỌC (rules đã chạy sẵn), còn
    GHI thì chỉ qua Gateway và chỉ vai `quantri` — xem `datSheetLink`. */
 const DUONG_SHEET = "bc/quyetdinh/sheet";
+
+/* ---- Kích hoạt bảo hành (19/09/2026) ----
+
+   HAI NHÁNH RIÊNG, không nhét chung một chỗ, vì chúng có vòng đời khác hẳn
+   nhau:
+
+   · `bao-hanh/<hãng>` — thông tin đăng nhập cổng hãng + các bước hướng dẫn.
+     Khai một lần, dùng cho MỌI kỳ. Sang tháng mới không phải gõ lại.
+   · `kich-hoat/<kỳ>/<khoá dòng>` — "cái máy này kích hoạt rồi". Theo KỲ, vì
+     nó nói về một dòng bán của đúng tháng ấy.
+
+   Cả hai nằm dưới `bc/quyetdinh` chứ không mở nhánh mới ở gốc `bc/`, đúng
+   lối `kpi`/`cong`/`bonus` đã chọn: chúng là QUYẾT ĐỊNH CỦA NGƯỜI, không
+   phải số liệu Engine tính ra, nên một lượt nhập lại sổ không được đụng tới.
+   Và rules của `bc/quyetdinh` đã chạy sẵn (quantri|quanly đọc, không ai ghi
+   thẳng) nên không phải sửa `firebase-rules/bc.rules.json` thêm lần nào —
+   bớt đúng một bước có thể quên.
+
+   MẬT KHẨU CỔNG HÃNG NẰM Ở ĐÂY LÀ QUYẾT ĐỊNH CỦA CHỦ DỰ ÁN (19/09/2026),
+   được hỏi thẳng giữa ba phương án. Hệ quả phải nói rõ, vì nó KHÁC hẳn
+   `bc/khach`: nhánh `bc/quyetdinh` mở cho CẢ HAI vai đọc thẳng từ Realtime
+   Database bằng token trình duyệt, nên mật khẩu ở đây không được coi là bí
+   mật với người đã đăng nhập được app. Đây không phải khoá hạ tầng (những
+   thứ đó vẫn chỉ nằm ở Secret của Worker) mà là mật khẩu một cổng bảo hành
+   dùng chung của phòng kinh doanh. */
+const DUONG_BAO_HANH = "bc/quyetdinh/bao-hanh";
+const DUONG_KICH_HOAT = "bc/quyetdinh/kich-hoat";
 
 /** Mốc thời gian dùng được làm KHOÁ Firebase. `toISOString()` có dấu chấm
  *  và dấu hai chấm — Firebase cấm dấu chấm trong tên khoá, nên đổi hết sang
@@ -1515,6 +1588,361 @@ const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
   return kemBangMoi(env, ky, than, rid, { ghi: true, ky, so_ct });
 });
 
+/* =================== KÍCH HOẠT BẢO HÀNH (19/09/2026) ===================
+ *
+ * Tab thứ hai của app, ngang hàng [Báo cáo bán hàng]. Nó KHÔNG phải một cách
+ * xem doanh số khác — nó là một DANH SÁCH VIỆC: mỗi dòng còn ở đây nghĩa là
+ * còn một cái máy ngoài đời chưa được kích hoạt bảo hành trên cổng của hãng.
+ *
+ * Năm đường dưới đây, và ai đi được đường nào (chủ dự án chốt 19/09/2026):
+ *
+ *   GET  /api/bao-hanh            quantri | quanly   đọc danh sách + hướng dẫn
+ *   POST /api/kich-hoat           quantri | quanly   tick "đã kích hoạt"
+ *   POST /api/bao-hanh/dang-nhap  quantri            sửa User/Pass của hãng
+ *   POST /api/bao-hanh/buoc       quantri            thêm/sửa/xoá một bước
+ *   POST /api/bao-hanh/anh        quantri            tải ảnh hướng dẫn lên
+ *   GET  /api/bao-hanh/anh        quantri | quanly   xem ảnh hướng dẫn
+ *
+ * Vì sao TICK mở cho cả Quản lí còn HƯỚNG DẪN thì không: kích hoạt là việc
+ * làm hằng ngày, khoá nó lại là bắt Quản trị làm thay mỗi cái máy. Còn
+ * User/Pass và các bước là thứ khai một lần rồi cả phòng đọc theo — sửa
+ * nhầm một bước là cả phòng làm sai theo mà không ai biết đã sai từ đâu.
+ */
+
+/** Tên hãng CHÍNH THỨC, hỏi Engine — Gateway KHÔNG giữ danh sách hãng.
+ *
+ *  Danh sách mười hãng là một quyết định nghiệp vụ (LUẬT SỐ 1), và hai bản
+ *  thì trôi khỏi nhau: chỗ trôi ở đây là một hãng ghi được dữ liệu vào
+ *  Firebase mà không tab nào trên màn hình hiện nó ra. */
+async function hangBaoHanhHopLe(env, s) {
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+  if (typeof s !== "string" || s.length > 40) throw new LoiXacThuc(400, "hang-khong-hop-le");
+  let ten = null;
+  try { ten = await env.REPORT_ENGINE.chuanHoaHangBaoHanh(s); }
+  catch (e) { throw new LoiXacThuc(503, "engine-loi-hang:" + (e && e.message)); }
+  if (!ten) throw new LoiXacThuc(400, "hang-khong-hop-le");
+  return ten;
+}
+
+/** Cắt gọn một câu người gõ trước khi cho nó vào Firebase.
+ *
+ *  Bỏ ký tự điều khiển (trừ xuống dòng, thứ hướng dẫn nhiều bước thật sự
+ *  cần) và cắt theo trần. Trần là thứ bắt buộc: nhánh này đọc TRỌN mỗi lượt
+ *  mở màn hình, nên một ô người dán nhầm cả trang web vào sẽ làm chậm mọi
+ *  lượt mở sau đó mà không ai biết vì sao. */
+function cauNguoiGo(v, tran) {
+  if (typeof v !== "string") return "";
+  return v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").slice(0, tran).trim();
+}
+
+const TRAN_USER = 120;
+const TRAN_MAT_KHAU = 200;
+const TRAN_HUONG_DAN = 2000;
+const TRAN_CHU_BUOC = 2000;
+
+/* =================== GET /api/bao-hanh ===================
+ * Danh sách máy chưa kích hoạt của MỘT KỲ, chia sẵn theo mười hãng, cộng
+ * hướng dẫn của từng hãng.
+ *
+ * DÙNG LẠI `dungBangDonHang()` — chính hàm dựng bảng của tab [Báo cáo bán
+ * hàng] — chứ không đọc thẳng `bc/dong` rồi tự lọc. Đó là cách DUY NHẤT để
+ * hai tab nói cùng một sự thật về cùng một dòng: hãng chỉ có sau khi khớp
+ * mã bảng giá, hàng trả lại chỉ lộ ra sau `apDungBTL`, và một dòng bị XOÁ
+ * TAY phải biến khỏi CẢ tab này. Dựng lại một đường đọc thứ hai là dựng lại
+ * cả chuỗi luật ấy, và hai bản sẽ trôi khỏi nhau đúng lúc không ai để ý.
+ *
+ * `loi_nguon_ma` đi kèm phản hồi và màn hình BẮT BUỘC nói ra: Tracking hỏng
+ * thì không dòng nào có hãng, tức mười tab cùng rỗng. Một sự cố mạng không
+ * được phép nói "không còn máy nào phải kích hoạt" thay người (CLAUDE.md).
+ */
+const layBaoHanh = boc(true, async ({ request, env, rid }) => {
+  const q = new URL(request.url).searchParams;
+  const ky = q.get("ky");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  /* Ba lượt đọc SONG SONG: bảng đơn (nặng nhất, tự nó đã gom nhiều nguồn),
+     nhánh tick của kỳ, nhánh hướng dẫn. Chúng không phụ thuộc nhau, nên xếp
+     hàng ba lượt là trả tiền chờ cho không. */
+  const [kqBang, tick, huongDan] = await Promise.all([
+    dungBangDonHang(env, ky, null, rid),
+    docDb(DUONG_KICH_HOAT + "/" + ky, env),
+    docDb(DUONG_BAO_HANH, env),
+  ]);
+
+  /* Nhánh tick hỏng thì DỪNG, không coi như "chưa ai tick": mọi máy đã làm
+     xong sẽ hiện trở lại thành việc phải làm, và người dùng đi kích hoạt
+     lần thứ hai cho cả tháng. */
+  if (!tick.ok) throw new LoiXacThuc(503, "khong-doc-duoc-kich-hoat:" + chiTietLoi(tick));
+  if (!huongDan.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bao-hanh:" + chiTietLoi(huongDan));
+
+  let ds;
+  try {
+    ds = await env.REPORT_ENGINE.dsKichHoatBaoHanh(kqBang.bang, tick.val || {}, huongDan.val || {});
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-bao-hanh:" + (e && e.message));
+  }
+
+  return { ky, ...ds, loi_nguon_ma: kqBang.loi_nguon_ma,
+           trong_pham_vi_ma: kqBang.trong_pham_vi_ma };
+});
+
+/* =================== POST /api/kich-hoat ===================
+ * Tick "cái máy này đã kích hoạt bảo hành", hoặc bỏ tick.
+ *
+ * KHOÁ LÀ KHOÁ DÒNG BỀN của CLAUDE.md (số chứng từ + tên hàng chuẩn hoá +
+ * lần xuất hiện thứ mấy trong chứng từ) — chính khoá `bc/quyetdinh/dong`
+ * đang dùng. Nhập lại sổ tháng ấy thì tick ở nguyên chỗ cũ; dùng số thứ tự
+ * dòng thì một lượt nhập lại là tick nhảy sang máy của khách khác, im lặng.
+ *
+ * KHÔNG kiểm "khoá này có thật trong kỳ không", có chủ ý: kiểm được thì phải
+ * dựng lại cả bảng đơn cho MỖI lượt tick, tức vài giây cho một cú bấm mà
+ * người dùng bấm hàng chục lần liên tiếp. Cái giá của việc bỏ phép kiểm là
+ * một ô mồ côi nếu ai đó gọi thẳng API bằng khoá bịa — mà ô mồ côi thì không
+ * khớp dòng nào nên không hiện ra ở đâu, và Engine vẫn đếm nó đúng như mọi
+ * quyết định mồ côi khác.
+ */
+const datKichHoat = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const ky = than && than.ky;
+  const khoa = than && typeof than.khoa === "string" ? than.khoa : "";
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+
+  /* Khoá đi THẲNG vào đường dẫn Firebase. Firebase cấm `.` `#` `$` `[` `]`
+     `/` trong tên khoá, và `khoaDong()` bên Engine đã thay chúng bằng `~`
+     từ lúc dựng — nên một khoá mang chúng KHÔNG thể đến từ bảng đơn thật.
+     Chặn ở đây thay vì để lượt ghi hỏng ở tầng dưới với một thông báo không
+     ai đọc được. */
+  if (!khoa || khoa.length > 400 || /[.#$\[\]\/\u0000-\u001F]/.test(khoa)) {
+    throw new LoiXacThuc(400, "khoa-khong-hop-le");
+  }
+
+  const duong = DUONG_KICH_HOAT + "/" + ky + "/" + khoa;
+
+  /* Bỏ tick: XOÁ HẲN ô, không ghi `false`. Cùng lý do `gia-dung` và `bonus`
+     đã chọn — một ô "chưa kích hoạt" làm "có mặt trong nhánh" hết còn nghĩa,
+     và nhánh phình theo số lần bấm thử chứ không theo số máy đã xong. */
+  if (than.xong === false) {
+    const r = await xoaDb(duong, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-kich-hoat:" + chiTietLoi(r));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/kich-hoat", ky, viec: "bo-tick" });
+    return { ghi: true, ky, khoa, xong: false };
+  }
+
+  /* Ai tick và lúc nào đi CÙNG lượt ghi: hai lượt ghi thì có một khoảng mà
+     máy đã đánh dấu xong mà không biết của ai — đúng thứ cần tra lại khi
+     khách gọi bảo hành mà cổng hãng bảo chưa kích hoạt. */
+  const r = await vaDb(duong,
+    { boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-kich-hoat:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/kich-hoat", ky, viec: "tick" });
+  return { ghi: true, ky, khoa, xong: true };
+});
+
+/* =================== POST /api/bao-hanh/dang-nhap ===================
+ * User / Pass / hướng dẫn đăng nhập cổng của MỘT hãng.
+ *
+ * Chỉ `quantri`: cả phòng đọc theo một bản này, nên sửa nhầm là cả phòng
+ * làm sai theo mà không ai biết đã sai từ đâu.
+ */
+const datDangNhapBaoHanh = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const hang = await hangBaoHanhHopLe(env, than && than.hang);
+
+  const o = {
+    user: cauNguoiGo(than.user, TRAN_USER),
+    mat_khau: cauNguoiGo(than.mat_khau, TRAN_MAT_KHAU),
+    huong_dan: cauNguoiGo(than.huong_dan, TRAN_HUONG_DAN),
+    sua_boi: nguoi.email || nguoi.uid,
+    sua_luc: { ".sv": "timestamp" },
+  };
+
+  const r = await vaDb(DUONG_BAO_HANH + "/" + hang + "/dang_nhap", o, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-dang-nhap:" + chiTietLoi(r));
+
+  /* Nhật ký ghi ĐÚNG việc vừa làm, KHÔNG ghi giá trị: mật khẩu không có chỗ
+     nào trong log, kể cả log chỉ mình chủ dự án đọc. */
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/dang-nhap", hang });
+  return { ghi: true, hang };
+});
+
+/* =================== POST /api/bao-hanh/buoc ===================
+ * Thêm / sửa / xoá MỘT bước hướng dẫn kích hoạt của một hãng.
+ *
+ * Khoá bước là một MỐC THỜI GIAN (`mocBayGio()`), không phải số thứ tự: đổi
+ * chỗ hay xoá một bước ở giữa thì mọi bước sau KHÔNG phải đánh số lại, tức
+ * không phải một lượt ghi nhiều ô — và một lượt ghi nhiều ô là một lượt có
+ * thể hỏng nửa chừng. Thứ tự hiện ra do trường `thu_tu` quyết định (Engine
+ * đánh số cách nhau 10 để còn chỗ chèn vào giữa).
+ */
+const datBuocBaoHanh = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const hang = await hangBaoHanhHopLe(env, than && than.hang);
+  const id = than && typeof than.id === "string" ? than.id : null;
+  if (id !== null && !/^[A-Za-z0-9_-]{1,60}$/.test(id))
+    throw new LoiXacThuc(400, "id-buoc-khong-hop-le");
+
+  const cu = await docDb(DUONG_BAO_HANH + "/" + hang + "/buoc", env);
+  if (!cu.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bao-hanh:" + chiTietLoi(cu));
+  /* Nhánh thô → danh sách phẳng. Đây KHÔNG phải phép dọn dữ liệu của Engine
+     (`donHuongDan()` làm việc đó, và nó quyết định một hướng dẫn trông như
+     thế nào để trả ra màn hình): ở đây chỉ cần ba thứ hoàn toàn cơ học —
+     đang có bao nhiêu bước, bước sắp sửa đang trỏ tới tấm ảnh nào, và
+     `thu_tu` lớn nhất là bao nhiêu để Engine tính số kế tiếp. */
+  const buocTho = cu.val && typeof cu.val === "object" ? cu.val : {};
+  const hienCo = Object.keys(buocTho)
+    .filter((k) => buocTho[k] && typeof buocTho[k] === "object")
+    .map((k) => ({ id: k, thu_tu: Number(buocTho[k].thu_tu) || 0,
+                   anh: buocTho[k].anh || null }));
+
+  /* ---- Xoá ---- */
+  if (than.xoa === true) {
+    if (!id) throw new LoiXacThuc(400, "thieu-id-buoc");
+    const bo = hienCo.find((b) => b.id === id);
+    const r = await xoaDb(DUONG_BAO_HANH + "/" + hang + "/buoc/" + id, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-buoc:" + chiTietLoi(r));
+    /* Ảnh đi theo bước. Xoá bước mà để ảnh lại là một kho phình mãi mà không
+       ai nhìn thấy nó phình — nhưng lượt xoá ảnh KHÔNG được làm hỏng lượt
+       xoá bước đã xong, nên nuốt lỗi và chỉ ghi nhật ký. */
+    if (bo && bo.anh) {
+      try { if (env.ANH_BAO_HANH) await env.ANH_BAO_HANH.delete(bo.anh); }
+      catch (e) { nhatKy({ rid, canh_bao: "xoa-anh-hong:" + ((e && e.message) || "") }); }
+    }
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/buoc", hang, viec: "xoa" });
+    return { ghi: true, hang, id };
+  }
+
+  const chu = cauNguoiGo(than.chu, TRAN_CHU_BUOC);
+  const anh = typeof than.anh === "string" && than.anh ? than.anh : null;
+  if (anh !== null && !laKhoaAnh(anh)) throw new LoiXacThuc(400, "anh-khong-hop-le");
+  /* Một bước rỗng hoàn toàn không phải một bước — nó chỉ làm danh sách dài
+     ra. Chủ dự án chốt hộp thêm bước có HAI ô; ít nhất một ô phải có gì. */
+  if (!chu && !anh) throw new LoiXacThuc(400, "buoc-rong");
+
+  /* ---- Sửa một bước đã có ---- */
+  if (id) {
+    const cuBuoc = hienCo.find((b) => b.id === id);
+    if (!cuBuoc) throw new LoiXacThuc(400, "buoc-khong-ton-tai");
+    /* Ảnh CŨ bị thay thì dọn ngay — cùng lý do như lúc xoá bước. */
+    if (cuBuoc.anh && cuBuoc.anh !== anh) {
+      try { if (env.ANH_BAO_HANH) await env.ANH_BAO_HANH.delete(cuBuoc.anh); }
+      catch (e) { nhatKy({ rid, canh_bao: "xoa-anh-cu-hong:" + ((e && e.message) || "") }); }
+    }
+    const r = await vaDb(DUONG_BAO_HANH + "/" + hang + "/buoc/" + id,
+      { chu, anh, sua_boi: nguoi.email || nguoi.uid, sua_luc: { ".sv": "timestamp" } }, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-buoc:" + chiTietLoi(r));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/buoc", hang, viec: "sua" });
+    return { ghi: true, hang, id };
+  }
+
+  /* ---- Thêm một bước mới vào cuối ---- */
+  let tran, thu_tu;
+  try {
+    tran = (await env.REPORT_ENGINE.hangBaoHanh()).buoc_toi_da;
+    thu_tu = await env.REPORT_ENGINE.thuTuBuocTiepTheo(hienCo);
+  } catch (e) { throw new LoiXacThuc(503, "engine-loi-buoc:" + (e && e.message)); }
+  if (hienCo.length >= tran) throw new LoiXacThuc(400, "qua-nhieu-buoc");
+
+  const idMoi = mocBayGio();
+  const r = await vaDb(DUONG_BAO_HANH + "/" + hang + "/buoc/" + idMoi,
+    { thu_tu, chu, anh, sua_boi: nguoi.email || nguoi.uid, sua_luc: { ".sv": "timestamp" } }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-buoc:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/buoc", hang, viec: "them", thu_tu });
+  return { ghi: true, hang, id: idMoi, thu_tu };
+});
+
+/* =================== ẢNH HƯỚNG DẪN — R2 ===================
+ *
+ * Ảnh KHÔNG nằm trong Realtime Database. Mỗi hãng có tới ba mươi bước, mỗi
+ * bước một tấm ảnh chụp màn hình; nhét chúng vào RTDB dạng base64 là mỗi
+ * lượt mở một hãng kéo về vài MB chữ, và nhánh `bc/quyetdinh` thì đọc TRỌN
+ * ở mọi lượt mở màn hình. R2 giữ byte, Firebase chỉ giữ cái KHOÁ trỏ tới.
+ *
+ * Chủ dự án chốt phương án này 19/09/2026 (được hỏi giữa R2, base64 trong
+ * Firebase, và Firebase Storage).
+ */
+
+/** Khuôn khoá ảnh trong R2 — `<Hãng>/<mốc>.<đuôi>`.
+ *
+ *  Khoá đến từ TRÌNH DUYỆT ở đường đọc, nên khuôn phải hẹp và phải chặn
+ *  `..`: một khoá kiểu `../` không đưa ai ra khỏi bucket được (R2 không có
+ *  thư mục thật), nhưng khuôn hẹp là thứ giữ cho đường này không bao giờ
+ *  thành một cách dò xem bucket còn có gì khác. */
+function laKhoaAnh(s) {
+  return typeof s === "string" && s.length <= 120
+    && /^[A-Za-z0-9][A-Za-z0-9_-]*\/[A-Za-z0-9_-]+\.(png|jpg|jpeg|webp)$/.test(s)
+    && !s.includes("..");
+}
+
+/** Kiểu ảnh được nhận, và đuôi file tương ứng.
+ *
+ *  Danh sách ĐÓNG, cố ý: một tấm SVG là một tài liệu chạy được script, và
+ *  phục vụ nó từ cùng một tên miền với app là mở đúng cánh cửa không cần
+ *  thiết cho một màn hình chỉ cần ảnh chụp màn hình. */
+const KIEU_ANH = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+
+/** Trần một tấm ảnh — 5 MB. Ảnh chụp màn hình một cổng bảo hành nặng vài
+ *  trăm KB; 5 MB đã rộng gấp nhiều lần, mà vẫn chặn được lượt tải nhầm một
+ *  file ảnh máy ảnh 40 MB vào. */
+const TRAN_ANH = 5 * 1024 * 1024;
+
+const taiAnhBaoHanh = boc("quantri", async ({ nguoi, request, env, rid }) => {
+  if (!env.ANH_BAO_HANH) throw new LoiXacThuc(503, "thieu-kho-anh");
+  const hang = await hangBaoHanhHopLe(env, new URL(request.url).searchParams.get("hang"));
+
+  const kieu = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  const duoi = KIEU_ANH[kieu];
+  if (!duoi) throw new LoiXacThuc(400, "kieu-anh-khong-nhan");
+
+  const dai = Number(request.headers.get("Content-Length") || 0);
+  if (dai > TRAN_ANH) throw new LoiXacThuc(400, "anh-qua-lon");
+
+  const byte = await request.arrayBuffer();
+  /* Đo lại SAU khi đọc: `Content-Length` là thứ bên gửi tự khai, còn đây là
+     số byte thật. Tin vào con số khai là để lọt đúng lượt tải cố tình. */
+  if (byte.byteLength > TRAN_ANH) throw new LoiXacThuc(400, "anh-qua-lon");
+  if (!byte.byteLength) throw new LoiXacThuc(400, "anh-rong");
+
+  const khoa = hang + "/" + mocBayGio() + "." + duoi;
+  await env.ANH_BAO_HANH.put(khoa, byte, { httpMetadata: { contentType: kieu } });
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/anh", hang,
+           viec: "tai-len", byte: byte.byteLength });
+  return { anh: khoa };
+});
+
+/* Ảnh đi ra dạng BYTE THÔ, không gói JSON — xem `bocNhiPhan()`.
+ *
+ * Vì sao không phục vụ ảnh bằng một URL công khai của R2: tấm ảnh hướng dẫn
+ * có chụp cả màn hình cổng hãng, đôi khi kèm chính tài khoản đang đăng nhập.
+ * Đi qua đây thì nó đòi đúng một token Firebase như mọi đường khác của app.
+ *
+ * Hệ quả trên màn hình: `<img src>` KHÔNG gắn được header `Authorization`,
+ * nên trình duyệt phải `fetch()` rồi dựng `blob:` — đó là lý do CSP của app
+ * có `blob:` trong `img-src`. */
+const layAnhBaoHanh = bocNhiPhan(true, async ({ request, env }) => {
+  if (!env.ANH_BAO_HANH) throw new LoiXacThuc(503, "thieu-kho-anh");
+  const id = new URL(request.url).searchParams.get("id");
+  if (!laKhoaAnh(id)) throw new LoiXacThuc(400, "anh-khong-hop-le");
+
+  const o = await env.ANH_BAO_HANH.get(id);
+  if (!o) throw new LoiXacThuc(400, "khong-co-anh");
+
+  /* Khoá ảnh mang một mốc thời gian nên nó KHÔNG BAO GIỜ trỏ sang một tấm
+     ảnh khác — sửa ảnh của một bước là sinh khoá mới. Nhờ vậy cache được
+     thật lâu, và một màn hướng dẫn ba mươi bước chỉ tải ảnh đúng một lần.
+     `private` vì phản hồi này gắn với người đã đăng nhập. */
+  return new Response(o.body, {
+    headers: {
+      "Content-Type": (o.httpMetadata && o.httpMetadata.contentType) || "application/octet-stream",
+      "Cache-Control": "private, max-age=31536000, immutable",
+      "Content-Disposition": "inline",
+    },
+  });
+});
+
 /* =================== ĐẨY SANG GOOGLE SHEET (13/09/2026) ===================
  *
  * Chủ dự án chốt: mỗi tháng tạo một Sheet mới cho từng nhân viên, dán link
@@ -1703,6 +2131,12 @@ const API_ROUTES = new Map([
   ["POST /api/bonus", datBonus],
   ["POST /api/sheet-link", datSheetLink],
   ["POST /api/day-sheet", daySheet],
+  ["GET /api/bao-hanh", layBaoHanh],
+  ["POST /api/kich-hoat", datKichHoat],
+  ["POST /api/bao-hanh/dang-nhap", datDangNhapBaoHanh],
+  ["POST /api/bao-hanh/buoc", datBuocBaoHanh],
+  ["GET /api/bao-hanh/anh", layAnhBaoHanh],
+  ["POST /api/bao-hanh/anh", taiAnhBaoHanh],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn
