@@ -185,10 +185,11 @@ const b64u = (b) => Buffer.from(b).toString('base64')
       return S.apDungSuaTay(D.dungBangDon(a, b, c, d), qd);
     },
     async khoaTenHang(ten) { return K.khoaTenHang(ten); },
-    /* Engine giả mô phỏng ĐÚNG cửa lùi của Engine thật: tên cũ `kyCoKhopMa`
-       còn sống để bản Gateway cũ gọi được giữa hai lượt deploy (bẫy số 4), và
-       nó trả về câu trả lời của `kyCoGiaVon`. Bản Gateway trong bộ này vẫn là
-       bản cũ, nên nó hỏi đúng tên ấy. */
+    /* Engine giả phơi CẢ HAI tên, đúng như Engine thật sau 19/09/2026.
+       Phơi tên mới là bắt buộc: chỉ có tên cũ thì Gateway luôn rơi vào cửa
+       lùi, và một lỗi gõ sai `kyCoGiaVon` bên Gateway sẽ không bao giờ đỏ. */
+    async kyCoGiaVon(ky) { return K.kyCoGiaVon(ky); },
+    /* Tên cũ còn sống cho bản Gateway cũ giữa hai lượt deploy (bẫy số 4). */
     async kyCoKhopMa(ky) { return K.kyCoGiaVon(ky); },
     async maCanGiaVon(dong, n, ky) { return K.maCanGiaVon(dong, n, ky); },
   });
@@ -394,34 +395,77 @@ const b64u = (b) => Buffer.from(b).toString('base64')
      trước, và hiện lại bản cũ là làm người ta tưởng lượt gán vừa rồi trượt. */
   ok('bản đồ phân loại LUÔN kéo lại, không nhớ tạm', demMap, 2);
 
-  /* ───────── E. Mốc kỳ: ngoài phạm vi thì KHÔNG hỏi Tracking ───────── */
+  /* ───────── E. Mốc kỳ: khớp mã MỌI kỳ, giá vốn chỉ từ 09/2026 ───────── */
 
-  console.log('\nE) Kỳ ngoài phạm vi dữ liệu giá');
+  console.log('\nE) Kỳ không có dữ liệu giá');
 
+  /* Viết lại 19/09/2026. Bản trước canh chiều NGƯỢC LẠI — "kỳ cũ thì không
+     hỏi Tracking lượt nào" — và đó là hành vi đúng khi khớp mã CHỈ để ra giá
+     vốn. Nay tab [Kích hoạt bảo hành] cần HÃNG của từng dòng ở mọi tháng, nên
+     kỳ cũ phải được khớp mã. Cái phải giữ là ranh giới MỚI: khớp mã thì có,
+     giá vốn thì không — và không một lượt hỏi `min-ngay` nào bị trả giá cho
+     một kỳ chắc chắn không có giá. */
   {
     const hat = HAT();
     hat.bc.dong['2026-08'] = hat.bc.dong['2026-09'];
+    daGoiTrk = [];
+    TRK.xoaDem(); TRK.xoaDemMin();
     r = await goi('/api/don-hang?ky=2026-08', { hat });
     ok('kỳ 08/2026 vẫn ra bảng đơn', r.ma, 200);
-    ok('  · và nói rõ là ngoài phạm vi', r.js.trong_pham_vi_ma, false);
-    /* Điểm mấu chốt của mục này: KHÔNG một lượt gọi nào sang Tracking. Kéo
-       bảng giá (~400 KB) và vài nghìn bản ghi Min về cho một kỳ không dùng
-       được chúng là trả tiền cho một việc chắc chắn vô ích. */
-    ok('  · KHÔNG gọi Tracking lượt nào', daGoiTrk.length, 0);
-    /* Gateway đi đường `dungBangDon()` trần, nên không có bảng kê nào được
-       dựng — đó là kết quả mong muốn, không phải thiếu sót. Engine vẫn có
-       chốt riêng cho ca bị gọi với kỳ ngoài phạm vi (xem `kiem/khop-ma.js`
-       mục F); hai lớp, hai lý do: Gateway để khỏi tốn lượt mạng, Engine để
-       khỏi tính sai nếu một chỗ gọi khác quên chốt. */
-    ok('  · không dựng bảng kê hàng chờ nào', r.js.bang.tom_tat_ma, undefined);
-    ok('  · và không dòng nào bị gắn lý do chưa khớp',
-      moiDong(r.js.bang).some((d) => d.ly_do_chua_ma), false);
+    ok('  · và nói rõ là chưa có giá vốn', r.js.co_gia_von, false);
+
+    /* CÓ kéo bảng giá về — đó là cả lý do của lượt sửa. */
+    ok('  · CÓ kéo bảng giá về', daGoiTrk.some((g) => g.duong === '/api/xuat/board'), true);
+    /* NHƯNG KHÔNG hỏi Min theo ngày: vài nghìn bản ghi cho một kỳ chắc chắn
+       không có giá vốn là trả tiền cho một việc vô ích — đúng cái lo của bản
+       trước, chỉ thu hẹp lại đúng phần còn vô ích. */
+    ok('  · KHÔNG hỏi Min theo ngày lượt nào',
+      daGoiTrk.some((g) => g.duong === '/api/min-ngay'), false);
+
+    const dongCu = moiDong(r.js.bang);
+    ok('  · có dựng bảng kê hàng chờ', Array.isArray(r.js.bang.tom_tat_ma.chua_khop), true);
+    ok('  · dòng khớp được thì CÓ hãng', dongCu.some((d) => d.hang), true);
+    ok('  · và có ngành hàng', dongCu.some((d) => d.nganh_hang), true);
+
+    /* Ranh giới phải kín ở chiều còn lại: không một đồng giá vốn nào lọt vào
+       kỳ cũ. Soi trên HÀNG THẬT — dòng chiết khấu gộp vốn mang `gia_nhap: 0`
+       từ lúc dựng bảng, nó là một phép trừ chứ không phải món hàng phải tra
+       giá. */
+    const hangThat = dongCu.filter((d) => !d.la_chiet_khau && !d.la_phu_phi_co_dinh);
+    ok('  · có hàng thật để soi', hangThat.length > 0, true);
+    ok('  · và không dòng hàng nào có giá nhập',
+      hangThat.some((d) => d.gia_nhap !== null && d.gia_nhap !== undefined), false);
+    ok('  · cũng không dòng nào có lợi nhuận',
+      hangThat.some((d) => d.loi_nhuan !== null && d.loi_nhuan !== undefined), false);
   }
 
+  daGoiTrk = [];
+  TRK.xoaDem(); TRK.xoaDemMin();
   r = await goi('/api/don-hang?ky=2026-09');
-  ok('kỳ 09/2026 thì trong phạm vi', r.js.trong_pham_vi_ma, true);
-  ok('  · và CÓ gọi Tracking',
-    daGoiTrk.some((g) => g.duong === '/api/xuat/board'), true);
+  ok('kỳ 09/2026 thì có giá vốn', r.js.co_gia_von, true);
+  ok('  · và CÓ hỏi Min theo ngày',
+    daGoiTrk.some((g) => g.duong === '/api/min-ngay'), true);
+
+  /* CỬA LÙI, chạy thật chứ không dò chữ: dựng một Engine ĐÚNG NHƯ BẢN CŨ —
+     chỉ có `kyCoKhopMa`, chưa có `kyCoGiaVon`. Đây là hình dạng Engine mà
+     Gateway mới gặp trong khoảng hai Worker build song song (bẫy số 4), và
+     nếu không lùi được thì mọi lượt mở bảng đơn khi ấy nổ 503 chứ không phải
+     chạy chậm đi một chút. */
+  {
+    const eCu = engine();
+    delete eCu.kyCoGiaVon;
+    TRK.xoaDem(); TRK.xoaDemMin();
+    gai(dungDb(HAT()), {});
+    let rc;
+    try {
+      rc = await w.fetch(new Request('https://g.workers.dev/api/don-hang?ky=2026-09',
+        { headers: { Authorization: 'Bearer ' + token('sep') } }),
+        { ...ENV(), REPORT_ENGINE: eCu });
+    } finally { globalThis.fetch = fetchThat; }
+    ok('Engine bản CŨ (chưa có kyCoGiaVon) vẫn ra bảng đơn, không 503', rc.status, 200);
+    ok('  · và vẫn trả lời đúng là kỳ này có giá vốn',
+      (await rc.json()).co_gia_von, true);
+  }
 
   /* ───────── F. Giá nhập theo ngày bán ───────── */
 

@@ -75,6 +75,62 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (b) — mốc 09/2026 tách làm đôi: khớp mã mọi kỳ.**
+
+Chủ dự án hỏi: tháng trước 09/2026 chưa cần giá vốn, nhưng khớp mã với
+bảng giá Tracking **chỉ để phân loại hãng + ngành hàng** thì có được
+không? Kiểm tính khả thi trước, rồi mới code.
+
+**Kết luận: được, và cổng chặn nằm gọn đúng ba chỗ.** `MOC_KHOP_MA` đang
+gánh HAI việc bằng một con số — "có khớp mã không" và "có giá vốn theo
+ngày không". Gộp được là vì hồi 12/09/2026 khớp mã CHỈ để ra giá vốn.
+Vế ấy hết đúng từ tab [Kích hoạt bảo hành].
+
+```
+MOC_GIA_VON = "2026-09"   chỉ còn gánh giá vốn
+kyCoGiaVon()              thay kyCoKhopMa()
+khopMaChoBangDon()        bỏ cổng chặn — chạy ở MỌI kỳ
+```
+
+**Giá vốn không lọt vào kỳ cũ**, chặn ở hai chỗ khác: `maCanGiaVon` trả
+rỗng (và `docMinNgay` thấy rỗng thì trả về ngay, KHÔNG đi mạng — nên
+**không thêm một lượt gọi `min-ngay` nào**), còn `dungBangDonKemMa` đòi
+`minNgay && kyCoGiaVon(ky)`. Vế thứ hai bắt buộc: danh sách mã rỗng cho
+ra một đối tượng RỖNG chứ không phải `null`, mà rỗng vẫn truthy.
+
+**Giá phải trả:** mỗi lượt mở một tháng cũ thêm **một lần tải bảng giá
+Tracking (~400 KB)** — đúng lượt tải mà tháng hiện tại vẫn đang trả.
+
+**Ba hệ quả, chủ dự án duyệt trước khi code:**
+
+1. **Ba con số của kỳ cũ dịch đi** — Số sản phẩm, Tổng giá bán, Doanh số
+   chưa rõ nguồn — vì dòng phụ phí cố định (vận chuyển / lắp đặt / chênh
+   VAT) thôi bị đếm là hàng hoá. Đây là **sửa đúng**: số cũ mới là số
+   sai. Doanh số, số đơn, lợi nhuận, quy đổi, lương KHÔNG đổi.
+2. **Hàng chờ gán mã hiện ở cả kỳ cũ** (chốt: "hiện, để gán dần") — một
+   lượt gán tên hàng ghi vào `inv/map` và ăn cho MỌI kỳ, nên công gán
+   không bị phí.
+3. **Có dòng không bao giờ gán được:** model bán 2025 mà nay đã xoá khỏi
+   bảng giá thì không khớp, và màn gán tay chỉ cho chọn mã ĐANG có. Những
+   dòng ấy nằm lại "chưa rõ hãng" tới khi mã được thêm lại bên Bảng giá.
+
+**KHÔNG đi theo khớp mã, có chủ ý** (cả hai vẫn buộc vào `co_gia_von`):
+ô tick "gia dụng" (chỉ đổi hệ số quy đổi — bấm ở kỳ cũ không đổi con số
+nào đang hiện) và hai nút Sửa/Xoá dòng (sửa Giá nhập · Nơi nhập, hai thứ
+kỳ cũ không có).
+
+Cờ `trong_pham_vi_ma` đổi tên thành **`co_gia_von`** — tên cũ nói "kỳ này
+có được khớp mã không", mà nay mọi kỳ đều được. `kiem/bao-hanh-man-hinh.js`
+mục H chốt lượt đổi tên không bị làm nửa vời (cờ cũ luôn `undefined`, tức
+luôn khác `false`, tức mọi lời nhắc lặng lẽ biến mất).
+
+Hai lượt merge, đúng bẫy số 4: PR #104 (Engine) trước, Gateway + trang
+tĩnh sau. Engine giữ `kyCoKhopMa` làm **RPC-cửa-lùi** cho bản Gateway cũ
+giữa hai lượt deploy, và Gateway mới cũng lùi được về tên cũ khi gặp
+Engine cũ — `kiem/gan-ma.js` mục E chạy THẬT ca ấy, không dò chữ.
+
+---
+
 **Hai lượt merge, đúng bẫy số 4:** PR #102 đưa Engine
 (`engine/src/bao-hanh.mjs` + 4 hàm RPC) lên TRƯỚC; lượt sau mới nối
 Gateway (6 đường `/api/`) + trang tĩnh (`public/bao-hanh.js`).

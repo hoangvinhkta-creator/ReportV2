@@ -309,10 +309,6 @@
         "⚠ Chưa đọc được bảng giá Tracking lượt này, nên chưa xếp được dòng nào "
         + "vào hãng — danh sách bên dưới đang rỗng vì lý do ĐÓ, không phải vì "
         + "đã kích hoạt hết. Thử tải lại trang sau ít phút."));
-    } else if (kq.trong_pham_vi_ma === false) {
-      ve.appendChild(el("p", "viDu",
-        "Tháng này nằm ngoài phạm vi khớp mã bảng giá, nên chưa dòng nào có hãng "
-        + "để xếp vào tab."));
     } else if (kq.tom_tat && kq.tom_tat.chua_ro_hang) {
       /* Chủ dự án chốt chỉ mười tab, nên dòng chưa gán mã không thuộc tab
          nào. Nó phải được NÓI RA — một cái máy biến mất khỏi danh sách việc

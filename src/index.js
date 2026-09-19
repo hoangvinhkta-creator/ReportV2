@@ -925,12 +925,25 @@ async function dungBangDonHang(env, ky, line, rid) {
    * này chỉ bỏ thời gian NGỒI CHỜ, không bỏ một lượt đọc nào. */
   const dong0 = Date.now();
 
-  /* Mốc khớp mã là một LUẬT NGHIỆP VỤ nên Engine giữ nó, Gateway chỉ hỏi.
-     Hỏi qua một lời hứa CHƯA await: kỳ ngoài phạm vi thì không kéo bảng giá
-     (~400 KB) lẫn Min theo ngày (vài nghìn bản ghi) về làm gì — nhưng cũng
-     không bắt bảy lượt đọc Firebase ngồi chờ câu trả lời ấy. */
+  /* Mốc giá vốn là một LUẬT NGHIỆP VỤ nên Engine giữ nó, Gateway chỉ hỏi.
+     Hỏi qua một lời hứa CHƯA await: câu trả lời chỉ cần tới lúc quyết có đi
+     hỏi Min theo ngày hay không, nên không bắt bảy lượt đọc Firebase ngồi
+     chờ nó.
+
+     Từ 19/09/2026 mốc này KHÔNG còn quyết định có khớp mã hay không — khớp
+     mã chạy ở MỌI kỳ, để tab [Kích hoạt bảo hành] có hãng của từng dòng. Nó
+     chỉ còn quyết hai việc: có đi lấy Min theo ngày không, và màn hình nói
+     câu gì về cột Giá nhập.
+
+     CỬA LÙI về tên cũ là bắt buộc, không phải phòng xa: hai Worker build
+     SONG SONG khi merge (bẫy số 4 — ROADMAP.md), nên có một khoảng bản
+     Gateway MỚI này gọi Engine CŨ chưa có `kyCoGiaVon`. Không lùi thì mọi
+     lượt mở bảng đơn trong khoảng ấy nổ 503; lùi thì nó chạy đúng như cũ
+     (hai tên cùng trả một câu trả lời với bản Engine cũ). */
   const huaPhamVi = Promise.resolve()
-    .then(() => env.REPORT_ENGINE.kyCoKhopMa(ky))
+    .then(() => (env.REPORT_ENGINE.kyCoGiaVon
+      ? env.REPORT_ENGINE.kyCoGiaVon(ky)
+      : env.REPORT_ENGINE.kyCoKhopMa(ky)))
     .catch((e) => { throw new LoiXacThuc(503, "engine-loi-pham-vi:" + (e && e.message)); });
 
   /* Bảng giá Tracking — nguồn của cột mã, hãng, ngành hàng.
@@ -948,10 +961,15 @@ async function dungBangDonHang(env, ky, line, rid) {
    * Bắt `LoiTracking` NGAY TẠI ĐÂY thay vì để nó nổ ra khỏi `Promise.all`:
    * một lỗi thoát ra từ đó sẽ huỷ luôn cả đợt và làm hỏng cả bảng đơn —
    * đúng điều đoạn trên vừa nói là không được. */
-  const huaNguon = huaPhamVi.then((trong) => (trong
-    ? docNguonTracking(env).then((n) => ({ nguon: n, ly: null }),
-      (e) => { if (!(e instanceof LoiTracking)) throw e; return { nguon: null, ly: e.ly }; })
-    : { nguon: null, ly: null }));
+  /* LẤY BẢNG GIÁ Ở MỌI KỲ từ 19/09/2026 — không còn chờ `huaPhamVi` nữa.
+     Bản trước bỏ qua kỳ cũ để khỏi kéo ~400 KB về cho một kỳ "không dùng
+     được chúng"; nay kỳ cũ dùng được, vì hãng và ngành hàng của từng dòng
+     chính là thứ tab [Kích hoạt bảo hành] cần để xếp máy vào đúng cổng.
+     Đó là một lượt gọi Tracking thêm cho mỗi lượt mở một tháng cũ — đúng
+     lượt gọi mà tháng hiện tại vẫn đang trả. */
+  const huaNguon = docNguonTracking(env).then(
+    (n) => ({ nguon: n, ly: null }),
+    (e) => { if (!(e instanceof LoiTracking)) throw e; return { nguon: null, ly: e.ly }; });
 
   /* `bc/quyetdinh/line` chưa có kết quả lúc này, nên `docDoanhSoLineMoc`
      nhận LỜI HỨA của nó chứ không nhận giá trị. Nhờ thế nó khởi động lượt
@@ -966,7 +984,7 @@ async function dungBangDonHang(env, ky, line, rid) {
      bắt mỗi lần mở một tab line phải trả thêm hai lượt đọc Firebase cho một
      con số không ai nhìn. */
   const [dong, bangLine, khach, quyetDinh, bangKpi, giaDung, bangCong, bonus,
-         kqNguon, doanhSoKyTruoc, doanhSoNamTruoc, sheetLink] = await Promise.all([
+         kqNguon, doanhSoKyTruoc, doanhSoNamTruoc, sheetLink, coGiaVon] = await Promise.all([
     docDb("bc/dong/" + ky, env),
     huaBangLine,
     /* Đọc ĐÚNG một kỳ, không đọc cả nhánh — `bc/khach/<kỳ>` phẳng theo
@@ -1006,6 +1024,14 @@ async function dungBangDonHang(env, ky, line, rid) {
        Đọc kèm ở đây thay vì mở một route riêng cho màn hình gọi: một lượt
        mạng nữa cho một chuỗi ngắn là đổi tốc độ lấy đúng con số không. */
     line ? docDb(DUONG_SHEET + "/" + ky + "/" + line, env) : null,
+    /* `huaPhamVi` đi CÙNG đợt này thay vì được await riêng sau đó, và đó
+       không phải chuyện gọn mã: nó đã khởi động từ trước, nên xếp nó vào đây
+       không làm ai chờ thêm — nhưng nếu một lượt đọc khác trong đợt hỏng
+       trước, một lời hứa BỊ TỪ CHỐI mà chưa ai await sẽ thành unhandled
+       rejection trong Worker. Bản trước không vướng vì `huaNguon` móc vào
+       `.then()` của nó nên lỗi chảy sẵn vào đợt; từ 19/09/2026 bảng giá
+       không móc vào đó nữa, nên phải nối lại đường chảy ấy ở đây. */
+    huaPhamVi,
   ]);
   const ms_doc = Date.now() - dong0;
 
@@ -1016,7 +1042,6 @@ async function dungBangDonHang(env, ky, line, rid) {
   if (!quyetDinh.ok)
     throw new LoiXacThuc(503, "khong-doc-duoc-quyet-dinh:" + chiTietLoi(quyetDinh));
 
-  const trongPhamVi = await huaPhamVi;
   let nguon = kqNguon.nguon, minNgay = null, loi_nguon_ma = kqNguon.ly;
   if (loi_nguon_ma) nhatKy({ rid, duong: "/api/don-hang", canh_bao: "tracking-hong:" + loi_nguon_ma });
 
@@ -1041,7 +1066,12 @@ async function dungBangDonHang(env, ky, line, rid) {
      đúng những mã ấy theo từng ngày. Một đơn ngày 01/09 lấy giá của mốc
      01/09, không phải giá của hôm tải file lên. */
   const gia0 = Date.now();
-  if (nguon) {
+  /* `coGiaVon` là vế MỚI (19/09/2026). Trước lượt này `nguon` đã tự mang
+     nghĩa "kỳ trong phạm vi" vì kỳ cũ không bao giờ được lấy bảng giá; nay
+     nó có ở mọi kỳ, nên phải nói riêng ra. Thiếu vế này thì kỳ cũ vẫn đi một
+     vòng hỏi Engine `maCanGiaVon` (trả rỗng) rồi `docMinNgay` (trả rỗng) —
+     không sai số, nhưng là hai lượt gọi cho một câu trả lời đã biết trước. */
+  if (nguon && coGiaVon) {
     try {
       const maCan = await env.REPORT_ENGINE.maCanGiaVon(dong.val || {}, nguon, ky);
       minNgay = await docMinNgay(env, ky, maCan);
@@ -1085,8 +1115,13 @@ async function dungBangDonHang(env, ky, line, rid) {
       ? { link: sheetLink.val.link || null, day_luc: sheetLink.val.day_luc || null,
           day_loi: sheetLink.val.day_loi || null }
       : null;
+    /* `co_gia_von` thay tên cũ `trong_pham_vi_ma` (19/09/2026): cái tên cũ
+       nói "kỳ này có được khớp mã không", mà nay mọi kỳ đều được. Thứ nó
+       thật sự trả lời — và vẫn là thứ màn hình cần — là "kỳ này có giá vốn
+       theo ngày không". Đổi tên chứ không giữ hai tên: hai tên cho một cờ là
+       hai chỗ để lượt sửa sau chọn nhầm. */
     return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
-             trong_pham_vi_ma: trongPhamVi, sheet };
+             co_gia_von: coGiaVon, sheet };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
@@ -1683,8 +1718,11 @@ const layBaoHanh = boc(true, async ({ request, env, rid }) => {
     throw new LoiXacThuc(503, "engine-loi-bao-hanh:" + (e && e.message));
   }
 
-  return { ky, ...ds, loi_nguon_ma: kqBang.loi_nguon_ma,
-           trong_pham_vi_ma: kqBang.trong_pham_vi_ma };
+  /* KHÔNG chuyển tiếp `co_gia_von`: tab bảo hành không hiện một đồng tiền
+     nào, nên "tháng này có giá vốn không" là một câu trả lời không ai ở đây
+     hỏi. `loi_nguon_ma` thì ngược lại — Tracking hỏng là không dòng nào có
+     hãng, tức mười tab cùng rỗng, và màn hình phải nói ra. */
+  return { ky, ...ds, loi_nguon_ma: kqBang.loi_nguon_ma };
 });
 
 /* =================== POST /api/kich-hoat ===================
