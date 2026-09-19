@@ -6,7 +6,7 @@
  *
  * Bộ này canh sáu chỗ, xếp theo mức đắt nếu hỏng:
  *
- *  A. HAI CỘT KHÔNG SO ĐƯỢC VỚI NHAU. Trục ngang hoặc thứ tự hãng lệch giữa
+ *  A. HAI CỘT KHÔNG SO ĐƯỢC VỚI NHAU. Trục ngang hoặc tập hãng lệch giữa
  *     hai tháng thì mảng cùng màu là hai hãng khác nhau — người đọc so hai
  *     thứ không liên quan mà không có gì báo.
  *  B. MẤT MỘT HÃNG. Hãng bán mạnh năm ngoái, năm nay nghỉ — xếp hạng theo
@@ -151,11 +151,27 @@ const GOC = path.resolve(__dirname, '..');
     ok('hãng chỉ có ở năm trước vẫn đứng riêng',
        !!mang(cot(b, 'Tivi'), 'Sony'), true);
 
-    /* A — và thứ tự mảng trong một cột phải khớp từng vị trí, không thì
-       mảng thứ hai của cột trái là một hãng khác với mảng thứ hai cột phải. */
+    /* A — hai cột phải có CÙNG TẬP HÃNG, không thì một hãng chỉ hiện ở một
+       bên và cặp cột không nói về cùng một thứ.
+
+       THỨ TỰ thì KHÔNG khớp nữa, và đó là chủ đích (chủ dự án chốt
+       19/09/2026): mỗi cột tự xếp lớn → bé từ đáy lên. Cái giữ cho hai cột
+       so được với nhau là cùng tập hãng và MỘT màu cố định cho mỗi hãng,
+       không phải cùng vị trí. */
+    const sapTen = (ds) => ds.map((x) => x.ten).sort();
     for (const ten of a.cot.map((x) => x.ten)) {
-      ok('  · cột "' + ten + '": thứ tự hãng khớp hai tháng',
-         cot(a, ten).hang.map((x) => x.ten), cot(b, ten).hang.map((x) => x.ten));
+      ok('  · cột "' + ten + '": hai tháng cùng TẬP hãng',
+         sapTen(cot(a, ten).hang), sapTen(cot(b, ten).hang));
+    }
+
+    /* Và ruột mỗi cột xếp LỚN → BÉ theo giá trị của CHÍNH cột ấy — thứ tự
+       mảng chính là thứ tự vẽ từ đáy lên đỉnh. */
+    for (const m of [a, b]) {
+      for (const c of m.cot) {
+        const gt = c.hang.map((x) => x.gia_tri);
+        ok('  · cột "' + c.ten + '" xếp lớn → bé',
+           gt.every((v, i) => i === 0 || gt[i - 1] >= v), true);
+      }
     }
   }
 

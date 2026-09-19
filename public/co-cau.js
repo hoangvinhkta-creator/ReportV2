@@ -115,7 +115,7 @@
   function ve(elVe, elTieuDe, ky) {
     oVe = elVe; oTieuDe = elTieuDe;
     if (!oVe) return;
-    if (!ky) { oVe.innerHTML = ""; datTieuDe(""); return; }
+    if (!ky) { oVe.innerHTML = ""; datTieuDe(""); boDaiNut(); return; }
     if (trangThai.ky === ky && trangThai.kq) { veRuot(); return; }
     trangThai.ky = ky;
     trangThai.kq = null;
@@ -132,6 +132,7 @@
     trangThai.dangTai = true;
     oVe.innerHTML = '<p class="dangTai">Đang tải cơ cấu…</p>';
     datTieuDe("Cơ cấu ngành hàng");
+    boDaiNut();
     try {
       const kq = await goi("/api/co-cau?ky=" + encodeURIComponent(ky));
       /* Người dùng đã bấm sang tháng khác trong lúc chờ — bỏ kết quả cũ,
@@ -160,10 +161,17 @@
       return;
     }
 
+    /* Tiêu đề nói luôn cặp tháng đang so — nó là chú giải của HAI cột đứng
+       cạnh nhau, và nó không tốn một dòng nào của biểu đồ vì nó ở hàng trên. */
     datTieuDe("Cơ cấu ngành hàng · " + thoat(nhanKy(kq.ky))
-      + ' <span class="donViCua">(doanh số)</span>');
+      + (kq.co_ky_truoc
+        ? ' <span class="donViCua">so ' + thoat(nhanKy(kq.ky_truoc)) + "</span>"
+        : ' <span class="donViCua">(doanh số)</span>'));
 
-    oVe.appendChild(veDaiNut(kq));
+    /* Nút lọc nằm ở HÀNG TRÊN, cạnh tiêu đề (chủ dự án chốt 19/09/2026:
+       "đẩy nút lọc này lên dòng trên"). Nửa phải của hàng tiêu đề vốn bỏ
+       không, còn ở đây nó đang ăn trọn một dòng chiều cao của biểu đồ. */
+    veDaiNut(kq);
 
     /* Tracking hỏng thì KHÔNG dòng nào có hãng — mọi thứ rơi vào cột chưa
        phân loại. Nói thẳng: một sự cố mạng không được phép kết luận "tháng
@@ -183,7 +191,6 @@
     hang.appendChild(oHinh);
     hang.appendChild(veCard(kq));
     oVe.appendChild(hang);
-    oVe.appendChild(veChuGiaiDoPhu(kq));
 
     /* Vẽ SVG SAU khi khối đã nằm trong trang: `viewBox` tính từ bề rộng và
        chiều cao THẬT của ô, nên phải đo được chúng đã. Đây đúng là chỗ bản
@@ -191,7 +198,25 @@
     veHinh(oHinh, kq);
   }
 
+  /** Gỡ dải nút khỏi hàng tiêu đề. Phải có một đường gỡ riêng: dải này KHÔNG
+   *  nằm trong `oVe` (thứ `veRuot()` dọn sạch ở mỗi lượt), nên không ai dọn
+   *  nó hộ — để nguyên là nút của tháng cũ treo lại trên một cột đang tải. */
+  function boDaiNut() {
+    const cha = oTieuDe && oTieuDe.parentNode;
+    if (!cha) return;
+    const cu = cha.querySelector ? cha.querySelector(".daiCoCau") : null;
+    if (cu && cu.parentNode) cu.parentNode.removeChild(cu);
+  }
+
+  /** Dải điều khiển — đặt ở HÀNG TIÊU ĐỀ, không phải trên biểu đồ.
+   *
+   *  Chủ dự án chốt 19/09/2026 sau khi mở thật: cái nút này và hai dòng độ
+   *  phủ dưới biểu đồ ăn mất hai dòng chiều cao của một khối vốn đã chật.
+   *  Nút lên hàng trên (chỗ cạnh tiêu đề vẫn bỏ không), độ phủ vào card. */
   function veDaiNut(kq) {
+    boDaiNut();
+    const cha = oTieuDe && oTieuDe.parentNode;
+    if (!cha) return;
     const dai = el("div", "daiCoCau");
 
     /* KHÔNG còn nút [Doanh số]/[Số máy] (chủ dự án chốt 19/09/2026). Biểu đồ
@@ -207,14 +232,23 @@
       const b = el("button", "tabNut tabNho" + (trangThai.boChuaPhanLoai ? " tabDang" : ""),
         "Chỉ phần đã phân loại");
       b.type = "button";
-      b.title = "Bỏ cột xám ra và lấy 100% = phần đã biết. Độ phủ vẫn ghi ở dưới.";
+      b.title = "Bỏ cột xám ra và lấy 100% = phần đã biết. Độ phủ vẫn ghi ở thẻ bên phải.";
       b.addEventListener("click", () => {
         trangThai.boChuaPhanLoai = !trangThai.boChuaPhanLoai;
         veRuot();
       });
       dai.appendChild(b);
     }
-    return dai;
+
+    /* Hai tháng lệch độ phủ quá xa thì so tỉ trọng giữa chúng là bịa ra tăng
+       trưởng (CLAUDE.md). Con số độ phủ nay ở card, nhưng CẢNH BÁO thì phải
+       đứng chỗ mắt đi qua trước khi đọc biểu đồ — một chip ngắn, không phải
+       một câu ba dòng dưới đáy. */
+    const chip = chipLechDoPhu(kq);
+    if (chip) dai.appendChild(chip);
+
+    if (!dai.childNodes.length) return;
+    cha.insertBefore(dai, oTieuDe);
   }
 
   /** Cột nào được vẽ, và mẫu số của phần trăm.
@@ -307,12 +341,16 @@
     }
 
     const timCot = (ds, t) => ds.find((c) => c.ten === t) || null;
+    /* Cột vắng hẳn ở một tháng vẫn phải có vạch chân — dựng một cột rỗng
+       thay cho `null` để `veMotCot` có chỗ đặt vạch. */
+    const cotHoac = (ds, t) => timCot(ds, t)
+      || { ten: t, gia_tri: 0, doanh_so: 0, so_may: 0, hang: [] };
 
     ten.forEach((tenNganh, i) => {
       const x0 = LE_TRAI + i * oNganh;
-      veMotCot(svg, timCot(A.cot, tenNganh), A.tong, x0 + leO, rongCot, y, tran, false, kq.ky);
+      veMotCot(svg, cotHoac(A.cot, tenNganh), A.tong, x0 + leO, rongCot, y, tran, false, kq.ky);
       if (kq.co_ky_truoc) {
-        veMotCot(svg, timCot(B.cot, tenNganh), B.tong,
+        veMotCot(svg, cotHoac(B.cot, tenNganh), B.tong,
           x0 + leO + rongCot + ranh, rongCot, y, tran, true, kq.ky_truoc);
       }
 
@@ -334,15 +372,27 @@
       t.addEventListener("click", () => datChon(tenNganh, null));
       svg.appendChild(t);
 
-      /* Tỉ trọng ghi bằng số dưới tên: mắt đọc chiều cao ra "khoảng một
-         nửa", còn con số thật phải có ở đâu đó mà không cần rê chuột. */
-      const pt = A.tong > 0 && c ? (c.gia_tri / A.tong) * 100 : 0;
-      const t2 = nut("text", "nhanNganhPt");
-      t2.setAttribute("x", x0 + oNganh / 2);
-      t2.setAttribute("y", CAO - LE_DUOI + 36);
-      t2.setAttribute("text-anchor", "middle");
-      t2.textContent = pt1(pt) + "%";
-      svg.appendChild(t2);
+      /* Tỉ trọng ghi bằng số DƯỚI TỪNG CỘT, mỗi cột một con số của chính
+         nó — không còn một con số chung đặt giữa cặp.
+
+         Đây cũng là thứ THAY CHO sắc độ nhạt của cột năm trước (chủ dự án
+         chốt 19/09/2026: "không có biến thể sắc độ"). Hai cột nay tô màu
+         y hệt nhau, và cái phân biệt chúng là hai tín hiệu KHÔNG đụng tới
+         màu hãng: con số đậm/nhạt dưới chân, và vạch chân cột ở `veMotCot`. */
+      const cB = kq.co_ky_truoc ? timCot(B.cot, tenNganh) : null;
+      const ptCua = (bo, x) => (bo.tong > 0 && x ? (x.gia_tri / bo.tong) * 100 : 0);
+      const veNhanPt = (xGiua, gt, laTruoc) => {
+        const t2 = nut("text", "nhanNganhPt" + (laTruoc ? " nhanPtTruoc" : ""));
+        t2.setAttribute("x", xGiua);
+        t2.setAttribute("y", CAO - LE_DUOI + 36);
+        t2.setAttribute("text-anchor", "middle");
+        t2.textContent = pt1(gt) + "%";
+        svg.appendChild(t2);
+      };
+      veNhanPt(x0 + leO + rongCot / 2, ptCua(A, c), false);
+      if (kq.co_ky_truoc) {
+        veNhanPt(x0 + leO + rongCot * 1.5 + ranh, ptCua(B, cB), true);
+      }
     });
 
     if (!kq.co_ky_truoc) {
@@ -366,12 +416,31 @@
 
   function veMotCot(svg, c, tong, x, rong, y, tran, laTruoc, ky) {
     if (!c || !tong) return;
+
+    /* Vạch chân cột: ĐẬM cho tháng đang xem, NHẠT cho cùng kỳ. Vẽ cả khi
+       cột cao 0 — một ngành năm nay không bán gì vẫn phải thấy được chỗ nó
+       đứng, không thì cặp cột hụt một bên mà không rõ bên nào.
+
+       Vì sao là vạch xám chứ không phải làm nhạt mảng: chủ dự án chốt
+       19/09/2026 "cùng 1 hãng bắt buộc phải cùng 1 màu ở bất kì cột nào,
+       không có biến thể sắc độ". Bản trước làm nhạt cả cột năm trước
+       (`opacity`), tức đúng một biến thể sắc độ của màu hãng — Samsung ở
+       cột phải không còn là màu Samsung nữa. Tín hiệu "tháng nào" vì thế
+       phải nằm NGOÀI mảng màu. */
+    const chan = nut("rect", "chanCot" + (laTruoc ? " chanCotTruoc" : ""));
+    chan.setAttribute("x", x);
+    chan.setAttribute("width", rong);
+    chan.setAttribute("y", y(0));
+    chan.setAttribute("height", 3);
+    svg.appendChild(chan);
+
     const ptCot = (c.gia_tri / tong) * 100;
     if (ptCot <= 0) return;
 
-    /* Ruột cột xếp từ DƯỚI lên, theo đúng thứ tự Engine trả về (hãng lớn
-       trước). Hai cột cạnh nhau vì thế xếp cùng một thứ tự — đó là điều kiện
-       để so được với nhau bằng mắt. */
+    /* Ruột cột xếp từ DƯỚI lên, theo đúng thứ tự Engine trả về — nay là
+       LỚN → BÉ theo giá trị của chính cột ấy (chủ dự án chốt 19/09/2026).
+       Hai cột cạnh nhau vì thế có thể xếp khác thứ tự; cái giữ cho chúng so
+       được với nhau là cùng tập hãng và MỘT màu cố định cho mỗi hãng. */
     let duoi = y(0);
     const mang = c.hang && c.hang.length
       ? c.hang
@@ -441,6 +510,11 @@
     const card = el("div", "cardCoCau");
     if (trangThai.chon) card.appendChild(veChiTiet(kq));
     else card.appendChild(veChuGiaiMau(kq));
+    /* Độ phủ dời từ dưới biểu đồ vào ĐÂY (chủ dự án chốt 19/09/2026: xoá hai
+       dòng giải thích dưới biểu đồ). Con số vẫn phải hiện ở mọi lượt mở —
+       nó là thứ giữ cho phép so cùng kỳ không nói dối (CLAUDE.md) — nhưng
+       một dòng mười hai chữ trong card thì không ăn chiều cao của biểu đồ. */
+    card.appendChild(veDoPhu(kq));
     return card;
   }
 
@@ -450,8 +524,8 @@
    *  người đọc phải rê chuột từng mảng để biết màu nào là hãng nào, tức đúng
    *  cái công mà màu sinh ra để bỏ đi. */
   function veChuGiaiMau(kq) {
-    const o = document.createElement("div");
-    o.appendChild(el("p", "cardTieuDe", "Hãng trong tháng"));
+    const o = el("div", "cardThan");
+    o.appendChild(el("p", "cardTieuDe", "Hãng"));
 
     const A = chonCot(kq.theo_doanh_so.nay);
     /* Cộng theo hãng trên TOÀN bảng để xếp hạng chú giải — đây là phép cộng
@@ -471,7 +545,7 @@
       o.appendChild(el("p", "cardNhac", "Chưa có hãng nào được phân loại trong tháng này."));
       return o;
     }
-    const ul = el("div", "dsMauHang");
+    const ul = el("div", "dsMauHang dsMauDoi");
     for (const [ten] of ds) {
       const d = el("div", "mucMauHang");
       d.appendChild(oMau(mauHang(ten)));
@@ -481,16 +555,19 @@
     }
     o.appendChild(ul);
 
-    const ghi = el("div", "dsMauHang");
-    for (const [mau, ten] of [[mauKhac(), "Hãng nhỏ, đã gộp"],
-                              [mauChuaPhanLoai(), "Chưa gán mã (NONE)"]]) {
+    /* Hai nhãn rút ngắn (chủ dự án chốt 19/09/2026: "Hãng nhỏ đã gộp ghi
+       thành Hãng nhỏ, chưa gán ghi thành None") và KHÔNG còn câu nhắc "bấm
+       vào một mảng…" — "không cần giải thích nhiều". Cùng lớp `.dsMauDoi`
+       với danh sách trên để ô màu của hai khối thẳng một trục. */
+    const ghi = el("div", "dsMauHang dsMauDoi");
+    for (const [mau, ten] of [[mauKhac(), "Hãng nhỏ"],
+                              [mauChuaPhanLoai(), "None"]]) {
       const d = el("div", "mucMauHang mucMauPhu");
       d.appendChild(oMau(mau));
       d.appendChild(el("span", "tenMauHang", ten));
       ghi.appendChild(d);
     }
     o.appendChild(ghi);
-    o.appendChild(el("p", "cardNhac", "Bấm vào một mảng trên biểu đồ để xem chi tiết."));
     return o;
   }
 
@@ -523,7 +600,7 @@
     const a = tim(A, nganh, hang), b = kq.co_ky_truoc ? tim(B, nganh, hang) : null;
     const cotA = A.cot.find((x) => x.ten === nganh) || null;
 
-    const o = document.createElement("div");
+    const o = el("div", "cardThan");
 
     const dau = el("div", "cardDau");
     if (hang) dau.appendChild(oMau(mauHang(hang)));
@@ -563,7 +640,7 @@
       const g = el("div", "cardKhoi");
       g.appendChild(el("p", "cardNhanKhoi", "Gồm " + a.gom.length + " hãng"));
       for (const x of a.gom) {
-        const d = el("div", "mucMauHang mucMauPhu");
+        const d = el("div", "mucMauHang mucMauPhu mucMauSo");
         d.appendChild(oMau(mauHang(x.ten)));
         d.appendChild(el("span", "tenMauHang", x.ten));
         d.appendChild(el("span", "soMauHang", gonTien(x.doanh_so)));
@@ -572,13 +649,14 @@
       o.appendChild(g);
     }
 
+    /* Hai câu nhắc dài của bản trước đã rút còn một cụm ngắn (chủ dự án chốt
+       19/09/2026: "không cần giải thích nhiều"). Câu đầy đủ vẫn nằm ở phần
+       rê chuột trên chính mảng ấy — chỗ người đang hỏi sẽ tìm tới. */
     if (cotA && cotA.ten_goc) {
-      o.appendChild(el("p", "cardNhac", "Cột này gộp: " + cotA.ten_goc.join(", ") + "."));
+      o.appendChild(el("p", "cardNhac", "Gộp: " + cotA.ten_goc.join(", ")));
     }
     if (cotA && cotA.la_chua_phan_loai) {
-      o.appendChild(el("p", "cardNhac",
-        "Đây là phần chưa gán mã bảng giá. Gán mã bên tab Báo cáo bán hàng "
-        + "là chúng vào đúng ngành."));
+      o.appendChild(el("p", "cardNhac", "Chưa gán mã bảng giá."));
     }
     return o;
   }
@@ -617,27 +695,48 @@
     return o;
   }
 
-  /** Độ phủ. Con số này là thứ giữ cho biểu đồ không nói dối: so một tháng
-   *  đã gán kỹ với một tháng gán ít mà không có nó là bịa ra tăng trưởng. */
-  function veChuGiaiDoPhu(kq) {
-    const p = el("p", "chuGiaiCoCau");
+  /** Hai con số độ phủ của `do_phu`, hoặc `null` khi tháng không có dòng nào. */
+  function soDoPhu(kq) {
     const dp = kq.do_phu || {};
-    const a = dp.nay ? dp.nay.doanh_so_pt : null;
-    const b = dp.truoc ? dp.truoc.doanh_so_pt : null;
+    const lay = (x) => (x && x.doanh_so_pt !== null && x.doanh_so_pt !== undefined
+      ? x.doanh_so_pt : null);
+    return { nay: lay(dp.nay), truoc: kq.co_ky_truoc ? lay(dp.truoc) : null };
+  }
 
-    const noi = (nhan, v) => (v === null || v === undefined
-      ? nhan + ": chưa có dòng hàng"
-      : nhan + ": đã phân loại " + pt1(v) + "%");
-
-    p.appendChild(el("span", null, noi(nhanKy(kq.ky), a)));
-    if (kq.co_ky_truoc) p.appendChild(el("span", null, noi(nhanKy(kq.ky_truoc), b)));
-
-    if (a !== null && b !== null && Math.abs(a - b) >= 15) {
-      p.appendChild(el("span", "canhBaoDoPhu",
-        "⚠ hai tháng lệch độ phủ " + pt1(Math.abs(a - b)) + " điểm — so tỉ trọng "
-        + "giữa chúng chưa chắc đúng, gán thêm mã cho tháng phủ thấp trước"));
+  /** Độ phủ, gói trong MỘT dòng ở đáy card.
+   *
+   *  Con số này là thứ giữ cho biểu đồ không nói dối: so một tháng đã gán kỹ
+   *  với một tháng gán ít mà không có nó là bịa ra tăng trưởng. Nên nó không
+   *  bị bỏ đi cùng hai dòng giải thích dưới biểu đồ — nó chỉ đổi chỗ, và đổi
+   *  sang lối viết ngắn nhất còn nói đủ. */
+  function veDoPhu(kq) {
+    const p = el("p", "chuGiaiCoCau");
+    const { nay, truoc } = soDoPhu(kq);
+    const viet = (v) => (v === null ? "—" : pt1(v) + "%");
+    p.title = "Phần doanh số đã gán được mã bảng giá, tức phần biểu đồ xếp "
+      + "được vào ngành hàng. Phần còn lại nằm ở cột NONE.";
+    p.appendChild(el("span", null, "Đã phân loại"));
+    p.appendChild(el("span", "soDoPhu", nhanKy(kq.ky) + " " + viet(nay)));
+    if (kq.co_ky_truoc) {
+      p.appendChild(el("span", "soDoPhu", nhanKy(kq.ky_truoc) + " " + viet(truoc)));
     }
     return p;
+  }
+
+  /** Chip cảnh báo khi hai tháng lệch độ phủ quá xa — `null` nếu không lệch.
+   *
+   *  Ở hàng tiêu đề chứ không ở card: card có thể đang hiện chi tiết một
+   *  mảng, mà đó đúng là lúc người dùng đang đọc một con số "so cùng kỳ" mà
+   *  cảnh báo này nói là chưa chắc đúng. */
+  function chipLechDoPhu(kq) {
+    const { nay, truoc } = soDoPhu(kq);
+    if (nay === null || truoc === null) return null;
+    const lech = Math.abs(nay - truoc);
+    if (lech < 15) return null;
+    const c = el("span", "canhBaoDoPhu", "⚠ lệch độ phủ " + pt1(lech) + " điểm");
+    c.title = "Hai tháng gán mã khác nhau nhiều, nên so tỉ trọng giữa chúng "
+      + "chưa chắc đúng — gán thêm mã cho tháng phủ thấp trước.";
+    return c;
   }
 
   /** Dashboard vừa ép lại chiều cao hai cột → đo lại và vẽ lại hình.
