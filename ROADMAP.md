@@ -75,6 +75,63 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (c) — biểu đồ CƠ CẤU NGÀNH HÀNG × HÃNG.**
+
+Chủ dự án hỏi: dữ liệu hãng/ngành hàng có đủ để dựng biểu đồ so cùng kỳ
+như doanh số không? Kiểm khả thi trước, rồi mới code.
+
+**Một lượt tôi kết luận sai, ghi lại để không ai lặp lại:** tôi nói
+"9/2025 không có dòng hàng", dựa vào chính file này (mục P6 cũ: *"nút
+tháng chỉ liệt kê kỳ CÓ DÒNG HÀNG, từ 08/2026"* và chốt *"không bơm
+ngược dòng hàng cho 20 kỳ legacy"*). **Cả hai câu ấy đã cũ.** Chủ dự án
+gửi ảnh màn hình: T1/2025 bấm được, đủ mười hãng có số. Dòng hàng có từ
+**01/2025**.
+
+Bài học cho session sau: hàng nút Năm/Tháng đọc THẲNG từ `bc/dong`, nên
+**nó mới là danh sách thật** — chính xác hơn mọi câu trong file này. Hỏi
+chủ dự án nhìn màn hình mất 5 giây; suy từ tài liệu mất một lượt sai.
+
+**Biểu đồ chủ dự án mô tả:** cột chồng. Trục ngang = nhóm ngành hàng,
+trục dọc = % cơ cấu. *"Tháng 8, tủ lạnh chiếm 50% → cột cao 50%. Trong
+cột, tủ lạnh Samsung chiếm 50% → màu Samsung tô 50% diện tích cột."* Gam
+**pastel**; hãng tỉ trọng quá nhỏ gộp thành "Khác", rê chuột thấy đủ. So
+cùng kỳ: **hai cột đứng cạnh nhau**.
+
+**Bảy điểm đã chốt:**
+
+1. **Top 8 ngành** + một cột "Khác" (`category_label` của Tracking là
+   danh sách mở, trục có thể dài vài chục cột).
+2. Hãng **dưới 5%** của ngành gộp thành mảng "Khác" — nhưng GIỮ đủ danh
+   sách bên trong để rê chuột đọc được.
+3. Dòng chưa gán mã → **cột xám "Chưa phân loại"**, cao đúng tỉ trọng
+   thật, cuối trục. Cộng nút **[Chỉ phần đã phân loại]** (mặc định TẮT)
+   cho tháng còn phủ thấp. Đo thật 01/2025: 797 máy đã phân loại / 1.575
+   dòng chưa — cột xám sẽ át biểu đồ tới khi gán thêm mã.
+4. Hai chỉ tiêu **Doanh số** và **Số máy**, một nút chuyển.
+5. Phạm vi **toàn công ty** (Dashboard ở tab [Tổng hợp]).
+6. Đặt ở **nửa PHẢI Dashboard**, chỗ cụm ô xu hướng theo Line bỏ lại.
+7. **Cụm ô xu hướng theo Line DỜI về tab của từng line**, ngay TRÊN bảng
+   đơn. Ở Dashboard nó trả lời "so mười line với nhau" — câu hỏi hiếm;
+   ở tab một line câu hỏi luôn là "line NÀY lên hay xuống".
+
+**Chỗ dễ hỏng nhất, và cách chặn:** hai cột cạnh nhau chỉ đọc được nếu
+chúng cùng một trục và mảng cùng màu là cùng một hãng. Nên danh sách
+ngành + danh sách hãng chốt MỘT LẦN cho cả hai tháng, **xếp hạng theo
+TỔNG HAI THÁNG** (xếp theo riêng tháng này thì hãng bán mạnh năm ngoái
+mà năm nay nghỉ rơi vào "Khác" — đúng hãng người ta mở biểu đồ ra tìm).
+Màu gán theo **vân tay của TÊN hãng**, không theo vị trí trong cột.
+
+**Và một con số giữ cho biểu đồ không nói dối:** `do_phu` — % doanh số
+đã phân loại — luôn ghi dưới biểu đồ, kèm cảnh báo khi hai tháng lệch
+từ 15 điểm trở lên. Thiếu nó thì so tháng gán kỹ với tháng gán ít là bịa
+ra một mức tăng trưởng.
+
+Hai lượt merge, đúng bẫy số 4: PR #106 (Engine) trước, Gateway + trang
+tĩnh sau. Cơ cấu LUÔN theo THÁNG, kể cả khi biểu đồ trái đang ở đơn vị
+[Tháng]/[Quý] — "cơ cấu của cả năm" là một câu hỏi khác.
+
+---
+
 **LƯỢT 19/09/2026 (b) — mốc 09/2026 tách làm đôi: khớp mã mọi kỳ.**
 
 Chủ dự án hỏi: tháng trước 09/2026 chưa cần giá vốn, nhưng khớp mã với

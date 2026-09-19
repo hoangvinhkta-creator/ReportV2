@@ -1981,6 +1981,73 @@ const layAnhBaoHanh = bocNhiPhan(true, async ({ request, env }) => {
   });
 });
 
+/* =================== GET /api/co-cau ===================
+ * Cơ cấu ngành hàng × hãng của một kỳ, kèm cùng kỳ NĂM TRƯỚC để vẽ hai cột
+ * đứng cạnh nhau. Chủ dự án chốt 19/09/2026.
+ *
+ * DÙNG LẠI `dungBangDonHang()` — chính hàm dựng bảng của tab [Báo cáo bán
+ * hàng] — chứ không đọc thẳng `bc/dong` rồi tự cộng. Cùng lý do `/api/bao-hanh`
+ * đã chọn: hãng và ngành hàng chỉ có sau khi khớp mã, hàng trả lại chỉ lộ ra
+ * sau `apDungBTL`, và một dòng XOÁ TAY phải biến khỏi CẢ biểu đồ. Dựng một
+ * đường đọc thứ hai là dựng lại cả chuỗi luật ấy, và hai bản sẽ trôi khỏi
+ * nhau đúng lúc không ai để ý — lúc ấy biểu đồ và bảng nói hai sự thật khác
+ * nhau về cùng một tháng.
+ *
+ * HAI THÁNG DỰNG SONG SONG, không nối đuôi: chúng độc lập hoàn toàn, và xếp
+ * hàng là bắt người dùng chờ gấp đôi cho không. Bảng giá Tracking có bộ đệm
+ * nên lượt thứ hai gần như không trả thêm gì cho nó.
+ *
+ * Kỳ năm trước KHÔNG CÓ SỔ là chuyện bình thường, không phải lỗi: nó ra một
+ * bảng rỗng, và Gateway đổi thành `null` để Engine bật `co_ky_truoc: false`.
+ * Màn hình khi ấy nói thẳng "chưa có dữ liệu dòng hàng tháng này" thay vì vẽ
+ * một cột cao 0 — thứ đọc ra thành "năm ngoái không bán gì".
+ */
+const layCoCau = boc(true, async ({ request, env, rid }) => {
+  const q = new URL(request.url).searchParams;
+  const ky = q.get("ky");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+
+  const kyTruocNam = namTruoc(ky);
+
+  /* Kỳ năm trước hỏng thì KHÔNG kéo theo cả biểu đồ: cơ cấu tháng này vẫn
+     đọc được mà không cần nó. Bắt lỗi ngay tại lời hứa, đúng lối bảng giá
+     Tracking đã chọn ở `dungBangDonHang`. */
+  const [kqNay, kqTruoc] = await Promise.all([
+    dungBangDonHang(env, ky, null, rid),
+    kyTruocNam
+      ? dungBangDonHang(env, kyTruocNam, null, rid).catch((e) => {
+        nhatKy({ rid, duong: "/api/co-cau", canh_bao: "ky-truoc-hong:"
+          + ((e && (e.ly || e.message)) || "khong-ro") });
+        return null;
+      })
+      : null,
+  ]);
+
+  /* "Có bảng" khác "có dữ liệu": một kỳ chưa nạp sổ vẫn ra một bảng hợp lệ
+     với 0 ngày. Đưa nguyên nó cho Engine thì `co_ky_truoc` bật lên và màn
+     hình vẽ một cột 0 — nên quy về `null` ngay tại đây. */
+  const bangTruoc = kqTruoc && kqTruoc.bang && Array.isArray(kqTruoc.bang.ngay)
+    && kqTruoc.bang.ngay.length ? kqTruoc.bang : null;
+
+  let co_cau;
+  try {
+    co_cau = await env.REPORT_ENGINE.coCauNganhHang(kqNay.bang, bangTruoc);
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-co-cau:" + (e && e.message));
+  }
+
+  return {
+    ky,
+    ky_truoc: kyTruocNam,
+    ...co_cau,
+    /* Tracking hỏng thì không dòng nào có hãng, tức MỌI cột rơi vào "Chưa
+       phân loại". Màn hình bắt buộc nói ra: một sự cố mạng không được phép
+       kết luận "tháng này chưa phân loại được gì" thay người (CLAUDE.md). */
+    loi_nguon_ma: kqNay.loi_nguon_ma,
+  };
+});
+
 /* =================== ĐẨY SANG GOOGLE SHEET (13/09/2026) ===================
  *
  * Chủ dự án chốt: mỗi tháng tạo một Sheet mới cho từng nhân viên, dán link
@@ -2169,6 +2236,7 @@ const API_ROUTES = new Map([
   ["POST /api/bonus", datBonus],
   ["POST /api/sheet-link", datSheetLink],
   ["POST /api/day-sheet", daySheet],
+  ["GET /api/co-cau", layCoCau],
   ["GET /api/bao-hanh", layBaoHanh],
   ["POST /api/kich-hoat", datKichHoat],
   ["POST /api/bao-hanh/dang-nhap", datDangNhapBaoHanh],
