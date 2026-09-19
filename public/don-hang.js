@@ -2209,6 +2209,24 @@
        cũ trên Sheet, đúng thứ cần khi một đơn bị xoá hết. */
     veDaiSheet(khung, kq);
 
+    /* KHỐI XU HƯỚNG CỦA CHÍNH LINE NÀY, ngay TRÊN bảng đơn (chủ dự án chốt
+       19/09/2026). Nó rời khỏi Dashboard về đây vì câu hỏi đổi: ở Dashboard
+       mười ô nhỏ trả lời "so mười line với nhau", còn khi đã mở tab một line
+       thì câu hỏi luôn là "line NÀY đang lên hay xuống".
+
+       Dựng TRƯỚC phép kiểm "có đơn nào không", cùng lý do hai dải setup ở
+       trên: một line chưa có đơn tháng này vẫn có xu hướng của những tháng
+       trước để nhìn — và đó đúng là lúc người ta muốn nhìn nhất.
+
+       `don-hang.js` không dựng một nét hình nào: nó chừa cái ô rồi nói tên
+       line, qua đúng một cửa hẹp `window.SucKhoe` — cùng quy ước đã có từ
+       P2(b), chỉ ngược chiều. */
+    if (window.SucKhoe && window.SucKhoe.veXuHuongLine) {
+      const oXu = el("div", "khoiXuHuongLine");
+      khung.appendChild(oXu);
+      window.SucKhoe.veXuHuongLine(oXu, trangThai.line);
+    }
+
     if (!b.ngay.length) {
       demLaiConNo(false);
       khung.appendChild(el("p", "dangTai", "Line này chưa có đơn nào trong tháng đã chọn."));

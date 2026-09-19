@@ -685,8 +685,13 @@
         : "");
   }
 
-  function dungKhung(nam) {
-    const dv = trangThai.donVi;
+  /** `dvEp`: ép một đơn vị thời gian, bỏ qua nút đang chọn.
+   *
+   *  Chỉ khối xu hướng của TỪNG LINE dùng tới (19/09/2026): nó nằm trong tab
+   *  của một line, nơi không có hàng nút [Ngày][Tháng][Quý] nào để bấm, và
+   *  câu hỏi ở đó luôn là "line này bán thế nào trong THÁNG đang mở". */
+  function dungKhung(nam, dvEp) {
+    const dv = dvEp || trangThai.donVi;
     if (dv === "thang") {
       return {
         lay: (n) => layDiem((duLieu.theo_thang || {})[n]),
@@ -827,23 +832,28 @@
 
   /** Chiều cao hệ toạ độ của biểu đồ trái, tính từ lần đo gần nhất. */
   let caoHeToaDo = CAO_MAC_DINH;
-  /** Như trên, cho MỘT ô của lưới nhỏ — để cụm bên phải cũng lấp đầy cột thay
-   *  vì xếp sát mép trên rồi bỏ trống phần dưới. */
+  /** Hệ toạ độ của khối xu hướng MỘT line (`veXuHuongLine` đo và gán lại
+   *  theo bề rộng thật của khối chứa nó). */
   let caoOMini = CAO_MINI_MAC_DINH;
-  /** Bề rộng hệ toạ độ một ô — xem `caoOMini`. */
+  /** Bề rộng hệ toạ độ ấy — xem `caoOMini`. */
   let rongOMini = RONG_MINI_MAC_DINH;
-  /** Số ô lưới đang vẽ — cần để tính ra lưới đang có mấy HÀNG. */
-  let soOMini = 0;
-  /** Số CỘT lưới đang vẽ — `canhCaoKhoi()` chia chiều cao theo đúng số hàng
-   *  mà con số này sinh ra, không tự đoán lại từ bề rộng. */
-  let soCotMini = 3;
   let dangCanh = false;
 
-  /* Ba số phải KHỚP với CSS của `.luoiXuHuong` / `.oMini` (khe hở, bề rộng ô
-     tối thiểu, viền + đệm + dòng tên). Lệch một chút chỉ làm ô hơi thừa hoặc
-     hơi thiếu chỗ, không làm sai số nào — nên chép ở đây là đánh đổi chấp
-     nhận được, đổi lấy việc không phải đo từng ô một mỗi lượt vẽ. */
-  const KHE_O = 8, VIEN_O = 14, CAO_TEN_O = 16;
+  /* BA HẰNG `KHE_O` / `VIEN_O` / `CAO_TEN_O` và hai biến đếm ô lưới đã BỎ
+     (19/09/2026): chúng chỉ tồn tại để `canhCaoKhoi()` chia chiều cao cột
+     phải cho số HÀNG của lưới mười ô. Lưới ấy đã về tab của từng line và ở
+     đó nó là MỘT ô đứng một mình, đo theo bề rộng khối chứa nó. Giữ lại
+     mấy con số chép từ CSS mà không còn ai đọc là để sẵn một cái bẫy cho
+     lượt sửa sau. */
+
+  /** Chiều cao hệ toạ độ của khối xu hướng MỘT line (trên bảng đơn).
+   *
+   *  Cao hơn một ô trong lưới mười ô cũ: ở đó ô phải chia nhau chiều cao
+   *  một cột, còn ở đây nó đứng một mình trên bảng và chỉ lấy đúng phần
+   *  mình cần. Thấp hơn thế thì đường thành một vạch; cao hơn thì nó đẩy
+   *  bảng đơn xuống dưới mép màn hình, mà bảng mới là thứ người ta vào tab
+   *  này để xem. */
+  const CAO_O_MOT_LINE = 132;
 
   /** Khoảng phải chừa DƯỚI khối: lề dưới của chính nó, cộng đệm/viền/lề dưới
    *  của mọi phần tử chứa nó cho tới `<body>`.
@@ -883,8 +893,8 @@
    *  vẽ thì vẽ lại ĐÚNG MỘT lần nữa — `dangCanh` chặn vòng lặp, vì lượt vẽ
    *  lại cũng gọi lại chính hàm này. */
   function canhCaoKhoi() {
-    const khoi = $("o-dashboard"), oVe = $("skVe"), oLuoi = $("skLuoiNho");
-    if (!khoi || !oVe || !oLuoi) return;
+    const khoi = $("o-dashboard"), oVe = $("skVe"), oPhai = $("skCotPhai");
+    if (!khoi || !oVe || !oPhai) return;
     /* DOM giả của bộ kiểm không có hình học — `getBoundingClientRect` trả 0.
        Khi ấy giữ nguyên hình học mặc định, đúng hành vi trước lượt sửa này. */
     const hop = khoi.getBoundingClientRect ? khoi.getBoundingClientRect() : null;
@@ -901,7 +911,7 @@
     const caoCot = Math.min(TRAN_KHOI, Math.max(SAN_KHOI, conLai - caoNgoai));
 
     oVe.style.height = caoCot + "px";
-    oLuoi.style.height = caoCot + "px";
+    oPhai.style.height = caoCot + "px";
 
     /* Khung vẽ (phần còn lại của cột sau tiêu đề và chú giải) — `flex: 1`
        nên nó đúng bằng chỗ thừa, không phụ thuộc hình đang vẽ cao bao nhiêu. */
@@ -909,33 +919,13 @@
     if (!hopVe || !hopVe.clientHeight || !hopVe.clientWidth) return;
     /* viewBox phải CÙNG TỈ LỆ với khung, nếu không SVG tự chừa dải trắng. */
     const canCao = Math.round(RONG * hopVe.clientHeight / hopVe.clientWidth);
-    /* Ô lưới: chia chiều cao cột cho số HÀNG thật (số cột suy từ bề rộng đo
-       được), rồi quy sang chiều cao hệ toạ độ của một ô. Không làm bước này
-       thì ô giữ nguyên cỡ cũ và cụm phải xếp sát mép trên, bỏ trống phần
-       dưới — đúng chỗ chủ dự án khoanh đỏ. */
-    let canO = caoOMini, canRongO = rongOMini;
-    const luoi = $("skLuoiGrid");
-    if (luoi && luoi.clientWidth && luoi.clientHeight && soOMini > 0) {
-      const cot = soCotMini;
-      const hang = Math.ceil(soOMini / cot);
-      const rongO = (luoi.clientWidth - (cot - 1) * KHE_O) / cot - VIEN_O;
-      const caoO = (luoi.clientHeight - (hang - 1) * KHE_O) / hang - VIEN_O - CAO_TEN_O;
-      /* Sàn 24px cho chiều cao: dưới ngưỡng ấy đường xu hướng thành một
-         vạch, không còn hình dạng để đọc. */
-      if (rongO > 20 && caoO > 24) { canRongO = Math.round(rongO); canO = Math.round(caoO); }
-    }
-
-    const lechVe = Math.abs(canCao - caoHeToaDo) >= 6;
-    const lechO = Math.abs(canO - caoOMini) >= 4 || Math.abs(canRongO - rongOMini) >= 8;
-    if (dangCanh || (!lechVe && !lechO)) return;
+    /* KHÔNG còn nhánh đo ô lưới ở đây (19/09/2026): cột phải nay là biểu đồ
+       cơ cấu ngành hàng, nó tự co theo chiều cao vừa ép ở trên. Ô xu hướng
+       của một line đã về tab của line ấy và tự đo bề rộng khối chứa nó. */
+    if (dangCanh || Math.abs(canCao - caoHeToaDo) < 6) return;
     caoHeToaDo = canCao;
-    caoOMini = canO;
-    rongOMini = canRongO;
     dangCanh = true;
-    try {
-      if (lechVe) veBieuDoHienTai();
-      if (lechO) veKhoiLuoiNho();
-    } finally { dangCanh = false; }
+    try { veBieuDoHienTai(); } finally { dangCanh = false; }
   }
 
   /** Hàng tab chỉ số [Doanh số] [Số đơn] — dùng CHUNG cho cả hai khối. */
@@ -953,95 +943,97 @@
     });
   }
 
-  /** Ghi tiêu đề cụm ô nhỏ — nó KHÔNG còn nằm trong cột phải mà ở dải điều
-   *  khiển, nên mọi lối ra của `veKhoiLuoiNho()` phải đi qua đây: một lối ra
-   *  quên dọn là tiêu đề của kỳ trước còn treo trên một cột đã trống. */
+  /** Ghi tiêu đề cột PHẢI — nó không nằm trong cột mà ở dải điều khiển, nên
+   *  mọi lối ra của phần vẽ cột ấy phải đi qua đây: một lối ra quên dọn là
+   *  tiêu đề của kỳ trước còn treo trên một cột đã trống. */
+  /** Kỳ đang xem, dạng "YYYY-MM" — thứ `co-cau.js` cần để hỏi máy chủ.
+   *
+   *  Biểu đồ cơ cấu LUÔN theo THÁNG, kể cả khi biểu đồ bên trái đang ở đơn
+   *  vị [Tháng] hay [Quý] (tức đang nói về cả năm). Cố ý: "cơ cấu ngành hàng
+   *  của cả năm" là một câu hỏi khác hẳn, và trộn hai khung thời gian trên
+   *  một dải điều khiển là hai cột cạnh nhau nói về hai thứ. Tiêu đề của cột
+   *  phải luôn ghi rõ tháng nào, nên không có chỗ nào để hiểu nhầm. */
+  function kyHienTai() {
+    if (trangThai.nam === null || !trangThai.thang) return null;
+    return trangThai.nam + "-" + String(trangThai.thang).padStart(2, "0");
+  }
+
   function tieuDeLuoi(chu) {
-    const o = $("skTieuDeLuoi");
+    const o = $("skTieuDePhai");
     if (o) o.innerHTML = chu;
   }
 
-  function veKhoiLuoiNho() {
-    const o = $("skLuoiNho");
-    if (!o) return;
-    if (!duLieu || !duLieu.line) { o.innerHTML = ""; tieuDeLuoi(""); return; }
+  /* ═══════════ Xu hướng của MỘT line — dời về tab của line đó ═══════════
+   *
+   * Chủ dự án chốt 19/09/2026: cụm mười ô nhỏ "xu hướng theo Line" RỜI khỏi
+   * Dashboard (chỗ ấy nay là biểu đồ cơ cấu ngành hàng) và về đúng tab của
+   * từng line, NGAY TRÊN bảng đơn.
+   *
+   * Vì sao chuyển hẳn chứ không bày ở cả hai nơi: ở Dashboard, mười ô cạnh
+   * nhau trả lời câu "so mười line với nhau" — một câu hỏi hiếm khi được
+   * hỏi. Còn khi đã mở tab một line thì câu hỏi luôn là "line NÀY đang lên
+   * hay xuống", và câu trả lời ấy phải nằm ngay trên bảng, không ở một màn
+   * khác.
+   *
+   * ĐƠN VỊ LUÔN LÀ NGÀY của tháng đang mở, không theo nút [Ngày][Tháng][Quý]
+   * của Dashboard: tab của một line vốn đã là một tháng cụ thể (bảng đơn bên
+   * dưới chỉ có tháng ấy), nên một đường vẽ theo cả năm đứng trên nó là hai
+   * khung thời gian cạnh nhau — đúng thứ chú thích của đơn vị Quý đã cảnh
+   * báo từ 12/09/2026.
+   */
 
-    const L = duLieu.line;
-    const k = dungKhung(trangThai.nam);
+  /** Yêu cầu vẽ tới TRƯỚC khi có dữ liệu — giữ lại để vẽ lúc dữ liệu về. */
+  let choVeLine = null;
+
+  function veXuHuongLine(oEl, tenLine) {
+    if (!oEl || typeof tenLine !== "string" || !tenLine) return;
+    /* Màn báo cáo vẽ bảng xong là gọi ngay, còn khối này tải dữ liệu của
+       riêng nó (`/api/bao-cao/suc-khoe`, không phải `/api/don-hang`). Lượt
+       gọi tới trước thì GHI NHỚ rồi vẽ lúc dữ liệu về — im lặng bỏ qua là
+       một ô trống mãi mãi cho tới khi người dùng bấm đổi tháng. */
+    choVeLine = { el: oEl, ten: tenLine };
+    if (trangThai.nam === null || !duLieu || !duLieu.line) {
+      oEl.innerHTML = '<p class="dangTai">Đang tải xu hướng…</p>';
+      taiNeuCan();
+      return;
+    }
+
+    const k = dungKhung(trangThai.nam, "ngay");
     const bd = BIEU_DO[trangThai.chiSo] || BIEU_DO[0];
-    const thuTu = L.thu_tu || [];
-    if (!thuTu.length) { o.innerHTML = ""; tieuDeLuoi(""); return; }
-    const tenCuoi = thuTu[thuTu.length - 1];
 
-    /* Chủ dự án chốt "xu hướng line chỉ làm theo ngày + tháng". Ở đơn vị Quý
-       thì NÓI RA một câu thay vì (a) hiện lưới theo tháng — hai khối cạnh
-       nhau nói hai khung thời gian khác nhau, người đọc so chúng là ra kết
-       luận sai — hay (b) để trống trơn, thứ trông y như một lỗi. */
-    if (!k.layLine) {
-      tieuDeLuoi("Xu hướng theo Line");
-      o.innerHTML = '<p class="miniRong">Cụm này chỉ vẽ theo ngày và theo tháng. '
-        + 'Chuyển biểu đồ bên trái về [Ngày] hoặc [Tháng] để xem.</p>';
+    /* Bản Engine cũ chưa trả số theo ngày × line (bẫy số 4) — nói thẳng một
+       câu thay vì một ô trống trông như line này đã ngừng bán. */
+    if (!duLieu.line.theo_ngay_thang) {
+      oEl.innerHTML = '<p class="miniRong">Máy chủ chưa trả số theo ngày cho từng line '
+        + "(bản vừa cập nhật đang lên). Thử lại sau ít phút.</p>";
       return;
     }
 
-    /* Dữ liệu ngày × line là trường MỚI của Engine (P6). Giữa hai lượt deploy
-       song song (bẫy số 4) bản Engine cũ còn đang chạy và chưa trả nó — nói
-       thẳng một câu thay vì hiện mười ô trống trông như mười line đã ngừng
-       bán. */
-    if (trangThai.donVi === "ngay" && !L.theo_ngay_thang) {
-      tieuDeLuoi("Xu hướng theo Line");
-      o.innerHTML = '<p class="miniRong">Máy chủ chưa trả số theo ngày cho từng line '
-        + '(bản vừa cập nhật đang lên). Thử lại sau ít phút.</p>';
-      return;
-    }
+    const diem = k.layLine(duLieu.line, tenLine);
 
-    /* Bỏ hai nhóm khỏi cụm ô nhỏ (chủ dự án chốt 12/09/2026):
-       · line KHÔNG có số nào trong kỳ — một ô ghi "chưa có số" không phải
-         một xu hướng, nó chỉ chiếm chỗ của ô có số thật;
-       · line GOM (đứng CUỐI bảng line, hiện là "Khác") — nó là một rổ gộp
-         nhiều tên rời rạc nên đường xu hướng của nó không nói lên điều gì,
-         và bỏ nó ra làm số ô còn lại chẵn, chia lưới dễ hơn.
-       Bảng [Tổng hợp] vẫn giữ "Khác": ở đó nó là một dòng TIỀN có thật. */
-    const dsLine = thuTu
-      .filter((ten) => ten !== tenCuoi)
-      .map((ten) => ({ ten, diem: k.layLine(L, ten) }))
-      .filter((x) => x.diem.length);
-    if (!dsLine.length) { o.innerHTML = ""; tieuDeLuoi(""); return; }
+    /* Hệ toạ độ bằng ĐÚNG số pixel của khối — cùng lý do `veMiniDuong` đã
+       chọn: một-đổi-một thì cỡ chữ trong ô là cỡ chữ thật, không bị phóng
+       to theo bề rộng. Sàn 240 để khối không thành một vạch trên màn hẹp. */
+    rongOMini = Math.max(240, oEl.clientWidth || 0);
+    caoOMini = CAO_O_MOT_LINE;
 
-    /* Sắp GIẢM DẦN theo tổng của CHÍNH chỉ số đang xem — đổi chỉ số không làm
-       lưới xáo trộn ngoài dự đoán. */
-    const tongCua = (arr) => arr.reduce((t, p) => t + bd.layGiaTri(p), 0);
-    dsLine.sort((a, b) => tongCua(b.diem) - tongCua(a.diem));
-
-    /* Số CỘT chọn sao cho lưới chia thành ít hàng mà ô không quá hẹp: sáu ô
-       trên một cột rộng thì 3×2 đọc tốt hơn 6×1 (ô dẹt) hay 2×3 (ô cao mà
-       hẹp). Trần 150px giữ cho ô không mỏng tới mức đường thành một vạch. */
-    const rongCot = o.clientWidth || 0;
-    const cotVua = rongCot ? Math.max(1, Math.floor(rongCot / 150)) : 3;
-    const soCot = Math.max(1, Math.min(cotVua, Math.ceil(dsLine.length / 2)));
-
-    soOMini = dsLine.length;
-    soCotMini = soCot;
-    /* Vị trí cuối cùng có số của CẢ CỤM — xem `veMiniDuong`. */
+    /* Trục dừng ở vị trí CUỐI CÙNG CÓ SỐ, không kéo hết tháng: sổ mới có số
+       tới ngày 13 mà trục kéo tới 30 thì đường chỉ chiếm 40% bề ngang. */
     let vtCuoi = 0;
-    for (const { diem } of dsLine) {
-      for (const p of diem) if (p.vt > vtCuoi) vtCuoi = p.vt;
-    }
+    for (const p of diem) if (p.vt > vtCuoi) vtCuoi = p.vt;
     const kO = Object.assign({}, k, { vtMaxMini: Math.max(2, vtCuoi) });
 
-    tieuDeLuoi("Xu hướng theo Line · " + thoat(k.duoi)
-      + (bd.donVi ? ' <span class="donViCua">(' + thoat(bd.donVi) + ")</span>" : ""));
+    const m = veMiniDuong(tenLine + " · " + k.duoi, diem, bd, kO, 0);
+    khoMini = [m.toaDo];
+    oEl.innerHTML = '<div class="luoiXuHuong oMotLine">' + m.html + "</div>";
+    ganReChuot(oEl, bd, kO);
+  }
 
-    /* Toạ độ điểm của từng ô được giữ lại để lượt rê chuột tra ra điểm gần
-       nhất — tính lại từ đầu trong lúc rê thì mỗi lượt `mousemove` phải dựng
-       lại cả chuỗi. */
-    const oVe = dsLine.map(({ ten, diem }, i) => veMiniDuong(ten, diem, bd, kO, i));
-    khoMini = oVe.map((m) => m.toaDo);
-    o.innerHTML = '<div class="luoiXuHuong" id="skLuoiGrid" style="grid-template-columns:repeat('
-      + soCot + ',1fr)">'
-      + oVe.map((m) => m.html).join("")
-      + "</div>";
-    ganReChuot(o, bd, kO);
+  /** Vẽ lại khối xu hướng line đang treo, nếu có. Gọi sau mỗi lượt dữ liệu
+   *  về hoặc đổi kỳ — không thì khối giữ số của tháng trước. */
+  function veLaiXuHuongLine() {
+    if (!choVeLine || !choVeLine.el || !choVeLine.el.isConnected) return;
+    veXuHuongLine(choVeLine.el, choVeLine.ten);
   }
 
   /** Hàng tab đơn vị thời gian [Ngày] [Tháng] [Quý].
@@ -1068,7 +1060,22 @@
     veTabDonVi();
     veTabChiSo();
     veBieuDoHienTai();
-    veKhoiLuoiNho();
+    /* Cột phải: biểu đồ cơ cấu ngành hàng (19/09/2026). Gọi qua một CỬA HẸP
+       như mọi khối rời khác của app — file này không biết gì về cách vẽ cột
+       chồng, và `co-cau.js` không biết gì về bố cục hai cột ở đây. Thiếu hẳn
+       file kia (chưa tải xong) cũng không được làm hỏng biểu đồ bên trái. */
+    if (window.CoCau && window.CoCau.ve) {
+      window.CoCau.ve($("skCotPhai"), $("skTieuDePhai"), kyHienTai());
+    } else {
+      /* Không có file kia thì DỌN, không để tiêu đề của lượt trước treo lại
+         trên một cột trống — cùng kỷ luật `tieuDeLuoi` đã có từ 12/09. */
+      tieuDeLuoi("");
+      const o = $("skCotPhai");
+      if (o) o.innerHTML = "";
+    }
+    /* Khối xu hướng của line đang mở (nếu đang ở tab một line) phải theo kỳ
+       mới — nó nằm ở màn khác nên không tự biết kỳ vừa đổi. */
+    veLaiXuHuongLine();
     canhCaoKhoi();
   }
 
@@ -1103,13 +1110,18 @@
       + '<p class="tieuDeSk" id="skTieuDe"></p>'
       + '<div class="chuGiaiSk" id="skChuGiai"></div>'
       + "</div>"
-      /* Tiêu đề cụm ô nhỏ dời từ TRONG cột phải lên đây (chủ dự án chốt
-         12/09/2026) — chỗ nó bỏ lại trong cột trả về cho chính các ô. */
-      + '<div class="cumPhai"><p class="tieuDeSk" id="skTieuDeLuoi"></p></div>'
+      /* Tiêu đề cột PHẢI dời từ trong cột lên đây (chủ dự án chốt
+         12/09/2026) — chỗ nó bỏ lại trong cột trả về cho chính nội dung.
+         Từ 19/09/2026 cột phải không còn là lưới ô xu hướng theo line (đã
+         dời về tab của từng line) mà là biểu đồ CƠ CẤU NGÀNH HÀNG, nên hai
+         ô đổi tên theo: `skTieuDeLuoi`/`skLuoiNho` → `skTieuDePhai`/
+         `skCotPhai`. Một cái tên nói sai nội dung là cái bẫy cho lượt sửa
+         sau. */
+      + '<div class="cumPhai"><p class="tieuDeSk" id="skTieuDePhai"></p></div>'
       + "</div>"
       + '<div class="haiCotBieuDo">'
       + '<div class="cotTrai" id="skVe"></div>'
-      + '<div class="cotPhai" id="skLuoiNho"></div>'
+      + '<div class="cotPhai" id="skCotPhai"></div>'
       + "</div>"
       + '<p class="canhBao" id="skLoi"></p>';
     return true;
@@ -1138,7 +1150,7 @@
       veLai();
     } catch (e) {
       oVe.innerHTML = "";
-      $("skLuoiNho").innerHTML = "";
+      $("skCotPhai").innerHTML = "";
       oLoi.textContent = "Không lấy được số liệu biểu đồ: " + e.message;
     } finally {
       dangTai = false;
@@ -1189,6 +1201,13 @@
     /** Hiện/ẩn cả khối — chỉ tab [Tổng hợp] mới có biểu đồ (chủ dự án chốt
      *  12/09/2026). Ở tab của một line, bảng đơn 19 cột đã rất dài; thêm
      *  biểu đồ bên dưới là phải cuộn qua hàng trăm dòng mới thấy. */
+    /** Vẽ khối xu hướng của MỘT line vào một ô của màn báo cáo.
+     *
+     *  Cửa vào DUY NHẤT theo chiều này (19/09/2026). `don-hang.js` không
+     *  dựng hình, không biết gì về hệ toạ độ hay bộ số của biểu đồ — nó chỉ
+     *  chừa một cái ô và nói "line nào". Cùng quy ước `datKy`/`hien` đã có
+     *  từ P2(b), chỉ ngược chiều. */
+    veXuHuongLine: veXuHuongLine,
     hien: function (co) {
       const o = $("o-dashboard");
       if (o) o.hidden = !co;

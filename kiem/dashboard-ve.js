@@ -291,10 +291,10 @@ function kiemMoc(ten, gtThat, doiSo) {
     const khung = CAY['o-dashboard'].innerHTML;
     ok('báo kỳ → khung được ghi vào ô màn báo cáo chừa sẵn',
        /skTabDonVi/.test(khung) && /skTabChiSo/.test(khung) && /skVe/.test(khung)
-       && /skLuoiNho/.test(khung), true);
+       && /skCotPhai/.test(khung), true);
     ok('  · và KHÔNG còn dải nút phụ (kỳ do màn báo cáo chọn)',
        /skDaiPhu/.test(khung), false);
-    ok('  · hai cột: biểu đồ trái, lưới nhỏ phải', /haiCotBieuDo/.test(khung), true);
+    ok('  · hai cột: biểu đồ trái, cơ cấu ngành hàng phải', /haiCotBieuDo/.test(khung), true);
     ok('gọi đúng /api/bao-cao/suc-khoe', fetchGoi && fetchGoi.url, '/api/bao-cao/suc-khoe');
     ok('có kèm Bearer token', (fetchGoi.opts.headers || {}).Authorization, 'Bearer tok-gia');
 
@@ -469,102 +469,127 @@ function kiemMoc(ten, gtThat, doiSo) {
     nutTab()[0].click(); datKy('2026-09');            // dọn về T9/2026 cho mục sau
   }
 
-  console.log('\n10) Lưới nhỏ — xu hướng theo Line, ĐỒNG BỘ với biểu đồ bên trái');
+  console.log('\n10) Xu hướng theo Line — đã DỜI về tab của từng line');
   {
-    // Đưa trạng thái về T9/2026, chỉ số Doanh số (mặc định) trước khi kiểm.
+    /* Viết lại 19/09/2026. Chủ dự án chốt: cụm mười ô nhỏ rời khỏi Dashboard
+       (nửa phải nay là biểu đồ cơ cấu ngành hàng) và về đúng tab của từng
+       line, ngay TRÊN bảng đơn.
+
+       Bộ này vì vậy đổi chiều canh: không còn "mười ô có xếp đúng lưới
+       không", mà là "một ô có vẽ đúng line được hỏi, đúng khung thời gian
+       của tháng đang mở không" — cộng hai chốt chặn không cho cụm cũ lặng
+       lẽ sống lại ở chỗ cũ. */
     napLai();
     await nghi(); await nghi(); await nghi();
 
-    /* Tiêu đề cụm KHÔNG còn nằm trong cột phải: từ 12/09/2026 nó ở dải điều
-       khiển (`#skTieuDeLuoi`), ngang hàng với tiêu đề biểu đồ trái. Chốt này
-       đổi hướng vì chủ dự án chỉ rõ hai tiêu đề phải đứng trên đúng cụm của
-       mình, và chỗ tiêu đề bỏ lại trong cột thì trả cho các ô. */
-    const tieuDe = () => CAY.skTieuDeLuoi.innerHTML;
-    const luoi = () => CAY.skLuoiNho.innerHTML;
-    const miniCua = (ten) => luoi().split('<svg').slice(1).map((s) => '<svg' + s.split('</svg>')[0])
-      .find((s) => s.includes('aria-label="Xu hướng ' + ten + '"')) || '';
-    const tenTheoThuTu = () => [...luoi().matchAll(/class="tenMini">([^<]*)</g)].map((m) => m[1]);
-    const dCua = (svg) => (svg.match(/<path[^>]*d="([^"]*)"/) || [, ''])[1];
+    /* Cụm cũ phải VẮNG MẶT khỏi Dashboard. Nó còn ở đó thì nửa phải có hai
+       thứ chồng nhau, và biểu đồ cơ cấu không còn chỗ. */
+    const khung2 = CAY['o-dashboard'].innerHTML;
+    ok('Dashboard không còn ô #skLuoiNho', /skLuoiNho/.test(khung2), false);
+    ok('  · cột phải nay là #skCotPhai', /skCotPhai/.test(khung2), true);
+    ok('  · và tiêu đề của nó là #skTieuDePhai', /skTieuDePhai/.test(khung2), true);
 
-    /* ── Mặc định [Ngày]: lưới phải vẽ theo NGÀY của đúng tháng biểu đồ trái
-       đang vẽ. Đây là điều kiện chính của bố cục mới — chủ dự án chốt
-       12/09/2026 "cụm này cũng thể hiện khung thời gian, kiểu biểu đồ đồng
-       bộ với biểu đồ trên". */
-    ok('tiêu đề nói đúng khung thời gian của biểu đồ trái (theo ngày · tháng 9/2026)',
-       /Xu hướng theo Line · theo ngày · tháng 9\/2026/.test(tieuDe()), true);
-    ok('  · không còn chú giải đơn vị "(nghìn đồng)"', /nghìn đồng/.test(tieuDe()), false);
-    ok('  · và không in một cặp ngoặc rỗng thay chỗ', /donViCua/.test(tieuDe()), false);
-    /* Từ 12/09/2026 cụm bỏ hai nhóm: line KHÔNG có số nào trong kỳ (một ô
-       ghi "chưa có số" không phải một xu hướng, nó chỉ chiếm chỗ của ô có số
-       thật) và line GOM đứng cuối bảng ("Khác" — một rổ nhiều tên rời rạc
-       nên đường của nó không nói lên gì, và bỏ ra thì số ô còn lại chẵn).
-       Bảng [Tổng hợp] VẪN giữ "Khác": ở đó nó là một dòng tiền có thật. */
-    ok('chỉ còn ô của line CÓ số', tenTheoThuTu().slice().sort(), ['Nội thành', 'Tín Phát']);
-    ok('  · Shopee (chưa có số) bị bỏ', tenTheoThuTu().includes('Shopee'), false);
-    ok('  · "Khác" (line gom, cuối bảng) cũng bị bỏ', tenTheoThuTu().includes('Khác'), false);
-    ok('  · và KHÔNG còn ô rỗng nào', /oMiniRong/.test(luoi()), false);
-    /* Số cột do JS chốt, để lưới chia ít hàng mà ô không quá hẹp. */
-    ok('lưới được gán số cột tường minh',
-       /grid-template-columns:repeat\(\d+,1fr\)/.test(luoi()), true);
-    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(luoi()), false);
+    /* Cửa vào MỚI, theo chiều ngược lại: màn báo cáo chừa ô, file này vẽ. */
+    ok('có cửa vào window.SucKhoe.veXuHuongLine()',
+       typeof (ctx.SucKhoe || {}).veXuHuongLine, 'function');
 
-    /* KHÔNG còn bộ chọn chỉ số RIÊNG của lưới — nó dùng chung hàng tab với
-       biểu đồ trái. Hai khối cạnh nhau nói hai chỉ số khác nhau là chuyện
-       chấp nhận được khi chúng ở hai màn, không chấp nhận được khi chúng
-       nằm sát nhau. */
-    ok('lưới KHÔNG có hàng tab chỉ số riêng', /skLuoiChiSo/.test(luoi()), false);
+    const oLine = elGia('xuHuongLineGia');
+    ctx.SucKhoe.veXuHuongLine(oLine, 'Nội thành');
+    const ve = () => oLine.innerHTML;
 
-    console.log('    (Nội thành bán ngày 1, 2, 5 — lỗ hổng 3-4 phải NGẮT đoạn)');
-    const ntSvg = miniCua('Nội thành');
-    ok('có vẽ biểu đồ cho Nội thành', !!ntSvg, true);
-    ok('đường Nội thành tách thành 2 đoạn (1-2, rồi 5 lẻ)',
-       (dCua(ntSvg).match(/M/g) || []).length, 2);
+    ok('vẽ được một ô cho line được hỏi', /<svg/.test(ve()), true);
+    ok('  · và ĐÚNG line ấy, không phải line khác',
+       /aria-label="Xu hướng Nội thành/.test(ve()), true);
+    ok('  · chỉ MỘT ô, không phải cả cụm', (ve().match(/<svg/g) || []).length, 1);
 
-    console.log('    (Tín Phát đủ ngày 1-5 — đường liền MỘT đoạn)');
-    ok('đường Tín Phát chỉ MỘT đoạn', (dCua(miniCua('Tín Phát')).match(/M/g) || []).length, 1);
-    /* Nhãn số in sẵn ở cuối đường ĐÃ BỎ và `<title>` trên từng chấm cũng
-       vậy (chủ dự án chốt 12/09/2026: "những chú thích nhỏ này bỏ đi giúp
-       tôi... di chuột vào điểm biểu đồ thì chỉ cần hiện ra số đơn"). Giá trị
-       giờ đến từ lượt RÊ CHUỘT, thứ bộ kiểm này không mô phỏng được (DOM giả
-       không có hình học lẫn `body`) — nên soi đúng phần DỰNG RA nó: tấm bắt
-       chuột phủ trọn ô, chấm nổi, và số thứ tự để tra ngược ra chuỗi điểm.
-       Thiếu một trong ba thì rê chuột không ra gì mà không ai biết. */
-    ok('KHÔNG còn nhãn số in sẵn trong ô nhỏ', /<text/.test(luoi()), false);
-    ok('  · và KHÔNG còn <title> trên chấm (nó chồng lên ô chữ của mình)',
-       /<title>/.test(luoi()), false);
-    ok('mỗi ô có tấm bắt chuột phủ trọn + chấm nổi + số thứ tự',
-       [...luoi().matchAll(/<svg[^>]*data-mini="(\d+)"/g)].map((m) => m[1]), ['0', '1']);
-    ok('  · tấm bắt chuột là `transparent` (fill="none" thì không nhận chuột)',
-       (luoi().match(/class="batChuot"[^>]*fill="transparent"/g) || []).length, 2);
-    ok('  · chấm nổi ẩn cho tới lượt rê đầu tiên',
-       (luoi().match(/class="chamNoi"[^>]*display:none/g) || []).length, 2);
+    /* Đơn vị LUÔN là ngày của tháng đang mở, không theo nút [Ngày][Tháng]
+       [Quý] của Dashboard: tab của một line vốn đã là một tháng cụ thể, nên
+       một đường vẽ theo cả năm đứng trên bảng ấy là hai khung thời gian
+       cạnh nhau. */
+    ok('nhãn ô nói đúng khung thời gian của tháng đang mở',
+       /Nội thành · theo ngày · tháng 9\/2026/.test(ve()), true);
+    ok('không NaN/undefined/Infinity', /NaN|undefined|Infinity/.test(ve()), false);
 
-    /* ── Đổi CHỈ SỐ ở hàng tab CHUNG: cả hai khối phải đổi theo. */
-    console.log('    (đổi qua "Số đơn" — Nội thành (50 đơn) vượt Tín Phát (15 đơn))');
-    nutChiSo()[1].click();
-    ok('biểu đồ TRÁI đổi sang Số đơn', !!svgCua('Số đơn'), true);
-    ok('  · lưới PHẢI cũng đổi theo', /<span class="donViCua">\(đơn\)/.test(tieuDe()), true);
-    ok('  · và thứ hạng đổi theo chỉ số', tenTheoThuTu(), ['Nội thành', 'Tín Phát']);
-    nutChiSo()[0].click();
+    /* Và nó phải ĐỔI THEO KỲ. Không đổi thì khối treo số của tháng trước
+       ngay trên một bảng đã sang tháng mới — hai con số cạnh nhau nói về
+       hai tháng, không gì báo. */
+    datKy('2026-08');
+    await nghi(); await nghi();
+    ctx.SucKhoe.veXuHuongLine(oLine, 'Nội thành');
+    ok('đổi kỳ thì ô vẽ lại theo tháng mới',
+       /theo ngày · tháng 8\/2026/.test(ve()), true);
 
-    /* ── Đổi ĐƠN VỊ sang [Tháng]: lưới chuyển sang 12 tháng của năm. */
-    console.log('    (đổi qua đơn vị [Tháng] — lưới chuyển sang 12 tháng của năm)');
-    nutTab()[1].click();
-    ok('tiêu đề lưới đổi theo', /Xu hướng theo Line · theo tháng · năm 2026/.test(tieuDe()), true);
-    ok('Nội thành ở mức tháng tách 3 đoạn (1-2-3, 7, 9) vì lỗ hổng 4-6 và 8',
-       (dCua(miniCua('Nội thành')).match(/M/g) || []).length, 3);
-    /* Ở mức tháng cũng KHÔNG còn nhãn in sẵn — xem lý do ở mục [Ngày]. */
-    ok('ở mức tháng cũng không nhãn in sẵn, vẫn đủ tấm bắt chuột',
-       !/<text/.test(luoi()) && /class="batChuot"/.test(miniCua('Tín Phát')), true);
-    ok('ở mức tháng cũng chỉ còn line CÓ số, không có "Khác"',
-       tenTheoThuTu(), ['Tín Phát', 'Nội thành']);
+    /* Ép đơn vị KHÔNG được làm hỏng nút đang chọn của Dashboard: hai khối
+       dùng chung một `trangThai`, và một hàm lỡ tay ghi đè `donVi` sẽ đổi
+       luôn biểu đồ bên trái mà không ai bấm gì. */
+    ok('  · và biểu đồ trái vẫn ở đơn vị người dùng đang chọn',
+       /theo ngày · tháng 8\/2026/.test(CAY.skTieuDe.innerHTML), true);
 
-    /* ── Đơn vị [Quý]: chủ dự án chốt lưới CHỈ làm theo ngày + tháng. */
-    console.log('    (đơn vị [Quý] — lưới nói thẳng một câu, không vẽ khung thời gian khác)');
-    nutTab()[2].click();
-    ok('lưới không vẽ ô nào', /<svg/.test(luoi()), false);
-    ok('  · và nói rõ vì sao', /chỉ vẽ theo ngày và theo tháng/.test(luoi()), true);
-    nutTab()[0].click();
+    /* Line không có số nào trong kỳ: vẽ ô "chưa có số", KHÔNG bỏ trống.
+       Ở cụm cũ những line ấy bị loại hẳn cho lưới gọn; ở đây người dùng đã
+       CHỦ Ý mở tab của line đó, nên câu trả lời phải là một câu, không phải
+       một khoảng trắng. */
+    datKy('2026-09');
+    await nghi(); await nghi();
+    ctx.SucKhoe.veXuHuongLine(oLine, 'Shopee');
+    ok('line chưa có số → nói một câu, không để trống', /Chưa có số/.test(ve()), true);
+    ok('  · và không vẽ đường nào', /<svg/.test(ve()), false);
+
+    /* Gọi hỏng không được nổ — màn báo cáo gọi nó ở mọi lượt vẽ bảng. */
+    ok('thiếu ô thì bỏ qua, không nổ',
+       (() => { try { ctx.SucKhoe.veXuHuongLine(null, 'Nội thành'); return true; }
+                catch (e) { return false; } })(), true);
+    ok('thiếu tên line cũng vậy',
+       (() => { try { ctx.SucKhoe.veXuHuongLine(oLine, ''); return true; }
+                catch (e) { return false; } })(), true);
+  }
+
+  console.log('\n10b) Cột phải của Dashboard giao cho co-cau.js, qua MỘT cửa hẹp');
+  {
+    napLai();
+    await nghi(); await nghi(); await nghi();
+
+    /* File này không được biết một nét nào về cách vẽ cột chồng, và
+       `co-cau.js` không được biết gì về bố cục hai cột ở đây. Hai khối nối
+       nhau bằng đúng một lời gọi — cùng quy ước `window.SucKhoe` đã có từ
+       P2(b), chỉ ngược chiều. */
+    const goiCoCau = [];
+    ctx.CoCau = { ve: (a, b, ky) => { goiCoCau.push({ a, b, ky }); } };
+    /* Đổi sang một kỳ KHÁC: `datKy` thoát sớm khi kỳ không đổi (đúng thiết
+       kế — nó chặn lượt vẽ lại thừa), nên gọi lại đúng kỳ đang mở thì không
+       có lượt vẽ nào để mà quan sát. */
+    datKy('2026-08');
+    await nghi(); await nghi();
+    datKy('2026-09');
+    await nghi(); await nghi(); await nghi();
+
+    ok('vẽ lại Dashboard là gọi sang window.CoCau.ve()', goiCoCau.length > 0, true);
+    const g = goiCoCau[goiCoCau.length - 1];
+    ok('  · đưa đúng ô cột phải', g.a === CAY.skCotPhai, true);
+    ok('  · và ô tiêu đề của nó', g.b === CAY.skTieuDePhai, true);
+    /* Cơ cấu LUÔN theo THÁNG, kể cả khi biểu đồ trái đang ở [Tháng]/[Quý]
+       (tức đang nói về cả năm). "Cơ cấu của cả năm" là một câu hỏi khác. */
+    ok('  · kèm kỳ dạng YYYY-MM', g.ky, '2026-09');
+
+    const bam = (hang, chu) => {
+      const n = (CAY[hang].con || []).find((x) => x.textContent === chu);
+      if (n && n.click) n.click();
+    };
+    goiCoCau.length = 0;
+    bam('skTabDonVi', 'Quý');
+    await nghi();
+    ok('đổi biểu đồ trái sang [Quý] thì cơ cấu VẪN hỏi theo tháng',
+       goiCoCau.length ? goiCoCau[goiCoCau.length - 1].ky : null, '2026-09');
+
+    /* Thiếu hẳn file kia (chưa tải xong, hoặc lỗi mạng) KHÔNG được làm hỏng
+       biểu đồ bên trái — và phải DỌN cột phải, không để tiêu đề của lượt
+       trước treo lại trên một cột trống. */
+    delete ctx.CoCau;
+    napLai();
+    await nghi(); await nghi(); await nghi();
+    ok('thiếu window.CoCau vẫn vẽ được biểu đồ trái', /<svg/.test(CAY.skVe.innerHTML), true);
+    ok('  · và cột phải được dọn', CAY.skCotPhai.innerHTML, '');
+    ok('  · tiêu đề cột phải cũng vậy', CAY.skTieuDePhai.innerHTML, '');
   }
 
   console.log('\n11) Engine cũ chưa trả ngày × line (giữa hai lượt deploy) → nói thẳng, KHÔNG nổ');
@@ -577,11 +602,13 @@ function kiemMoc(ten, gtThat, doiSo) {
     napLai();
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 1);
-    ok('lưới nói thẳng máy chủ chưa trả số theo ngày',
-       /chưa trả số theo ngày cho từng line/.test(CAY.skLuoiNho.innerHTML), true);
-    ok('  · tiêu đề cụm vẫn còn, chỉ mất phần khung thời gian',
-       CAY.skTieuDeLuoi.innerHTML, 'Xu hướng theo Line');
-    ok('  · và KHÔNG vẽ ô rỗng nào', /<svg/.test(CAY.skLuoiNho.innerHTML), false);
+    /* Câu ấy nay ở khối xu hướng của TỪNG LINE (19/09/2026), không còn ở
+       cột phải của Dashboard. */
+    const oL11 = elGia('xuHuongLine11');
+    ctx.SucKhoe.veXuHuongLine(oL11, 'Nội thành');
+    ok('khối xu hướng line nói thẳng máy chủ chưa trả số theo ngày',
+       /chưa trả số theo ngày cho từng line/.test(oL11.innerHTML), true);
+    ok('  · và KHÔNG vẽ một đường rỗng nào', /<svg/.test(oL11.innerHTML), false);
     LINE_GIA.theo_ngay_thang = cu;
   }
 
@@ -594,11 +621,15 @@ function kiemMoc(ten, gtThat, doiSo) {
     napLai();
     await nghi(); await nghi(); await nghi();
     ok('vẫn vẽ được biểu đồ chính', (veHtml().match(/<svg/g) || []).length, 1);
-    ok('khối lưới nhỏ để trống', CAY.skLuoiNho.innerHTML, '');
-    /* Tiêu đề cụm nằm NGOÀI cột (dải điều khiển) từ 12/09/2026, nên nó không
-       tự biến mất theo — mọi lối ra của `veKhoiLuoiNho()` phải dọn nó, không
-       thì tiêu đề của kỳ trước treo lại trên một cột đã trống. */
-    ok('  · và tiêu đề cụm cũng dọn theo', CAY.skTieuDeLuoi.innerHTML, '');
+    /* Khối xu hướng của một line KHÔNG cần `thu_tu` — nó chỉ đọc chuỗi của
+       đúng line được hỏi. Thiếu bảng thứ tự line vì vậy không làm nó mất:
+       đó là điều đúng, và ghim lại để lượt sửa sau không vô tình buộc nó
+       vào một dữ liệu nó không dùng. */
+    const oL12 = elGia('xuHuongLine12');
+    ctx.SucKhoe.veXuHuongLine(oL12, 'Nội thành');
+    ok('khối xu hướng line vẫn vẽ được (nó không cần thu_tu)',
+       /<svg/.test(oL12.innerHTML), true);
+    ok('  · và không nổ', oL12.innerHTML.length > 0, true);
     LINE_GIA.thu_tu = cu;
   }
 
@@ -610,8 +641,9 @@ function kiemMoc(ten, gtThat, doiSo) {
     ok('hiện câu lỗi của máy chủ',
        /Hệ thống tạm thời chưa phục vụ được/.test(CAY.skLoi.textContent), true);
     ok('không còn biểu đồ cũ nằm lại', /<svg/.test(veHtml()), false);
-    ok('khối lưới nhỏ cũng dọn sạch', CAY.skLuoiNho.innerHTML, '');
-    ok('  · tiêu đề cụm cũng vậy', CAY.skTieuDeLuoi.innerHTML, '');
+    /* Cột phải dọn sạch theo — không để cơ cấu của lượt trước nằm lại cạnh
+       một câu lỗi, thứ đọc ra thành "số này vẫn đúng". */
+    ok('cột phải cũng dọn sạch', CAY.skCotPhai.innerHTML, '');
   }
 
   console.log('\n14) Hai cột CÙNG chiều cao, và khối vừa đúng chỗ còn lại của màn hình');
@@ -641,7 +673,7 @@ function kiemMoc(ten, gtThat, doiSo) {
 
     /* 900 − 520 (đỉnh khối) − 14 (lề đáy) − 72 (phần ngoài hai cột) = 294. */
     ok('cột trái cao đúng phần màn hình còn lại', CAY.skVe.style.height, '294px');
-    ok('cột phải CÙNG chiều cao — hai cụm cân nhau', CAY.skLuoiNho.style.height, CAY.skVe.style.height);
+    ok('cột phải CÙNG chiều cao — hai cụm cân nhau', CAY.skCotPhai.style.height, CAY.skVe.style.height);
 
     /* viewBox phải cùng TỈ LỆ với khung vẽ, nếu không SVG chừa dải trắng và
        cột trái lại trông "hụt" — đúng triệu chứng chủ dự án báo. */
@@ -676,7 +708,7 @@ function kiemMoc(ten, gtThat, doiSo) {
     napLai();
     await nghi(); await nghi(); await nghi();
     ok('màn cao → chặn ở TRẦN, KHÔNG ăn hết chỗ còn lại', CAY.skVe.style.height, '420px');
-    ok('  · và cột phải vẫn bằng đúng cột trái', CAY.skLuoiNho.style.height, '420px');
+    ok('  · và cột phải vẫn bằng đúng cột trái', CAY.skCotPhai.style.height, '420px');
     ctx.innerHeight = 900;
   }
 

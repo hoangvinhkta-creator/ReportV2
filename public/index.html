@@ -709,6 +709,42 @@
      trên để hai khối đọc như một. */
   #o-dashboard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
     padding: 12px 16px; margin-top: 10px; }
+  /* ═══════════ Biểu đồ cơ cấu ngành hàng (19/09/2026) ═══════════
+     Chiếm nửa PHẢI của Dashboard, chỗ cụm ô xu hướng theo Line bỏ lại. */
+  .daiCoCau { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+              margin-bottom: 4px; }
+  .daiCoCau .tabDonVi { margin-bottom: 0; }
+  .daiCoCau .cuoiDaiCoCau { margin-left: auto; }
+  /* `min-height: 0` bắt buộc trong một flex dọc: thiếu nó thì khối không co
+     xuống dưới kích thước nội dung và cả cột phình ra khỏi chiều cao đã ép
+     (cùng bẫy `.khoiBieuDo` đã vấp). */
+  .khoiCoCau { flex: 1 1 0; min-height: 0; }
+  .svgCoCau { display: block; width: 100%; height: 100%; }
+  .luoiCoCau { stroke: #e5e7eb; stroke-width: 1; }
+  .nhanTrucCoCau { font-size: 11px; fill: #9ca3af; }
+  .nhanNganh { font-size: 12px; fill: #3d4a63; font-weight: 600; }
+  .nhanNganhPt { font-size: 11px; fill: #9ca3af; font-variant-numeric: tabular-nums; }
+  .coCauGhiChu { font-size: 11px; fill: #9ca3af; }
+  .coCauRong { font-size: 13px; fill: #6b7280; }
+  /* Mảng của cột NĂM TRƯỚC nhạt hơn — cùng màu để biết là cùng hãng, nhạt
+     hơn để biết đâu là tháng đang xem. Viền trắng mảnh tách hai mảng cùng
+     gam pastel cạnh nhau; không có nó thì hai hãng màu gần nhau dính thành
+     một khối. */
+  .mangCoCau { stroke: #fff; stroke-width: 0.75; }
+  .mangCoCau.mangTruoc { opacity: .48; }
+  .mangCoCau:hover { stroke: #1f2430; stroke-width: 1.25; }
+  .chuGiaiCoCau { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 0;
+                  font-size: 12px; color: #6b7280; }
+  .chuGiaiCoCau .canhBaoDoPhu { color: #b45309; flex-basis: 100%; }
+
+  /* ---- Khối xu hướng của MỘT line, ngay trên bảng đơn (19/09/2026) ----
+     Dùng lại đúng `.oMini` của cụm cũ, chỉ khác là một ô đứng một mình nên
+     nó lấy trọn bề ngang. `max-width` giữ cho nó không kéo dài cả mét trên
+     màn rộng — `#manChu` đã bỏ trần bề ngang cho bảng 19 cột. */
+  .khoiXuHuongLine { margin-bottom: 10px; max-width: 760px; }
+  .luoiXuHuong.oMotLine { display: block; overflow: visible; }
+  .luoiXuHuong.oMotLine .oMini { height: auto; }
+
 
   /* ═══════════ TAB CẤP 1: [Báo cáo bán hàng] | [Kích hoạt bảo hành] ═══════════
      Chủ dự án chốt 19/09/2026. Hàng tab chính QUAY LẠI — nhưng không phải
@@ -1078,6 +1114,10 @@ firebase.auth().onAuthStateChanged(async (user) => {
 });
 </script>
 <script src="/suc-khoe.js"></script>
+<!-- co-cau.js nạp SAU suc-khoe.js: suc-khoe gọi `window.CoCau.ve()` lúc vẽ
+     lại Dashboard. Lượt vẽ ấy chỉ chạy sau khi đăng nhập xong nên thứ tự
+     nạp không phải một ràng buộc chặt — khai đúng thứ tự cho dễ đọc. -->
+<script src="/co-cau.js"></script>
 <script src="/doc-xlsx.js"></script>
 <script src="/tai-len.js"></script>
 <!-- gan-ma.js phải nạp TRƯỚC don-hang.js: don-hang gọi window.GanMa lúc
