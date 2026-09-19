@@ -267,7 +267,35 @@
 
   /* Hệ toạ độ: bề ngang cố định, CHIỀU CAO tính theo tỉ lệ khung thật. */
   const RONG = 1000;
-  const LE_TRAI = 46, LE_PHAI = 12, LE_TREN = 10, LE_DUOI = 54;
+  const LE_PHAI = 12, LE_TREN = 10;
+  /** Cỡ chữ trục, đơn vị hệ toạ độ, khi chưa hỏi được biểu đồ trái.
+   *
+   *  `1000 / 640 * 10` — tỉ lệ giữa hai hệ toạ độ, đúng khi hai khung vẽ
+   *  rộng bằng nhau. Chỉ là BẢN LÙI: khung thật của bên này hẹp hơn (nhường
+   *  240px cho thẻ chi tiết), nên con số thật luôn lớn hơn, và nó được tính
+   *  ở `coChuTruc()`. */
+  const CO_CHU_LUI = 15.6;
+
+  /** Cỡ chữ trục, quy về đơn vị hệ toạ độ của biểu đồ NÀY.
+   *
+   *  Chủ dự án chốt 19/09/2026: "cỡ chữ ở trục dọc và ngang đang quá nhỏ so
+   *  với biểu đồ bên cạnh, hãy cho bằng nhau".
+   *
+   *  Vì sao phải tính chứ không khai một `font-size` trong CSS: font-size
+   *  của chữ SVG đo bằng ĐƠN VỊ HỆ TOẠ ĐỘ, không phải px trên màn. Hai biểu
+   *  đồ có hai hệ toạ độ (640 và 1000) và hai khung rộng khác nhau, nên
+   *  cùng một con số trong CSS ra hai cỡ chữ khác hẳn nhau — đúng cái vừa
+   *  nhìn thấy. Hỏi biểu đồ trái lấy cỡ THẬT (px trên màn) rồi quy ngược về
+   *  đơn vị của mình là cách duy nhất cho ra hai cỡ bằng nhau ở MỌI bề rộng
+   *  màn hình.
+   *
+   *  `w` là bề rộng thật của khung vẽ bên này. */
+  function coChuTruc(w) {
+    const px = window.SucKhoe && window.SucKhoe.coChuTrucPx
+      ? window.SucKhoe.coChuTrucPx() : 0;
+    if (px > 0 && w > 0) return (px * RONG) / w;
+    return CO_CHU_LUI;
+  }
   /** Sàn của trần trục. Dưới ngưỡng này thì một tháng chỉ có một ngành duy
    *  nhất sẽ vẽ ra một cột chạm nóc, trông như "chiếm trọn" dù nó đúng là
    *  100% — nhưng mắt quen đọc cột chạm nóc là "kịch trần", không phải một
@@ -291,6 +319,16 @@
        của bộ kiểm không có hình học: rơi về một tỉ lệ mặc định hợp lý. */
     const w = oHinh.clientWidth || 0, h = oHinh.clientHeight || 0;
     const CAO = w && h ? Math.round(RONG * h / w) : 420;
+
+    /* Chữ to lên thì hai lề phải giãn theo, không thì nhãn "100,0%" của trục
+       dọc tràn ra ngoài khung và tên ngành đè lên mép dưới. Tính từ cỡ chữ
+       chứ không khai hai hằng: cỡ chữ đổi theo bề rộng màn. */
+    const coChu = coChuTruc(w);
+    /* 4,0 lần cỡ chữ: nhãn dài nhất của trục là "100,0%" — bốn chữ số, một
+       dấu phẩy và một dấu phần trăm, đo ra chừng 3,3 lần cỡ chữ — cộng 8
+       đơn vị khe hở tới trục. Hụt là nhãn bị cắt mất chữ số đầu. */
+    const LE_TRAI = Math.max(46, coChu * 4.0);
+    const LE_DUOI = Math.max(28, coChu * 1.9);
 
     const svg = nut("svg");
     svg.setAttribute("viewBox", "0 0 " + RONG + " " + CAO);
@@ -334,8 +372,9 @@
       l.setAttribute("y1", y(pt)); l.setAttribute("y2", y(pt));
       svg.appendChild(l);
       const t = nut("text", "nhanTrucCoCau");
-      t.setAttribute("x", LE_TRAI - 8); t.setAttribute("y", y(pt) + 4);
+      t.setAttribute("x", LE_TRAI - 8); t.setAttribute("y", y(pt) + coChu * 0.36);
       t.setAttribute("text-anchor", "end");
+      t.setAttribute("font-size", coChu);
       t.textContent = pt1(pt) + "%";
       svg.appendChild(t);
     }
@@ -362,9 +401,12 @@
       const t = nut("text", "nhanNganh"
         + (dangChon(tenNganh, null) ? " nhanDangChon" : ""));
       t.setAttribute("x", x0 + oNganh / 2);
-      t.setAttribute("y", CAO - LE_DUOI + 20);
+      t.setAttribute("y", CAO - LE_DUOI + coChu * 1.25);
       t.setAttribute("text-anchor", "middle");
-      const toiDa = Math.max(5, Math.floor(oNganh / 7.4));
+      t.setAttribute("font-size", coChu);
+      /* Số ký tự vừa một ô phải co theo cỡ chữ — 0,62 là bề ngang trung
+         bình của một ký tự so với cỡ chữ ở phông của app. */
+      const toiDa = Math.max(5, Math.floor(oNganh / (coChu * 0.62)));
       t.textContent = tenNganh.length > toiDa ? tenNganh.slice(0, toiDa - 1) + "…" : tenNganh;
       const tt = nut("title");
       tt.textContent = tenNganh + (c && c.ten_goc ? " (gồm: " + c.ten_goc.join(", ") + ")" : "");
@@ -372,27 +414,14 @@
       t.addEventListener("click", () => datChon(tenNganh, null));
       svg.appendChild(t);
 
-      /* Tỉ trọng ghi bằng số DƯỚI TỪNG CỘT, mỗi cột một con số của chính
-         nó — không còn một con số chung đặt giữa cặp.
+      /* KHÔNG còn dãy số tỉ trọng dưới trục (chủ dự án chốt 19/09/2026:
+         "bỏ đi, không cần thiết vì đã hiện ở bảng phụ rồi"). Mười tám con
+         số nhỏ chạy ngang đáy biểu đồ, trong khi thẻ bên phải đã nói đúng
+         con số của mảng đang hỏi — và nói kèm cả doanh số lẫn số máy.
 
-         Đây cũng là thứ THAY CHO sắc độ nhạt của cột năm trước (chủ dự án
-         chốt 19/09/2026: "không có biến thể sắc độ"). Hai cột nay tô màu
-         y hệt nhau, và cái phân biệt chúng là hai tín hiệu KHÔNG đụng tới
-         màu hãng: con số đậm/nhạt dưới chân, và vạch chân cột ở `veMotCot`. */
-      const cB = kq.co_ky_truoc ? timCot(B.cot, tenNganh) : null;
-      const ptCua = (bo, x) => (bo.tong > 0 && x ? (x.gia_tri / bo.tong) * 100 : 0);
-      const veNhanPt = (xGiua, gt, laTruoc) => {
-        const t2 = nut("text", "nhanNganhPt" + (laTruoc ? " nhanPtTruoc" : ""));
-        t2.setAttribute("x", xGiua);
-        t2.setAttribute("y", CAO - LE_DUOI + 36);
-        t2.setAttribute("text-anchor", "middle");
-        t2.textContent = pt1(gt) + "%";
-        svg.appendChild(t2);
-      };
-      veNhanPt(x0 + leO + rongCot / 2, ptCua(A, c), false);
-      if (kq.co_ky_truoc) {
-        veNhanPt(x0 + leO + rongCot * 1.5 + ranh, ptCua(B, cB), true);
-      }
+         Tín hiệu phân biệt tháng này / cùng kỳ vì thế còn lại MỘT: vạch
+         chân cột ở `veMotCot`, đậm cho tháng đang xem và nhạt cho cùng kỳ.
+         Nó vẫn là một vạch XÁM, không đụng tới màu hãng. */
     });
 
     if (!kq.co_ky_truoc) {
@@ -451,7 +480,12 @@
       const pt = (h.gia_tri / tong) * 100;
       if (pt <= 0) continue;
       const cao = (pt / tran) * (y(0) - y(tran));
-      const chon = !laTruoc && dangChon(c.ten, h.la_tron ? null : h.ten);
+      /* Chọn một mảng thì mảng CÙNG HÃNG ở cột cùng kỳ cũng nổi bật (chủ dự
+         án chốt 19/09/2026: "bấm vào Hitachi ở cột tủ lạnh 2026, tôi cũng
+         muốn 2025 nổi bật lên tương tự"). Đó đúng là việc người ta bấm để
+         làm: so một hãng với chính nó năm ngoái. Bản trước chỉ viền cột
+         tháng này, nên mắt phải tự dò sang cột bên tìm mảng cùng màu. */
+      const chon = dangChon(c.ten, h.la_tron ? null : h.ten);
       const r = nut("rect", "mangCoCau" + (laTruoc ? " mangTruoc" : "")
         + (chon ? " mangDangChon" : ""));
       r.setAttribute("x", x);

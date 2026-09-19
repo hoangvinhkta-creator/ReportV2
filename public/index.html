@@ -729,15 +729,19 @@
   .veCoCau { flex: 1 1 0; min-width: 0; min-height: 0; }
   .svgCoCau { display: block; width: 100%; height: 100%; }
   .luoiCoCau { stroke: #e5e7eb; stroke-width: 1; }
-  .nhanTrucCoCau { font-size: 11px; fill: #9ca3af; }
-  .nhanNganh { font-size: 12px; fill: #3d4a63; font-weight: 600; cursor: pointer; }
+  /* CỠ CHỮ TRỤC KHÔNG KHAI Ở ĐÂY (chủ dự án chốt 19/09/2026: "cho bằng
+     biểu đồ bên cạnh"). font-size của chữ SVG đo bằng đơn vị HỆ TOẠ ĐỘ, mà
+     hai biểu đồ có hai hệ toạ độ (640 và 1000) và hai khung rộng khác nhau
+     — cùng một con số ở đây ra hai cỡ chữ khác hẳn trên màn. `co-cau.js` hỏi
+     biểu đồ trái lấy cỡ THẬT rồi quy về đơn vị của mình, ở mỗi lượt vẽ. */
+  .nhanTrucCoCau { fill: #9ca3af; }
+  .nhanNganh { fill: #3d4a63; font-weight: 600; cursor: pointer; }
   .nhanNganh:hover { fill: #1d5bea; }
   .nhanNganh.nhanDangChon { fill: #1d5bea; text-decoration: underline; }
-  /* Tỉ trọng của TỪNG cột, đặt ngay dưới chân cột ấy. Đậm = tháng đang xem,
-     nhạt = cùng kỳ — một trong hai tín hiệu thay cho sắc độ nhạt đã bỏ. */
-  .nhanNganhPt { font-size: 11px; fill: #4b5563; font-variant-numeric: tabular-nums; }
-  .nhanNganhPt.nhanPtTruoc { fill: #b0b6c0; }
-  /* Vạch chân cột — tín hiệu "tháng nào" nằm NGOÀI mảng màu hãng. */
+  /* Dãy số tỉ trọng dưới trục ĐÃ BỎ (chủ dự án chốt 19/09/2026) — thẻ bên
+     phải đã nói con số ấy, kèm cả doanh số lẫn số máy. */
+  /* Vạch chân cột — tín hiệu "tháng nào" nằm NGOÀI mảng màu hãng, và từ khi
+     bỏ dãy số trên thì nó là tín hiệu DUY NHẤT phân biệt hai tháng. */
   .chanCot { fill: #6b7280; }
   .chanCot.chanCotTruoc { fill: #d4d8de; }
   .coCauGhiChu { font-size: 11px; fill: #9ca3af; }
@@ -746,9 +750,9 @@
      biến thể sắc độ"). Bản trước làm nhạt cả cột năm trước bằng `opacity` —
      tiện cho việc phân biệt hai tháng, nhưng nó chính là một biến thể sắc
      độ: Samsung ở cột phải không còn ra đúng màu Samsung nữa. Nay hai cột tô
-     y hệt nhau, và việc phân biệt chuyển sang vạch chân cột (`.chanCot`) và
-     con số tỉ trọng đậm/nhạt (`.nhanPtTruoc`) — cả hai đều xám, không đụng
-     tới bảng màu hãng. Viền trắng mảnh tách hai mảng cùng gam pastel. */
+     y hệt nhau, và việc phân biệt chuyển sang vạch chân cột (`.chanCot`) —
+     một vạch xám, không đụng tới bảng màu hãng. Viền trắng mảnh tách hai
+     mảng cùng gam pastel. */
   .mangCoCau { stroke: #fff; stroke-width: 0.75; cursor: pointer; }
   .mangCoCau:hover { stroke: #1f2430; stroke-width: 1.25; }
   .mangCoCau.mangDangChon { stroke: #1f2430; stroke-width: 2; }

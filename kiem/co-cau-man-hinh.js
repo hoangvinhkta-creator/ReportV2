@@ -157,7 +157,6 @@ const GOC = path.resolve(__dirname, '..');
     /* Tín hiệu "tháng nào" phải nằm NGOÀI mảng màu — hai thứ xám, không
        đụng tới bảng màu hãng. */
     ok('  · thay bằng vạch chân cột', /\.chanCot\b/.test(CSS) && /chanCotTruoc/.test(FE), true);
-    ok('  · và số tỉ trọng riêng cho từng cột', /nhanPtTruoc/.test(FE), true);
     ok('  · vạch chân vẽ cả khi cột cao 0', FE.indexOf('const chan = nut("rect"')
        < FE.indexOf('if (ptCot <= 0) return;'), true);
 
@@ -178,6 +177,46 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · không còn lối viết dài', /Hãng nhỏ, đã gộp|Chưa gán mã \(NONE\)/.test(FE), false);
     ok('  · và bỏ câu nhắc "bấm vào một mảng"',
        /Bấm vào một mảng trên biểu đồ/.test(FE), false);
+  }
+
+  console.log('\nB4) Ba chỗ chủ dự án chốt lại ở lượt mở thứ ba');
+  {
+    /* 1 — CỠ CHỮ TRỤC BẰNG BIỂU ĐỒ BÊN CẠNH.
+       font-size của chữ SVG đo bằng đơn vị HỆ TOẠ ĐỘ. Hai biểu đồ có hai hệ
+       toạ độ (640 và 1000) và hai khung rộng khác nhau — cột phải còn nhường
+       240px cho thẻ chi tiết — nên KHAI CỨNG một con số trong CSS là ra hai
+       cỡ chữ khác hẳn nhau trên màn, đúng cái chủ dự án vừa chỉ ra. Cỡ chữ
+       phải HỎI biểu đồ trái (px thật) rồi quy về đơn vị của mình. */
+    ok('cỡ chữ trục KHÔNG khai cứng trong CSS',
+       /\.nhanTrucCoCau\s*\{[^}]*font-size/.test(CSS)
+       || /\.nhanNganh\s*\{[^}]*font-size/.test(CSS), false);
+    ok('  · mà hỏi biểu đồ trái lấy cỡ THẬT',
+       /window\.SucKhoe\.coChuTrucPx\(\)/.test(FE), true);
+    ok('  · và suc-khoe có mở cửa ấy', /coChuTrucPx,/.test(SK), true);
+    ok('  · cỡ ấy tính từ MỘT hằng, không phải bốn con số rải rác',
+       /font-size="10"/.test(SK), false);
+    ok('  · quy px trên màn về đơn vị hệ toạ độ bên này',
+       /\(px \* RONG\) \/ w/.test(FE), true);
+    ok('  · có bản lùi khi chưa đo được khung', /CO_CHU_LUI/.test(FE), true);
+    /* Chữ to lên thì hai lề phải giãn theo, không thì "100,0%" tràn ra
+       ngoài khung và tên ngành đè mép dưới. */
+    ok('  · lề trái và lề dưới co theo cỡ chữ',
+       /const LE_TRAI = Math\.max\(46, coChu/.test(FE)
+       && /const LE_DUOI = Math\.max\(28, coChu/.test(FE), true);
+    ok('  · và số ký tự cắt tên ngành cũng vậy',
+       /oNganh \/ \(coChu \* 0\.62\)/.test(FE), true);
+
+    /* 2 — CHỌN MỘT MẢNG THÌ CỘT CÙNG KỲ CŨNG NỔI BẬT. Đó đúng là việc người
+       ta bấm để làm: so một hãng với chính nó năm ngoái. */
+    ok('mảng cùng kỳ cũng nổi bật khi chọn',
+       /const chon = !laTruoc &&/.test(FE_SACH), false);
+    ok('  · tức chọn theo (ngành, hãng), không theo cột nào',
+       /const chon = dangChon\(c\.ten, h\.la_tron \? null : h\.ten\)/.test(FE), true);
+
+    /* 3 — BỎ DÃY SỐ TỈ TRỌNG DƯỚI TRỤC. Thẻ bên phải đã nói con số ấy, kèm
+       cả doanh số lẫn số máy. */
+    ok('không còn dãy số tỉ trọng dưới trục', /nhanNganhPt/.test(FE), false);
+    ok('  · và CSS cũng sạch', /nhanNganhPt|nhanPtTruoc/.test(CSS), false);
   }
 
   console.log('\nC+D) Độ phủ và nguồn hỏng — nói ra, không giấu');
