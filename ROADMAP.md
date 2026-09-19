@@ -49,9 +49,12 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
    `bc/khach`, nhánh đóng chỉ quantri xem, hay để chung `bc/quyetdinh`).
    Đây không phải khoá hạ tầng — khoá hạ tầng vẫn chỉ nằm ở Secret của
    Worker.
-2. **Ảnh hướng dẫn để ở đâu** → **R2**, bucket `reportv2-huongdan`
-   (hỏi giữa R2 / base64 trong Firebase / Firebase Storage). Ảnh không
-   bao giờ đi thẳng từ R2 ra trình duyệt: mọi lượt xem qua
+2. **Ảnh hướng dẫn để ở đâu** → **R2**, bucket **`reportv2`** (hỏi giữa
+   R2 / base64 trong Firebase / Firebase Storage). Tên đề xuất ban đầu
+   `reportv2-huongdan` bị Cloudflare từ chối, chủ dự án tạo `reportv2`
+   ngày 19/09/2026 — bucket dùng CHUNG cho cả app, nên khoá ảnh mang tiền
+   tố tên hãng để thứ khác bỏ vào sau không đụng nhau. Ảnh không bao giờ
+   đi thẳng từ R2 ra trình duyệt: mọi lượt xem qua
    `GET /api/bao-hanh/anh`, đòi token như mọi đường khác.
 3. **Dòng chưa khớp mã bảng giá (không có hãng)** → **CHỈ mười tab**,
    không thêm tab "chưa rõ hãng", và KHÔNG đoán hãng từ tên hàng
@@ -76,9 +79,10 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 (`engine/src/bao-hanh.mjs` + 4 hàm RPC) lên TRƯỚC; lượt sau mới nối
 Gateway (6 đường `/api/`) + trang tĩnh (`public/bao-hanh.js`).
 
-⚠️ **Điều kiện deploy:** bucket R2 `reportv2-huongdan` phải tồn tại
-trước lượt deploy đầu của Gateway — `wrangler deploy` từ chối một binding
-trỏ tới bucket không có thật.
+⚠️ **Điều kiện deploy (đã xong 19/09/2026):** bucket R2 `reportv2` phải
+tồn tại trước lượt deploy đầu của Gateway — `wrangler deploy` từ chối một
+binding trỏ tới bucket không có thật. Đổi tên bucket sau này thì phải sửa
+`bucket_name` trong `wrangler.toml` cùng lượt.
 
 **Khoá bền của trạng thái kích hoạt** là KHOÁ DÒNG của `CLAUDE.md` (số
 chứng từ + tên hàng chuẩn hoá + lần xuất hiện), ghi ở
