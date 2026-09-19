@@ -22,10 +22,11 @@ import { khoaNhanVien } from "./gop-ban-hang.mjs";
 import {
   HANG_BAO_HANH, hangChinhThuc, dsKichHoat, donHuongDan, thuTuTiepTheo, BUOC_TOI_DA,
 } from "./bao-hanh.mjs";
+import { coCauNganhHang } from "./co-cau.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.13.0-khop-ma-moi-ky";
+const PHIEN_BAN = "0.14.0-co-cau-nganh-hang";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -459,6 +460,23 @@ export default class extends WorkerEntrypoint {
   /** Số thứ tự cho một bước MỚI thêm vào cuối danh sách hướng dẫn. */
   async thuTuBuocTiepTheo(buoc) {
     return thuTuTiepTheo(buoc);
+  }
+
+  /** Hai bảng đơn (tháng đang xem, cùng kỳ năm trước) → cơ cấu ngành hàng ×
+   *  hãng, đã gộp sẵn thành đúng những cột phải vẽ. Xem `co-cau.mjs`.
+   *
+   *  Lên TRƯỚC lượt Gateway gọi nó (bẫy số 4 — ROADMAP.md).
+   *
+   *  NHẬN CẢ HAI THÁNG trong một lượt, không phải gọi hai lần rồi ghép bên
+   *  Gateway: danh sách tám ngành và danh sách hãng của từng ngành phải chốt
+   *  MỘT LẦN cho cả hai, không thì hai cột đứng cạnh nhau nói về hai trục
+   *  khác nhau và mảng cùng màu lại là hai hãng khác nhau.
+   *
+   *  `bangTruoc` vắng mặt là hợp lệ — kỳ đó chưa nạp sổ. Trả `co_ky_truoc:
+   *  false` để màn hình nói thẳng, thay vì vẽ một cột cao 0 trông như "năm
+   *  ngoái không bán gì". */
+  async coCauNganhHang(bangNay, bangTruoc) {
+    return coCauNganhHang(bangNay, bangTruoc);
   }
 
   /** Ba hằng bố cục Sheet, để Gateway phủ định dạng đúng cột mà không khai
