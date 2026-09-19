@@ -81,6 +81,37 @@ directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
 
+# ---- Kho ảnh hướng dẫn kích hoạt bảo hành (R2) — 19/09/2026 ----
+#
+# Mỗi hãng có tới ba mươi bước, mỗi bước một ảnh chụp màn hình cổng bảo
+# hành. Chúng KHÔNG nằm trong Realtime Database: nhánh `bc/quyetdinh` được
+# đọc TRỌN ở mọi lượt mở màn hình, nên vài MB base64 trong đó là cái giá
+# trả ở mọi lượt bấm, không chỉ lượt xem hướng dẫn. R2 giữ byte, Firebase
+# chỉ giữ cái khoá trỏ tới (chủ dự án chốt 19/09/2026, được hỏi giữa R2,
+# base64 trong Firebase, và Firebase Storage).
+#
+# BUCKET PHẢI CÓ TRƯỚC LƯỢT DEPLOY ĐẦU: `wrangler deploy` từ chối một
+# binding trỏ tới bucket không tồn tại, và vì `[build] command = "npm test"`
+# nằm ngay dưới đây, lượt deploy hỏng sẽ GIỮ NGUYÊN bản đang chạy — không
+# mất gì, nhưng cũng không lên được gì.
+#
+# Tên bucket là `reportv2` — chủ dự án tạo 19/09/2026 (tên đề xuất ban đầu
+# `reportv2-huongdan` bị Cloudflare từ chối). TÊN Ở ĐÂY PHẢI KHỚP ĐÚNG tên
+# trên Dashboard; lệch một ký tự thì mọi lượt deploy sau đó hỏng ở đúng
+# dòng này, và triệu chứng là "merge xong mà bản chạy không đổi".
+#
+# Bucket dùng CHUNG cho cả app chứ không riêng ảnh hướng dẫn, nên mọi khoá
+# ảnh đều mang tiền tố tên hãng (`Samsung/<mốc>.png` — xem `laKhoaAnh`
+# trong src/index.js): thứ khác bỏ vào bucket này sau đó không đụng nhau.
+#
+# Ảnh không bao giờ đi thẳng từ R2 ra trình duyệt: bucket không mở public
+# (Dashboard ghi "Public Access: Disabled"), mọi lượt xem đều qua
+# `GET /api/bao-hanh/anh` và đòi đúng một token Firebase như mọi đường khác
+# (xem `layAnhBaoHanh` trong src/index.js).
+[[r2_buckets]]
+binding = "ANH_BAO_HANH"
+bucket_name = "reportv2"
+
 # ---- Service Binding tới Report Engine ----
 # Engine không route công khai, không workers.dev — chỉ Gateway gọi được nó,
 # và chỉ qua đường này (kiem/engine-rieng-tu.js canh cả hai đầu).

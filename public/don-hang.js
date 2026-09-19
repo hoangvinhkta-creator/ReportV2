@@ -2876,6 +2876,13 @@
        hai khối tự tải phần của mình, không khối nào phải chờ khối kia. Đổi
        tháng thì biểu đồ vẽ lại cùng lúc bảng đang tải, không phải sau. */
     baoBieuDo();
+    /* Và báo sang màn [Kích hoạt bảo hành] — hai màn DÙNG CHUNG một kỳ (chủ
+       dự án chốt 19/09/2026), nên đổi tháng ở đây là đổi cho cả bên kia. Nó
+       tự quyết định có tải lại ngay hay không; đang đứng ở màn này thì nó
+       chỉ ghi nhớ, vì lượt đọc ấy dựng lại cả bảng đơn của tháng. */
+    if (window.BaoHanh && window.BaoHanh.datKy && trangThai.ky) {
+      window.BaoHanh.datKy(trangThai.ky);
+    }
 
     if (!trangThai.ky) {
       ve.innerHTML = "";
@@ -2955,6 +2962,17 @@
     window.SucKhoe.hien(trangThai.line === null && !!trangThai.ky);
     if (trangThai.ky) window.SucKhoe.datKy(trangThai.ky);
   }
+
+  /* Cửa DUY NHẤT theo chiều ngược lại, mở 19/09/2026 cho màn [Kích hoạt bảo
+     hành]. Khối biểu đồ nằm trong `#manBaoCao`, nên lúc người dùng sang màn
+     kia nó bị ẩn theo — mà chiều cao của nó được ĐO lúc vẽ, và đo một khối
+     đang ẩn thì ra 0. Nên lúc quay về, màn kia gọi hàm này để đo lại.
+
+     Một hàm gọi sang, không phải một lượt sửa DOM chéo nhau: cùng quy ước
+     `window.SucKhoe` đã có từ P2(b). */
+  window.DonHang = {
+    canhLaiBieuDo: function () { baoBieuDo(); },
+  };
 
   /* Màn này GIỜ LÀ TRANG CHỦ (chủ dự án chốt 11/09/2026: bỏ lưới thẻ, đăng
      nhập xong ra thẳng báo cáo), nên không còn thẻ để bấm mở và không còn

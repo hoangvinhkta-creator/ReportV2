@@ -635,11 +635,11 @@
      số khác, mà không tô nền (nền của ô này đã dành cho "chưa gán mã"). */
   .bangDon td.oMa.laGiaDung > span { font-weight: 600; }
 
-  .phuGanMa {
+  .phuGanMa, .phuNoi {
     position: fixed; inset: 0; background: rgba(17, 24, 39, .45);
     display: flex; align-items: center; justify-content: center; z-index: 60;
   }
-  .hopGanMa {
+  .hopGanMa, .hopNoi {
     background: #fff; border-radius: 10px; padding: 16px;
     width: min(560px, 94vw); max-height: 86vh; overflow: auto;
     box-shadow: 0 12px 32px rgba(0, 0, 0, .2);
@@ -667,6 +667,24 @@
   .ganMaMa { font-weight: 500; }
   .ganMaNhom { color: #6b7280; font-size: 12px; white-space: nowrap; }
   .ganMaNut { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+  /* Nút của hộp nổi. Trước 19/09/2026 lớp `.nutPhu` được gan-ma.js dùng mà
+     KHÔNG có luật CSS nào — tức hộp gán mã đang hiện ra hai cái nút xám mặc
+     định của trình duyệt giữa một hộp đã dựng theo nếp riêng. Khai ở đây một
+     lần cho mọi hộp nổi (gán mã, đăng nhập cổng hãng, thêm bước hướng dẫn):
+     ba hộp của cùng một app phải đọc lên như một thứ. */
+  .nutPhu {
+    border: 1px solid #d1d5db; background: #fff; border-radius: 8px;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; font-family: inherit;
+    color: #3d4a63; cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  }
+  .nutPhu:hover:not(:disabled) { background: rgba(29,91,234,.10); color: #1d5bea;
+                                 border-color: #bfdbfe; }
+  .nutPhu:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
+  /* Nút cuối hàng là nút CHỐT (Lưu / Thêm bước) — tô đậm để mắt biết bấm đâu
+     khi đã gõ xong, đúng lối nút chính của màn đăng nhập. */
+  .ganMaNut .nutPhu:last-child { background: #1d5bea; border-color: #1d5bea; color: #fff; }
+  .ganMaNut .nutPhu:last-child:hover:not(:disabled) { background: #1a51d0; color: #fff; }
+  .ganMaNut .nutPhu:last-child:disabled { background: #93c5fd; border-color: #93c5fd; color: #fff; }
 
   .bangDon .oIcon { text-align: center; padding: 2px 4px; }
   /* Icon VẼ THEO LINE, một màu (chủ dự án chốt 13/09/2026) — không dùng emoji
@@ -691,6 +709,146 @@
      trên để hai khối đọc như một. */
   #o-dashboard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
     padding: 12px 16px; margin-top: 10px; }
+
+  /* ═══════════ TAB CẤP 1: [Báo cáo bán hàng] | [Kích hoạt bảo hành] ═══════════
+     Chủ dự án chốt 19/09/2026. Hàng tab chính QUAY LẠI — nhưng không phải
+     hàng tab đã bỏ hồi 12/09/2026: hàng cũ có đúng MỘT nút (biểu đồ đã dời
+     xuống dưới bảng) nên nó là một hàng không ai bấm. Nay có HAI MÀN thật,
+     mỗi màn một việc khác hẳn nhau, nên cái hàng ấy lại có lý do tồn tại.
+
+     Nút to hơn tab con (14px/8px thay vì 13px/6px) và có một đường kẻ ngăn
+     bên dưới: mắt phải phân biệt được ngay "đây là chỗ đổi MÀN" với "đây là
+     chỗ đổi line/hãng trong màn". Hai hàng tab trông giống hệt nhau là hai
+     hàng người dùng phải đọc chữ mới biết cái nào làm gì. */
+  .tabMan { border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 14px; }
+  .tabMan .tabNut { font-size: 14px; padding: 8px 16px; }
+
+  /* ═══════════ MÀN KÍCH HOẠT BẢO HÀNH ═══════════ */
+
+  /* ---- Dải đăng nhập cổng hãng ----
+     MỘT HÀNG NGANG, không phải một cái thẻ cao. Người dùng cần nó đúng một
+     lần mỗi phiên (để đăng nhập cổng hãng) rồi làm việc với bảng bên dưới cả
+     buổi — một khối cao ở trên đầu là cái phải cuộn qua ở mọi lượt quay lại. */
+  /* `max-width` cho HAI KHỐI CHỮ, không cho bảng: `#manChu` bỏ trần bề ngang
+     để bảng đơn 19 cột đủ chỗ, nên trên một màn rộng 2000px một đoạn hướng
+     dẫn sẽ kéo thành những dòng chữ dài cả mét — mắt mất dòng ở mỗi lần
+     xuống hàng. Bảng thì ngược lại, càng rộng càng dễ đọc theo hàng ngang. */
+  .daiDangNhap, .hopBuoc { max-width: 1100px; }
+  .daiDangNhap {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 10px;
+  }
+  .daiDangNhap .oKhoa { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .daiDangNhap .nhanKhoa { font-size: 12px; color: #6b7280; }
+  /* Chữ đều nét: User và mật khẩu là thứ người ta đọc từng ký tự rồi gõ sang
+     một cửa sổ khác, nên `l`/`1`/`I` phải phân biệt được. */
+  .daiDangNhap .giaTri {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; color: #1f2430; word-break: break-all;
+  }
+  .daiDangNhap .giaTri.trong { font-family: inherit; color: #9ca3af; font-style: italic; }
+  .daiDangNhap .cuoiDai { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+  .huongDanNhap { font-size: 13px; color: #4b5563; white-space: pre-wrap;
+                  flex-basis: 100%; margin: 0; }
+
+  /* ---- Hướng dẫn các bước: ĐÓNG SẴN ----
+     Chủ dự án chốt "ít thao tác trùng lặp". Các bước là thứ đọc lúc mới làm
+     quen; sau đó mỗi ngày người ta vào đây để TICK, không để đọc lại ba mươi
+     bước. Mở sẵn thì bảng việc bị đẩy xuống dưới màn hình ở mọi lượt vào. */
+  .hopBuoc { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+             margin-bottom: 10px; }
+  .dauBuoc { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+             cursor: pointer; user-select: none; }
+  .dauBuoc:hover { background: #f9fafb; }
+  .dauBuoc .tenDau { font-size: 13px; font-weight: 600; }
+  .dauBuoc .demBuoc { font-size: 12px; color: #6b7280; font-weight: 400; }
+  .dauBuoc .cuoiDau { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+  .muiTenBuoc { width: 12px; height: 12px; color: #6b7280;
+                transform: rotate(90deg); transition: transform .12s; }
+  .hopBuoc.dongLai .muiTenBuoc { transform: rotate(0deg); }
+  .hopBuoc.dongLai .ruotBuoc { display: none; }
+  .ruotBuoc { padding: 0 14px 12px; }
+
+  .mucBuoc { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #f3f4f6; }
+  .mucBuoc .soBuoc {
+    flex: 0 0 24px; height: 24px; border-radius: 12px; background: #eff6ff;
+    color: #1d5bea; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mucBuoc .thanBuoc { flex: 1 1 auto; min-width: 0; }
+  .mucBuoc .chuBuoc { font-size: 13px; color: #1f2430; white-space: pre-wrap; margin: 0; }
+  .mucBuoc .chuBuoc.trong { color: #9ca3af; font-style: italic; }
+  /* Ảnh thu nhỏ, bấm để phóng to. Để ảnh ở kích thước thật thì một màn ba
+     mươi bước dài bằng ba mươi tấm ảnh chụp màn hình — không ai cuộn hết. */
+  .anhBuoc {
+    display: block; margin-top: 6px; max-width: 260px; max-height: 150px;
+    border: 1px solid #e5e7eb; border-radius: 6px; cursor: zoom-in; background: #f9fafb;
+  }
+  .mucBuoc .nutBuoc { display: flex; gap: 2px; align-items: flex-start; }
+
+  /* Lớp phủ phóng to một tấm ảnh hướng dẫn. */
+  .phuAnh { position: fixed; inset: 0; background: rgba(17,24,39,.8); z-index: 70;
+            display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+  .phuAnh img { max-width: 94vw; max-height: 94vh; border-radius: 6px; }
+
+  /* ---- Hộp thêm/sửa một bước ---- */
+  .oChuBuoc {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px;
+    font-family: inherit; border: 1px solid #d1d5db; border-radius: 6px;
+    min-height: 90px; resize: vertical;
+  }
+  .xemAnhChon { display: block; max-width: 100%; max-height: 220px; margin-top: 8px;
+                border: 1px solid #e5e7eb; border-radius: 6px; }
+
+  /* ---- Bảng máy chưa kích hoạt ----
+     KHÔNG dùng `table-layout: fixed` + <colgroup> như bảng đơn 19 cột: ở đó
+     bề rộng phải chốt cứng vì gán mã điền chữ vào ô đang trống và làm cả bảng
+     nống ra. Bảng này chỉ có một thao tác — tick — và tick thì LÀM BIẾN MẤT
+     một dòng chứ không đổi bề rộng ô nào, nên để nội dung tự chia chỗ đọc
+     thoáng hơn. */
+  .bangBaoHanh { border-collapse: collapse; font-size: 12px; width: 100%; }
+  .bangBaoHanh th, .bangBaoHanh td {
+    border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; vertical-align: top;
+  }
+  .bangBaoHanh th { background: #f9fafb; position: sticky; top: 0; z-index: 1;
+                    white-space: nowrap; font-size: 12px; }
+  .bangBaoHanh td.oSo { text-align: right; font-variant-numeric: tabular-nums; }
+  .bangBaoHanh td.oNgay, .bangBaoHanh td.oCt { white-space: nowrap;
+                                               font-variant-numeric: tabular-nums; }
+  .bangBaoHanh td.oMaSp { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .bangBaoHanh td.oDiaChiBh { max-width: 240px; }
+  /* Mỗi IMEI một dòng: một ô hai IMEI dính liền nhau là thứ phải cắt bằng
+     mắt đúng lúc đang đối chiếu với cái tem trên máy. */
+  .bangBaoHanh .dsImei { display: flex; flex-direction: column; gap: 2px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  /* Thiếu IMEI là một việc CÒN PHẢI LÀM, không phải một ô trống bình thường —
+     cùng lối tô vàng của cột Mã sản phẩm chưa gán mã bên bảng đơn. */
+  .bangBaoHanh td.thieuImei { background: #fffbeb; color: #b45309; font-style: italic; }
+  .bangBaoHanh tr.daXong > td { color: #9ca3af; background: #fafafa; }
+  .bangBaoHanh tr.dangGhi > td { background: #eff6ff; }
+
+  /* Ô tick — cột đầu, nút vuông bo tròn. To hơn một checkbox mặc định: đây là
+     thao tác lặp hàng chục lần mỗi buổi, và một đích bấm nhỏ là mỗi lần bấm
+     một lần phải ngắm. */
+  .bangBaoHanh td.oTick { text-align: center; width: 40px; padding: 4px; }
+  .nutTick {
+    width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid #cbd5e1;
+    background: #fff; cursor: pointer; color: #fff; line-height: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: border-color .12s, background .12s;
+  }
+  .nutTick:hover:not(:disabled) { border-color: #0f9d58; background: #f0fdf4; color: #0f9d58; }
+  .nutTick.daTick { border-color: #0f9d58; background: #0f9d58; color: #fff; }
+  .nutTick:disabled { cursor: default; opacity: .5; }
+  .nutTick svg { width: 13px; height: 13px; display: block; }
+
+  /* Dải trên bảng: đếm việc còn lại + công tắc "hiện cả đã kích hoạt". */
+  .daiBang { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+             margin: 0 0 6px; font-size: 13px; color: #56637f; }
+  .daiBang .demCon { font-weight: 600; color: #1f2430; }
+  .daiBang .cuoiDai { margin-left: auto; }
+
 </style>
 </head>
 <body>
@@ -708,7 +866,7 @@
 
 <div id="manChu" class="wrap" hidden>
   <header class="thanhTren">
-    <h1>Báo cáo bán hàng</h1>
+    <h1>Báo cáo Kinh doanh</h1>
     <div class="aiDangNhap">
       <b id="tenNguoiDung"></b>
       <button class="dangXuat" id="theNhapSo" type="button">Nhập sổ</button>
@@ -717,16 +875,26 @@
   </header>
   <p id="hopLoi"></p>
 
-  <!-- KHÔNG CÒN tab chính (chủ dự án chốt 12/09/2026). Trước đây có hai tab
-       [Báo cáo doanh số] / [Biểu đồ]; biểu đồ nay nằm ngay dưới bảng [Tổng
-       hợp] nên chỉ còn đúng một màn, và một hàng tab chỉ có một nút là một
-       hàng không ai bấm. -->
+  <!-- HÀNG TAB CẤP 1 — chủ dự án chốt 19/09/2026.
+       Nó QUAY LẠI sau khi bị bỏ 12/09/2026, và hai lần ấy không mâu thuẫn:
+       hàng cũ có đúng MỘT nút (tab [Biểu đồ] đã dời xuống dưới bảng) nên nó
+       là một hàng không ai bấm; nay có HAI MÀN thật — báo cáo, và kích hoạt
+       bảo hành — nên nó lại có lý do tồn tại. Tab [Biểu đồ] KHÔNG quay lại.
+       Nút do bao-hanh.js vẽ, không viết cứng trong HTML: tên và thứ tự hai
+       màn là một chỗ, không phải hai. -->
+  <div class="tabDonVi tabMan" id="tabMan"></div>
+
+  <!-- KỲ DÙNG CHUNG CHO CẢ HAI MÀN (chủ dự án chốt 19/09/2026), nên nó nằm
+       NGOÀI #manBaoCao. Đổi tháng ở màn nào cũng ăn sang màn kia: hai bộ
+       chọn tháng là hai lần chọn cho cùng một câu hỏi, và tệ hơn là hai màn
+       lặng lẽ nói về hai tháng khác nhau.
+       Năm và tháng CÙNG một hàng, cách nhau một khoảng trống. -->
+  <div class="tabDonVi hangThoiGian">
+    <div class="nhomTab" id="tabNam"></div>
+    <div class="nhomTab" id="tabThang"></div>
+  </div>
+
   <section id="manBaoCao">
-    <!-- Năm và tháng CÙNG một hàng, cách nhau một khoảng trống. -->
-    <div class="tabDonVi hangThoiGian">
-      <div class="nhomTab" id="tabNam"></div>
-      <div class="nhomTab" id="tabThang"></div>
-    </div>
     <div class="tabDonVi" id="tabLine"></div>
     <p class="canhBao" id="loiDonHang"></p>
     <!-- Băng "còn N dòng chưa có mã" (P4). Đặt NGOÀI #veDonHang có chủ đích:
@@ -741,6 +909,17 @@
          hiện ở tab [Tổng hợp]. Ẩn sẵn để nó không chớp lên một khối rỗng
          trong lúc lượt tải đầu chưa xong. -->
     <div id="o-dashboard" hidden></div>
+  </section>
+
+  <!-- MÀN KÍCH HOẠT BẢO HÀNH (19/09/2026).
+       Ẩn sẵn: [Báo cáo bán hàng] là màn mở đầu, và một khối nhấp nháy lên
+       rồi tắt đi trong lúc trang đang dựng là thứ người dùng đọc thành lỗi.
+       Ruột do bao-hanh.js vẽ — mười tab hãng hỏi Engine, không viết cứng ở
+       đây (LUẬT SỐ 1: danh sách hãng là một quyết định nghiệp vụ). -->
+  <section id="manBaoHanh" hidden>
+    <div class="tabDonVi" id="tabHang"></div>
+    <p class="canhBao" id="loiBaoHanh"></p>
+    <div id="veBaoHanh"></div>
   </section>
 </div>
 
@@ -905,5 +1084,8 @@ firebase.auth().onAuthStateChanged(async (user) => {
      người dùng bấm, nhưng khai báo trước cho khỏi phụ thuộc thời điểm. -->
 <script src="/gan-ma.js"></script>
 <script src="/don-hang.js"></script>
+<!-- bao-hanh.js nạp SAU don-hang.js: nó vẽ hàng tab cấp 1 và gọi sang
+     `window.DonHang` lúc người dùng quay về màn báo cáo. -->
+<script src="/bao-hanh.js"></script>
 </body>
 </html>

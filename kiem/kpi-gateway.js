@@ -120,10 +120,20 @@ const GOC = path.resolve(__dirname, '..');
     ok('dat-kpi đòi vai quantri', /const datKpi = boc\("quantri"/.test(GW), true);
     ok('gia-dung đòi vai quantri', /const datGiaDung = boc\("quantri"/.test(GW), true);
     /* Và mọi đường CŨ vẫn mở cho cả hai vai — lượt nới này không được vô tình
-       thắt chặt đường nào khác. */
-    const soBocTrue = (GW.match(/= boc\(true,/g) || []).length;
-    ok('mười một đường cũ vẫn boc(true) — không thắt chặt oan đường nào',
-       soBocTrue, 11);
+       thắt chặt đường nào khác.
+
+       KỂ TÊN từng handler thay vì ĐẾM số lần `boc(true,` xuất hiện (bản
+       trước ghim con số 11). Ghim một con số tuyệt đối thì mỗi endpoint
+       thêm sau này đều làm bài này đỏ, và người sửa chỉ việc nâng con số
+       lên — tức bài kiểm dạy đúng cái thói quen nó sinh ra để chặn. Kể tên
+       thì một đường CŨ bị thắt lại vẫn đỏ ngay, còn một đường MỚI không
+       liên quan thì không. */
+    for (const ten of ['layMe', 'laySucKhoeCongTy', 'taiSo', 'hoanTac', 'xoaKy',
+                       'layBanLuu', 'layKyCoDon', 'layDonHang', 'suaDong',
+                       'layMaBangGia', 'ganMa']) {
+      ok('  · ' + ten + ' vẫn boc(true)',
+         new RegExp('const ' + ten + ' = boc\\(true,').test(GW), true);
+    }
 
     /* Hai đường phải có mặt trong bảng route, và CHỈ nhận POST. */
     ok('dat-kpi trong bảng route', /\["POST \/api\/dat-kpi", datKpi\]/.test(GW), true);

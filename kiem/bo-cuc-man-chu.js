@@ -15,12 +15,14 @@ const HTML = doc('public/index.html');
 const CSS = (HTML.match(/<style>([\s\S]*?)<\/style>/) || [, ''])[1];
 const JS = doc('public/don-hang.js');
 
-console.log('\n1) KHÔNG còn tab chính — chỉ một màn duy nhất');
+console.log('\n1) Tab [Biểu đồ] không quay lại — nhưng tab cấp 1 thì có');
 {
-  /* Chủ dự án chốt 12/09/2026: bỏ hẳn tab [Biểu đồ], biểu đồ dời xuống dưới
-     bảng, nên hàng tab chính chỉ còn một nút — tức không còn lý do tồn tại.
-     Canh chiều NGƯỢC với bản trước P6: thứ phải vắng mặt, chứ không phải
-     thứ phải có. */
+  /* Hai chốt khác nhau, không mâu thuẫn, và bài này canh CẢ HAI:
+     · 12/09/2026 — bỏ tab [Biểu đồ]. Biểu đồ dời xuống dưới bảng [Tổng hợp],
+       nên hàng tab chính khi ấy chỉ còn MỘT nút, tức một hàng không ai bấm.
+     · 19/09/2026 — thêm màn [Kích hoạt bảo hành]. Nay có HAI MÀN thật, nên
+       hàng tab cấp 1 quay lại. Tab [Biểu đồ] thì KHÔNG.
+     Vắng mặt vẫn là điều kiện với đúng những thứ của chốt thứ nhất. */
   for (const id of ['nutManBaoCao', 'nutManBieuDo', 'tabChinh', 'manBieuDo']) {
     ok('không còn #' + id + ' trong HTML', new RegExp('id="' + id + '"').test(HTML), false);
   }
@@ -28,9 +30,17 @@ console.log('\n1) KHÔNG còn tab chính — chỉ một màn duy nhất');
      đúng — nó nói vì sao hàm ấy biến mất. Thứ phải vắng là lời gọi thật. */
   const maJS = JS.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
   ok('  · và don-hang.js không còn hàm đổi màn', /doiManChinh\s*\(/.test(maJS), false);
+  /* Biểu đồ vẫn KHÔNG phải một màn riêng: nó không được có tab, và nó phải
+     ở lại trong #manBaoCao (mục 2 ngay dưới canh chỗ ở). */
+  ok('  · và don-hang.js không vẽ nút tab nào cho biểu đồ',
+     /Biểu đồ["\']/.test(maJS), false);
 
   const khoiBaoCao = cat(HTML, /<section id="manBaoCao"[^>]*>/);
   ok('#manBaoCao mở sẵn (không có hidden)', /hidden/.test(khoiBaoCao), false);
+  /* Màn mở đầu là [Báo cáo bán hàng], nên màn kia ẩn sẵn — một khối nhấp
+     nháy lên rồi tắt đi trong lúc trang đang dựng là thứ người dùng đọc
+     thành lỗi. */
+  ok('#manBaoHanh ẩn sẵn trong HTML', /id="manBaoHanh"[^>]*hidden/.test(HTML), true);
 }
 
 console.log('\n2) Biểu đồ nằm TRONG màn báo cáo, ngay dưới bảng');
@@ -72,6 +82,13 @@ console.log('\n3) Năm và tháng nằm cùng một hàng');
      hang.indexOf('id="tabNam"') < hang.indexOf('id="tabThang"'), true);
   /* Đủ 12 tháng, tháng rỗng thì khoá — chứ không vẽ thiếu nút. */
   ok('vẽ đủ 12 nút tháng', /t <= 12/.test(JS), true);
+
+  /* Và từ 19/09/2026 hàng này nằm NGOÀI #manBaoCao: hai màn DÙNG CHUNG một
+     kỳ (chủ dự án chốt), nên nó phải hiện ở cả hai. Để nó lại trong
+     #manBaoCao là sang màn bảo hành thì mất bộ chọn tháng. */
+  const trongBaoCao3 = cat(HTML, /<section id="manBaoCao"[\s\S]*?<\/section>/);
+  ok('hàng năm/tháng KHÔNG nằm trong #manBaoCao (hai màn dùng chung)',
+     /id="tabNam"/.test(trongBaoCao3), false);
 }
 
 console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
