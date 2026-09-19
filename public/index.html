@@ -710,32 +710,89 @@
   #o-dashboard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
     padding: 12px 16px; margin-top: 10px; }
   /* ═══════════ Biểu đồ cơ cấu ngành hàng (19/09/2026) ═══════════
-     Chiếm nửa PHẢI của Dashboard, chỗ cụm ô xu hướng theo Line bỏ lại. */
+     Chiếm nửa PHẢI của Dashboard, chỗ cụm ô xu hướng theo Line bỏ lại.
+     Bố cục sửa lại cùng ngày sau khi chủ dự án mở thật: khung SVG đo theo
+     khung thật (hết hai dải trắng), và card chi tiết đứng cạnh biểu đồ. */
   .daiCoCau { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-              margin-bottom: 4px; }
-  .daiCoCau .tabDonVi { margin-bottom: 0; }
-  .daiCoCau .cuoiDaiCoCau { margin-left: auto; }
-  /* `min-height: 0` bắt buộc trong một flex dọc: thiếu nó thì khối không co
-     xuống dưới kích thước nội dung và cả cột phình ra khỏi chiều cao đã ép
-     (cùng bẫy `.khoiBieuDo` đã vấp). */
-  .khoiCoCau { flex: 1 1 0; min-height: 0; }
+              margin-bottom: 4px; min-height: 4px; }
+  /* Biểu đồ và card đứng CẠNH nhau (chủ dự án chốt 19/09/2026: "biểu đồ dồn
+     một chút sang trái, chỗ bên phải là một card"). `min-width: 0` trên ô vẽ
+     là bắt buộc — thiếu nó thì một flex item không co xuống dưới kích thước
+     nội dung và card bị đẩy ra khỏi cột. */
+  .khoiCoCau { flex: 1 1 0; min-height: 0; display: flex; gap: 12px; }
+  .veCoCau { flex: 1 1 0; min-width: 0; min-height: 0; }
   .svgCoCau { display: block; width: 100%; height: 100%; }
   .luoiCoCau { stroke: #e5e7eb; stroke-width: 1; }
   .nhanTrucCoCau { font-size: 11px; fill: #9ca3af; }
-  .nhanNganh { font-size: 12px; fill: #3d4a63; font-weight: 600; }
+  .nhanNganh { font-size: 12px; fill: #3d4a63; font-weight: 600; cursor: pointer; }
+  .nhanNganh:hover { fill: #1d5bea; }
+  .nhanNganh.nhanDangChon { fill: #1d5bea; text-decoration: underline; }
   .nhanNganhPt { font-size: 11px; fill: #9ca3af; font-variant-numeric: tabular-nums; }
   .coCauGhiChu { font-size: 11px; fill: #9ca3af; }
   .coCauRong { font-size: 13px; fill: #6b7280; }
   /* Mảng của cột NĂM TRƯỚC nhạt hơn — cùng màu để biết là cùng hãng, nhạt
      hơn để biết đâu là tháng đang xem. Viền trắng mảnh tách hai mảng cùng
-     gam pastel cạnh nhau; không có nó thì hai hãng màu gần nhau dính thành
-     một khối. */
-  .mangCoCau { stroke: #fff; stroke-width: 0.75; }
+     gam pastel cạnh nhau. */
+  .mangCoCau { stroke: #fff; stroke-width: 0.75; cursor: pointer; }
   .mangCoCau.mangTruoc { opacity: .48; }
   .mangCoCau:hover { stroke: #1f2430; stroke-width: 1.25; }
+  .mangCoCau.mangDangChon { stroke: #1f2430; stroke-width: 2; }
+
+  /* ---- Card bên phải: chú giải màu, hoặc chi tiết của mảng vừa bấm ---- */
+  .cardCoCau {
+    flex: 0 0 196px; min-width: 0; overflow-y: auto;
+    background: #fafafa; border: 1px solid #eceef1; border-radius: 8px;
+    padding: 8px 10px; font-size: 12px;
+  }
+  .cardDau { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .cardTieuDe { font-size: 12px; font-weight: 700; color: #1f2430; margin: 0 0 6px;
+                word-break: break-word; }
+  .cardDau .cardTieuDe { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .nutPhuNho { border: 0; background: none; color: #9ca3af; cursor: pointer;
+               font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 5px; }
+  .nutPhuNho:hover { background: rgba(29,91,234,.10); color: #1d5bea; }
+  .cardKhoi { margin-top: 8px; padding-top: 6px; border-top: 1px solid #eceef1; }
+  .cardNhanKhoi { margin: 0 0 3px; font-size: 11px; color: #9ca3af; font-weight: 600;
+                  text-transform: uppercase; letter-spacing: .02em; }
+  .cardHang { display: flex; align-items: baseline; gap: 6px; }
+  .cardSo { font-weight: 700; color: #1f2430; font-variant-numeric: tabular-nums; }
+  .cardNhan { color: #6b7280; font-size: 11px; }
+  .cardNhac { margin: 8px 0 0; font-size: 11px; color: #9ca3af; }
+  .cardSo.cardTang { color: #0f9d58; }
+  .cardSo.cardGiam { color: #c4361f; }
+  .cardSo.cardMoi { color: #1d5bea; }
+
+  /* Ô màu của một hãng — dùng ở CẢ chú giải card lẫn hàng tab của màn kích
+     hoạt bảo hành, nên nó là một lớp dùng chung. */
+  .oMauHang { display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+              flex: 0 0 auto; border: 1px solid rgba(0,0,0,.08); }
+  .dsMauHang { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .mucMauHang { display: flex; align-items: center; gap: 6px; cursor: pointer;
+                border-radius: 5px; padding: 2px 3px; min-width: 0; }
+  .mucMauHang:hover { background: #f0f2f5; }
+  .mucMauHang.mucMauPhu { cursor: default; }
+  .mucMauHang.mucMauPhu:hover { background: none; }
+  .tenMauHang { color: #3d4a63; overflow: hidden; text-overflow: ellipsis;
+                white-space: nowrap; min-width: 0; }
+  .soMauHang { margin-left: auto; color: #6b7280; font-variant-numeric: tabular-nums; }
+
   .chuGiaiCoCau { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 0;
                   font-size: 12px; color: #6b7280; }
   .chuGiaiCoCau .canhBaoDoPhu { color: #b45309; flex-basis: 100%; }
+
+  /* Màn hẹp: card xuống dưới biểu đồ thay vì bóp biểu đồ còn một dải. */
+  @media (max-width: 1200px) {
+    .khoiCoCau { flex-direction: column; }
+    .cardCoCau { flex: 0 0 auto; max-height: 160px; }
+  }
+
+  /* ---- Chấm màu hãng trên hàng tab của màn Kích hoạt bảo hành ----
+     Chủ dự án chốt 19/09/2026: "những màu này gán luôn lên các nút chọn tab
+     ở kích hoạt bảo hành". Một chấm nhỏ trước tên, không tô nền cả nút:
+     nền nút đang mang trạng thái "đang chọn" (xanh đậm), tô thêm màu hãng
+     lên đó là hai tín hiệu tranh nhau một chỗ. */
+  #tabHang .tabNut { display: inline-flex; align-items: center; gap: 6px; }
+  #tabHang .tabDang .oMauHang { border-color: rgba(255,255,255,.55); }
 
   /* ---- Khối xu hướng của MỘT line, ngay trên bảng đơn (19/09/2026) ----
      Dùng lại đúng `.oMini` của cụm cũ, chỉ khác là một ô đứng một mình nên
@@ -1117,6 +1174,10 @@ firebase.auth().onAuthStateChanged(async (user) => {
 <!-- co-cau.js nạp SAU suc-khoe.js: suc-khoe gọi `window.CoCau.ve()` lúc vẽ
      lại Dashboard. Lượt vẽ ấy chỉ chạy sau khi đăng nhập xong nên thứ tự
      nạp không phải một ràng buộc chặt — khai đúng thứ tự cho dễ đọc. -->
+<!-- mau-hang.js nạp TRƯỚC hai file dùng nó: bảng màu của từng hãng, dùng
+     chung cho biểu đồ cơ cấu và hàng tab của màn kích hoạt bảo hành. Hai
+     bảng màu là hai bảng trôi khỏi nhau — xem đầu file. -->
+<script src="/mau-hang.js"></script>
 <script src="/co-cau.js"></script>
 <script src="/doc-xlsx.js"></script>
 <script src="/tai-len.js"></script>

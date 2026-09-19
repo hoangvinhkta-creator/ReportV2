@@ -75,6 +75,50 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (d) — sửa bố cục biểu đồ cơ cấu, sau khi mở thật.**
+
+Chủ dự án gửi ảnh: *"kích thước, bố cục biểu đồ đang quá nhỏ… thừa các
+khoảng trắng"*. Hai nguyên nhân, cả hai là lỗi của lượt (c):
+
+1. **Khung SVG sai tỉ lệ.** `viewBox` khai cứng 1000×420 rồi để
+   `preserveAspectRatio` tự lo — khung thật của cột phải có tỉ lệ khác
+   hẳn, nên trình duyệt thu hình cho vừa một chiều rồi chừa hai dải
+   trắng ở chiều kia. Biểu đồ doanh số bên trái KHÔNG bị, vì nó đã đo
+   khung rồi tính lại `viewBox` từ P2(b); lượt (c) quên làm đúng việc ấy.
+2. **Trục dọc cứng 0–100%.** Lý do viết hồi ấy — *"co trục là mọi tháng
+   trông giống nhau"* — nghe hợp lý nhưng sai trên dữ liệu thật: với
+   8–11 ngành thì KHÔNG ngành nào chiếm quá chừng 35%, nên ⅔ phía trên
+   là khoảng trắng vĩnh viễn. Nay trần = làm tròn lên bội số 5% ngay
+   trên cột cao nhất (của CẢ HAI tháng), sàn 20%.
+
+⚠️ **Bài học chung cho hai cái trên:** cả hai đều là quyết định "nghe
+hợp lý" mà chỉ sai khi nhìn hình thật. Biểu đồ mới phải được MỞ BẰNG MÁY
+THẬT trước khi coi là xong — `npm test` xanh không nói gì về khoảng
+trắng.
+
+**Bố cục mới chủ dự án chốt:** biểu đồ dồn sang trái, bên phải là một
+**card**. Chưa bấm gì thì card LÀ chú giải màu; bấm một mảng thì nó hiện
+doanh số + số máy của đúng mảng ấy, tháng này so cùng kỳ, kèm tỉ trọng.
+**Bỏ nút [Số máy]** — chỉ tiêu ấy nay sống trong card, cạnh doanh số của
+cùng một mảng, đọc một lượt thay vì bấm qua lại hai biểu đồ.
+
+**Màu: MỘT bảng cho cả app** (`public/mau-hang.js`). Bản (c) băm tên hãng
+ra một trong mười hai màu — về lý thì cùng tên ra cùng màu, về mắt thì
+hai hãng đụng cùng một ô băm là chuyện thường, và khi ấy hai mảng cùng
+màu KHÔNG phải cùng một hãng. Nay bảng khai tường minh mười hãng, và
+**chấm màu ấy gắn luôn lên hàng tab của màn Kích hoạt bảo hành** (chủ dự
+án chốt). `kiem/mau-hang.js` đối chiếu mười khoá của bảng với
+`HANG_BAO_HANH` của Engine — đó là thứ giữ cho ngoại lệ "màn hình được
+gõ tên hãng" không âm thầm trôi.
+
+**Nhãn ngành** (chủ dự án chốt): gộp *"lọc không khí"* + *"hút ẩm"* →
+**LKK**; *"Gia dụng - X"* → **Gia dụng**; cột chưa gán mã → **NONE**.
+Bảng ở Engine (`GOP_NGANH`), khớp trên chuỗi đã chuẩn hoá nên không phải
+biết trước từng cái đuôi. Đây là phép GỘP: số của hai ngành cộng lại, và
+cột gộp mang `ten_goc` để rê chuột nói ra nó gồm những gì.
+
+---
+
 **LƯỢT 19/09/2026 (c) — biểu đồ CƠ CẤU NGÀNH HÀNG × HÃNG.**
 
 Chủ dự án hỏi: dữ liệu hãng/ngành hàng có đủ để dựng biểu đồ so cùng kỳ

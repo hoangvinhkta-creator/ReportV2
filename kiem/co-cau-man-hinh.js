@@ -44,8 +44,17 @@ const GOC = path.resolve(__dirname, '..');
        Màn hình nhận đúng những cột phải vẽ. */
     ok('không khai lại ngưỡng top-8', /\b8\b[^\n]*ngành|SO_NGANH/.test(FE_SACH), false);
     ok('không khai lại ngưỡng 5%', /NGUONG_HANG|\.05\b|\b5\s*\/\s*100/.test(FE_SACH), false);
-    /* Không tự xếp hạng, không tự cắt danh sách — hai việc ấy LÀ phép gộp. */
-    ok('không tự xếp hạng ngành/hãng', /\.sort\(/.test(FE_SACH), false);
+    /* Không tự xếp hạng lại CỘT hay RUỘT CỘT, không tự cắt danh sách — hai
+       việc ấy LÀ phép gộp, và Engine đã làm xong.
+
+       Có đúng MỘT phép `sort` được phép: xếp danh sách CHÚ GIẢI MÀU trong
+       card theo doanh số. Nó sắp một danh sách màu để mắt dễ dò, không đổi
+       một con số nào hiện ra — số vẫn lấy nguyên từ từng mảng Engine trả
+       về. Ghim đúng một lượt để một phép sort thứ hai lẻn vào thì đỏ. */
+    ok('chỉ có ĐÚNG MỘT phép sort (chú giải màu)',
+       (FE_SACH.match(/\.sort\(/g) || []).length, 1);
+    ok('  · và nó KHÔNG sắp lại cột hay ruột cột',
+       /\.cot\.sort\(|\.hang\.sort\(|\.gom\.sort\(/.test(FE_SACH), false);
     ok('không tự cắt danh sách', /\.slice\(0,\s*\d/.test(FE_SACH), false);
     /* Và không tự quyết dòng nào được tính — đó là `laDongTinhCoCau`. */
     ok('không tự lọc dòng hàng',
@@ -60,32 +69,62 @@ const GOC = path.resolve(__dirname, '..');
     ok('hỏi đúng đường /api/co-cau', /\/api\/co-cau\?ky=/.test(FE), true);
   }
 
-  console.log('\nB) Màu — theo TÊN hãng, bền qua mọi cột và cả hai tháng');
+  console.log('\nB) Màu lấy từ MỘT bảng dùng chung, không băm tại chỗ');
   {
-    ok('có hàm gán màu theo tên', /function mauHang\(ten\)/.test(FE), true);
-    /* Vân tay của TÊN, không phải chỉ số vòng lặp. `charCodeAt` là dấu hiệu
-       chắc chắn nó đang băm chuỗi chứ không đếm vị trí. */
-    ok('  · băm từ chuỗi tên', /ten\.charCodeAt\(/.test(FE), true);
-    ok('  · và KHÔNG lấy màu theo thứ tự trong cột',
-       /MAU\[\s*i\s*(%|\])/.test(FE_SACH), false);
+    /* Bản đầu băm tên hãng ra một trong mười hai màu. Về lý thì cùng tên ra
+       cùng màu; về mắt thì hai hãng đụng cùng một ô băm là chuyện thường
+       với vài chục cái tên — và khi ấy hai mảng cùng màu KHÔNG phải cùng một
+       hãng, tức màu nói sai đúng điều nó sinh ra để nói.
 
-    /* "Khác" và "Chưa phân loại" phải XÁM, không lấy màu trong bảng pastel:
-       chúng là phần gộp và phần chưa biết, mắt phải đọc ra ngay. */
-    ok('mảng "Khác" có màu riêng', /MAU_KHAC/.test(FE), true);
-    ok('cột "Chưa phân loại" có màu riêng', /MAU_CHUA_PHAN_LOAI/.test(FE), true);
+       Bảng và mọi bài kiểm về màu nay ở `kiem/mau-hang.js`; ở đây chỉ canh
+       rằng file này KHÔNG dựng lại một bộ màu của riêng nó. */
+    ok('không còn hàm băm màu tại chỗ', /charCodeAt|0x811c9dc5/.test(FE_SACH), false);
+    ok('  · và không khai một mã màu nào', /#[0-9a-f]{6}/i.test(FE_SACH), false);
+    ok('lấy màu qua cửa chung window.MauHang', /window\.MauHang/.test(FE), true);
+    /* Thiếu file kia thì NÓI một câu rồi dừng — không vẽ một biểu đồ nửa
+       màu, thứ trông như dữ liệu hỏng chứ không như thiếu một file. */
+    ok('  · thiếu bảng màu thì nói thẳng, không vẽ nửa vời',
+       /Chưa tải được bảng màu/.test(FE), true);
+  }
 
-    /* Gam PASTEL (chủ dự án chốt): màn này mở cả buổi. Đo bằng độ sáng —
-       mọi màu trong bảng phải sáng, không màu nào bão hoà nhảy lên trước
-       mắt. */
-    const bang = (FE.match(/const MAU = \[[\s\S]*?\];/) || [''])[0];
-    const mau = [...bang.matchAll(/#([0-9a-f]{6})/g)].map((m) => m[1]);
-    ok('có đủ một bảng màu', mau.length >= 8, true);
-    const sang = (h) => (parseInt(h.slice(0, 2), 16) * 0.299
-      + parseInt(h.slice(2, 4), 16) * 0.587 + parseInt(h.slice(4, 6), 16) * 0.114);
-    ok('  · mọi màu đều nhạt (pastel, không chói)', mau.every((h) => sang(h) >= 170), true);
-    /* Và không màu nào tối tới mức chữ đen trên nó đọc không ra — mảng nào
-       cũng có thể phải mang nhãn về sau. */
-    ok('  · và không màu nào quá tối', mau.every((h) => sang(h) <= 240), true);
+  console.log('\nB2) Ba lỗi bố cục của bản đầu, sau khi chủ dự án mở thật');
+  {
+    /* 1 — KHUNG SVG SAI TỈ LỆ. Bản đầu khai `viewBox` cứng rồi để trình
+       duyệt tự chừa hai dải trắng; đo trên ảnh chụp thật, biểu đồ chỉ chiếm
+       chừng nửa chỗ đang có. Nay ĐO khung rồi tính chiều cao hệ toạ độ theo
+       đúng tỉ lệ ấy — y như biểu đồ doanh số bên trái vẫn làm. */
+    ok('chiều cao hệ toạ độ tính từ khung THẬT',
+       /RONG \* h \/ w/.test(FE), true);
+    ok('  · và vẽ SAU khi khối đã vào trang (không thì đo ra 0)',
+       FE.indexOf('oVe.appendChild(hang)') < FE.indexOf('veHinh(oHinh, kq)'), true);
+    /* Lượt vẽ đầu của mỗi lần mở trang vẫn đo phải một cột chưa được ép
+       chiều cao — `veLai()` gọi vẽ TRƯỚC `canhCaoKhoi()`. Nên phải có đường
+       đo lại, và Dashboard phải gọi nó. */
+    ok('  · có cửa canhLai() để đo lại', /window\.CoCau = \{ ve, canhLai \}/.test(FE), true);
+    ok('  · và Dashboard gọi nó sau khi ép chiều cao',
+       /window\.CoCau\.canhLai\(\)/.test(SK), true);
+
+    /* 2 — TRỤC DỌC CỨNG 0–100%. Với 8–11 ngành thì không ngành nào chiếm
+       quá chừng 35%, nên hai phần ba phía trên là khoảng trắng vĩnh viễn. */
+    ok('trần trục co theo cột cao nhất', /function tranTruc/.test(FE), true);
+    ok('  · làm tròn LÊN bội số 5', /Math\.ceil\([\s\S]{0,40}\/ 5\) \* 5/.test(FE), true);
+    ok('  · có sàn để tháng một-ngành không vẽ cột chạm nóc',
+       /SAN_TRAN_PT/.test(FE), true);
+    /* Trần lấy theo cột cao nhất của CẢ HAI tháng — lấy riêng tháng này thì
+       cột năm trước cao hơn sẽ tràn ra khỏi khung. */
+    ok('  · và xét cả cột của năm trước', /if \(kq\.co_ky_truoc\) \{\s*\n\s*for \(const c of B\.cot\)/.test(FE), true);
+
+    /* 3 — CARD bên phải, và bỏ nút [Số máy]. */
+    ok('có card bên phải', /cardCoCau/.test(FE), true);
+    ok('  · bấm một mảng thì ghim vào card', /datChon\(c\.ten/.test(FE), true);
+    ok('  · KHÔNG còn nút [Số máy]', /"Số máy"\)/.test(FE_SACH), false);
+    ok('  · và không còn trạng thái chỉ tiêu', /chiTieu/.test(FE_SACH), false);
+    /* Số máy nay sống trong card, cạnh doanh số của cùng một mảng. */
+    ok('  · card hiện CẢ doanh số lẫn số máy',
+       /veKhoiSo\("Doanh số"/.test(FE) && /veKhoiSo\("Số máy"/.test(FE), true);
+    /* Năm trước bằng 0 thì KHÔNG in "+∞%" — nói thẳng "năm trước không có". */
+    ok('  · và không bịa phần trăm khi năm trước bằng 0',
+       /năm trước không có/.test(FE), true);
   }
 
   console.log('\nC+D) Độ phủ và nguồn hỏng — nói ra, không giấu');

@@ -263,6 +263,20 @@
       const dem = (kq.tom_tat_hang && kq.tom_tat_hang[ten]) || { chua: 0, da: 0 };
       const nut = el("button", "tabNut" + (trangThai.hang === ten ? " tabDang" : ""));
       nut.type = "button";
+      /* CHẤM MÀU của hãng, lấy từ đúng bảng mà biểu đồ cơ cấu đang dùng (chủ
+         dự án chốt 19/09/2026: "những màu này gán luôn lên các nút chọn tab
+         ở kích hoạt bảo hành"). Một màu cho một hãng ở mọi màn — mắt nhận ra
+         Samsung trước khi đọc chữ.
+
+         Gọi qua `window.MauHang` chứ không chép bảng màu sang đây: hai bảng
+         là hai bảng trôi khỏi nhau, và chỗ trôi là Samsung xanh ở biểu đồ mà
+         hồng ở hàng tab. Thiếu hẳn file kia cũng không được làm hỏng hàng
+         tab — khi ấy chỉ là không có chấm. */
+      if (window.MauHang && window.MauHang.cua) {
+        const cham = el("span", "oMauHang");
+        cham.style.background = window.MauHang.cua(ten);
+        nut.appendChild(cham);
+      }
       nut.appendChild(document.createTextNode(ten));
       if (dem.chua) {
         const s = el("span", null, " " + dem.chua);
