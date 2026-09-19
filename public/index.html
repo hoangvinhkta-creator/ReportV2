@@ -738,8 +738,13 @@
   .nhanNganh { fill: #3d4a63; font-weight: 600; cursor: pointer; }
   .nhanNganh:hover { fill: #1d5bea; }
   .nhanNganh.nhanDangChon { fill: #1d5bea; text-decoration: underline; }
-  /* Dãy số tỉ trọng dưới trục ĐÃ BỎ (chủ dự án chốt 19/09/2026) — thẻ bên
-     phải đã nói con số ấy, kèm cả doanh số lẫn số máy. */
+  /* Dãy số tỉ trọng DƯỚI TRỤC đã bỏ; con số nay nằm TRÊN ĐẦU cột của kỳ
+     đang xem (chủ dự án chốt 19/09/2026), tức dính vào đúng cái cột nó đo.
+     `paint-order: stroke` vẽ viền trắng TRƯỚC rồi mới tô chữ — nhờ thế chữ
+     vẫn đọc được ở chỗ nó tràn qua khe giữa hai cột. */
+  .ptDinhCot { fill: #1f2430; font-weight: 700; font-variant-numeric: tabular-nums;
+               stroke: #fff; stroke-width: 3; paint-order: stroke fill;
+               pointer-events: none; }
   /* Vạch chân cột — tín hiệu "tháng nào" nằm NGOÀI mảng màu hãng, và từ khi
      bỏ dãy số trên thì nó là tín hiệu DUY NHẤT phân biệt hai tháng. */
   .chanCot { fill: #6b7280; }
