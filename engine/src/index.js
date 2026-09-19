@@ -23,10 +23,11 @@ import {
   HANG_BAO_HANH, hangChinhThuc, dsKichHoat, donHuongDan, thuTuTiepTheo, BUOC_TOI_DA,
 } from "./bao-hanh.mjs";
 import { coCauNganhHang } from "./co-cau.mjs";
+import { mucPhanLoai, apPhanLoaiTay } from "./phan-loai.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.15.0-co-cau-gop-nganh";
+const PHIEN_BAN = "0.16.0-phan-loai-tay";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -34,6 +35,18 @@ export default class extends WorkerEntrypoint {
    * phải 403: 403 là xác nhận "có cái gì đó ở đây". */
   async fetch() {
     return new Response("Not Found", { status: 404 });
+  }
+
+  /** Hãng và ngành hàng CÓ THẬT trên bảng giá Tracking — danh sách cho
+   *  trình phân loại thủ công, và cũng là danh sách Gateway đối chiếu lúc
+   *  ghi. Xem `phan-loai.mjs`.
+   *
+   *  ĐẶT LÊN TRƯỚC lượt merge có Gateway gọi nó (bẫy số 4 — ROADMAP.md).
+   *
+   *  Ném lỗi khi bảng giá rỗng hay sai kiểu: một danh sách rỗng ở đây đọc
+   *  lên thành "Tracking không có hãng nào" (CLAUDE.md). */
+  async mucPhanLoai(nguonTracking) {
+    return mucPhanLoai(nguonTracking);
   }
 
   /** Số phiên bản nghiệp vụ — endpoint /api/me của Gateway gọi hàm này để
@@ -168,9 +181,16 @@ export default class extends WorkerEntrypoint {
    *  "Nguồn hỏng thì BÁO LỖI"). */
   async dungBangDonKemMa(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, nguonTracking,
                          ky, minNgay, quyetDinh, bangKpi, giaDung, doanhSoLineKyTruoc,
-                         bangCong, quyetDinhBonus, doanhSoLineNamTruoc, mtd) {
+                         bangCong, quyetDinhBonus, doanhSoLineNamTruoc, mtd,
+                         quyetDinhPhanLoai) {
     const bang = khopMaChoBangDon(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem), nguonTracking, ky);
+    /* PHÂN LOẠI TAY chạy NGAY SAU khớp mã, và chỉ chạm dòng KHÔNG có mã —
+       mã bảng giá luôn thắng (`phan-loai.mjs`). Đặt ở đây chứ không sau cùng
+       vì nó chỉ điền hai cái NHÃN, không đụng một con số nào: mọi lớp phía
+       dưới (BTL, giá vốn, sửa tay, bonus, quy đổi) đọc số lượng và tiền, và
+       không lớp nào đọc `hang`/`nganh_hang`. */
+    apPhanLoaiTay(bang, quyetDinhPhanLoai);
     /* BÁN TRẢ LẠI chạy TRƯỚC `dienGiaNhap`: nó sửa SỐ LƯỢNG (về 0 hoặc −1),
        mà giá vốn thì nhân với số lượng. Phép ghép tự chạy trên TOÀN kỳ
        (`dongCuaKy`, chưa lọc line) để tab line nào cũng ra cùng một kết quả —
@@ -223,12 +243,17 @@ export default class extends WorkerEntrypoint {
    *  nó không lấy dữ liệu Tracking (ngoài phạm vi, hoặc Tracking hỏng). */
   async dungBangDonSuaTay(dongCuaKy, khachCuaKy, bangLine, lineMuonXem, quyetDinh,
                           bangKpi, giaDung, ky, doanhSoLineKyTruoc, bangCong,
-                          quyetDinhBonus, doanhSoLineNamTruoc, mtd) {
+                          quyetDinhBonus, doanhSoLineNamTruoc, mtd,
+                          quyetDinhPhanLoai) {
     /* BTL chạy ở CẢ đường này: nó là luật đọc SỔ, không phụ thuộc bảng giá
        Tracking. Kỳ ngoài phạm vi khớp mã vẫn phải trừ đúng một lượt trả hàng. */
     const bang = apDungBTL(
       dungBangDon(dongCuaKy, khachCuaKy, bangLine, lineMuonXem),
       ghepBTL(dongCuaKy, khachCuaKy));
+    /* Phân loại tay chạy ở CẢ đường này — nó không cần bảng giá Tracking,
+       nên Tracking hỏng không có lý do gì làm biến mất quyết định của người.
+       Khoá tự tính lại từ tên hàng khi dòng chưa mang `khoa_ten`. */
+    apPhanLoaiTay(bang, quyetDinhPhanLoai);
     apDungSuaTay(bang, quyetDinh);
     /* BONUS đứng SAU sửa tay và TRƯỚC quy đổi, và cả hai vế đều bắt buộc:
        sau sửa tay vì nó cộng vào `don.loi_nhuan` mà sửa tay đổi giá nhập tức

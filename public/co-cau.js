@@ -267,7 +267,7 @@
 
   /* Hệ toạ độ: bề ngang cố định, CHIỀU CAO tính theo tỉ lệ khung thật. */
   const RONG = 1000;
-  const LE_PHAI = 12, LE_TREN = 10;
+  const LE_PHAI = 12;
   /** Cỡ chữ trục, đơn vị hệ toạ độ, khi chưa hỏi được biểu đồ trái.
    *
    *  `1000 / 640 * 10` — tỉ lệ giữa hai hệ toạ độ, đúng khi hai khung vẽ
@@ -324,6 +324,9 @@
        dọc tràn ra ngoài khung và tên ngành đè lên mép dưới. Tính từ cỡ chữ
        chứ không khai hai hằng: cỡ chữ đổi theo bề rộng màn. */
     const coChu = coChuTruc(w);
+    /* Lề TRÊN chừa chỗ cho con số tỉ trọng đặt trên đầu cột: cột cao nhất
+       chạm gần trần trục, không chừa thì con số của nó bị cắt mất. */
+    const LE_TREN = Math.max(10, coChu * 1.2);
     /* 4,0 lần cỡ chữ: nhãn dài nhất của trục là "100,0%" — bốn chữ số, một
        dấu phẩy và một dấu phần trăm, đo ra chừng 3,3 lần cỡ chữ — cộng 8
        đơn vị khe hở tới trục. Hụt là nhãn bị cắt mất chữ số đầu. */
@@ -387,10 +390,11 @@
 
     ten.forEach((tenNganh, i) => {
       const x0 = LE_TRAI + i * oNganh;
-      veMotCot(svg, cotHoac(A.cot, tenNganh), A.tong, x0 + leO, rongCot, y, tran, false, kq.ky);
+      veMotCot(svg, cotHoac(A.cot, tenNganh), A.tong, x0 + leO, rongCot, y, tran,
+        false, kq.ky, coChu);
       if (kq.co_ky_truoc) {
         veMotCot(svg, cotHoac(B.cot, tenNganh), B.tong,
-          x0 + leO + rongCot + ranh, rongCot, y, tran, true, kq.ky_truoc);
+          x0 + leO + rongCot + ranh, rongCot, y, tran, true, kq.ky_truoc, coChu);
       }
 
       /* Nhãn ngành bấm được: bấm vào tên là xem cả cột, không phải một mảng.
@@ -443,7 +447,7 @@
     veRuot();
   }
 
-  function veMotCot(svg, c, tong, x, rong, y, tran, laTruoc, ky) {
+  function veMotCot(svg, c, tong, x, rong, y, tran, laTruoc, ky, coChu) {
     if (!c || !tong) return;
 
     /* Vạch chân cột: ĐẬM cho tháng đang xem, NHẠT cho cùng kỳ. Vẽ cả khi
@@ -498,6 +502,29 @@
       r.addEventListener("click", () => datChon(c.ten, h.la_tron ? null : h.ten));
       svg.appendChild(r);
       duoi -= cao;
+    }
+
+    /* ── TỈ TRỌNG TRÊN ĐẦU CỘT, CHỈ CỘT CỦA KỲ NÀY ──
+       Chủ dự án chốt 19/09/2026: "cho tỉ trọng trở lại nhưng hiển thị ở ngay
+       trên đầu mỗi cột biểu đồ của kì này". Khác hẳn dãy số dưới trục vừa
+       bỏ: ở đó mười tám con số nằm rời khỏi cột chúng nói về, ở đây mỗi con
+       số dính vào đúng cái cột nó đo.
+
+       LÀM TRÒN VỀ SỐ NGUYÊN, cố ý. Cột chỉ rộng chừng mười bốn pixel trên
+       màn; "12,3%" đo ra rộng gấp đôi cột và sẽ đè sang cột cùng kỳ ngay
+       bên cạnh. Con số lẻ vẫn có đủ ở phần rê chuột và ở thẻ bên phải — đây
+       là con số để LIẾC, không phải để đối chiếu.
+
+       Viền trắng quanh chữ (`paint-order` ở CSS) cho nó đọc được cả ở chỗ
+       chữ tràn qua khe giữa hai cột. */
+    if (!laTruoc) {
+      const t = nut("text", "ptDinhCot");
+      t.setAttribute("x", x + rong / 2);
+      t.setAttribute("y", y(ptCot) - coChu * 0.42);
+      t.setAttribute("text-anchor", "middle");
+      t.setAttribute("font-size", coChu * 0.85);
+      t.textContent = Math.round(ptCot) + "%";
+      svg.appendChild(t);
     }
   }
 

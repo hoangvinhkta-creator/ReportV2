@@ -613,9 +613,9 @@ const GOC = path.resolve(__dirname, '..');
        lại cái đuôi. */
     const ENG = doc('engine/src/index.js');
     ok('dungBangDonKemMa nhận tham số mới ở ĐUÔI',
-       /dungBangDonKemMa\([^)]*quyetDinhBonus, doanhSoLineNamTruoc, mtd\)/.test(ENG), true);
+       /dungBangDonKemMa\([^)]*doanhSoLineNamTruoc, mtd,\s*\n?\s*quyetDinhPhanLoai\)/.test(ENG), true);
     ok('dungBangDonSuaTay cũng vậy',
-       /dungBangDonSuaTay\([^)]*quyetDinhBonus, doanhSoLineNamTruoc, mtd\)/.test(ENG), true);
+       /dungBangDonSuaTay\([^)]*doanhSoLineNamTruoc, mtd,\s*\n?\s*quyetDinhPhanLoai\)/.test(ENG), true);
     /* Và `apDungKpi` cũng nhận nó ở đuôi, SAU `bangCong`. Chèn vào giữa —
        cạnh `doanhSoLineKyTruoc`, chỗ nó thuộc về về nghĩa — là `bangCong`
        nhận nhầm bảng doanh số, và lương cả công ty sai trong im lặng. */

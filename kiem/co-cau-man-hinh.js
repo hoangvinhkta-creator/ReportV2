@@ -213,10 +213,26 @@ const GOC = path.resolve(__dirname, '..');
     ok('  · tức chọn theo (ngành, hãng), không theo cột nào',
        /const chon = dangChon\(c\.ten, h\.la_tron \? null : h\.ten\)/.test(FE), true);
 
-    /* 3 — BỎ DÃY SỐ TỈ TRỌNG DƯỚI TRỤC. Thẻ bên phải đã nói con số ấy, kèm
-       cả doanh số lẫn số máy. */
+    /* 3 — BỎ DÃY SỐ TỈ TRỌNG DƯỚI TRỤC, ĐƯA LÊN ĐỈNH CỘT CỦA KỲ NÀY.
+       Dưới trục thì mười tám con số nằm rời khỏi cột chúng nói về; trên đỉnh
+       thì mỗi con số dính vào đúng cái cột nó đo. */
     ok('không còn dãy số tỉ trọng dưới trục', /nhanNganhPt/.test(FE), false);
     ok('  · và CSS cũng sạch', /nhanNganhPt|nhanPtTruoc/.test(CSS), false);
+    ok('tỉ trọng nay đặt trên ĐỈNH cột', /ptDinhCot/.test(FE) && /\.ptDinhCot\b/.test(CSS), true);
+    /* CHỈ cột của kỳ này — cột cùng kỳ để trống, không thì hai con số chồng
+       nhau trên một cặp cột rộng chừng mười bốn pixel. */
+    ok('  · chỉ cột kỳ này, không cột cùng kỳ',
+       /if \(!laTruoc\) \{\s*\n\s*const t = nut\("text", "ptDinhCot"\)/.test(FE), true);
+    /* Làm tròn về số nguyên: "12,3%" đo ra rộng gấp đôi cột và đè sang cột
+       bên cạnh. Con số lẻ vẫn có ở phần rê chuột và ở thẻ bên phải. */
+    ok('  · làm tròn về số nguyên cho vừa bề ngang cột',
+       /Math\.round\(ptCot\) \+ "%"/.test(FE), true);
+    /* Lề trên phải chừa chỗ, không thì con số của cột cao nhất bị cắt. */
+    ok('  · và lề trên chừa chỗ cho nó',
+       /const LE_TREN = Math\.max\(10, coChu/.test(FE), true);
+    /* Viền trắng quanh chữ cho nó đọc được ở chỗ tràn qua khe giữa hai cột. */
+    ok('  · kèm viền trắng để đọc được khi tràn khe',
+       /\.ptDinhCot[^{]*\{[^}]*paint-order/.test(CSS), true);
   }
 
   console.log('\nC+D) Độ phủ và nguồn hỏng — nói ra, không giấu');
