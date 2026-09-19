@@ -166,12 +166,16 @@ const GOC = path.resolve(__dirname, '..');
       d(null, null, 200),        // chưa gán mã → chưa có ngành lẫn hãng
     ]), null);
     const m = m0.theo_doanh_so.nay;
-    const cpl = cot(m, 'Chưa phân loại');
-    ok('có cột "Chưa phân loại"', !!cpl, true);
+    /* Nhãn viết tắt "NONE" — chủ dự án chốt 19/09/2026: trục ngang chỉ có
+       chừng bảy chữ, "Chưa phân loại" bị cắt thành "Chưa phân lo…". Câu đầy
+       đủ vẫn ở phần rê chuột và ở dòng độ phủ dưới biểu đồ. */
+    const cpl = cot(m, C.NHAN_CHUA_PHAN_LOAI);
+    ok('nhãn cột chưa gán mã viết tắt là NONE', C.NHAN_CHUA_PHAN_LOAI, 'NONE');
+    ok('có cột chưa phân loại', !!cpl, true);
     ok('  · cao đúng tỉ trọng thật (200/300)', cpl.gia_tri, 200);
     ok('  · và được đánh dấu để màn hình tô xám', cpl.la_chua_phan_loai, true);
     ok('  · nó không có ruột (không phải một ngành)', cpl.hang, []);
-    ok('  · đứng CUỐI trục', m.cot[m.cot.length - 1].ten, 'Chưa phân loại');
+    ok('  · đứng CUỐI trục', m.cot[m.cot.length - 1].ten, C.NHAN_CHUA_PHAN_LOAI);
 
     ok('độ phủ nói ra bằng số', m0.do_phu.nay.doanh_so_pt, 33.3);
     ok('  · và theo cả chỉ tiêu số máy', m0.do_phu.nay.so_may_pt, 50);
@@ -195,7 +199,7 @@ const GOC = path.resolve(__dirname, '..');
     const m = C.coCauNganhHang(bang([
       d('Tivi', 'Samsung', 50), d('Tivi', null, 50),
     ]), null).theo_doanh_so.nay;
-    ok('không rơi vào cột Chưa phân loại', !!cot(m, 'Chưa phân loại'), false);
+    ok('không rơi vào cột chưa phân loại', !!cot(m, C.NHAN_CHUA_PHAN_LOAI), false);
     ok('  · mà thành một mảng trong chính ngành ấy',
        !!mang(cot(m, 'Tivi'), 'Chưa rõ hãng'), true);
   }
@@ -238,6 +242,90 @@ const GOC = path.resolve(__dirname, '..');
     ok('trả kèm ngưỡng số ngành', r.nguong.so_nganh, C.SO_NGANH_TOI_DA);
     ok('  · và ngưỡng gộp hãng', r.nguong.hang_pt, C.NGUONG_HANG_PT);
     ok('đúng hai con số chủ dự án chốt', [C.SO_NGANH_TOI_DA, C.NGUONG_HANG_PT], [8, 5]);
+  }
+
+  console.log('\n7) Gộp / đổi nhãn ngành hàng (chủ dự án chốt 19/09/2026)');
+  {
+    /* `category_label` của Tracking là chữ người gõ tay, và trục ngang chỉ có
+       chừng bảy chữ mỗi cột — ba cái tên thật bị cắt cụt ngoài đời. */
+    ok('Lọc không khí → LKK', C.nhanNganh('Lọc không khí'), 'LKK');
+    ok('Hút ẩm cũng → LKK (chung một cột)', C.nhanNganh('Hút ẩm'), 'LKK');
+    ok('  · và đuôi dài vẫn khớp', C.nhanNganh('Lọc không khí khử mùi'), 'LKK');
+    ok('Gia dụng - Bosch → Gia dụng', C.nhanNganh('Gia dụng - Bosch'), 'Gia dụng');
+    ok('  · mọi "Gia dụng - X" dồn về một cột',
+       C.nhanNganh('Gia dụng - Electrolux'), 'Gia dụng');
+    /* Khớp trên chuỗi ĐÃ CHUẨN HOÁ, nên hoa/thường và dấu cách không làm
+       lệch — tên thật bên Tracking là chữ gõ tay. */
+    ok('  · không phân biệt hoa thường', C.nhanNganh('GIA DỤNG - Bosch'), 'Gia dụng');
+
+    /* Và vế NGƯỢC LẠI, vế giữ cho bảng này không nuốt nhầm: ngành không nằm
+       trong bảng thì giữ NGUYÊN tên. */
+    for (const x of ['Tivi', 'Tủ lạnh', 'Máy giặt', 'Điều hoà', 'Quạt']) {
+      ok('  · giữ nguyên: ' + x, C.nhanNganh(x), x);
+    }
+
+    /* ĐÂY LÀ PHÉP GỘP, không chỉ đổi nhãn: số của hai ngành CỘNG LẠI. */
+    const m = C.coCauNganhHang(bang([
+      d('Lọc không khí', 'Sharp', 60),
+      d('Hút ẩm', 'Sharp', 40),
+      d('Tivi', 'Sony', 100),
+    ]), null).theo_doanh_so.nay;
+    ok('hai ngành gộp thành MỘT cột', m.cot.map((x) => x.ten).sort(), ['LKK', 'Tivi']);
+    ok('  · và số cộng lại', cot(m, 'LKK').gia_tri, 100);
+    /* Cột gộp phải nói ra nó gồm những gì — không thì "LKK" là một nhãn
+       không ai biết đang cộng của cái gì. */
+    ok('  · kèm danh sách tên thật đã gộp',
+       cot(m, 'LKK').ten_goc, ['Hút ẩm', 'Lọc không khí']);
+    ok('cột không gộp thì KHÔNG mang ten_goc', cot(m, 'Tivi').ten_goc, undefined);
+
+    /* Gộp phải chạy TRƯỚC khi xếp hạng: hai ngành nhỏ gộp lại có thể vượt
+       một ngành đứng riêng, và xếp hạng sau khi gộp mới ra đúng trục. */
+    const ds9 = [d('Lọc không khí', 'Sharp', 30), d('Hút ẩm', 'Sharp', 30)];
+    for (let i = 1; i <= 8; i++) ds9.push(d('N' + i, 'H', 40));
+    const m9 = C.coCauNganhHang(bang(ds9), null).theo_doanh_so.nay;
+    ok('gộp xong (60) mới xếp hạng, nên LKK lên trục chứ không rơi vào Khác',
+       !!cot(m9, 'LKK'), true);
+  }
+
+  console.log('\n8) Mỗi mảng mang CẢ HAI chỉ tiêu — cho card chi tiết');
+  {
+    /* Chủ dự án chốt 19/09/2026: bỏ nút [Số máy], bấm vào một mảng thì card
+       bên phải hiện "số lượng VÀ doanh số, hiện tại so với cùng kỳ".
+
+       Bốn con số ấy phải nằm SẴN trên chính mảng được bấm. Tra sang cấu trúc
+       của chỉ tiêu kia thì hỏng đúng ca thường gặp nhất: một hãng đứng riêng
+       ở bảng doanh số có thể đã bị gộp vào "Khác" ở bảng số máy, và card sẽ
+       không tìm thấy nó. */
+    const m = C.coCauNganhHang(bang([
+      d('Tivi', 'Sony', 900, 3),
+      d('Tivi', 'LG', 100, 7),
+    ]), null).theo_doanh_so.nay;
+    const c = cot(m, 'Tivi');
+    ok('cột mang doanh số', c.doanh_so, 1000);
+    ok('  · và số máy', c.so_may, 10);
+    ok('mảng mang doanh số', mang(c, 'Sony').doanh_so, 900);
+    ok('  · và số máy của chính nó', mang(c, 'Sony').so_may, 3);
+    /* Đúng cái ca nói ở trên: LG chiếm 10% doanh số (đứng riêng) nhưng 70%
+       số máy. Không có `so_may` trên mảng thì card không nói được điều đó. */
+    ok('  · LG ít tiền nhưng nhiều máy', mang(c, 'LG').so_may, 7);
+
+    /* Mảng "Khác" và danh sách bên trong nó cũng phải đủ hai chỉ tiêu. */
+    const m2 = C.coCauNganhHang(bang([
+      d('Tivi', 'Sony', 900, 1), d('Tivi', 'TCL', 30, 5), d('Tivi', 'Casper', 70, 2),
+    ]), null).theo_doanh_so.nay;
+    const k = mang(cot(m2, 'Tivi'), 'Khác');
+    ok('mảng Khác mang đủ hai chỉ tiêu', [k.doanh_so, k.so_may], [30, 5]);
+    ok('  · và từng hãng bên trong cũng vậy',
+       k.gom.map((x) => [x.ten, x.doanh_so, x.so_may]), [['TCL', 30, 5]]);
+
+    /* Cột chưa phân loại cũng phải có cả hai — card bấm vào nó vẫn phải nói
+       được "bao nhiêu tiền, bao nhiêu máy đang chưa gán mã". */
+    const m3 = C.coCauNganhHang(bang([
+      d('Tivi', 'Sony', 100, 1), d(null, null, 50, 4),
+    ]), null).theo_doanh_so.nay;
+    ok('cột NONE mang đủ hai chỉ tiêu',
+       [cot(m3, C.NHAN_CHUA_PHAN_LOAI).doanh_so, cot(m3, C.NHAN_CHUA_PHAN_LOAI).so_may],
+       [50, 4]);
   }
 
   xong();
