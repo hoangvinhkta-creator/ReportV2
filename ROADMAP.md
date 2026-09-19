@@ -75,6 +75,52 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (h) — MỞ KHOÁ TAB THÁNG CHƯA TỚI.**
+
+Chủ dự án chốt: *"các Tab tháng chưa đến (ví dụ tháng 10-11-12) hãy unlock
+cho tôi, bảng tổng hợp ghi rõ (Số liệu cùng kì năm trước), còn biểu đồ thể
+hiện chỉ có số liệu năm trước […] để khi cần tôi có thể xem được xu hướng
+sắp tới luôn"*.
+
+**Ba trạng thái của một nút tháng**, và chúng khác hẳn nhau:
+
+| | mở được | bảng hiện gì |
+|---|---|---|
+| có sổ | ✔ | số thật của tháng ấy |
+| **chưa tới** | ✔ (mới) | số **cùng kỳ năm trước**, chỉ đọc |
+| đã qua, chưa có sổ | ✘ | — |
+
+Tháng đã qua mà chưa có sổ **vẫn khoá**: ở đó "chưa tải lên" là một việc
+còn nợ, và hiện số năm ngoái là giấu mất việc ấy. Tháng ĐANG diễn ra cũng
+không bị thay nguồn, dù sổ mới đổ một nửa — số của nó là số thật.
+
+**Gateway thay nguồn, không phải màn hình.** `layDonHang` thấy kỳ chưa tới
+thì dựng bảng của `namTruoc(ky)` và trả về `ky` (kỳ người dùng hỏi) +
+`ky_so_lieu` (kỳ số đến từ) + `la_ky_tuong_lai` + `chi_doc` — bốn trường
+riêng, không một trường nhập nhằng. Để màn hình tự quyết "lấy số của kỳ
+nào" là một luật nghiệp vụ lọt ra trình duyệt, và là hai lượt gọi cho một
+bảng.
+
+**Múi giờ là chỗ dễ hỏng nhất.** Worker chạy UTC, Việt Nam UTC+7. Không
+cộng 7 tiếng thì suốt 7 tiếng đầu mỗi ngày mùng 1, tháng đang mở bị xếp
+nhầm thành "chưa tới" và bảng đơn thật của nó biến thành số năm ngoái.
+
+**Chốt ghi nằm ở Gateway, không ở màn hình** (`chanKyTuongLai`, sáu đường
+ghi theo kỳ). Màn hình đã ẩn hết nút, nhưng màn hình thì sửa được bằng
+Console — và một quyết định ghi vào `bc/quyetdinh/dong/2026-12` nằm im ở
+đó cho tới khi tháng 12 về rồi bất ngờ áp lên sổ thật. Đây là ca hỏng đắt
+nhất của lượt này, và nó hỏng trong im lặng.
+
+**Hai biểu đồ.** Sức khoẻ KHÔNG phải sửa gì để vẽ đúng — `diemNay` rỗng
+thì nó tự chỉ vẽ đường xám của năm trước; thứ phải sửa là chú giải, vì kể
+tên một đường không có trên hình là mời người đọc đi tìm nó. Cơ cấu thì
+cần `chi_ky_truoc` từ Engine: nhận ra bằng DỮ LIỆU (kỳ này không có đồng
+nào, kỳ năm trước có), không bằng ngày tháng — Engine không biết hôm nay
+là ngày mấy và không cần biết. Thiếu cờ ấy thì mẫu số là 0 và biểu đồ báo
+"chưa có dòng hàng nào" đúng vào lúc nó có đủ số để vẽ.
+
+---
+
 **LƯỢT 19/09/2026 (g) — TRÌNH PHÂN LOẠI THỦ CÔNG.**
 
 Chủ dự án chốt: *"đối với các trường hợp chưa phân loại, tạo cho tôi trình

@@ -390,6 +390,44 @@ function namTruoc(ky) {
   return String(nam - 1).padStart(4, "0") + "-" + ky.slice(5, 7);
 }
 
+/** Kỳ hiện tại theo GIỜ VIỆT NAM, dạng "YYYY-MM".
+ *
+ *  Worker chạy giờ UTC. Lệch 7 tiếng nghĩa là suốt 7 tiếng đầu mỗi ngày mùng
+ *  1 ở Việt Nam, UTC vẫn còn ở tháng trước — và trong bảy tiếng ấy tháng đang
+ *  mở sẽ bị xếp nhầm thành "kỳ chưa tới", tức bảng đơn thật của nó biến thành
+ *  số của năm ngoái. Nên cộng thẳng 7 tiếng, không đụng `toLocaleString` (nó
+ *  phụ thuộc bộ dữ liệu múi giờ của runtime).
+ *
+ *  Ở Gateway chứ không ở Engine, cùng ranh giới `kyTruoc`/`namTruoc` ngay
+ *  trên: "hôm nay là tháng mấy" là phép LỊCH, không phải luật nghiệp vụ. */
+function kyHomNay() {
+  const t = new Date(Date.now() + 7 * 3600 * 1000);
+  return t.getUTCFullYear() + "-" + String(t.getUTCMonth() + 1).padStart(2, "0");
+}
+
+/** Kỳ CHƯA TỚI — tháng nằm sau tháng đang diễn ra.
+ *
+ *  Chủ dự án chốt 19/09/2026: mở khoá mấy tab tháng ấy để xem trước số của
+ *  cùng kỳ năm trước ("để khi cần tôi có thể xem được xu hướng sắp tới").
+ *
+ *  Tháng ĐANG diễn ra KHÔNG tính là chưa tới, dù sổ của nó mới đổ một nửa:
+ *  số của nó là số thật, và thay nó bằng số năm ngoái là nói dối về tháng
+ *  người ta đang bán. */
+const laKyTuongLai = (ky) => typeof ky === "string" && laKy(ky) && ky > kyHomNay();
+
+/** Chặn mọi lượt GHI nhắm vào một kỳ chưa tới.
+ *
+ *  Màn hình đã ẩn hết nút bấm ở đó, nhưng màn hình thì sửa được bằng Console
+ *  — và một quyết định ghi vào `bc/quyetdinh/dong/2026-12` là một quyết định
+ *  không kỳ nào đọc tới, nằm im ở đó cho tới khi tháng 12 về rồi bất ngờ áp
+ *  lên sổ thật. Chốt phải ở đây. */
+function chanKyTuongLai(ky) {
+  if (laKyTuongLai(ky))
+    throw new LoiXacThuc(400, "ky-tuong-lai",
+      "Tháng này chưa tới. Màn hình đang hiện số của cùng kỳ năm trước để xem "
+      + "trước xu hướng, nên chưa ghi được gì vào đây.");
+}
+
 /** Hai nhánh của P5. Khai LẠI ở đây dưới dạng chuỗi, không import từ
  *  `engine/src/kpi.mjs` — hai Worker cố ý KHÔNG dùng chung đồ thị module
  *  (đó chính là điểm của Service Binding), và mọi đường `bc/…` khác trong
@@ -1162,6 +1200,23 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
   if (line !== null && (typeof line !== "string" || line.length > 60)) {
     throw new LoiXacThuc(400, "line-khong-hop-le");
   }
+
+  /* KỲ CHƯA TỚI → dựng bảng của CÙNG KỲ NĂM TRƯỚC (chủ dự án chốt
+     19/09/2026). Thay nguồn ngay tại đây chứ không để Engine dựng một bảng
+     rỗng rồi màn hình tự đi hỏi kỳ khác: hai lượt gọi cho một bảng, và một
+     màn hình tự quyết "lấy số của kỳ nào" là một luật nghiệp vụ lọt ra
+     trình duyệt.
+
+     `ky` trả về vẫn là kỳ NGƯỜI DÙNG hỏi, và `ky_so_lieu` nói số đến từ đâu
+     — hai trường riêng, không một trường nhập nhằng. Màn hình bắt buộc ghi
+     rõ "Số liệu cùng kỳ năm trước" (chủ dự án chốt), và `chi_doc` đóng mọi
+     đường ghi: bảng đang hiện KHÔNG phải bảng của kỳ đang mở. */
+  if (laKyTuongLai(ky)) {
+    const nguon = namTruoc(ky);
+    if (!nguon) throw new LoiXacThuc(400, "ky-khong-hop-le");
+    const kq = await dungBangDonHang(env, nguon, line, rid);
+    return { ...kq, ky, ky_so_lieu: nguon, la_ky_tuong_lai: true, chi_doc: true };
+  }
   return dungBangDonHang(env, ky, line, rid);
 });
 
@@ -1208,6 +1263,7 @@ const suaDong = boc(true, async ({ nguoi, request, env, rid }) => {
   const ky = than && than.ky;
   const khoa = than && typeof than.khoa === "string" ? than.khoa : "";
   if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  chanKyTuongLai(ky);
   if (!khoa || khoa.length > 400) throw new LoiXacThuc(400, "khoa-khong-hop-le");
 
   /* Khoá dòng đi thẳng vào một đường Firebase. `khoaDong()` đã thay mọi ký
@@ -1380,6 +1436,7 @@ const datCong = boc("quantri", async ({ nguoi, request, env, rid }) => {
 
   const ky = than && than.ky;
   if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+  chanKyTuongLai(ky);
 
   const duong = DUONG_NGAY_CONG + "/" + ky + "/" + line;
 
@@ -1732,6 +1789,7 @@ const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
   const ky = than && than.ky;
   const so_ct = than && typeof than.so_ct === "string" ? than.so_ct.trim() : "";
   if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  chanKyTuongLai(ky);
   /* Số chứng từ đi thẳng vào ĐƯỜNG DẪN Firebase, nên khuôn phải hẹp. MISA
      cấp dạng `BH73891`; chấp nhận chữ-số-gạch để không từ chối một biến thể
      hợp lệ, nhưng KHÔNG bao giờ chấp nhận `.`, `#`, `$`, `[`, `]`, `/` —
@@ -1895,6 +1953,7 @@ const datKichHoat = boc(true, async ({ nguoi, request, env, rid }) => {
   const ky = than && than.ky;
   const khoa = than && typeof than.khoa === "string" ? than.khoa : "";
   if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  chanKyTuongLai(ky);
 
   /* Khoá đi THẲNG vào đường dẫn Firebase. Firebase cấm `.` `#` `$` `[` `]`
      `/` trong tên khoá, và `khoaDong()` bên Engine đã thay chúng bằng `~`
@@ -2304,6 +2363,7 @@ const datSheetLink = boc("quantri", async ({ nguoi, request, env, rid }) => {
   if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
   const ky = than && than.ky;
   if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+  chanKyTuongLai(ky);
 
   const duong = DUONG_SHEET + "/" + ky + "/" + line;
 
@@ -2348,6 +2408,7 @@ const daySheet = boc("quantri", async ({ nguoi, request, env, rid }) => {
   if (/[.#$[\]/]/.test(line)) throw new LoiXacThuc(400, "line-khong-hop-le");
   const ky = than && than.ky;
   if (!laKy(ky)) throw new LoiXacThuc(400, "ky-khong-hop-le");
+  chanKyTuongLai(ky);
 
   try {
     const ra = await dayMotLine(env, ky, line, rid);

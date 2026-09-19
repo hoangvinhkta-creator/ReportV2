@@ -112,7 +112,7 @@ const GOC = path.resolve(__dirname, '..');
        /SAN_TRAN_PT/.test(FE), true);
     /* Trần lấy theo cột cao nhất của CẢ HAI tháng — lấy riêng tháng này thì
        cột năm trước cao hơn sẽ tràn ra khỏi khung. */
-    ok('  · và xét cả cột của năm trước', /if \(kq\.co_ky_truoc\) \{\s*\n\s*for \(const c of B\.cot\)/.test(FE), true);
+    ok('  · và xét cả cột của năm trước', /if \(veCap\) \{\s*\n\s*for \(const c of B\.cot\)/.test(FE), true);
 
     /* 3 — CARD bên phải, và bỏ nút [Số máy]. */
     ok('có card bên phải', /cardCoCau/.test(FE), true);
@@ -221,8 +221,13 @@ const GOC = path.resolve(__dirname, '..');
     ok('tỉ trọng nay đặt trên ĐỈNH cột', /ptDinhCot/.test(FE) && /\.ptDinhCot\b/.test(CSS), true);
     /* CHỈ cột của kỳ này — cột cùng kỳ để trống, không thì hai con số chồng
        nhau trên một cặp cột rộng chừng mười bốn pixel. */
-    ok('  · chỉ cột kỳ này, không cột cùng kỳ',
-       /if \(!laTruoc\) \{\s*\n\s*const t = nut\("text", "ptDinhCot"\)/.test(FE), true);
+    /* Con số trên đỉnh do CHỖ GỌI quyết, không phải `laTruoc`: từ 19/09/2026
+       kỳ chưa tới vẽ đúng MỘT cột (số của năm trước) và cột ấy vẫn phải có
+       con số — nó là cột duy nhất đang nói. */
+    ok('  · con số trên đỉnh do chỗ gọi quyết, không do laTruoc',
+       /if \(hienPt\) \{\s*\n\s*const t = nut\("text", "ptDinhCot"\)/.test(FE), true);
+    ok('  · cặp cột thường: chỉ cột kỳ này có số',
+       /rongCot, y, tran, true, kq\.ky_truoc, coChu, false\)/.test(FE), true);
     /* Làm tròn về số nguyên: "12,3%" đo ra rộng gấp đôi cột và đè sang cột
        bên cạnh. Con số lẻ vẫn có ở phần rê chuột và ở thẻ bên phải. */
     ok('  · làm tròn về số nguyên cho vừa bề ngang cột',

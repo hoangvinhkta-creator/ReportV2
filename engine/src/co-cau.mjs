@@ -366,9 +366,27 @@ export function coCauNganhHang(bangNay, bangTruoc) {
   const truoc = coTruoc ? demTho(bangTruoc)
     : { o: new Map(), ds_tong: 0, may_tong: 0, ds_chua: 0, may_chua: 0 };
 
+  const theo_doanh_so = dungMotChiTieu("doanh_so", nay, truoc);
+
+  /* CHỈ CÓ SỐ CỦA NĂM TRƯỚC — kỳ chưa tới (chủ dự án chốt 19/09/2026: mở
+     khoá tab tháng 10, 11, 12 để "xem được xu hướng sắp tới").
+     
+     Nhận ra bằng DỮ LIỆU chứ không bằng ngày tháng: kỳ này không có đồng
+     nào, kỳ năm trước thì có. Engine không biết hôm nay là ngày mấy, và
+     không cần biết — "tháng nào chưa tới" là phép lịch, và nó nằm ở Gateway
+     cùng chỗ với `kyTruoc`/`namTruoc`.
+     
+     Khác hẳn `co_ky_truoc === false`: ở đó là "chưa có sổ năm trước để so",
+     còn ở đây là "chưa có sổ tháng này, nhưng năm trước thì có". Hai câu
+     khác nhau, và màn hình vẽ hai thứ khác nhau — một bên báo thiếu, một
+     bên vẽ đúng một cột năm trước cho mỗi ngành. */
+  const chi_ky_truoc = coTruoc && theo_doanh_so.nay.tong <= 0
+    && theo_doanh_so.truoc.tong > 0;
+
   return {
     co_ky_truoc: coTruoc,
-    theo_doanh_so: dungMotChiTieu("doanh_so", nay, truoc),
+    chi_ky_truoc,
+    theo_doanh_so,
     theo_so_may: dungMotChiTieu("so_may", nay, truoc),
     do_phu: { nay: doPhu(nay), truoc: coTruoc ? doPhu(truoc) : null },
     nguong: { so_nganh: SO_NGANH_TOI_DA, hang_pt: NGUONG_HANG_PT },

@@ -104,12 +104,31 @@
   .tabNut:disabled { color: #d1d5db; cursor: default; background: #fafafa; }
   .tabNut.tabNho { padding: 4px 10px; font-size: 12px; }
   .dangTai { color: #6b7280; font-size: 13px; }
+  /* ---- Tháng CHƯA TỚI (19/09/2026) ----
+     Bấm được, nhưng phải trông khác tháng có sổ thật: nét đứt nói "chỗ này
+     còn trống", và nó là cách duy nhất phân biệt được T10 chưa tới với T10
+     đã có số, khi cả hai cùng bấm được. */
+  .tabNut.tabChuaToi:not(.tabDang) { color: #9ca3af; border-style: dashed; }
+  .tabNut.tabChuaToi.tabDang { border-style: dashed; border-color: #93c5fd; }
+  /* Băng "số của cùng kỳ năm trước" — đứng trên cùng vùng vẽ. Một bảng tiền
+     mà người đọc tưởng là của tháng đang mở thì mọi con số trong đó đều sai
+     theo một cách không nhìn ra được, nên băng này to bằng chữ bảng, không
+     phải một dòng nhỏ màu xám. */
+  .bangKyTruoc {
+    margin: 0 0 10px; padding: 8px 12px; font-size: 13px; line-height: 1.5;
+    color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 8px;
+  }
+  .bangKyTruoc strong { font-weight: 700; }
   .tieuDeSk { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1f2430; }
   .tieuDeSk .donViCua { color: #9ca3af; font-weight: 400; }
   .chuGiaiSk { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 12px; color: #4b5563; }
   .chuGiaiSk span { display: flex; align-items: center; gap: 6px; }
   .chuGiaiSk i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
   .chuGiaiSk .donViSk { color: #9ca3af; margin-left: auto; }
+  /* Kỳ chưa có số: kể tên mà KHÔNG có ô màu — ô màu là lời hứa "đường này
+     có trên hình", và ở đây nó không có. */
+  .chuGiaiSk .chuGiaiTrong { color: #9ca3af; font-style: italic; }
 
   /* ---- Hai cột: biểu đồ lớn bên trái, lưới nhỏ bên phải (P6) ----
      Chủ dự án chốt 12/09/2026. Tỉ lệ 3:2 — biểu đồ lớn cần bề ngang để 31

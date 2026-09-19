@@ -163,10 +163,13 @@
 
     /* Tiêu đề nói luôn cặp tháng đang so — nó là chú giải của HAI cột đứng
        cạnh nhau, và nó không tốn một dòng nào của biểu đồ vì nó ở hàng trên. */
-    datTieuDe("Cơ cấu ngành hàng · " + thoat(nhanKy(kq.ky))
-      + (kq.co_ky_truoc
-        ? ' <span class="donViCua">so ' + thoat(nhanKy(kq.ky_truoc)) + "</span>"
-        : ' <span class="donViCua">(doanh số)</span>'));
+    datTieuDe(laChiKyTruoc(kq)
+      ? "Cơ cấu ngành hàng · " + thoat(nhanKy(kq.ky_truoc))
+        + ' <span class="donViCua">— ' + thoat(nhanKy(kq.ky)) + " chưa tới</span>"
+      : "Cơ cấu ngành hàng · " + thoat(nhanKy(kq.ky))
+        + (kq.co_ky_truoc
+          ? ' <span class="donViCua">so ' + thoat(nhanKy(kq.ky_truoc)) + "</span>"
+          : ' <span class="donViCua">(doanh số)</span>'));
 
     /* Nút lọc nằm ở HÀNG TRÊN, cạnh tiêu đề (chủ dự án chốt 19/09/2026:
        "đẩy nút lọc này lên dòng trên"). Nửa phải của hàng tiêu đề vốn bỏ
@@ -226,7 +229,7 @@
 
     /* Nút này chỉ có nghĩa khi còn phần chưa phân loại. Hiện nó ở tháng đã
        gán hết là một cái nút bấm vào không đổi gì. */
-    const dp = kq.do_phu && kq.do_phu.nay;
+    const dp = kq.do_phu && (laChiKyTruoc(kq) ? kq.do_phu.truoc : kq.do_phu.nay);
     const con = dp && dp.doanh_so_pt;
     if (con !== null && con !== undefined && con < 100) {
       const b = el("button", "tabNut tabNho" + (trangThai.boChuaPhanLoai ? " tabDang" : ""),
@@ -257,6 +260,16 @@
    *   · mặc định — cột xám chưa phân loại đứng trên trục, 100% = cả tháng;
    *   · bật nút — bỏ cột xám, 100% = phần ĐÃ phân loại.
    *  Không cách nào nói dối, miễn là độ phủ luôn ghi ở dưới. */
+  /** Kỳ chưa tới: biểu đồ nói về NĂM TRƯỚC, không về tháng đang mở.
+   *
+   *  Chủ dự án chốt 19/09/2026 — mở khoá tab tháng chưa tới, và "Sản phẩm
+   *  chỉ hiện cột năm trước". Nên mọi chỗ hỏi "bộ số của kỳ đang xem" phải
+   *  đi qua ĐÂY, không đọc thẳng `theo_doanh_so.nay`: sót một chỗ là thẻ bên
+   *  phải nói về một tháng trống trong khi cột bên trái vẽ năm trước. */
+  const laChiKyTruoc = (kq) => !!(kq && kq.chi_ky_truoc);
+  const boChinh = (kq) => (laChiKyTruoc(kq) ? kq.theo_doanh_so.truoc : kq.theo_doanh_so.nay);
+  const kyChinh = (kq) => (laChiKyTruoc(kq) ? kq.ky_truoc : kq.ky);
+
   function chonCot(m) {
     const cot = trangThai.boChuaPhanLoai
       ? m.cot.filter((c) => !c.la_chua_phan_loai) : m.cot;
@@ -311,7 +324,13 @@
   function veHinh(oHinh, kq) {
 
     const bo = kq.theo_doanh_so;
-    const A = chonCot(bo.nay), B = chonCot(bo.truoc);
+    /* Kỳ chưa tới thì `A` LÀ bộ của năm trước, và không có cặp cột nào — cả
+       trục ngang lẫn chiều cao đều đo trên đúng bộ ấy. Lấy `nay` như thường
+       lệ thì mọi cột cao 0 và `A.tong` bằng 0, tức biểu đồ báo "tháng này
+       chưa có dòng hàng nào" đúng vào lúc nó có đủ số để vẽ. */
+    const chiTruoc = laChiKyTruoc(kq);
+    const A = chonCot(chiTruoc ? bo.truoc : bo.nay), B = chonCot(bo.truoc);
+    const veCap = kq.co_ky_truoc && !chiTruoc;
     const ten = A.cot.map((c) => c.ten);
 
     /* Đo khung THẬT rồi tính chiều cao hệ toạ độ theo đúng tỉ lệ ấy — không
@@ -353,7 +372,7 @@
     const caoVe = Math.max(40, CAO - LE_TREN - LE_DUOI);
     const oNganh = rongVe / ten.length;
     const leO = oNganh * 0.14, ranh = oNganh * 0.06;
-    const rongCot = kq.co_ky_truoc
+    const rongCot = veCap
       ? (oNganh - leO * 2 - ranh) / 2
       : oNganh - leO * 2;
 
@@ -361,7 +380,7 @@
        năm trước cao hơn sẽ tràn ra khỏi khung. */
     let ptMax = 0;
     for (const c of A.cot) if (A.tong) ptMax = Math.max(ptMax, (c.gia_tri / A.tong) * 100);
-    if (kq.co_ky_truoc) {
+    if (veCap) {
       for (const c of B.cot) if (B.tong) ptMax = Math.max(ptMax, (c.gia_tri / B.tong) * 100);
     }
     const tran = tranTruc(ptMax);
@@ -390,11 +409,15 @@
 
     ten.forEach((tenNganh, i) => {
       const x0 = LE_TRAI + i * oNganh;
+      /* Kỳ chưa tới: MỘT cột, vẽ với chân cột nhạt của năm trước (số đúng là
+         của năm trước), nhưng VẪN có con số tỉ trọng trên đỉnh — ở đây nó là
+         cột duy nhất đang nói, nên giấu con số đi là bỏ mất đúng thứ người ta
+         mở tab này ra để xem. */
       veMotCot(svg, cotHoac(A.cot, tenNganh), A.tong, x0 + leO, rongCot, y, tran,
-        false, kq.ky, coChu);
-      if (kq.co_ky_truoc) {
+        chiTruoc, chiTruoc ? kq.ky_truoc : kq.ky, coChu, true);
+      if (veCap) {
         veMotCot(svg, cotHoac(B.cot, tenNganh), B.tong,
-          x0 + leO + rongCot + ranh, rongCot, y, tran, true, kq.ky_truoc, coChu);
+          x0 + leO + rongCot + ranh, rongCot, y, tran, true, kq.ky_truoc, coChu, false);
       }
 
       /* Nhãn ngành bấm được: bấm vào tên là xem cả cột, không phải một mảng.
@@ -428,7 +451,7 @@
          Nó vẫn là một vạch XÁM, không đụng tới màu hãng. */
     });
 
-    if (!kq.co_ky_truoc) {
+    if (!kq.co_ky_truoc && !chiTruoc) {
       const t = nut("text", "coCauGhiChu");
       t.setAttribute("x", LE_TRAI); t.setAttribute("y", LE_TREN + 10);
       t.textContent = "Chưa có dòng hàng của " + nhanKy(kq.ky_truoc)
@@ -447,7 +470,7 @@
     veRuot();
   }
 
-  function veMotCot(svg, c, tong, x, rong, y, tran, laTruoc, ky, coChu) {
+  function veMotCot(svg, c, tong, x, rong, y, tran, laTruoc, ky, coChu, hienPt) {
     if (!c || !tong) return;
 
     /* Vạch chân cột: ĐẬM cho tháng đang xem, NHẠT cho cùng kỳ. Vẽ cả khi
@@ -489,6 +512,8 @@
          muốn 2025 nổi bật lên tương tự"). Đó đúng là việc người ta bấm để
          làm: so một hãng với chính nó năm ngoái. Bản trước chỉ viền cột
          tháng này, nên mắt phải tự dò sang cột bên tìm mảng cùng màu. */
+      /* Kỳ chưa tới thì cột duy nhất ấy CHỌN ĐƯỢC, dù `laTruoc` bật — nó là
+         cột đang nói, không phải cột phụ để so. */
       const chon = dangChon(c.ten, h.la_tron ? null : h.ten);
       const r = nut("rect", "mangCoCau" + (laTruoc ? " mangTruoc" : "")
         + (chon ? " mangDangChon" : ""));
@@ -517,7 +542,7 @@
 
        Viền trắng quanh chữ (`paint-order` ở CSS) cho nó đọc được cả ở chỗ
        chữ tràn qua khe giữa hai cột. */
-    if (!laTruoc) {
+    if (hienPt) {
       const t = nut("text", "ptDinhCot");
       t.setAttribute("x", x + rong / 2);
       t.setAttribute("y", y(ptCot) - coChu * 0.42);
@@ -588,7 +613,7 @@
     const o = el("div", "cardThan");
     o.appendChild(el("p", "cardTieuDe", "Hãng"));
 
-    const A = chonCot(kq.theo_doanh_so.nay);
+    const A = chonCot(boChinh(kq));
     /* Cộng theo hãng trên TOÀN bảng để xếp hạng chú giải — đây là phép cộng
        để SẮP XẾP một danh sách màu, không phải một con số hiện ra. Số hiện
        ra vẫn là số Engine đã tính, lấy nguyên từ từng mảng. */
@@ -634,7 +659,7 @@
 
   /** Bấm một hãng ở chú giải → chọn mảng của hãng ấy ở ngành lớn nhất. */
   function timVaChon(kq, tenHang) {
-    const A = chonCot(kq.theo_doanh_so.nay);
+    const A = chonCot(boChinh(kq));
     let tot = null, lon = -1;
     for (const c of A.cot) {
       for (const h of (c.hang || [])) {
@@ -651,14 +676,18 @@
    *  doanh số và số lượng đứng cạnh nhau cho cùng một mảng, đọc một lượt. */
   function veChiTiet(kq) {
     const { nganh, hang } = trangThai.chon;
-    const A = chonCot(kq.theo_doanh_so.nay), B = chonCot(kq.theo_doanh_so.truoc);
+    const chiTruoc = laChiKyTruoc(kq);
+    const A = chonCot(boChinh(kq)), B = chonCot(kq.theo_doanh_so.truoc);
     const tim = (bo, tenN, tenH) => {
       const c = bo.cot.find((x) => x.ten === tenN);
       if (!c) return null;
       if (!tenH) return c;
       return (c.hang || []).find((x) => x.ten === tenH) || null;
     };
-    const a = tim(A, nganh, hang), b = kq.co_ky_truoc ? tim(B, nganh, hang) : null;
+    /* Kỳ chưa tới: `A` ĐÃ là năm trước, nên không có vế nào để so với nó —
+       so nó với chính nó là vẽ ra một dòng "0%" vô nghĩa. */
+    const a = tim(A, nganh, hang);
+    const b = kq.co_ky_truoc && !chiTruoc ? tim(B, nganh, hang) : null;
     const cotA = A.cot.find((x) => x.ten === nganh) || null;
 
     const o = el("div", "cardThan");
@@ -679,8 +708,8 @@
       return o;
     }
 
-    o.appendChild(veKhoiSo("Doanh số", gonTien, a.doanh_so, b ? b.doanh_so : null, kq));
-    o.appendChild(veKhoiSo("Số máy", soNguyen, a.so_may, b ? b.so_may : null, kq));
+    o.appendChild(veKhoiSo("Doanh số", gonTien, a.doanh_so, b ? b.doanh_so : null, kq, chiTruoc));
+    o.appendChild(veKhoiSo("Số máy", soNguyen, a.so_may, b ? b.so_may : null, kq, chiTruoc));
 
     /* Tỉ trọng: hai con số trả lời hai câu khác nhau — "trong ngành này nó
        lớn cỡ nào" và "so với cả tháng thì nó đáng kể không". */
@@ -729,10 +758,16 @@
     return d;
   }
 
-  function veKhoiSo(ten, dinhDang, nay, truoc, kq) {
+  function veKhoiSo(ten, dinhDang, nay, truoc, kq, chiTruoc) {
     const o = el("div", "cardKhoi");
     o.appendChild(el("p", "cardNhanKhoi", ten));
-    o.appendChild(veHangSo(dinhDang(nay), nhanKy(kq.ky)));
+    o.appendChild(veHangSo(dinhDang(nay), nhanKy(kyChinh(kq))));
+    /* Kỳ chưa tới: một con số của năm trước, và không có vế so nào. Nói
+       thẳng ra thay vì để một khối trống tự giải thích. */
+    if (chiTruoc) {
+      o.appendChild(el("p", "cardNhac", nhanKy(kq.ky) + " chưa tới."));
+      return o;
+    }
     if (!kq.co_ky_truoc) {
       o.appendChild(el("p", "cardNhac", "Chưa có sổ " + nhanKy(kq.ky_truoc) + " để so."));
       return o;
@@ -774,6 +809,12 @@
     const p = el("p", "chuGiaiCoCau");
     const { nay, truoc } = soDoPhu(kq);
     const viet = (v) => (v === null ? "—" : pt1(v) + "%");
+    /* Kỳ chưa tới: chỉ một con số, của đúng kỳ đang được vẽ. */
+    if (laChiKyTruoc(kq)) {
+      p.appendChild(el("span", null, "Đã phân loại"));
+      p.appendChild(el("span", "soDoPhu", nhanKy(kq.ky_truoc) + " " + viet(truoc)));
+      return p;
+    }
     p.title = "Phần doanh số đã gán được mã bảng giá, tức phần biểu đồ xếp "
       + "được vào ngành hàng. Phần còn lại nằm ở cột NONE.";
     p.appendChild(el("span", null, "Đã phân loại"));
@@ -790,6 +831,8 @@
    *  mảng, mà đó đúng là lúc người dùng đang đọc một con số "so cùng kỳ" mà
    *  cảnh báo này nói là chưa chắc đúng. */
   function chipLechDoPhu(kq) {
+    /* Kỳ chưa tới thì không có phép so nào để mà lệch. */
+    if (laChiKyTruoc(kq)) return null;
     const { nay, truoc } = soDoPhu(kq);
     if (nay === null || truoc === null) return null;
     const lech = Math.abs(nay - truoc);
