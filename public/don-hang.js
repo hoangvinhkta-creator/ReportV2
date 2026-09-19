@@ -664,6 +664,73 @@
     return td;
   }
 
+  /** Ô "Hãng" / "Ngành hàng" — và cửa vào trình phân loại thủ công.
+   *
+   *  Chủ dự án chốt 19/09/2026: dòng CHƯA phân loại được thì bấm vào hai ô
+   *  này để tự gán. Ba trạng thái, ba cách cư xử khác nhau:
+   *
+   *   · CÓ MÃ bảng giá → hai cái nhãn đến từ bảng giá, KHÔNG bấm được. Sửa
+   *     chúng ở đây là dựng một bản thứ hai đè lên nguồn dùng chung của ba
+   *     app; muốn đổi thì đổi bên Bảng giá của Tracking.
+   *   · CHƯA CÓ MÃ, có `khoa_ten` → bấm được. Đây đúng là phần rơi vào cột
+   *     NONE của biểu đồ cơ cấu.
+   *   · KHÔNG có `khoa_ten` (Tracking hỏng lượt này, hay dòng chiết khấu /
+   *     phụ phí) → không bấm được. Khoá do Engine dựng, màn hình không tự
+   *     dựng lấy (LUẬT SỐ 1), nên thiếu khoá là thiếu chỗ ghi quyết định. */
+  function oNhan(d, truong) {
+    const td = o(truong === "hang" ? d.hang : d.nganh_hang);
+    td.dataset.o = truong;
+    const ten = truong === "hang" ? "hãng" : "ngành hàng";
+
+    if (d.la_chiet_khau || d.la_phu_phi_co_dinh) return td;
+
+    if (d.ma_bang_gia) {
+      td.title = "Lấy từ bảng giá Tracking. Muốn đổi thì đổi bên Bảng giá.";
+      return td;
+    }
+    if (!d.khoa_ten) return td;
+
+    td.dataset.khoa = d.khoa_ten;
+    td.dataset.ten = d.ma_san_pham;
+    td.classList.add("oNhanBamDuoc");
+    if (d.phan_loai_tay) {
+      /* Phân loại TAY trông khác phân loại từ bảng giá — không thì người
+         dùng không phân biệt nổi con số nào đến từ quyết định của mình. */
+      td.classList.add("oNhanTay");
+      td.title = "Đã phân loại tay — bấm để đổi hoặc rút lại.";
+    } else {
+      if (duocLoc()) td.classList.add("maChuaCo");
+      td.title = "Chưa biết " + ten + " — bấm để phân loại tay.";
+    }
+    return td;
+  }
+
+  /** Vá hai ô nhãn của MỌI dòng mang cùng khoá tên hàng, tại chỗ.
+   *
+   *  Cùng kỷ luật `vaDongTheoKhoa` của màn gán mã: không vẽ lại bảng, nên
+   *  vị trí cuộn và thứ tự dòng không đổi một pixel. */
+  function vaPhanLoaiTheoKhoa(khoa, hang, nganh) {
+    /* Dò theo `data-khoa` trong `#veDonHang`, cùng lối `vaDongTheoKhoa` —
+       một khoá tên hàng có thể nằm ở hàng chục dòng rải khắp bảng. */
+    const cacO = document.querySelectorAll('#veDonHang td[data-khoa="'
+      + CSS.escape(khoa) + '"][data-o]');
+    for (const td of cacO) {
+      const laHang = td.dataset.o === "hang";
+      if (!laHang && td.dataset.o !== "nganh") continue;
+      const gt = laHang ? hang : nganh;
+      td.textContent = gt || "—";
+      td.classList.remove("maChuaCo", "oNhanTay");
+      if (hang || nganh) {
+        td.classList.add("oNhanTay");
+        td.title = "Đã phân loại tay — bấm để đổi hoặc rút lại.";
+      } else {
+        if (duocLoc()) td.classList.add("maChuaCo");
+        td.title = "Chưa biết " + (laHang ? "hãng" : "ngành hàng")
+          + " — bấm để phân loại tay.";
+      }
+    }
+  }
+
   /** Ô "Nơi nhập" — NCC giữ giá Min của đúng ngày bán.
    *
    *  Chưa tra được giá Min thì cũng chưa có nơi nhập, và ô bôi đỏ (chủ dự án
@@ -2559,8 +2626,8 @@
           tr.appendChild(oHep(dauDon ? don.dien_thoai : "", "oDienThoai"));
           tr.appendChild(oHep(dauDon ? don.dia_chi : "", "oDiaChi"));
           tr.appendChild(o(d.ghi_chu));
-          const tdHang = o(d.hang); tdHang.dataset.o = "hang";
-          const tdNganh = o(d.nganh_hang); tdNganh.dataset.o = "nganh";
+          const tdHang = oNhan(d, "hang");
+          const tdNganh = oNhan(d, "nganh");
           tr.appendChild(tdHang);
           tr.appendChild(tdNganh);
           tr.appendChild(oHep(d.imei, "oImei"));
@@ -2668,6 +2735,25 @@
         guiGiaDung(tick);
         return;
       }
+      /* Ô Hãng / Ngành hàng của dòng chưa có mã → trình phân loại thủ công.
+         Dò TRƯỚC ô Mã: hai ô nằm ở hai cột khác nhau nên không chồng nhau,
+         nhưng giữ thứ tự dò cùng một lối với ô tick gia dụng ở trên cho khỏi
+         phải nhớ ngoại lệ. */
+      const tdN = e.target.closest('td[data-o="hang"], td[data-o="nganh"]');
+      if (tdN && tbody.contains(tdN) && tdN.dataset.khoa) {
+        const khoaN = tdN.dataset.khoa;
+        const tr = tdN.parentElement;
+        const lay = (t) => {
+          const x = tr && tr.querySelector('td[data-o="' + t + '"]');
+          const v = x ? x.textContent.trim() : "";
+          return v && v !== "—" ? v : null;
+        };
+        window.PhanLoai.moPhanLoai(tdN.dataset.ten, khoaN,
+          { hang: lay("hang"), nganh: lay("nganh") }, tdN.dataset.o,
+          (hang, nganh) => vaPhanLoaiTheoKhoa(khoaN, hang, nganh));
+        return;
+      }
+
       const td = e.target.closest('td[data-o="ma"]');
       if (!td || !tbody.contains(td)) return;
       const khoa = td.dataset.khoa;

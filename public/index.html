@@ -376,6 +376,19 @@
   .bangDon td.maChuaCo:hover, .bangDon td.maBoQua:hover { background: #fef3c7; }
   .bangDon td.maBoQua { color: #9ca3af; font-style: italic; }
 
+  /* ---- Ô Hãng / Ngành hàng bấm được (trình phân loại thủ công, 19/09/2026) ----
+     Dùng lại `.maChuaCo` cho trạng thái "chưa biết" — cùng một màu vàng với
+     ô Mã, vì với người dùng đó là CÙNG một việc còn nợ, chỉ khác cột. Cái
+     riêng ở đây là trạng thái ĐÃ PHÂN LOẠI TAY: nó phải trông khác nhãn đến
+     từ bảng giá, không thì không ai phân biệt nổi con số nào đến từ quyết
+     định của mình. */
+  .bangDon td.oNhanBamDuoc { cursor: pointer; }
+  .bangDon td.oNhanTay {
+    color: #1d4ed8;
+    text-decoration: underline dotted #93c5fd; text-underline-offset: 2px;
+  }
+  .bangDon td.oNhanTay:hover, .bangDon td.oNhanBamDuoc:hover { background: #eff6ff; }
+
   /* Mã bảng giá hiện thay cho câu tên kế toán, ở dòng ĐÃ khớp mã (chủ dự án
      chốt 12/09/2026). Chữ đều nét (`tabular-nums` + mono) để một cột mã xếp
      thẳng hàng nhau — đó là cái lợi thật khi quét mắt xuống hàng trăm dòng,
@@ -685,6 +698,20 @@
   .ganMaNut .nutPhu:last-child { background: #1d5bea; border-color: #1d5bea; color: #fff; }
   .ganMaNut .nutPhu:last-child:hover:not(:disabled) { background: #1a51d0; color: #fff; }
   .ganMaNut .nutPhu:last-child:disabled { background: #93c5fd; border-color: #93c5fd; color: #fff; }
+
+  /* ---- Hộp phân loại thủ công: hai ô trong MỘT lượt mở ----
+     Hai ô luôn được trả lời cùng lúc (nhìn tên hàng là biết cả hãng lẫn
+     ngành), nên tách làm hai lượt mở là bắt đọc lại đúng câu tên ấy hai
+     lần. Danh sách hãng vì thế phải thấp hơn hộp gán mã — nó chia chỗ với
+     trình chọn ngành ngay dưới. */
+  .nhanPhanLoai { margin: 10px 0 4px; font-size: 11px; font-weight: 600;
+                  color: #9ca3af; text-transform: uppercase; letter-spacing: .02em; }
+  .ganMaDs.dsPhanLoai { max-height: 26vh; }
+  .chonNganhPhanLoai {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px;
+    font-family: inherit; color: #3d4a63;
+    border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+  }
 
   .bangDon .oIcon { text-align: center; padding: 2px 4px; }
   /* Icon VẼ THEO LINE, một màu (chủ dự án chốt 13/09/2026) — không dùng emoji
@@ -1229,6 +1256,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
 <!-- gan-ma.js phải nạp TRƯỚC don-hang.js: don-hang gọi window.GanMa lúc
      người dùng bấm, nhưng khai báo trước cho khỏi phụ thuộc thời điểm. -->
 <script src="/gan-ma.js"></script>
+<script src="/phan-loai.js"></script>
 <script src="/don-hang.js"></script>
 <!-- bao-hanh.js nạp SAU don-hang.js: nó vẽ hàng tab cấp 1 và gọi sang
      `window.DonHang` lúc người dùng quay về màn báo cáo. -->

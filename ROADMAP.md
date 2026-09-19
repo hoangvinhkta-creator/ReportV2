@@ -75,6 +75,51 @@ và câu trả lời — đây là chỗ tra khi ai đó muốn đổi một tro
 8. **Dòng số lượng > 1** → **một nút tick cho cả dòng**; cột Số imei
    liệt kê đủ các IMEI của dòng đó.
 
+**LƯỢT 19/09/2026 (g) — TRÌNH PHÂN LOẠI THỦ CÔNG.**
+
+Chủ dự án chốt: *"đối với các trường hợp chưa phân loại, tạo cho tôi trình
+phân loại thủ công: bấm vài kí tự sẽ hiện ra gợi ý để chọn hãng, còn ngành
+hàng thì trình chọn cố định các ngành có sẵn"*.
+
+**Vì sao cần, khi đã có màn gán mã.** Gán mã trả lời câu "câu tên này là
+mặt hàng NÀO trên bảng giá", và kéo theo cả giá vốn. Nhưng có những câu
+tên KHÔNG có mặt hàng nào để chỉ vào: hàng đã rút khỏi bảng giá, hàng của
+kỳ cũ, hàng mà chốt NB-2 bên Tracking từ chối cho ghi vì nó đang là dòng
+tồn kho hoạt động. Người dùng bấm "bỏ qua", và dòng ấy ở lại cột NONE mãi.
+Đo trên 01/2025: phân loại mới phủ chừng một phần ba.
+
+Nên đây là đường THỨ HAI, hẹp hơn: không cho ra mã, không cho ra giá vốn,
+không đụng `inv/map`. Nó trả lời đúng hai câu — hãng nào, ngành nào.
+
+**Bốn kỷ luật, đều có bài kiểm ghim** (`kiem/phan-loai.js`,
+`kiem/phan-loai-gateway.js`):
+
+1. **Mã bảng giá luôn thắng.** Bảng giá là nguồn dùng chung của ba app;
+   một bảng riêng của Báo cáo mà đè được lên nó là hai app nói hai câu
+   khác nhau về cùng một mặt hàng, và không ai biết cho tới lúc số lệch.
+2. **Khoá là `khoaTenHang`** — ĐÚNG công thức khoá của `inv/map`, dùng lại
+   chứ không viết bản thứ hai. Quyết định về MỘT MẶT HÀNG (CLAUDE.md) nên
+   nó áp cho mọi kỳ. Khoá theo DÒNG là bắt trả lời cùng một câu hỏi bốn
+   mươi lần một tháng.
+3. **Mồ côi được đếm và giữ**, tự áp lại khi dòng xuất hiện trở lại.
+4. **Danh sách vẫn ĐÓNG.** CLAUDE.md cấm bộ phân loại thương hiệu thứ hai,
+   và một ô gõ tự do CHÍNH LÀ một danh sách thứ hai — chỉ là nó lớn lên
+   mỗi lần một dòng mà không ai thấy. Nên người dùng CHỌN, và **máy chủ
+   đối chiếu lại** danh sách ấy lúc ghi (màn hình thì sửa được bằng
+   Console). Chuỗi ghi xuống là chuỗi CHÍNH TẮC của bảng giá: "samsung"
+   ghi nguyên là một hãng thứ mười một không có màu.
+
+**Nhánh mới:** `bc/quyetdinh/phan-loai/<khoá tên hàng>` → `{hang, nganh}`.
+
+**Một chỗ lệch với lời chủ dự án, cố ý:** hai ô bấm THẲNG được, không phải
+bấm [Sửa] trước. Hai ô luôn được trả lời cùng lúc (nhìn tên hàng là biết
+cả hãng lẫn ngành), nên một lớp phủ làm cả hai — bấm ô nào thì ô đó được
+đặt con trỏ trước. Bấm thẳng cũng đúng lối ô "Mã sản phẩm" ngay bên cạnh
+trong CÙNG bảng ấy vẫn làm từ P4. Nếu chủ dự án muốn giấu sau nút [Sửa]
+thì đổi lại là một lượt nhỏ.
+
+---
+
 **LƯỢT 19/09/2026 (e) — bốn chỗ chủ dự án chốt lại sau lượt mở thứ hai.**
 
 Vẫn là biểu đồ cơ cấu, vẫn là những thứ chỉ lộ ra khi nhìn hình thật.
