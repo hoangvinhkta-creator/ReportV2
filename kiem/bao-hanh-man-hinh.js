@@ -170,7 +170,7 @@ const GOC = path.resolve(__dirname, '..');
     const i = (s) => FE.indexOf(s);
     ok('1. đăng nhập → 2. các bước → 3. bảng',
        i('veDaiDangNhap(hd.dang_nhap') < i('veHopBuoc(hd.buoc')
-       && i('veHopBuoc(hd.buoc') < i('veBang(o)'), true);
+       && i('veHopBuoc(hd.buoc') < i('veBang(o,'), true);
 
     /* Hướng dẫn ĐÓNG SẴN: mỗi ngày người ta vào đây để tick, không để đọc
        lại ba mươi bước — mở sẵn là bảng việc bị đẩy xuống dưới mép màn hình

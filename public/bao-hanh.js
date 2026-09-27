@@ -149,6 +149,8 @@
     hienDa: false,    // công tắc "Hiện cả đã kích hoạt"
     moBuoc: false,    // hộp hướng dẫn đang mở hay đóng
     dangTai: false,
+    dangXuat: false,
+    thongBaoXuat: null, // { hang, chu } — kết quả lượt xuất Excel gần nhất
   };
 
   /* ═══════════════ Tab cấp 1 ═══════════════ */
@@ -340,7 +342,11 @@
 
     ve.appendChild(veDaiDangNhap(hd.dang_nhap || {}));
     ve.appendChild(veHopBuoc(hd.buoc || []));
-    ve.appendChild(veBang(o));
+    /* Hãng có nút xuất Excel hay không là máy chủ nói (`xuat_excel`), không
+       phải file này tự biết — xem `XUAT_EXCEL` bên Engine. */
+    const xe = kq.xuat_excel && kq.xuat_excel[trangThai.hang];
+    if (xe) ve.appendChild(veDaiLoaiTru(xe.model_loai_tru || { ds: [] }));
+    ve.appendChild(veBang(o, !!xe));
 
     const bocMoi = ve.querySelector(".bocBang");
     if (bocMoi && cuonCu) bocMoi.scrollTop = cuonCu;
@@ -418,6 +424,104 @@
     });
     o.appendChild(chep);
     return o;
+  }
+
+  /* ---- Model không kích hoạt hàng loạt (27/09/2026) ----
+     Chủ dự án chốt: chương trình đặc biệt thay đổi theo đợt, nên danh sách
+     phải thêm/bớt được ngay trên màn, và CẢ HAI VAI sửa được. Phép so model
+     nằm ở Engine — màn hình chỉ vẽ danh sách và gửi lại nguyên khối chữ. */
+  function veDaiLoaiTru(lt) {
+    const dai = el("div", "daiLoaiTru");
+    dai.appendChild(el("span", "nhanKhoa", "Model kích hoạt tay (không xuất Excel):"));
+    const ds = Array.isArray(lt.ds) ? lt.ds : [];
+    if (!ds.length) dai.appendChild(el("span", "trong", "chưa có model nào"));
+    for (const m of ds) dai.appendChild(el("span", "theModel", m));
+    const cuoi = el("div", "cuoiDai");
+    const nut = nutIcon("sua", "Sửa danh sách model kích hoạt tay");
+    nut.addEventListener("click", () => moSuaLoaiTru(ds));
+    cuoi.appendChild(nut);
+    dai.appendChild(cuoi);
+    return dai;
+  }
+
+  function moSuaLoaiTru(ds) {
+    moHop("Model kích hoạt tay — " + trangThai.hang, ({ ruot, tinh, hangNut, dong }) => {
+      ruot.appendChild(el("div", "ganMaNhac",
+        "Mỗi dòng một model, gõ đúng nguyên mã như cột Mã sản phẩm. Những model này "
+        + "không vào file Excel và không bị tự tick — chúng ở lại danh sách để kích hoạt tay."));
+      const o = el("textarea", "oChuBuoc");
+      o.placeholder = "Ví dụ:\n65UR8050PSB\nOLED65C4PSA";
+      o.value = ds.join("\n");
+      o.style.minHeight = "160px";
+      ruot.appendChild(o);
+
+      hangNut.appendChild(nutPhu("Đóng", dong));
+      const luu = nutPhu("Lưu", async () => {
+        luu.disabled = true;
+        tinh.className = "ganMaTinh";
+        tinh.textContent = "Đang lưu…";
+        try {
+          await goiGhi("/api/bao-hanh/loai-tru", { hang: trangThai.hang, ds: o.value });
+          dong();
+          /* Đọc lại từ máy chủ: nhãn "kích hoạt tay" trên từng dòng là phép
+             so của Engine, không đoán lại ở đây. */
+          await taiLaiHuongDan();
+        } catch (e) {
+          luu.disabled = false;
+          tinh.className = "ganMaTinh ganMaLoi";
+          tinh.textContent = e.message || "Chưa lưu được.";
+        }
+      });
+      hangNut.appendChild(luu);
+      o.focus();
+    });
+  }
+
+  /* ---- Xuất Excel theo form hãng (27/09/2026) ----
+     Máy chủ chọn dòng, tách IMEI, điền từng ô VÀ tick luôn những dòng đã vào
+     file (chủ dự án chốt). Việc của file này: hỏi xác nhận, đóng ma trận ô
+     thành .xlsx (`ghi-xlsx.js`), rồi nói lại kết quả bằng đúng con số máy
+     chủ trả về. */
+  async function xuatExcel() {
+    if (trangThai.dangXuat) return;
+    const hang = trangThai.hang, ky = trangThai.kyCuaKq;
+    if (!window.confirm("Xuất Excel các máy " + hang + " chưa kích hoạt của tháng "
+      + ky + "?\n\nNhững dòng được xuất sẽ TỰ ĐỘNG ĐƯỢC TICK là đã kích hoạt. "
+      + "Nếu tải lên cổng hãng lỗi, bật \"Hiện cả … máy đã kích hoạt\" để bỏ tick.")) return;
+
+    trangThai.dangXuat = true;
+    $("loiBaoHanh").textContent = "";
+    veRuot();
+    try {
+      const kq = await goiGhi("/api/bao-hanh/xuat", { ky, hang });
+      const bq = kq.bo_qua || {};
+      const cau = [];
+      if (kq.dong.length) {
+        window.GhiXlsx.taiVe(kq, kq.hang + "_sellout_" + ky + "_" + kq.ngay_xuat + ".xlsx");
+        cau.push("Đã xuất " + kq.dong.length + " IMEI (" + kq.khoa_tick.length
+          + " dòng) và tick các dòng đó.");
+      } else {
+        cau.push("Không có dòng nào đủ điều kiện để xuất — chưa tick gì.");
+      }
+      const bo = [];
+      if (bq.loai_tru) bo.push(bq.loai_tru + " dòng model kích hoạt tay");
+      if (bq.thieu_imei) bo.push(bq.thieu_imei + " dòng thiếu IMEI");
+      if (bq.khong_khoa) bo.push(bq.khong_khoa + " dòng không tick được");
+      if (bo.length) cau.push("Còn lại trong danh sách, không xuất: " + bo.join(", ") + ".");
+      trangThai.thongBaoXuat = { hang, ky, chu: cau.join("\n") };
+      /* Đọc lại cả danh sách: máy chủ vừa tick một loạt dòng, và hai danh
+         sách chưa/đã là của Engine — không tự dời từng dòng ở đây. Lượt đọc
+         lại hỏng thì KHÔNG được báo thành "chưa xuất được": file đã về và
+         tick đã ghi, báo sai là người dùng bấm xuất lần nữa. */
+      try { await taiLaiHuongDan(); }
+      catch (e) { $("loiBaoHanh").textContent = "Đã xuất và tick, nhưng chưa tải lại được danh sách: "
+        + e.message + " — tải lại trang để xem."; }
+    } catch (e) {
+      $("loiBaoHanh").textContent = "Chưa xuất được: " + e.message;
+    } finally {
+      trangThai.dangXuat = false;
+      veRuot();
+    }
   }
 
   /* ---- 2. Hướng dẫn từng bước ---- */
@@ -519,8 +623,12 @@
     return m ? m[3] + "/" + m[2] : String(d || "");
   }
 
-  function veBang(o) {
+  function veBang(o, coXuat) {
     const khoi = document.createElement("div");
+    const tb = trangThai.thongBaoXuat;
+    if (tb && tb.hang === trangThai.hang && tb.ky === trangThai.kyCuaKq) {
+      khoi.appendChild(el("p", "thongBaoXuat", tb.chu));
+    }
 
     const dai = el("div", "daiBang");
     const dem = el("span");
@@ -529,16 +637,25 @@
       " máy " + trangThai.hang + " chưa kích hoạt trong tháng này"));
     dai.appendChild(dem);
 
+    const cuoi = el("div", "cuoiDai");
+    if (coXuat) {
+      const nutX = el("button", "tabNut tabNho",
+        trangThai.dangXuat ? "Đang xuất…" : "Xuất Excel");
+      nutX.type = "button";
+      nutX.title = "Xuất các máy chưa kích hoạt theo form của hãng, rồi tự tick các dòng đã xuất";
+      nutX.disabled = trangThai.dangXuat || !o.chua.length;
+      nutX.addEventListener("click", xuatExcel);
+      cuoi.appendChild(nutX);
+    }
     if (o.da.length) {
-      const cuoi = el("div", "cuoiDai");
       const nut = el("button", "tabNut tabNho" + (trangThai.hienDa ? " tabDang" : ""),
         (trangThai.hienDa ? "✓ " : "") + "Hiện cả " + o.da.length + " máy đã kích hoạt");
       nut.type = "button";
       nut.title = "Bật lên để soi lại việc đã làm, hoặc bỏ tick một dòng lỡ tay";
       nut.addEventListener("click", () => { trangThai.hienDa = !trangThai.hienDa; veRuot(); });
       cuoi.appendChild(nut);
-      dai.appendChild(cuoi);
     }
+    if (cuoi.childNodes.length) dai.appendChild(cuoi);
     khoi.appendChild(dai);
 
     const ds = trangThai.hienDa ? o.chua.concat(o.da) : o.chua;
@@ -588,7 +705,13 @@
 
     tr.appendChild(el("td", "oNgay", ngayNgan(m.ngay)));
     tr.appendChild(el("td", "oCt", m.so_ct));
-    tr.appendChild(el("td", "oMaSp", m.ma_san_pham));
+    const oMa = el("td", "oMaSp", m.ma_san_pham);
+    if (m.loai_tru_xuat) {
+      const nh = el("span", "nhanTay", "kích hoạt tay");
+      nh.title = "Model này nằm trong danh sách kích hoạt tay — không vào file Excel";
+      oMa.appendChild(nh);
+    }
+    tr.appendChild(oMa);
     tr.appendChild(el("td", "oSo", m.so_luong));
     tr.appendChild(el("td", null, m.ten_khach || "—"));
     tr.appendChild(el("td", null, m.dien_thoai || "—"));
@@ -900,6 +1023,7 @@
       trangThai.kq = null;
       trangThai.kyCuaKq = null;
       trangThai.ky = null;
+      trangThai.thongBaoXuat = null;
       $("veBaoHanh").innerHTML = "";
       $("tabHang").innerHTML = "";
     });

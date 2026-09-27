@@ -26,6 +26,34 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 27/09/2026 — XUẤT EXCEL FORM LG (tab Kích hoạt bảo hành).**
+
+Nút [Xuất Excel] ở tab LG, theo đúng file mẫu `import_sellout_template.xlsx`
+của cổng LG (một sheet, chín cột, tiêu đề nguyên văn). Câu trả lời chủ dự
+án chốt trước khi code:
+
+1. **Dòng nào** → chỉ dòng CHƯA tick của **tháng đang xem**; mỗi IMEI một
+   dòng trong file.
+2. **Mapping** → Store Code luôn `EASV8721` · Model = cột Mã sản phẩm ·
+   Serial No = IMEI · End User Cell = SĐT · Sell Out Date = ngày BẤM XUẤT
+   theo giờ VN, ghi thành CHỮ `yyyymmdd` (không phải công thức `TODAY()`) ·
+   các cột còn lại để trống.
+3. **Dòng thiếu IMEI** → bỏ, không xuất, không tick. Thiếu MỘT PHẦN (SL 2,
+   1 IMEI) cũng bỏ trọn, vì tick là tick cả dòng.
+4. **Model kích hoạt tay** (chương trình đặc biệt) → danh sách lưu trên
+   máy chủ ở `bc/quyetdinh/bao-hanh/LG/model_loai_tru`, **cả hai vai** sửa
+   được, **chỉ LG**. So NGUYÊN MÃ, không tiền tố. Dòng thuộc model này mang
+   nhãn "kích hoạt tay" trên bảng và không vào file.
+5. **Sau khi xuất** → **tự tick** những dòng đã vào file, ghi một lượt
+   PATCH TRƯỚC khi trả file. Lỗi thì Quản lí bật "Hiện cả đã kích hoạt" và
+   bỏ tick.
+
+Hai lượt merge, đúng bẫy số 4: PR #115 (Engine) trước, Gateway
+(`POST /api/bao-hanh/xuat`, `POST /api/bao-hanh/loai-tru`) + trang tĩnh
+(`public/ghi-xlsx.js`, bộ ghi .xlsx tự viết, không nới CSP) sau.
+
+---
+
 **LƯỢT 19/09/2026 — TAB THỨ HAI: [Kích hoạt bảo hành].**
 
 Chủ dự án yêu cầu một tab ĐỘC LẬP, ngang hàng với toàn bộ thứ đang có
