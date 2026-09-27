@@ -138,5 +138,72 @@ const GOC = path.resolve(__dirname, '..');
     ok('hãng không có form không mang cờ', ds.hang.Samsung.chua.length, 0);
   }
 
+  console.log('\n8) Gateway — hai đường mới, đúng vai, tick TRƯỚC khi trả file');
+  {
+    const { doc } = require('./khung');
+    const GW = doc('src/index.js');
+    for (const d of ['POST /api/bao-hanh/xuat', 'POST /api/bao-hanh/loai-tru']) {
+      ok('"' + d + '" có trong API_ROUTES',
+         new RegExp('\\["' + d.replace(/\//g, '\\/') + '"').test(GW), true);
+    }
+    /* Chủ dự án chốt: Quản lí xuất được VÀ sửa được danh sách loại trừ. */
+    ok('xuất mở cho cả hai vai', /const xuatExcelBaoHanh = boc\(true,/.test(GW), true);
+    ok('sửa danh sách loại trừ mở cho cả hai vai',
+       /const datLoaiTruBaoHanh = boc\(true,/.test(GW), true);
+    const than = (GW.match(/const xuatExcelBaoHanh = boc[\s\S]*?\n\}\);/) || [''])[0];
+    ok('chặn kỳ tương lai', /chanKyTuongLai\(ky\)/.test(than), true);
+    ok('danh sách loại trừ đọc hỏng → 503, không coi như rỗng',
+       /!loaiTru\.ok\) throw new LoiXacThuc\(503/.test(than), true);
+    ok('Tracking hỏng → 503, không xuất file rỗng', /kqBang\.loi_nguon_ma\) \{\s*throw/.test(than), true);
+    /* MỘT lượt PATCH cho cả loạt tick, và nó đứng TRƯỚC lượt trả kết quả. */
+    ok('tick bằng một lượt vaDb vào nhánh kỳ',
+       /vaDb\(DUONG_KICH_HOAT \+ "\/" \+ ky, upd, env\)/.test(than), true);
+    ok('  · lượt ghi hỏng → 503 (không trả file khi chưa tick được)',
+       /khong-ghi-duoc-kich-hoat/.test(than), true);
+    ok('  · danh sách dòng do Engine dựng, không nhận từ trình duyệt',
+       /than\.(dong|khoa_tick|imei)/.test(than), false);
+  }
+
+  console.log('\n9) Màn hình — không giữ luật, không gõ tên hãng');
+  {
+    const { doc } = require('./khung');
+    const FE = doc('public/bao-hanh.js');
+    const HTML = doc('public/index.html');
+    ok('nút xuất chỉ hiện theo xuat_excel máy chủ trả', /kq\.xuat_excel && kq\.xuat_excel\[/.test(FE), true);
+    ok('không khai mã cửa hàng ở trình duyệt', /EASV8721/.test(FE + doc('public/ghi-xlsx.js')), false);
+    ok('không tự so model loại trừ (cờ đến từ Engine)', /khoaModel|toUpperCase\(\)/.test(FE), false);
+    ok('hỏi xác nhận trước khi xuất (vì tự tick)', /window\.confirm\("Xuất Excel/.test(FE), true);
+    ok('index.html nạp ghi-xlsx.js trước bao-hanh.js',
+       HTML.indexOf('/ghi-xlsx.js') > 0 && HTML.indexOf('/ghi-xlsx.js') < HTML.indexOf('/bao-hanh.js'), true);
+  }
+
+  console.log('\n10) ghi-xlsx.js — file dựng ra đọc ngược lại đúng từng ô');
+  {
+    const fs = require('fs');
+    const vm = require('vm');
+    const hop = { window: {}, TextEncoder, Uint8Array, Int32Array, DataView, Math, String, Number };
+    vm.createContext(hop);
+    vm.runInContext(fs.readFileSync(path.join(GOC, 'public/ghi-xlsx.js'), 'utf8'), hop);
+    const X = await import('file://' + path.join(GOC, 'bin/doc-xlsx.mjs'));
+
+    const r = B.dongXuatExcel([
+      muc({ khoa: 'k1', so_luong: 2, imei: ['356789012345678', '356789012345679'],
+            dien_thoai: '0901234567', ma_san_pham: 'Tivi <LG> & "OLED"' }),
+    ], 'LG', null, MS);
+    const u8 = hop.window.GhiXlsx.tao(r);
+    const kqDoc = X.docBangTuXlsx(Buffer.from(u8));
+    const m = kqDoc.bang;
+    ok("tên sheet đúng form", kqDoc.ten_sheet, "Sheet1");
+    ok('dòng tiêu đề đúng nguyên văn form', m[0], B.XUAT_EXCEL.LG.cot);
+    ok('dòng dữ liệu 1 đúng từng ô (ô trống đọc ra rỗng)',
+       Array.from({ length: 9 }, (_, i) => (m[1][i] == null ? '' : String(m[1][i]))),
+       ['EASV8721', 'Tivi <LG> & "OLED"', '356789012345678', '0901234567', '', '', '20260927', '', '']);
+    /* IMEI 15 chữ số phải còn nguyên — ghi thành số là Excel làm tròn nó. */
+    ok('IMEI 15 chữ số còn nguyên, là chữ', m[2][2], '356789012345679');
+    ok('SĐT giữ số 0 đầu', m[1][3], '0901234567');
+    ok('ngày xuất là chữ yyyymmdd', m[1][6], '20260927');
+    ok('đúng số dòng (1 tiêu đề + 2 IMEI)', m.length, 3);
+  }
+
   xong();
 })().catch((e) => { console.error('BÀI KIỂM CHẾT:', e); process.exit(1); });

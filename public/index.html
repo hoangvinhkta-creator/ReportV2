@@ -1032,6 +1032,25 @@
              margin: 0 0 6px; font-size: 13px; color: #56637f; }
   .daiBang .demCon { font-weight: 600; color: #1f2430; }
   .daiBang .cuoiDai { margin-left: auto; }
+  .daiBang .cuoiDai { display: flex; gap: 8px; align-items: center; }
+
+  /* ---- Xuất Excel theo form hãng + model kích hoạt tay (27/09/2026) ----
+     Dải model loại trừ cùng dáng dải đăng nhập: một hàng ngang, đọc lướt được
+     "đợt này đang loại những model nào" mà không phải mở hộp nào. */
+  .daiLoaiTru { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 8px 14px; margin-bottom: 10px; max-width: 1100px; font-size: 13px; }
+  .daiLoaiTru .nhanKhoa { font-size: 12px; color: #6b7280; }
+  .daiLoaiTru .theModel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 1px 6px; }
+  .daiLoaiTru .trong { color: #9ca3af; font-style: italic; }
+  .daiLoaiTru .cuoiDai { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+  /* Nhãn "kích hoạt tay" trên dòng thuộc model loại trừ: dòng ấy sẽ KHÔNG
+     vào file, nên nó phải tự nói ra ngay trên bảng — không thì người dùng
+     xuất xong mới thấy còn sót dòng mà không biết vì sao. */
+  .bangBaoHanh .nhanTay { display: inline-block; margin-left: 6px; font-family: inherit;
+    font-size: 11px; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 0 5px; }
+  .thongBaoXuat { font-size: 13px; color: #15803d; margin: 0 0 8px; white-space: pre-wrap; }
 
 </style>
 </head>
@@ -1271,6 +1290,7 @@ firebase.auth().onAuthStateChanged(async (user) => {
 <script src="/mau-hang.js"></script>
 <script src="/co-cau.js"></script>
 <script src="/doc-xlsx.js"></script>
+<script src="/ghi-xlsx.js"></script>
 <script src="/tai-len.js"></script>
 <!-- gan-ma.js phải nạp TRƯỚC don-hang.js: don-hang gọi window.GanMa lúc
      người dùng bấm, nhưng khai báo trước cho khỏi phụ thuộc thời điểm. -->

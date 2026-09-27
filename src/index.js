@@ -1845,6 +1845,8 @@ const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
  *   POST /api/bao-hanh/buoc       quantri            thêm/sửa/xoá một bước
  *   POST /api/bao-hanh/anh        quantri            tải ảnh hướng dẫn lên
  *   GET  /api/bao-hanh/anh        quantri | quanly   xem ảnh hướng dẫn
+ *   POST /api/bao-hanh/xuat       quantri | quanly   xuất Excel form hãng + tự tick
+ *   POST /api/bao-hanh/loai-tru   quantri | quanly   sửa danh sách model loại trừ
  *
  * Vì sao TICK mở cho cả Quản lí còn HƯỚNG DẪN thì không: kích hoạt là việc
  * làm hằng ngày, khoá nó lại là bắt Quản trị làm thay mỗi cái máy. Còn
@@ -1985,6 +1987,111 @@ const datKichHoat = boc(true, async ({ nguoi, request, env, rid }) => {
 
   nhatKy({ rid, uid: nguoi.uid, duong: "/api/kich-hoat", ky, viec: "tick" });
   return { ghi: true, ky, khoa, xong: true };
+});
+
+/* =================== POST /api/bao-hanh/xuat ===================
+ * Xuất Excel theo form hãng (chủ dự án chốt 27/09/2026 — chỉ LG), RỒI TỰ
+ * TICK đúng những dòng đã vào file.
+ *
+ * Cả hai vai đi được: đây là việc hằng ngày, cùng loại với tick.
+ *
+ * Máy chủ DỰNG LẠI danh sách từ đầu thay vì nhận danh sách trình duyệt gửi
+ * lên — dòng nào được xuất và được tick là quyết định trên dữ liệu máy chủ
+ * vừa đọc, và một danh sách gửi lên thì sửa được bằng Console.
+ *
+ * Tick ghi TRƯỚC khi trả file về. Thứ tự ngược lại (trả file, rồi trình
+ * duyệt gọi tick sau) để hở một cửa: tải xong file, mạng rớt, lượt tick
+ * không bao giờ tới — lần bấm sau xuất lại đúng những IMEI đó và cổng hãng
+ * nhận chúng hai lần. Chủ dự án chốt chấp nhận chiều còn lại: tick rồi mà
+ * file không tới tay thì Quản lí bật "Hiện cả đã kích hoạt" và bỏ tick.
+ *
+ * Tick là MỘT lượt PATCH cho cả loạt, không phải mỗi dòng một lượt: nhiều
+ * lượt là nhiều chỗ hỏng nửa chừng, và một nửa đã tick mà file thì không
+ * có là đúng thứ khó gỡ nhất.
+ */
+const xuatExcelBaoHanh = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const ky = than && than.ky;
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  chanKyTuongLai(ky);
+  const hang = await hangBaoHanhHopLe(env, than && than.hang);
+
+  const [kqBang, tick, loaiTru] = await Promise.all([
+    dungBangDonHang(env, ky, null, rid),
+    docDb(DUONG_KICH_HOAT + "/" + ky, env),
+    docDb(DUONG_BAO_HANH + "/" + hang + "/model_loai_tru", env),
+  ]);
+  if (!tick.ok) throw new LoiXacThuc(503, "khong-doc-duoc-kich-hoat:" + chiTietLoi(tick));
+  /* Danh sách loại trừ hỏng thì DỪNG: coi như "không có model nào bị cấm"
+     là xuất đúng những model chương trình đặc biệt cấm kích hoạt hàng loạt. */
+  if (!loaiTru.ok) throw new LoiXacThuc(503, "khong-doc-duoc-loai-tru:" + chiTietLoi(loaiTru));
+  /* Tracking hỏng thì không dòng nào có hãng, tức file rỗng — một file rỗng
+     đọc lên thành "không còn máy nào phải kích hoạt" (CLAUDE.md). */
+  if (kqBang.loi_nguon_ma) {
+    throw new LoiXacThuc(503, "loi-nguon-ma",
+      "Chưa đọc được bảng giá Tracking lượt này nên chưa xếp được máy vào hãng. "
+      + "Chưa xuất và chưa tick gì — thử lại sau ít phút.");
+  }
+
+  let kq;
+  try {
+    kq = await env.REPORT_ENGINE.xuatExcelBaoHanh(
+      kqBang.bang, tick.val || {}, loaiTru.val || null, hang, Date.now());
+  } catch (e) {
+    throw new LoiXacThuc(503, "engine-loi-xuat:" + (e && e.message));
+  }
+  if (!kq) throw new LoiXacThuc(400, "hang-khong-xuat-excel");
+
+  /* Khoá đến từ Engine (`khoaDong()` đã thay ký tự cấm), nhưng đi thẳng vào
+     đường dẫn Firebase — chặn cùng luật `/api/kich-hoat` đang chặn. Một khoá
+     lạ làm hỏng CẢ lượt PATCH, nên dừng trước khi ghi. */
+  const upd = {};
+  for (const khoa of kq.khoa_tick) {
+    if (!khoa || khoa.length > 400 || /[.#$\[\]\/\u0000-\u001F]/.test(khoa)) {
+      throw new LoiXacThuc(503, "khoa-xuat-khong-hop-le");
+    }
+    upd[khoa] = { boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } };
+  }
+  if (kq.khoa_tick.length) {
+    const r = await vaDb(DUONG_KICH_HOAT + "/" + ky, upd, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-kich-hoat:" + chiTietLoi(r));
+  }
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/xuat", ky, hang,
+           so_dong: kq.dong.length, so_tick: kq.khoa_tick.length, bo_qua: kq.bo_qua });
+  return { ky, ...kq };
+});
+
+/* =================== POST /api/bao-hanh/loai-tru ===================
+ * Danh sách model KHÔNG kích hoạt hàng loạt của một hãng có form xuất —
+ * chương trình đặc biệt, phải kích hoạt tay.
+ *
+ * Cả hai vai sửa được (chủ dự án chốt 27/09/2026): chương trình đổi theo
+ * đợt, và người chạy việc hằng ngày là người biết đợt nào đang chạy.
+ *
+ * Ghi ĐÈ TRỌN danh sách (PUT) chứ không vá từng model: màn hình gửi lên cả
+ * danh sách người dùng vừa sửa, và "thứ đang thấy là thứ được lưu" là cách
+ * duy nhất để xoá một model khỏi danh sách mà không cần một đường xoá riêng.
+ */
+const datLoaiTruBaoHanh = boc(true, async ({ nguoi, request, env, rid }) => {
+  const than = await docThan(request);
+  const hang = await hangBaoHanhHopLe(env, than && than.hang);
+
+  let kq;
+  try { kq = await env.REPORT_ENGINE.chuanHoaModelLoaiTru(hang, than.ds); }
+  catch (e) { throw new LoiXacThuc(503, "engine-loi-loai-tru:" + (e && e.message)); }
+  if (!kq) throw new LoiXacThuc(400, "hang-khong-xuat-excel");
+  if (kq.loi === "qua-nhieu-model") {
+    throw new LoiXacThuc(400, kq.loi, "Danh sách quá dài — tối đa 200 model.");
+  }
+  if (kq.loi) throw new LoiXacThuc(400, kq.loi, "Có model dài quá 60 ký tự — kiểm tra lại.");
+
+  const r = await ghiDb(DUONG_BAO_HANH + "/" + kq.hang + "/model_loai_tru",
+    { ds: kq.ds, sua_boi: nguoi.email || nguoi.uid, sua_luc: { ".sv": "timestamp" } }, env);
+  if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-loai-tru:" + chiTietLoi(r));
+
+  nhatKy({ rid, uid: nguoi.uid, duong: "/api/bao-hanh/loai-tru", hang: kq.hang, so: kq.ds.length });
+  return { ghi: true, hang: kq.hang, ds: kq.ds };
 });
 
 /* =================== POST /api/bao-hanh/dang-nhap ===================
@@ -2456,6 +2563,8 @@ const API_ROUTES = new Map([
   ["POST /api/bao-hanh/buoc", datBuocBaoHanh],
   ["GET /api/bao-hanh/anh", layAnhBaoHanh],
   ["POST /api/bao-hanh/anh", taiAnhBaoHanh],
+  ["POST /api/bao-hanh/xuat", xuatExcelBaoHanh],
+  ["POST /api/bao-hanh/loai-tru", datLoaiTruBaoHanh],
 ]);
 
 /** Những method một đường `/api/` nhận, hoặc `null` nếu đường đó không tồn
