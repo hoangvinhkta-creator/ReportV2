@@ -283,3 +283,221 @@ export function thuTuTiepTheo(buoc) {
   for (const b of ds) max = Math.max(max, Number(b && b.thu_tu) || 0);
   return max + 10;
 }
+
+/* ─────────────── Xuất Excel theo form của hãng (27/09/2026) ─────────────── */
+
+/** Hãng có nút xuất Excel, và form của từng hãng.
+ *
+ *  Chủ dự án chốt 27/09/2026: CHỈ LG, theo đúng file mẫu
+ *  `import_sellout_template.xlsx` của cổng LG — một sheet, dòng 1 là chín
+ *  tiêu đề, dữ liệu từ dòng 2. Tiêu đề chép NGUYÊN VĂN từ file mẫu, kể cả
+ *  dấu xuống dòng trong ô Sell Out Date: cổng hãng đọc file theo tiêu đề,
+ *  và lệch một ký tự là một lượt tải lên bị từ chối mà không ai hiểu vì sao.
+ *
+ *  Khai ở Engine chứ không ở trình duyệt: form nào, mã cửa hàng nào, cột nào
+ *  lấy từ trường nào đều là luật nghiệp vụ. Trình duyệt chỉ nhận ma trận ô
+ *  đã điền sẵn rồi đóng thành file. Hãng không có mục ở đây thì màn hình
+ *  không có nút xuất — thêm hãng thứ hai là thêm một mục, không sửa màn hình. */
+export const XUAT_EXCEL = {
+  LG: {
+    /* Mã cửa hàng Tín Phát trên cổng LG — chủ dự án chốt: MỌI dòng đều là mã
+       này, không có dòng nào khác. */
+    store_code: "EASV8721",
+    ten_sheet: "Sheet1",
+    cot: [
+      "(*) Store Code", "(*) Model", "(*) Serial No", "End User Cell",
+      "End User Name", "End User Address", "(*) Sell Out Date\n(yyyymmdd)",
+      "Remark", "(Cột Ngày fix EOW, tùy chọn)",
+    ],
+    /* Độ rộng cột chép từ file mẫu — để file xuất ra mở lên trông đúng như
+       file người dùng đã quen, không phải một bảng co cụm chín cột hẹp. */
+    rong_cot: [15, 10.5, 13.2, 13.7, 16, 18.2, 17.3, 17.7, 25.5],
+  },
+};
+
+/** Trần danh sách model không kích hoạt hàng loạt, và trần độ dài một model.
+ *
+ *  Nhánh này đọc TRỌN ở mọi lượt mở màn hình (nó nằm dưới
+ *  `bc/quyetdinh/bao-hanh`), nên một ô người dán nhầm cả bảng giá vào sẽ làm
+ *  chậm mọi lượt mở sau đó. Hai trăm model đã gấp nhiều lần số chương trình
+ *  đặc biệt chạy cùng lúc. */
+export const MODEL_LOAI_TRU_TOI_DA = 200;
+export const DAI_MODEL_TOI_DA = 60;
+
+/** Tên hãng CHÍNH THỨC nếu hãng ấy có nút xuất Excel, không thì `null`. */
+export function hangXuatExcel(s) {
+  const ten = hangChinhThuc(s);
+  return ten && XUAT_EXCEL[ten] ? ten : null;
+}
+
+/** Khoá so sánh một model: bỏ khoảng trắng hai đầu, gộp khoảng trắng giữa,
+ *  bỏ hoa/thường.
+ *
+ *  So NGUYÊN MÃ, không tiền tố, không chuỗi con, không gần đúng (CLAUDE.md —
+ *  phần khớp mã hàng). `65UR8050PSB` trong danh sách loại trừ KHÔNG được kéo
+ *  theo `65UR8050PSA`: một model lọt khỏi file là một cái máy phải kích hoạt
+ *  tay mà vẫn còn nằm trong danh sách việc — thấy được. Còn một model bị
+ *  loại nhầm vì trùng tiền tố thì cũng thấy được, nhưng là sai theo cả một
+ *  dòng sản phẩm mỗi lần xuất. */
+export function khoaModel(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+/** Danh sách người gõ (mảng, hoặc một khối chữ mỗi dòng một model, ngăn
+ *  bằng xuống dòng / dấu phẩy / chấm phẩy) → danh sách đã dọn để ghi xuống.
+ *
+ *  Giữ cách viết người gõ ở lần đầu tiên gặp, bỏ trùng theo `khoaModel`, và
+ *  giữ nguyên thứ tự: đó là thứ tự người dùng đọc lại danh sách của mình.
+ *
+ *  Trả `{ ds, loi }` — `loi` khác `null` khi vượt trần. KHÔNG cắt bớt cho
+ *  vừa: cắt im lặng là một model người dùng tưởng đã loại trừ vẫn đi vào
+ *  file, rồi được kích hoạt hàng loạt đúng thứ chương trình đặc biệt cấm. */
+export function chuanHoaDsModel(tho) {
+  const ds = gomModel(tho);
+  if (ds.some((m) => m.length > DAI_MODEL_TOI_DA)) return { ds: null, loi: "model-qua-dai" };
+  if (ds.length > MODEL_LOAI_TRU_TOI_DA) return { ds: null, loi: "qua-nhieu-model" };
+  return { ds, loi: null };
+}
+
+/** Cắt, dọn, bỏ trùng — KHÔNG áp trần. Lượt ghi áp trần (`chuanHoaDsModel`),
+ *  lượt đọc thì không (`donModelLoaiTru`). */
+function gomModel(tho) {
+  const manh = Array.isArray(tho)
+    ? tho.map((x) => (typeof x === "string" ? x : ""))
+    : typeof tho === "string" ? tho.split(/[\n\r,;]+/) : [];
+  const daCo = new Set();
+  const ds = [];
+  for (const m of manh) {
+    const sach = m.replace(/[\u0000-\u001F]/g, " ").trim().replace(/\s+/g, " ");
+    if (!sach) continue;
+    const k = khoaModel(sach);
+    if (daCo.has(k)) continue;
+    daCo.add(k);
+    ds.push(sach);
+  }
+  return ds;
+}
+
+/** Nhánh `bc/quyetdinh/bao-hanh/<hãng>/model_loai_tru` thô → bản đã dọn.
+ *
+ *  `ds` nhận cả mảng lẫn đối tượng khoá số: Firebase trả một mảng thưa (sửa
+ *  tay trên Console, xoá một phần tử ở giữa) thành đối tượng `{"0":…, "2":…}`,
+ *  và đọc nhầm nó thành "không có model nào" là xuất đúng những model đang
+ *  bị cấm kích hoạt hàng loạt. */
+export function donModelLoaiTru(o) {
+  const n = o && typeof o === "object" ? o : {};
+  let tho = n.ds;
+  if (tho && typeof tho === "object" && !Array.isArray(tho)) {
+    tho = Object.keys(tho).sort((a, b) => Number(a) - Number(b)).map((k) => tho[k]);
+  }
+  return {
+    /* Đọc thì KHÔNG từ chối vì vượt trần — trần là việc của lượt ghi. Một
+       nhánh lỡ dài hơn trần (sửa tay trên Console) vẫn phải được áp đủ. */
+    ds: gomModel(Array.isArray(tho) ? tho : []),
+    sua_luc: n.sua_luc ?? null,
+    sua_boi: n.sua_boi ?? null,
+  };
+}
+
+/** Ngày xuất theo giờ Việt Nam, dạng `yyyymmdd`.
+ *
+ *  Chủ dự án chốt 27/09/2026: Sell Out Date là ngày BẤM XUẤT, ghi thành CHỮ
+ *  cố định — không phải công thức `TODAY()`, thứ tự đổi ngày mỗi lần mở lại
+ *  file. Tính theo UTC+7 chứ không theo đồng hồ UTC của Worker: xuất lúc
+ *  6 giờ sáng ở Hà Nội là còn "hôm qua" theo UTC, và cổng hãng sẽ ghi ngày
+ *  bán lệch một ngày. */
+export function ngayXuatVN(ms) {
+  const d = new Date(Number(ms) + 7 * 3600 * 1000);
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate());
+}
+
+/** Danh sách máy chưa kích hoạt của một hãng → ma trận ô theo form hãng.
+ *
+ *  @param chua     `dsKichHoat(...).hang[<hãng>].chua` — CHỈ dòng chưa tick
+ *                  (chủ dự án chốt: đã tick là đã xong, không xuất lại).
+ *  @param hang     tên hãng chính thức, phải có trong `XUAT_EXCEL`.
+ *  @param loaiTru  kết quả `donModelLoaiTru()`.
+ *  @param ms       mốc thời gian lúc bấm xuất.
+ *
+ *  Mỗi IMEI một dòng (chủ dự án chốt): khách mua hai máy trong một số BH là
+ *  hai dòng trong file.
+ *
+ *  Ba loại dòng KHÔNG vào file, và KHÔNG được tick — chúng ở lại danh sách
+ *  việc, và được ĐẾM để màn hình nói ra:
+ *
+ *   · model nằm trong danh sách loại trừ — chương trình đặc biệt, phải kích
+ *     hoạt tay;
+ *   · thiếu IMEI, kể cả thiếu MỘT PHẦN (số lượng 2 mà sổ chỉ khai 1 IMEI).
+ *     Chủ dự án chốt bỏ dòng không có IMEI. Dòng thiếu một phần cũng bỏ trọn:
+ *     tick là tick cả dòng, nên xuất một nửa rồi tick là cái máy còn lại rời
+ *     khỏi danh sách việc mà chưa ai kích hoạt nó;
+ *   · không có khoá dòng — không tick được, nên xuất nó là lần xuất sau nó
+ *     lại vào file, và cổng hãng nhận cùng một IMEI hai lần.
+ *
+ *  Trả `null` nếu hãng không có form. */
+export function dongXuatExcel(chua, hang, loaiTru, ms) {
+  const form = XUAT_EXCEL[hang];
+  if (!form) return null;
+
+  const cam = new Set(((loaiTru && loaiTru.ds) || []).map(khoaModel));
+  const ngay = ngayXuatVN(ms);
+  const dong = [], khoa_tick = [];
+  const bo_qua = { loai_tru: 0, thieu_imei: 0, khong_khoa: 0 };
+
+  for (const m of Array.isArray(chua) ? chua : []) {
+    if (!m || m.da_kich_hoat) continue;
+    if (cam.has(khoaModel(m.ma_san_pham))) { bo_qua.loai_tru++; continue; }
+    const imei = Array.isArray(m.imei) ? m.imei : [];
+    if (!imei.length || m.thieu_imei) { bo_qua.thieu_imei++; continue; }
+    if (!m.khoa) { bo_qua.khong_khoa++; continue; }
+
+    for (const so of imei) {
+      dong.push([
+        form.store_code,
+        m.ma_san_pham || "",
+        so,
+        m.dien_thoai || "",
+        "",   // End User Name — chủ dự án chốt để trống
+        "",   // End User Address — để trống
+        ngay,
+        "",   // Remark
+        "",   // Cột Ngày fix EOW — để trống
+      ]);
+    }
+    khoa_tick.push(m.khoa);
+  }
+
+  return {
+    hang,
+    ten_sheet: form.ten_sheet,
+    cot: form.cot.slice(),
+    rong_cot: form.rong_cot.slice(),
+    ngay_xuat: ngay,
+    dong,
+    khoa_tick,
+    bo_qua,
+  };
+}
+
+/** Gắn cờ `loai_tru_xuat` lên từng dòng của những hãng có nút xuất Excel,
+ *  và trả về danh sách loại trừ đã dọn của từng hãng ấy.
+ *
+ *  Cờ ĐI TỪ ĐÂY chứ không để màn hình tự so: "model này có nằm trong danh
+ *  sách không" là cùng phép so `dongXuatExcel` dùng lúc xuất, và hai phép so
+ *  ở hai nơi là hai phép trôi khỏi nhau — lúc ấy bảng nói "kích hoạt tay"
+ *  mà file vẫn mang dòng đó. */
+export function ganLoaiTruXuat(ds, huongDanTho) {
+  const tho = huongDanTho && typeof huongDanTho === "object" ? huongDanTho : {};
+  const xuat_excel = {};
+  for (const h of Object.keys(XUAT_EXCEL)) {
+    const lt = donModelLoaiTru(tho[h] && tho[h].model_loai_tru);
+    xuat_excel[h] = { model_loai_tru: lt };
+    const cam = new Set(lt.ds.map(khoaModel));
+    const o = ds && ds.hang && ds.hang[h];
+    if (!o) continue;
+    for (const m of o.chua.concat(o.da)) m.loai_tru_xuat = cam.has(khoaModel(m.ma_san_pham));
+  }
+  return xuat_excel;
+}
