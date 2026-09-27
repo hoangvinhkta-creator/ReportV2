@@ -21,6 +21,7 @@ import { dungKhoiSheet, COT_NGAY, COT_TIEN, HANG_DAU } from "./day-sheet.mjs";
 import { khoaNhanVien } from "./gop-ban-hang.mjs";
 import {
   HANG_BAO_HANH, hangChinhThuc, dsKichHoat, donHuongDan, thuTuTiepTheo, BUOC_TOI_DA,
+  hangXuatExcel, chuanHoaDsModel, donModelLoaiTru, dongXuatExcel, ganLoaiTruXuat,
 } from "./bao-hanh.mjs";
 import { coCauNganhHang } from "./co-cau.mjs";
 import { mucPhanLoai, apPhanLoaiTay } from "./phan-loai.mjs";
@@ -460,7 +461,34 @@ export default class extends WorkerEntrypoint {
     const tho = huongDanTho && typeof huongDanTho === "object" ? huongDanTho : {};
     const huong_dan = {};
     for (const h of HANG_BAO_HANH) huong_dan[h] = donHuongDan(tho[h]);
-    return { ...ds, huong_dan };
+    /* `xuat_excel` (27/09/2026): hãng nào có nút xuất, kèm danh sách model
+       không kích hoạt hàng loạt của hãng ấy. Màn hình vẽ nút theo đúng khoá
+       của đối tượng này — nó không tự biết hãng nào có form. */
+    const xuat_excel = ganLoaiTruXuat(ds, tho);
+    return { ...ds, huong_dan, xuat_excel };
+  }
+
+  /** Xuất Excel theo form hãng (27/09/2026): bảng đơn đã dựng + quyết định
+   *  kích hoạt + nhánh `model_loai_tru` thô của hãng → ma trận ô, cộng danh
+   *  sách khoá dòng Gateway phải tick ngay sau đó.
+   *
+   *  Dựng lại danh sách bằng CHÍNH `dsKichHoat` chứ không nhận danh sách từ
+   *  trình duyệt: dòng nào được xuất và được tick là quyết định của máy chủ,
+   *  trên dữ liệu máy chủ vừa đọc — không phải của một danh sách ai đó gửi
+   *  lên. Trả `null` nếu hãng không có form xuất. */
+  async xuatExcelBaoHanh(bang, quyetDinhKichHoat, loaiTruTho, hang, ms) {
+    const ten = hangXuatExcel(hang);
+    if (!ten) return null;
+    const ds = dsKichHoat(bang, quyetDinhKichHoat);
+    return dongXuatExcel(ds.hang[ten].chua, ten, donModelLoaiTru(loaiTruTho), ms);
+  }
+
+  /** Danh sách model loại trừ người gõ → bản đã dọn để ghi. `null` nếu hãng
+   *  không có form xuất; `{ loi }` nếu vượt trần. */
+  async chuanHoaModelLoaiTru(hang, tho) {
+    const ten = hangXuatExcel(hang);
+    if (!ten) return null;
+    return { hang: ten, ...chuanHoaDsModel(tho) };
   }
 
   /** Mười hãng có cổng kích hoạt bảo hành, đúng thứ tự tab con.
