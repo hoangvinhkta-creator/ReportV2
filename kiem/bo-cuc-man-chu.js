@@ -363,8 +363,9 @@ console.log('\n9) Sửa tại chỗ — tự lưu khi rời dòng, không chớp
   /* Đếm LỜI GỌI (`apBangMoi(kq);` có chấm phẩy), không đếm cả dòng khai hàm
      (`function apBangMoi(kq) {`) — bỏ chấm phẩy là bài này đếm ra 3 và "đúng
      hai chỗ gọi" thành một câu vô nghĩa. */
-  ok('  · cả hai đi qua apBangMoi, không tự gọi lại GET',
-     (JS.match(/apBangMoi\(kq\);/g) || []).length, 2);
+  /* Ba chỗ gọi từ 27/09/2026: sửa, xoá, và KHÔI PHỤC dòng đã xoá. */
+  ok('  · cả ba (sửa, xoá, khôi phục) đi qua apBangMoi, không tự gọi lại GET',
+     (JS.match(/apBangMoi\(kq\);/g) || []).length, 3);
 
   /* Hai ca rơi về đường cũ, cả hai đều là ca thật. Thiếu ca thứ hai là lỗi
      im lặng tệ nhất của cả lượt sửa này: người dùng bấm sửa rồi đổi sang tab
@@ -475,6 +476,12 @@ console.log('\n11) Băng quyết định mồ côi ĐÃ BỎ — chốt 12/09/20
      /const tst = b\.tom_tat_sua_tay;/.test(JS), false);
   ok('  · nhưng chú thích nói rõ vì sao bỏ, không xoá trắng',
      /Băng QUYẾT ĐỊNH MỒ CÔI ĐÃ BỎ/.test(JS), true);
+
+  /* 27/09/2026: danh sách DÒNG ĐÃ XOÁ là thứ khác hẳn băng mồ côi — nó là
+     đường khôi phục, đóng sẵn, và đọc đúng một trường `da_xoa`. */
+  ok('có danh sách "Dòng đã xoá" kèm khôi phục', /Dòng đã xoá \(/.test(JS) && /xoa: false/.test(JS), true);
+  ok('  · hộp xác nhận xoá không còn hứa một nút không tồn tại',
+     /bấm lại nút này trên dòng đó/.test(JS), false);
 
   const LUAT = doc('CLAUDE.md');
   ok('CLAUDE.md KHÔNG còn đòi màn hình in danh sách ấy',

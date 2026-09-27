@@ -183,13 +183,15 @@ const GOC = path.resolve(__dirname, '..');
        { doi_gi: kq.doi[0].doi_gi, truoc: kq.doi[0].truoc, sau: kq.doi[0].sau },
        { doi_gi: ['doanh_so'], truoc: { doanh_so: 500 }, sau: { doanh_so: 900 } });
 
-    /* Trường hợp (c) của chủ dự án: đơn đã chỉnh sửa tay thì KHÔNG đè, cảnh
-       báo riêng để kiểm lại. Quyết định của người không bao giờ thua một lượt
-       tải file (CLAUDE.md — "Nhập sổ"). */
+    /* Chủ dự án chốt 27/09/2026 (thay luật "khoá cả dòng" cũ): dòng CÒN
+       trong file mới thì LUÔN lấy bản mới, kể cả khi nó có quyết định tay.
+       Quyết định nằm ở nhánh riêng và áp lúc đọc, nên không mất gì. Ca gặp
+       thật: BH74940 sửa giá bán trên sổ rồi tải lại mà màn hình không đổi. */
     const khoa = D.doiChieuKy(cu, moi, ['k2']);
-    ok('dòng đã sửa tay GIỮ bản cũ', khoa.cay.k2.doanh_so, 500);
-    ok('và được cảnh báo riêng', khoa.bi_khoa.map(b => [b.khoa, b.ly_do]), [['k2', 'da-sua-tay']]);
-    ok('không bị đếm vào "đổi"', { doi: khoa.tom_tat.doi, bi_khoa: khoa.tom_tat.bi_khoa }, { doi: 0, bi_khoa: 1 });
+    ok('dòng đã sửa tay VẪN nhận số mới của sổ', khoa.cay.k2.doanh_so, 900);
+    ok('  · và được đếm vào "đổi", không bị khoá',
+       { doi: khoa.tom_tat.doi, bi_khoa: khoa.tom_tat.bi_khoa }, { doi: 1, bi_khoa: 0 });
+    ok('  · danh sách "Dòng bị khoá" không còn ca này', khoa.bi_khoa, []);
 
     /* Dòng đã sửa tay mà BIẾN MẤT khỏi file mới: xoá nó là xoá luôn một quyết
        định của người mà không hỏi ai — giữ lại và cảnh báo. */

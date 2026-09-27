@@ -1078,6 +1078,81 @@
     return { luu, huy: traLai };
   }
 
+  /* ---- DÒNG ĐÃ XOÁ, và đường khôi phục (27/09/2026) ----
+     Bản trước xoá dòng là dòng biến mất hẳn khỏi màn hình, trong khi hộp xác
+     nhận hứa "bấm lại nút này là khôi phục được" — không còn dòng nào để
+     bấm. Danh sách do Engine trả (`tom_tat_sua_tay.da_xoa`); màn hình chỉ vẽ,
+     và khôi phục là rút lại đúng quyết định xoá (`xoa: false`) qua Gateway.
+
+     ĐÓNG SẴN: đây là chỗ ghé khi cần, không phải thứ đọc mỗi ngày — mở sẵn
+     thì ngày nào cũng một bảng nữa dưới bảng chính. */
+  let moDaXoa = false;
+  function veDaXoa(khung, ds) {
+    if (!ds.length) return;
+    const hop = el("div", "hopDaXoa");
+    const nut = el("button", "tabNut tabNho" + (moDaXoa ? " tabDang" : ""),
+      (moDaXoa ? "▾ " : "▸ ") + "Dòng đã xoá (" + ds.length + ")");
+    nut.type = "button";
+    nut.title = "Những dòng đã bấm xoá khỏi báo cáo — mở ra để khôi phục";
+    nut.addEventListener("click", () => {
+      moDaXoa = !moDaXoa;
+      const moi = el("div");
+      veDaXoa(moi, ds);
+      hop.replaceWith(moi.firstChild);
+    });
+    hop.appendChild(nut);
+    if (moDaXoa) {
+      const bang = el("table", "bangDaXoa");
+      const trH = el("tr");
+      for (const c of ["Ngày", "Số BH", "Mã sản phẩm", "SL", "Giá bán", "Tổng bán", "Xoá bởi", ""]) {
+        trH.appendChild(el("th", null, c));
+      }
+      const dauDx = el("thead");
+      dauDx.appendChild(trH);
+      bang.appendChild(dauDx);
+      const tbody = el("tbody");
+      for (const d of ds) {
+        const tr = el("tr");
+        tr.appendChild(el("td", null, nhanNgayCot(d.ngay)));
+        tr.appendChild(el("td", null, d.so_ct));
+        const oMa = el("td", null, d.ma_san_pham);
+        oMa.title = d.ten_hang || "";
+        tr.appendChild(oMa);
+        tr.appendChild(el("td", "oSo", soNguyen(d.so_luong)));
+        tr.appendChild(el("td", "oSo", nghin(d.gia_ban)));
+        tr.appendChild(el("td", "oSo", nghin(d.tong_ban)));
+        tr.appendChild(el("td", null, d.xoa_boi || "—"));
+        const oNut = el("td");
+        if (!chiDoc) {
+          const kp = el("button", "nutPhu", "Khôi phục");
+          kp.type = "button";
+          kp.addEventListener("click", () => khoiPhucDong(d, kp));
+          oNut.appendChild(kp);
+        }
+        tr.appendChild(oNut);
+        tbody.appendChild(tr);
+      }
+      bang.appendChild(tbody);
+      hop.appendChild(bang);
+    }
+    khung.appendChild(hop);
+  }
+
+  async function khoiPhucDong(d, nut) {
+    nut.disabled = true;
+    $("loiDonHang").textContent = "";
+    let kq;
+    try {
+      kq = await goiGhi("/api/sua-dong", { ky: trangThai.ky, khoa: d.khoa, xoa: false,
+        line: trangThai.line });
+    } catch (e) {
+      nut.disabled = false;
+      $("loiDonHang").textContent = "Không khôi phục được: " + e.message;
+      return;
+    }
+    apBangMoi(kq);
+  }
+
   async function xoaDongHang(tr) {
     const khoa = tr.dataset.khoaDong;
     if (!khoa) return;
@@ -1091,8 +1166,8 @@
     const ten = (oMa && (oMa.dataset.ten || oMa.textContent)) || "dòng này";
     if (!window.confirm("Xoá " + ten + " khỏi báo cáo?\n\n"
       + "Dòng sẽ biến khỏi bảng, và doanh số của nó bị trừ khỏi cả biểu đồ. "
-      + "Sổ gốc không đổi — bấm lại nút này trên dòng đó sau khi nhập lại sổ "
-      + "là khôi phục được.")) return;
+      + "Sổ gốc không đổi — muốn lấy lại thì mở \"Dòng đã xoá\" ngay dưới "
+      + "bảng rồi bấm Khôi phục.")) return;
     tr.classList.add("hangDangGui");
     let kq;
     try {
@@ -2877,6 +2952,8 @@
       const p = el("p", tb.khong_ro_tien ? "bangConNo" : "ghiChuPhamVi", phan.join(" · ") + ".");
       khung.appendChild(p);
     }
+
+    veDaXoa(khung, (b.tom_tat_sua_tay && b.tom_tat_sua_tay.da_xoa) || []);
 
     /* KHÔNG còn chú giải màu dưới bảng (chủ dự án chốt 12/09/2026: "bỏ đi
        không cần"). Nó đã dài thành một đoạn văn mà không ai đọc tới lần thứ
