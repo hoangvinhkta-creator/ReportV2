@@ -26,6 +26,25 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 27/09/2026 (b) — TẢI LẠI SỔ KHÔNG CÒN KHOÁ DÒNG ĐÃ SỬA TAY; KHÔI PHỤC DÒNG ĐÃ XOÁ.**
+
+Gặp thật: `BH74940` nhân viên gõ giá bán 24.500 thay vì 27.500, sửa sổ
+MISA rồi tải lại mà màn hình vẫn 24.500. Nguyên nhân: `doiChieuKy` KHOÁ CẢ
+DÒNG hễ dòng ấy có một quyết định tay (sửa giá nhập, nơi nhập, hoặc xoá),
+nên giá bán/số lượng/ngày của nó không bao giờ theo sổ nữa. Chủ dự án chốt
+(được hỏi giữa "chỉ giữ phần đã sửa" và "giữ khoá cả dòng + nút nhận số mới"):
+
+1. **Dòng còn trong file mới → LUÔN lấy bản mới.** Quyết định tay nằm ở
+   nhánh riêng và áp LÚC ĐỌC, nên giá nhập / nơi nhập đã sửa vẫn nguyên.
+   Dòng sửa tay mà BIẾN MẤT khỏi file mới thì vẫn giữ lại + cảnh báo như cũ.
+   Dòng đã bị khoá trước lượt này cần **tải lại sổ một lần** để nhận số mới.
+2. **Dòng đã xoá có đường về**: nút "Dòng đã xoá (N)" đóng sẵn dưới bảng
+   đơn, mỗi dòng một nút [Khôi phục] (rút lại quyết định xoá). Engine trả
+   danh sách ở `tom_tat_sua_tay.da_xoa`. Hộp xác nhận xoá trước đây hứa một
+   nút khôi phục không tồn tại — đã sửa câu.
+
+---
+
 **LƯỢT 27/09/2026 — XUẤT EXCEL FORM LG (tab Kích hoạt bảo hành).**
 
 Nút [Xuất Excel] ở tab LG, theo đúng file mẫu `import_sellout_template.xlsx`

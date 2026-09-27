@@ -128,7 +128,8 @@
             t + ": " + (d.truoc[t] === null ? "—" : d.truoc[t]) + " → " + (d.sau[t] === null ? "—" : d.sau[t])
           ).join("; ");
         }
-        r.appendChild(el("td", null, chi || d.ly_do || ""));
+        const lyDo = d.ly_do === "da-sua-tay-va-bien-mat" ? "đã sửa tay, không còn trong file mới" : d.ly_do;
+        r.appendChild(el("td", null, chi || lyDo || ""));
       }
       b.appendChild(r);
     }
@@ -161,16 +162,18 @@
     h.appendChild(tomTat);
 
     if (d.bi_khoa) {
-      /* Đây là thứ chủ dự án muốn thấy nổi bật nhất: dòng đã chỉnh sửa tay
-         KHÔNG bị file mới đè, và phải được kiểm lại bằng mắt. */
+      /* Từ 27/09/2026 chỉ còn một ca: dòng có chỉnh sửa tay mà KHÔNG còn
+         trong file mới — được giữ lại thay vì xoá, và phải kiểm lại bằng mắt.
+         Dòng sửa tay còn trong file thì đã nhận số mới như mọi dòng khác. */
       const c = el("p", "canhBaoDam",
-        "⚠ " + soNguyen(d.bi_khoa) + " dòng đã chỉnh sửa tay nên KHÔNG bị đè — kiểm lại xem file mới có đúng không.");
+        "⚠ " + soNguyen(d.bi_khoa) + " dòng đã chỉnh sửa tay nhưng không còn trong file mới — "
+        + "được GIỮ LẠI, kiểm lại xem file mới có thiếu dòng không.");
       h.appendChild(c);
     }
 
     if (k.doi && k.doi.length) h.appendChild(bangThayDoi("Dòng thay đổi (" + soNguyen(d.doi) + ")", k.doi, ["Ngày", "Số BH", "Mã sản phẩm", "Đổi gì"]));
     if (k.mat && k.mat.length) h.appendChild(bangThayDoi("Dòng biến mất (" + soNguyen(d.mat) + ")", k.mat, ["Ngày", "Số BH", "Mã sản phẩm"]));
-    if (k.bi_khoa && k.bi_khoa.length) h.appendChild(bangThayDoi("Dòng bị khoá (" + soNguyen(d.bi_khoa) + ")", k.bi_khoa, ["Ngày", "Số BH", "Mã sản phẩm", "Vì sao"]));
+    if (k.bi_khoa && k.bi_khoa.length) h.appendChild(bangThayDoi("Dòng sửa tay được giữ lại (" + soNguyen(d.bi_khoa) + ")", k.bi_khoa, ["Ngày", "Số BH", "Mã sản phẩm", "Vì sao"]));
 
     khung.appendChild(h);
   }

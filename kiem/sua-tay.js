@@ -60,7 +60,7 @@ const GOC = path.resolve(__dirname, '..');
     ok('đếm đúng số đơn', b.tom_tat.so_don, 2);
     ok('không dòng nào bị đánh dấu sửa tay',
       moiDong(b).some((d) => d.da_sua_tay), false);
-    ok('bản kê sạch', b.tom_tat_sua_tay, { so_sua_tay: 0, so_xoa: 0, mo_coi: [] });
+    ok('bản kê sạch', b.tom_tat_sua_tay, { so_sua_tay: 0, so_xoa: 0, mo_coi: [], da_xoa: [] });
   }
 
   /* Ô rỗng là rác còn sót, KHÔNG phải một quyết định — đếm nó vào "đã sửa
@@ -129,6 +129,14 @@ const GOC = path.resolve(__dirname, '..');
     ok('tổng của đơn BH1 trừ theo', b.ngay[0].don.find((x) => x.so_ct === 'BH1').tong_ban, 5000000);
     ok('doanh số của NGÀY trừ theo', b.ngay[0].doanh_so, 8000000);
     ok('bản kê đếm đúng', b.tom_tat_sua_tay.so_xoa, 1);
+    /* 27/09/2026: dòng đã xoá phải còn đường về. Bản trước bỏ hẳn nó, và
+       hộp xác nhận xoá hứa một nút khôi phục không có ở đâu cả. */
+    const dx = b.tom_tat_sua_tay.da_xoa;
+    ok('dòng đã xoá được liệt kê để khôi phục', dx.map((x) => x.khoa), [KA]);
+    ok('  · kèm đủ thứ màn hình vẽ', Object.keys(dx[0]).sort(),
+       ['gia_ban', 'khoa', 'ma_san_pham', 'ngay', 'so_ct', 'so_luong', 'ten_hang',
+        'tong_ban', 'xoa_boi', 'xoa_luc']);
+    ok('  · KHÔNG kéo theo giá nhập / lợi nhuận', 'gia_nhap' in dx[0] || 'loi_nhuan' in dx[0], false);
   }
 
   console.log('\n7) Xoá dòng CUỐI CÙNG của một đơn');

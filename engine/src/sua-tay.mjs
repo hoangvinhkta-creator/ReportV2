@@ -61,6 +61,12 @@ export function apDungSuaTay(bang, quyetDinh) {
   const qd = laObj(quyetDinh) ? quyetDinh : {};
   const daDung = new Set();          // khoá nào thật sự tìm thấy dòng để áp
   let soSuaTay = 0, soXoa = 0;
+  /* Dòng đã xoá tay mà vẫn còn trong sổ (27/09/2026). Bản trước bỏ chúng đi
+     không để lại dấu vết nào trên màn hình, nên "khôi phục" chỉ còn là một
+     lời hứa trong hộp xác nhận xoá — không có dòng nào để bấm. Nay chúng
+     được liệt kê để màn hình vẽ danh sách "Dòng đã xoá" kèm nút khôi phục.
+     Chỉ những trường màn hình ấy vẽ ra, không kéo theo giá nhập/lợi nhuận. */
+  const daXoa = [];
 
   for (const ng of bang.ngay) {
     for (const don of ng.don) {
@@ -72,7 +78,16 @@ export function apDungSuaTay(bang, quyetDinh) {
         if (!coQuyetDinh(q)) { giu.push(d); continue; }
         daDung.add(d.khoa);
 
-        if (q.xoa === true) { soXoa++; continue; }
+        if (q.xoa === true) {
+          soXoa++;
+          daXoa.push({
+            khoa: d.khoa, ngay: ng.ngay, so_ct: don.so_ct,
+            ma_san_pham: d.ma_hien || d.ma_san_pham, ten_hang: d.ma_san_pham,
+            so_luong: d.so_luong, gia_ban: d.gia_ban, tong_ban: d.tong_ban,
+            xoa_boi: q.boi ?? null, xoa_luc: q.luc ?? null,
+          });
+          continue;
+        }
 
         soSuaTay++;
         d.da_sua_tay = true;
@@ -114,7 +129,10 @@ export function apDungSuaTay(bang, quyetDinh) {
   }
   moCoi.sort((a, b) => (a.khoa < b.khoa ? -1 : a.khoa > b.khoa ? 1 : 0));
 
-  bang.tom_tat_sua_tay = { so_sua_tay: soSuaTay, so_xoa: soXoa, mo_coi: moCoi };
+  daXoa.sort((a, b) => (a.ngay !== b.ngay ? (a.ngay < b.ngay ? -1 : 1)
+    : a.so_ct < b.so_ct ? -1 : a.so_ct > b.so_ct ? 1 : 0));
+
+  bang.tom_tat_sua_tay = { so_sua_tay: soSuaTay, so_xoa: soXoa, mo_coi: moCoi, da_xoa: daXoa };
   return bang;
 }
 

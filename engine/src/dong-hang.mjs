@@ -302,14 +302,29 @@ function khacNhau(a, b) {
 
 /** So một kỳ: dòng cũ đang có trên Firebase ↔ dòng mới vừa trích từ file.
  *
- *  `khoaDaSua` là tập khoá dòng đã bị người sửa tay (`bc/quyetdinh/dong`).
- *  Chủ dự án chốt: dòng chưa ai động vào thì ĐÈ BÌNH THƯỜNG; dòng đã sửa
- *  tay thì KHÔNG đè, giữ nguyên bản cũ và cảnh báo riêng để người kiểm lại.
+ *  `khoaDaSua` là tập khoá dòng có quyết định tay (`bc/quyetdinh/dong`).
  *
- *  Dòng biến mất khỏi file mới thì XOÁ THẲNG (chủ dự án chốt) — nếu về sau
- *  nó xuất hiện lại thì coi như một dòng mới độc lập. Ngoại lệ đúng một
- *  chỗ: dòng đã sửa tay mà biến mất thì GIỮ LẠI và cảnh báo, vì xoá nó là
- *  xoá luôn một quyết định của người mà không hỏi ai.
+ *  ── DÒNG CÒN TRONG FILE MỚI: LUÔN LẤY BẢN MỚI (chủ dự án chốt 27/09/2026) ──
+ *
+ *  Bản trước KHOÁ CẢ DÒNG hễ dòng ấy có một quyết định tay: sửa giá nhập một
+ *  dòng là từ đó giá bán, số lượng, ngày của nó không bao giờ theo sổ nữa.
+ *  Gặp thật: `BH74940` nhân viên gõ giá bán 24.500 thay vì 27.500, sửa sổ
+ *  MISA rồi tải lại — màn hình vẫn 24.500, và không có chỗ nào để sửa.
+ *
+ *  Khoá như thế là THỪA. Quyết định tay không nằm trong `bc/dong` — nó nằm
+ *  ở nhánh riêng và được áp LÚC ĐỌC (`sua-tay.mjs::apDungSuaTay`), theo khoá
+ *  bền. Nên đè `bc/dong` bằng số mới của sổ không làm mất một quyết định
+ *  nào: giá nhập / nơi nhập đã sửa vẫn tự áp lên dòng, còn giá bán, số
+ *  lượng, ngày thì theo sổ — đúng hai phía "sổ MISA là sự thật về bán hàng"
+ *  và "người là sự thật về giá nhập". Dòng đã XOÁ tay cũng vậy: nó mang số
+ *  mới dù đang ẩn, nên lúc khôi phục là hiện đúng số của sổ mới nhất.
+ *
+ *  ── DÒNG BIẾN MẤT KHỎI FILE MỚI ──
+ *
+ *  XOÁ THẲNG (chủ dự án chốt) — nếu về sau nó xuất hiện lại thì coi như một
+ *  dòng mới. Ngoại lệ đúng một chỗ, GIỮ NGUYÊN từ bản trước: dòng có quyết
+ *  định tay mà biến mất thì GIỮ LẠI và cảnh báo (`bi_khoa`), vì xoá nó là
+ *  xoá luôn cái dòng mà một quyết định của người đang bám vào, không hỏi ai.
  *
  *  Trả `cay` — cây dòng CUỐI CÙNG để ghi đè trọn kỳ. Bên gọi không phải tự
  *  trộn lại: trộn ở hai chỗ là hai chỗ trôi khỏi nhau. */
@@ -333,16 +348,6 @@ export function doiChieuKy(dongCu, dongMoi, khoaDaSua) {
     }
     const lech = khacNhau(a, b);
     if (!lech.length) { cay[khoa] = b; giu++; continue; }
-    if (daSua.has(khoa)) {
-      /* Giữ bản CŨ — đó là bản đã mang quyết định của người. */
-      cay[khoa] = a;
-      demKhoa++;
-      if (bi_khoa.length < VI_DU_TOI_DA) {
-        bi_khoa.push({ khoa, so_ct: a.so_ct, ngay: a.ngay, ten_hang: a.ten_hang,
-                       ly_do: "da-sua-tay", doi_gi: lech });
-      }
-      continue;
-    }
     cay[khoa] = b;
     demDoi++;
     if (doi.length < VI_DU_TOI_DA) {
