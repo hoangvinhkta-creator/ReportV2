@@ -92,13 +92,65 @@ const GOC = path.resolve(__dirname, '..');
 
   console.log('\n5) Ghép theo mã là phép BẰNG — 65C6K không ăn 65C6KS (C)');
   {
-    const b = bang([don('BH74545', [dong({ ma_bang_gia: '65C6KS', ma_san_pham: 'Tivi A',
-      so_luong: 1, gia_ban: 1000, gia_nhap: 900 })])]);
-    D.doiChieuCrm(b, { don: { o1: crmDon({ lines: [{ item: '65C6K', qty: 1,
-      unitPrice: 1, unitCost: 0.9 }] }) } }, KY, CO);
-    ok('dòng sổ không có bên CRM', b.ngay[0].don[0].dong[0].crm.tt, 'chi_report');
-    ok('dòng CRM dư ra, có tên', b.ngay[0].don[0].crm.chi_crm.map((x) => x.ma), ['65C6K']);
+    /* Số KHÁC nhau và mỗi bên hai dòng → không có căn cứ ghép: ngoài CRM. */
+    const b = bang([don('BH74545', [
+      dong({ ma_bang_gia: '65C6KS', ma_san_pham: 'Tivi A', so_luong: 1, gia_ban: 1000, gia_nhap: 900 }),
+      dong({ ma_bang_gia: 'Z9', ma_san_pham: 'Tivi B', so_luong: 1, gia_ban: 5000, gia_nhap: 4000 })])]);
+    D.doiChieuCrm(b, { don: { o1: crmDon({ lines: [
+      { item: '65C6K', qty: 1, unitPrice: 2, unitCost: 0.9 },
+      { item: 'Y8', qty: 1, unitPrice: 6, unitCost: 4 }] }) } }, KY, CO);
+    ok('dòng sổ không có bên CRM', b.ngay[0].don[0].dong.map((d) => d.crm.tt), ['chi_report', 'chi_report']);
+    ok('dòng CRM dư ra, có tên', b.ngay[0].don[0].crm.chi_crm.map((x) => x.ma), ['65C6K', 'Y8']);
     ok('đơn lệch', b.ngay[0].don[0].crm.tt, 'lech');
+
+    /* Cùng cặp mã ấy mà SỐ trùng từng đồng: lượt ghép theo số nhận, nhưng
+       dòng mang `khac_ma` — mã vẫn KHÔNG được coi là một. */
+    const b2 = bang([don('BH74545', [dong({ ma_bang_gia: '65C6KS', so_luong: 1, gia_ban: 1000, gia_nhap: 900 })])]);
+    D.doiChieuCrm(b2, { don: { o1: crmDon({ lines: [{ item: '65C6K', qty: 1,
+      unitPrice: 1, unitCost: 0.9 }] }) } }, KY, CO);
+    ok('số trùng → ghép, nhưng đánh dấu khác mã', b2.ngay[0].don[0].dong[0].crm.khac_ma,
+       { report: '65C6KS', crm: '65C6K' });
+  }
+
+  console.log('\n5b) Ca thật BH74058 — mã viết khác, số trùng từng đồng → khớp');
+  {
+    const b = bang([don('BH74058', [dong({ ma_bang_gia: 'AWM8-316K B', so_luong: 1,
+      gia_ban: 3900000, gia_nhap: 3600000 })])]);
+    D.doiChieuCrm(b, { don: { o1: crmDon({ misa: 'BH74058', lines: [{ item: 'AWM8-316K(B)',
+      qty: 1, unitPrice: 3900, unitCost: 3600 }] }) } }, KY, CO);
+    const d = b.ngay[0].don[0].dong[0];
+    ok('ba ô khớp', [d.crm.sl.tt, d.crm.gia_nhap.tt, d.crm.gia_ban.tt], ['khop', 'khop', 'khop']);
+    ok('mang hai mã để màn hình nói ra', d.crm.khac_ma, { report: 'AWM8-316K B', crm: 'AWM8-316K(B)' });
+    ok('đơn KHỚP, không còn "CRM có thêm"', [b.ngay[0].don[0].crm.tt, b.ngay[0].don[0].crm.chi_crm],
+       ['khop', []]);
+  }
+
+  console.log('\n5c) Đơn nhiều dòng — ghép theo số từng dòng, chỉ dòng lệch thật mới ngoài CRM');
+  {
+    const b = bang([don('BH74060', [
+      dong({ ma_bang_gia: 'A 1', so_luong: 1, gia_ban: 1000000, gia_nhap: 800000 }),
+      dong({ ma_bang_gia: 'B 2', so_luong: 2, gia_ban: 500000, gia_nhap: 400000 }),
+      dong({ ma_bang_gia: 'C3', so_luong: 1, gia_ban: 200000, gia_nhap: 100000 })])]);
+    D.doiChieuCrm(b, { don: { o1: crmDon({ misa: 'BH74060', lines: [
+      { item: 'B(2)', qty: 2, unitPrice: 500, unitCost: 400 },
+      { item: 'A(1)', qty: 1, unitPrice: 1000, unitCost: 800 }] }) } }, KY, CO);
+    const ds = b.ngay[0].don[0].dong;
+    ok('hai dòng số trùng → ghép dù mã khác', [ds[0].crm.sl.tt, ds[1].crm.sl.tt], ['khop', 'khop']);
+    ok('dòng thứ ba không có bên CRM → ngoài CRM', ds[2].crm.tt, 'chi_report');
+    ok('đơn lệch (lệch số dòng)', b.ngay[0].don[0].crm.tt, 'lech');
+  }
+
+  console.log('\n5d) Mỗi bên còn đúng một dòng, giá khác → ghép, và icon lệch nói đúng chỗ');
+  {
+    const b = bang([don('BH74061', [dong({ ma_bang_gia: 'X 1', so_luong: 1,
+      gia_ban: 3900000, gia_nhap: 3600000 })])]);
+    D.doiChieuCrm(b, { don: { o1: crmDon({ misa: 'BH74061', lines: [{ item: 'X(1)', qty: 1,
+      unitPrice: 3900, unitCost: 3500 }] }) } }, KY, CO);
+    const d = b.ngay[0].don[0].dong[0];
+    ok('không còn "ngoài CRM"', d.crm.tt, undefined);
+    ok('giá nhập lệch hiện đúng', [d.crm.gia_nhap.tt, d.crm.gia_ban.tt, d.crm.sl.tt], ['lech', 'khop', 'khop']);
+    ok('có dấu khác mã', !!d.crm.khac_ma, true);
+    ok('đơn lệch vì giá nhập', b.ngay[0].don[0].crm.tt, 'lech');
   }
 
   console.log('\n6) Dòng sổ chưa có mã → ghép bằng tên hàng MISA');
