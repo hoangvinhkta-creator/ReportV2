@@ -658,10 +658,11 @@ const GOC = path.resolve(__dirname, '..');
        /await dungBangDonHang\(env, ky, than\.line, rid\)/.test(GW), true);
     ok('  · trả về dưới tên `bang_moi`', /bang_moi: await dungBangDonHang/.test(GW), true);
     /* Đếm LỜI GỌI (`return kemBangMoi(...`), không đếm cả dòng khai hàm —
-       cùng cái bẫy đã dính một lần với `apBangMoi`. Ba chỗ: sửa dòng, đặt
-       bonus, xoá bonus. */
+       cùng cái bẫy đã dính một lần với `apBangMoi`. Bốn chỗ: sửa dòng, đặt
+       bonus, xoá bonus, và (28/09/2026) "bỏ bonus" của đơn có bonus điều hoà
+       tự tính. */
     ok('  · cả sua-dong lẫn bonus đều đi qua đúng một hàm ghép',
-       (GW.match(/return kemBangMoi\(env, ky, than, rid,/g) || []).length, 3);
+       (GW.match(/return kemBangMoi\(env, ky, than, rid,/g) || []).length, 4);
 
     /* `line` từ THÂN request là dữ liệu người dùng gửi lên — phải kiểm hình
        dạng như mọi tham số khác, đúng luật đang áp cho `line` của query. Bỏ

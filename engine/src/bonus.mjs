@@ -68,6 +68,41 @@ export function docBonus(b) {
     luc: typeof b.luc === "number" ? b.luc : null };
 }
 
+/* ─────────── BONUS MẶC ĐỊNH CHO ĐIỀU HOÀ — chủ dự án chốt 28/09/2026 ───────────
+ *
+ * Ba line Tín Phát · Tổng kho · Tân Á: mỗi sản phẩm ngành "Điều hoà" trong
+ * đơn được cộng sẵn 50.000 đ vào bonus lợi nhuận, lý do "KHBH". Đơn 3 máy là
+ * 150.000 đ. Tự có, không ai phải bấm — nhưng SỬA ĐƯỢC: một quyết định tay
+ * (`bc/quyetdinh/bonus/<kỳ>/<số CT>`) luôn thắng con số tự tính, kể cả quyết
+ * định "bỏ bonus" (bản ghi `tat: true`).
+ *
+ * Tính LÚC ĐỌC chứ không ghi xuống Firebase, cùng lý do mọi thứ khác Engine
+ * tính: phân loại ngành hàng hay SL của một dòng đổi (gán mã, phân loại tay,
+ * tải lại sổ) thì con số tự đổi theo, không có bản ghi cũ nào nằm lại sai. */
+export const LINE_BONUS_DIEU_HOA = ["Tín Phát", "Tổng kho", "Tân Á"];
+export const BONUS_DIEU_HOA_MOI_SP = 50000;
+export const LY_DO_BONUS_DIEU_HOA = "KHBH";
+
+/** So tên ngành bỏ dấu: bảng giá và phân loại tay có thể viết "Điều hoà"
+ *  hay "Điều hòa" (dấu đặt khác chỗ = hai chuỗi Unicode khác nhau). */
+const boDau = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
+export const laDieuHoa = (nganh) => boDau(nganh) === "dieu hoa";
+
+/** Bonus tự tính của một đơn, hoặc `null` nếu đơn không được. */
+export function bonusMacDinh(don) {
+  if (!don || !LINE_BONUS_DIEU_HOA.includes(don.line)) return null;
+  let sl = 0;
+  for (const d of don.dong || []) {
+    if (d.la_chiet_khau || !laDieuHoa(d.nganh_hang)) continue;
+    /* SL sau bán trả lại (BTL chạy trước) — máy đã trả thì không còn thưởng. */
+    sl += Number(d.so_luong) || 0;
+  }
+  if (sl <= 0) return null;
+  return { tien: sl * BONUS_DIEU_HOA_MOI_SP, ly_do: LY_DO_BONUS_DIEU_HOA,
+    boi: null, luc: null, tu_dong: true, so_may: sl };
+}
+
 /** Gắn bonus vào từng đơn của bảng và cộng vào lợi nhuận của đơn.
  *
  *  `qd` là nhánh `bc/quyetdinh/bonus/<kỳ>`, khoá theo SỐ CHỨNG TỪ.
@@ -83,7 +118,17 @@ export function apDungBonus(bang, qd) {
   let so_don_co_bonus = 0, tong_bonus = 0;
   for (const ng of bang.ngay) {
     for (const don of ng.don) {
-      const b = docBonus(m[don.so_ct]);
+      const tho = m[don.so_ct];
+      /* Màn hình cần biết đơn này CÓ bonus mặc định hay không, kể cả khi
+         quyết định tay đang đè nó: xoá trắng ô bonus của một đơn như thế
+         phải ghi "bỏ bonus" (`tat`), không phải xoá bản ghi — xoá bản ghi là
+         bonus tự tính mọc lại, ngược đúng ý người vừa xoá. */
+      const macDinh = bonusMacDinh(don);
+      if (macDinh) don.bonus_tu_tinh = macDinh.tien;
+      /* Có quyết định tay thì nó thắng — kể cả `tat: true` (người đã bỏ
+         bonus của đơn này, không được để bonus tự tính mọc lại). Không có
+         thì mới tới bonus mặc định. */
+      const b = laObj(tho) ? (tho.tat === true ? null : docBonus(tho)) : macDinh;
       if (!b) continue;
       don.bonus = b;
       so_don_co_bonus++;

@@ -372,7 +372,9 @@
   function oLyDoBonus(don) {
     const td = el("td", "oLyDoBonus", don.bonus ? don.bonus.ly_do : "");
     td.dataset.o = "lydo";
-    if (don.bonus && don.bonus.boi) {
+    if (don.bonus && don.bonus.tu_dong) {
+      td.title = cauBonus(don.bonus);
+    } else if (don.bonus && don.bonus.boi) {
       td.title = "Bonus do " + don.bonus.boi + " cộng"
         + (don.bonus.luc ? " lúc " + new Date(don.bonus.luc).toLocaleString("vi-VN") : "")
         + ".";
@@ -460,6 +462,10 @@
       /* Xoá trắng (hoặc 0) = BỎ bonus. Gửi `tien: null` — Gateway xoá hẳn bản
          ghi, và ô quay về dấu `+`. */
       const than = n === 0 ? { tien: null } : null;
+      /* Đơn có bonus MẶC ĐỊNH (điều hoà): bỏ trắng là "bỏ bonus", phải ghi
+         hẳn quyết định ấy — xoá bản ghi thì bonus tự tính mọc lại. Cờ do
+         Engine đặt (`bonus_tu_tinh`), không tự suy ở đây. */
+      if (than && nut.dataset.coTuTinh === "1") than.tat = true;
       if (!than) {
         const ly_do = (chon.value === "Khác…" ? oKhac.value : chon.value).trim();
         if (!ly_do) {
@@ -519,6 +525,16 @@
    *
    *  Quản lí thấy con số nhưng không thấy nút: cộng bonus là sửa lương, cùng
    *  mức khoá với đặt KPI. */
+  /** Câu giải thích một bonus. Bonus TỰ TÍNH (điều hoà — Engine đặt
+   *  `tu_dong`) phải nói ra là máy cộng, để không ai tưởng có người đã gõ. */
+  function cauBonus(b) {
+    if (b.tu_dong) {
+      return "Bonus tự động: " + soNguyen(b.so_may) + " sản phẩm điều hoà, lý do "
+        + b.ly_do + ". Bấm nút bên cạnh để sửa hoặc bỏ.";
+    }
+    return "Bonus đã cộng vào lợi nhuận của đơn này: " + b.ly_do;
+  }
+
   function oBonus(don) {
     const td = el("td", "oSo oBonus");
     /* NÚT ĐỨNG TRƯỚC SỐ (chủ dự án chốt 13/09/2026). Đặt sau số thì bề rộng
@@ -531,8 +547,9 @@
        nhau. */
     if (!laQuanTri() || chiDoc) {
       if (don.bonus) {
-        const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
-        so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
+        const so = el("span", "soBonus" + (don.bonus.tu_dong ? " bonusTuDong" : ""),
+          "+" + nghin(don.bonus.tien));
+        so.title = cauBonus(don.bonus);
         td.appendChild(so);
       }
       return td;
@@ -544,10 +561,12 @@
       : "Cộng thêm lợi nhuận cho đơn này (khách qua kho lấy, NCC giao hộ…)";
     b.setAttribute("aria-label", b.title);
     b.dataset.soCt = don.so_ct;
+    if (don.bonus_tu_tinh) b.dataset.coTuTinh = "1";
     td.appendChild(b);
     if (don.bonus) {
-      const so = el("span", "soBonus", "+" + nghin(don.bonus.tien));
-      so.title = "Bonus đã cộng vào lợi nhuận của đơn này: " + don.bonus.ly_do;
+      const so = el("span", "soBonus" + (don.bonus.tu_dong ? " bonusTuDong" : ""),
+        "+" + nghin(don.bonus.tien));
+      so.title = cauBonus(don.bonus);
       td.appendChild(so);
     }
     return td;

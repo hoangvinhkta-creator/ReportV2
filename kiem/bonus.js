@@ -179,6 +179,10 @@ const GOC = path.resolve(__dirname, '..');
     /* Xoá thì xoá HẲN, không ghi `tien: 0` — một bản ghi "bonus bằng 0" làm
        "có mặt trong nhánh" hết còn nghĩa. */
     ok('xoá bonus thì xoá hẳn bản ghi', /xoaDb\(DUONG_BONUS \+ "\/" \+ ky \+ "\/" \+ so_ct, env\)/.test(GW), true);
+    /* Ngoại lệ 28/09/2026: đơn có bonus mặc định (điều hoà) → ghi "bỏ bonus"
+       chứ không xoá, để bonus tự tính không mọc lại. */
+    ok('  · trừ đơn có bonus mặc định: ghi đè bản ghi tat', 
+       /than\.tat === true\) \{\s*const r = await ghiDb\(DUONG_BONUS/.test(GW), true);
     ok('mọi lượt ghi mang dấu vết người sửa', /DUONG_BONUS[\s\S]{0,200}?boi: nguoi\.email/.test(GW), true);
 
     /* Bonus phải chạy SAU sửa tay (nó cộng vào lợi nhuận, mà sửa tay đổi giá
@@ -321,6 +325,50 @@ const GOC = path.resolve(__dirname, '..');
        /doanh_so_quy_doi === null \|\| ng\.doanh_so_quy_doi === undefined\s*\n?\s*\? "—"/.test(UI), true);
     ok('  · còn đơn thiếu giá vốn thì dán dấu "*" vào lợi nhuận',
        /ng\.don_thieu_loi_nhuan \? " \*" : ""/.test(UI), true);
+  }
+
+  console.log('\nM) Bonus MẶC ĐỊNH cho điều hoà — ba line, 50.000 đ mỗi sản phẩm');
+  {
+    const dh = (sl, nganh) => dong({ so_luong: sl, nganh_hang: nganh || 'Điều hoà' });
+    const donL = (line, ds, so_ct) => ({ so_ct: so_ct || 'BH1', line, loi_nhuan: 1000000, dong: ds });
+
+    const b = bang([donL('Tín Phát', [dh(2), dh(1, 'Điều hòa'), dh(5, 'Tivi')])]);
+    B.apDungBonus(b, {});
+    ok('Tín Phát: 3 máy điều hoà (cả hai cách bỏ dấu) → 150.000 đ, lý do KHBH',
+       [b.ngay[0].don[0].bonus.tien, b.ngay[0].don[0].bonus.ly_do, b.ngay[0].don[0].bonus.tu_dong],
+       [150000, 'KHBH', true]);
+    ok('  · cộng vào lợi nhuận của đơn', b.ngay[0].don[0].loi_nhuan, 1150000);
+    ok('  · và vào tổng bonus', b.tom_tat_bonus, { so_don: 1, tong: 150000 });
+
+    for (const line of ['Tổng kho', 'Tân Á']) {
+      const bl = bang([donL(line, [dh(1)])]);
+      B.apDungBonus(bl, {});
+      ok(line + ': có bonus mặc định', bl.ngay[0].don[0].bonus && bl.ngay[0].don[0].bonus.tien, 50000);
+    }
+    const bn = bang([donL('Nội thành', [dh(4)])]);
+    B.apDungBonus(bn, {});
+    ok('line khác (Nội thành) KHÔNG có', bn.ngay[0].don[0].bonus, undefined);
+
+    const bk = bang([donL('Tín Phát', [dh(1, 'Tủ lạnh')])]);
+    B.apDungBonus(bk, {});
+    ok('đơn không có điều hoà KHÔNG có', bk.ngay[0].don[0].bonus, undefined);
+
+    const bt = bang([donL('Tín Phát', [dh(0)])]);
+    B.apDungBonus(bt, {});
+    ok('máy đã bán trả lại (SL 0 sau BTL) KHÔNG có', bt.ngay[0].don[0].bonus, undefined);
+
+    const bs = bang([donL('Tín Phát', [dh(2)])]);
+    B.apDungBonus(bs, { BH1: { tien: 70000, ly_do: 'Thợ lắp + KHBH', boi: 'vinh' } });
+    ok('quyết định tay THẮNG bonus tự tính', [bs.ngay[0].don[0].bonus.tien, bs.ngay[0].don[0].bonus.tu_dong],
+       [70000, undefined]);
+    ok('  · đơn vẫn mang bonus_tu_tinh để màn hình biết', bs.ngay[0].don[0].bonus_tu_tinh, 100000);
+
+    const bx = bang([donL('Tín Phát', [dh(2)])]);
+    B.apDungBonus(bx, { BH1: { tat: true, boi: 'vinh' } });
+    ok('"bỏ bonus" (tat) → không có bonus, không mọc lại', bx.ngay[0].don[0].bonus, undefined);
+    ok('  · lợi nhuận không bị cộng', bx.ngay[0].don[0].loi_nhuan, 1000000);
+
+    ok('laDieuHoa không nhận ngành khác có chữ "hoà"', B.laDieuHoa('Máy lọc không khí hoà'), false);
   }
 
   xong();

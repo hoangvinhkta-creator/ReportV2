@@ -1891,6 +1891,17 @@ const datBonus = boc("quantri", async ({ nguoi, request, env, rid }) => {
   /* Xoá bonus: gửi `tien: null`. Xoá HẲN bản ghi chứ không ghi `tien: 0` —
      cùng lý do `gia-dung` xoá hẳn: một bản ghi "bonus bằng 0" làm "có mặt
      trong nhánh" hết còn nghĩa, và nhánh phình theo số lần bấm thử. */
+  /* NGOẠI LỆ từ 28/09/2026: đơn có bonus MẶC ĐỊNH (điều hoà — Engine tự
+     tính, `bonus.mjs`) thì xoá bản ghi là bonus tự tính mọc lại. Màn hình
+     gửi kèm `tat: true` cho đúng những đơn ấy, và khi đó ghi ĐÈ một bản ghi
+     "bỏ bonus" — quyết định tay vẫn thắng, kể cả quyết định "không cộng". */
+  if (than.tien === null && than.tat === true) {
+    const r = await ghiDb(DUONG_BONUS + "/" + ky + "/" + so_ct,
+      { tat: true, boi: nguoi.email || nguoi.uid, luc: { ".sv": "timestamp" } }, env);
+    if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-bonus:" + chiTietLoi(r));
+    nhatKy({ rid, uid: nguoi.uid, duong: "/api/bonus", ky, so_ct, viec: "tat" });
+    return kemBangMoi(env, ky, than, rid, { ghi: true, ky, so_ct });
+  }
   if (than.tien === null) {
     const r = await xoaDb(DUONG_BONUS + "/" + ky + "/" + so_ct, env);
     if (!r.ok) throw new LoiXacThuc(503, "khong-ghi-duoc-bonus:" + chiTietLoi(r));

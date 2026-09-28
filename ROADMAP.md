@@ -26,6 +26,19 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 28/09/2026 (b) — BONUS ĐIỀU HOÀ TỰ ĐỘNG.**
+
+Ba line Tín Phát · Tổng kho · Tân Á: mỗi sản phẩm ngành "Điều hoà" trong đơn
+được cộng sẵn 50.000 đ bonus lợi nhuận, lý do "KHBH" (3 máy = 150.000 đ).
+Engine tính LÚC ĐỌC (`bonus.mjs::bonusMacDinh`), không ghi xuống Firebase —
+đổi ngành/SL/BTL là con số tự đổi theo. So tên ngành bỏ dấu ("hoà"/"hòa").
+Quyết định tay trong `bc/quyetdinh/bonus` luôn THẮNG, kể cả "bỏ bonus": đơn
+có bonus tự tính mà bị xoá trắng ô bonus thì Gateway ghi bản ghi `tat: true`
+chứ không xoá (xoá là bonus tự tính mọc lại). Màn hình in nghiêng bonus tự
+tính, `title` nói rõ "tự động: N sản phẩm điều hoà".
+
+---
+
 **LƯỢT 28/09/2026 — ĐỐI CHIẾU ĐƠN CRM ↔ SỔ (cột "CRM" + bộ lọc).**
 
 Report đọc đơn bên CRM (Firebase `tinphatcrm-b71e7`, project KHÁC) qua số
