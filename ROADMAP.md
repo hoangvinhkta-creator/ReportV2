@@ -26,6 +26,22 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 28/09/2026 (c) — ĐỐI CHIẾU CRM TÁCH THEO NHÂN VIÊN.**
+
+Chủ dự án chốt sau khi nhìn số thật (245 khớp · 110 chưa khớp · 1.031 không
+có CRM · 226 đơn CRM không có trên sổ, cả mớ nằm ở tab [Tổng hợp]):
+
+1. Tab [Tổng hợp] BỎ hẳn dòng tổng kết CRM và danh sách "Đơn CRM không có
+   trên sổ" — trả chỗ cho biểu đồ như cũ.
+2. Chỉ đối chiếu ba line có người lên đơn qua CRM. Bảng người ↔ line nằm ở
+   `doi-chieu-crm.mjs::LINE_THEO_NGUOI_CRM` (Ly → Tổng kho, Kiên → Tân Á,
+   Tâm → Tín Phát), khoá theo tên người dùng CRM đã bỏ dấu. Line khác không
+   còn nhãn "Không có CRM".
+3. Danh sách "Đơn CRM không có trên sổ" hiện ở TAB LINE của đúng người ấy.
+   "Có trên sổ" hỏi CẢ KỲ (Gateway đưa `khoa_ca_ky`), không chỉ bảng đang lọc.
+
+---
+
 **LƯỢT 28/09/2026 (b) — BONUS ĐIỀU HOÀ TỰ ĐỘNG.**
 
 Ba line Tín Phát · Tổng kho · Tân Á: mỗi sản phẩm ngành "Điều hoà" trong đơn

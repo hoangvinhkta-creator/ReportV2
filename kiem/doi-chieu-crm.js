@@ -24,9 +24,10 @@ const GOC = path.resolve(__dirname, '..');
     khoa: 'k', ma_san_pham: 'Tivi', ma_bang_gia: null, so_luong: 1,
     gia_ban: 0, gia_nhap: null, tong_ban: 0, la_chiet_khau: false,
   }, x);
-  const don = (so_ct, ds) => ({ so_ct, dong: ds });
+  /* Đơn mặc định thuộc line Tín Phát — một trong ba line có đối chiếu CRM. */
+  const don = (so_ct, ds, line) => ({ so_ct, line: line || 'Tín Phát', dong: ds });
   const bang = (dsDon, line) => ({
-    line: line === undefined ? 'L1' : line,
+    line: line === undefined ? 'Tín Phát' : line,
     ngay: [{ ngay: '2026-09-10', don: dsDon }], tom_tat: {},
   });
   const KY = '2026-09';
@@ -204,30 +205,47 @@ const GOC = path.resolve(__dirname, '..');
     ok('đếm', b.crm.so_don_khong_co_crm, 1);
   }
 
-  console.log('\n10) CRM có, sổ không (chiều ngược) — chỉ ở bảng cả kỳ (D)');
+  console.log('\n10) CRM có, sổ không (chiều ngược) — TÁCH THEO NGƯỜI (D)');
   {
     const crm = { don: {
-      o1: crmDon({ misa: 'BH74545', lines: [{ item: 'X1', qty: 1, unitPrice: 1, unitCost: 1 }] }),
-      o2: crmDon({ misa: 'BH74546', owner: 'kien', lines: [{ item: 'X2', qty: 2, unitPrice: 5, unitCost: 4 }], discount: 1 }),
-      o3: crmDon({ misa: 'BH74547', status: 'cancel' }),
-      o4: crmDon({ misa: '', status: 'done' }),
-      o5: crmDon({ misa: '', status: 'wait' }),
-    }, nguoi: { kien: 'Kiên' } };
-    const b = bang([don('BH74545', [dong({ ma_bang_gia: 'X1', gia_ban: 1000, gia_nhap: 1000 })])], null);
-    D.doiChieuCrm(b, crm, KY, CO);
-    ok('đơn có số BH mà sổ không có → hiện ra', b.crm.chi_crm.map((x) => x.so_bh), ['BH74546']);
+      o1: crmDon({ misa: 'BH74545', owner: 'u1', lines: [{ item: 'X1', qty: 1, unitPrice: 1, unitCost: 1 }] }),
+      o2: crmDon({ misa: 'BH74546', owner: 'u2', lines: [{ item: 'X2', qty: 2, unitPrice: 5, unitCost: 4 }], discount: 1 }),
+      o3: crmDon({ misa: 'BH74547', owner: 'u2', status: 'cancel' }),
+      o4: crmDon({ misa: '', owner: 'u2', status: 'done' }),
+      o5: crmDon({ misa: '', owner: 'u2', status: 'wait' }),
+      o6: crmDon({ misa: 'BH74548', owner: 'u3' }),
+      o7: crmDon({ misa: 'BH74549', owner: 'u4' }),
+      o8: crmDon({ misa: 'BH74550', owner: 'u1' }),
+    }, nguoi: { u1: 'Tâm', u2: 'Kiên', u3: 'Ly', u4: 'Vinh' } };
+    const tab = (line, khoa) => {
+      const b = bang([don('BH74545', [dong({ ma_bang_gia: 'X1', gia_ban: 1000, gia_nhap: 1000 })])], line);
+      D.doiChieuCrm(b, crm, KY, Object.assign({ khoa_ca_ky: khoa || [] }, CO));
+      return b.crm;
+    };
+    const tan = tab('Tân Á');
+    ok('tab Tân Á: chỉ đơn của Kiên có số BH mà sổ không có', tan.chi_crm.map((x) => x.so_bh), ['BH74546']);
     ok('  · kèm người, ngày, tổng tiền theo đồng (2×5.000 − 1.000)',
-       [b.crm.chi_crm[0].nguoi, b.crm.chi_crm[0].ngay, b.crm.chi_crm[0].tong],
-       ['Kiên', '10/09/2026', 9000]);
-    ok('đơn đã huỷ bên CRM không bị kể', b.crm.chi_crm.some((x) => x.id === 'o3'), false);
-    ok('đơn đã giao chưa có số BH → danh sách riêng', b.crm.chua_bh.map((x) => x.id), ['o4']);
-    ok('đơn chưa giao chưa có số BH → không kể (chưa tới lượt vào MISA)',
-       b.crm.chua_bh.some((x) => x.id === 'o5'), false);
+       [tan.chi_crm[0].nguoi, tan.chi_crm[0].ngay, tan.chi_crm[0].tong], ['Kiên', '10/09/2026', 9000]);
+    ok('  · đơn đã huỷ không bị kể', tan.chi_crm.some((x) => x.id === 'o3'), false);
+    ok('  · đơn đã giao chưa có số BH → danh sách riêng', tan.chua_bh.map((x) => x.id), ['o4']);
+    ok('  · đơn chưa giao chưa có số BH → không kể', tan.chua_bh.some((x) => x.id === 'o5'), false);
+    ok('tab Tổng kho: chỉ đơn của Ly', tab('Tổng kho').chi_crm.map((x) => x.so_bh), ['BH74548']);
+    ok('tab Tín Phát: đơn của Tâm mà sổ không có (BH74545 CÓ trên sổ nên không kể)',
+       tab('Tín Phát').chi_crm.map((x) => x.so_bh), ['BH74550']);
+    ok('số BH sổ ghi ở line KHÁC vẫn là "có trên sổ" (khoá cả kỳ)',
+       tab('Tín Phát', ['BH74550|tivi|1']).chi_crm, []);
+    ok('người không có trong bảng (Vinh) không bị liệt kê ở đâu',
+       tab(null).chi_crm.some((x) => x.id === 'o7'), false);
+    ok('lineCuaNguoiCrm bỏ dấu, hạ chữ', [D.lineCuaNguoiCrm('Tâm'), D.lineCuaNguoiCrm('KIÊN'),
+       D.lineCuaNguoiCrm(' Ly '), D.lineCuaNguoiCrm('Vinh')], ['Tín Phát', 'Tân Á', 'Tổng kho', null]);
+  }
 
-    const bLine = bang([don('BH74545', [dong({ ma_bang_gia: 'X1', gia_ban: 1000, gia_nhap: 1000 })])], 'Tổng kho');
-    D.doiChieuCrm(bLine, crm, KY, CO);
-    ok('tab một line KHÔNG liệt kê chiều ngược (CRM không biết line)',
-       bLine.crm.chi_crm, undefined);
+  console.log('\n10b) Line không dùng CRM (Nội thành…) — không đối chiếu');
+  {
+    const b = bang([don('BH70001', [dong({})], 'Nội thành')], 'Nội thành');
+    D.doiChieuCrm(b, { don: {} }, KY, CO);
+    ok('không có nhãn "Không có CRM"', b.ngay[0].don[0].crm, undefined);
+    ok('không bị đếm', b.crm.so_don_khong_co_crm, 0);
   }
 
   console.log('\n11) Đơn CRM đã huỷ mà sổ vẫn có → lệch');
@@ -267,7 +285,7 @@ const GOC = path.resolve(__dirname, '..');
 
   console.log('\n15) Chứng từ rải hai ngày được gom lại trước khi so');
   {
-    const b = { line: 'L1', tom_tat: {}, ngay: [
+    const b = { line: 'Tín Phát', tom_tat: {}, ngay: [
       { ngay: '2026-09-10', don: [don('BH74545', [dong({ ma_bang_gia: 'X1', gia_ban: 1000, gia_nhap: 1000 })])] },
       { ngay: '2026-09-11', don: [don('BH74545', [dong({ ma_bang_gia: 'X2', gia_ban: 2000, gia_nhap: 1000 })])] },
     ] };
