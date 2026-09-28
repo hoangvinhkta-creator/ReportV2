@@ -43,6 +43,14 @@ trước khi code:
    CRM có mà sổ không (danh sách đóng sẵn ở tab [Tổng hợp] — tab line không
    có, vì CRM không biết line).
 
+**Bổ sung cùng ngày — GHÉP THEO SỐ** (gặp thật BH74058: sổ `AWM8-316K B`,
+CRM `AWM8-316K(B)`, SL · giá nhập · giá bán trùng từng đồng mà vẫn bị "Ngoài
+CRM"). Sau hai lượt theo mã và tên, Engine ghép tiếp trong cùng một đơn:
+(3) dòng trùng đủ SL + giá bán + giá nhập; (4) mỗi bên còn ĐÚNG một dòng thì
+là nhau, so như thường. Còn lại (lệch số dòng, hoặc ≥2 dòng mỗi bên mà số
+không trùng) mới là "Ngoài CRM". Dòng ghép kiểu này mang `khac_ma`: màn hình
+chấm một dấu xám, `title` nói đủ hai mã, KHÔNG tính là chưa khớp.
+
 Màn hình: cột "CRM" ngay sau Số BH (bảng 19 → 20 cột), ba icon SL · giá nhập
 · giá bán (mờ = khớp, đỏ = lệch, vàng = thiếu số một bên), rê chuột thấy hai
 con số; nút lọc trên đầu cột chỉ hiện ĐƠN chưa khớp. Chỉ Quản trị thấy (cùng

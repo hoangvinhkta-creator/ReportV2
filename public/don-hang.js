@@ -611,6 +611,18 @@
       hop.appendChild(iconCrm("crm_nhap", "Giá nhập (đơn giá)", c.gia_nhap, true));
       hop.appendChild(iconCrm("crm_ban", "Giá bán (đơn giá)", c.gia_ban, true));
     }
+    /* Ghép THEO SỐ chứ không theo mã (chủ dự án chốt 28/09/2026): chấm xám
+       để mắt thấy "mã chưa thống nhất", và câu trong `title` nói đủ hai mã.
+       KHÔNG phải lệch — doanh số và giá đúng — nên không tô đỏ và bộ lọc
+       "chưa khớp" không bắt nó (cờ `tt` của đơn do Engine đặt). */
+    if (c.khac_ma) {
+      const cau = "Khác mã: sổ " + (c.khac_ma.report || "—") + " · CRM " + (c.khac_ma.crm || "—")
+        + "\nGhép theo số lượng và giá vì hai bên viết mã khác nhau.";
+      const cham = el("span", "crmKhacMa");
+      cham.title = cau;
+      hop.appendChild(cham);
+      for (const ic of hop.querySelectorAll(".crmIcon")) ic.title += "\n\n" + cau;
+    }
     td.appendChild(hop);
     return td;
   }

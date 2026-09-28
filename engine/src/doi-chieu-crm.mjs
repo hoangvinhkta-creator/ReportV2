@@ -246,6 +246,7 @@ function ghepDong(dongSo, dongCrmDs, coGiaNhap) {
     if (!coGiaNhap) kq.gia_nhap = { tt: "bo_qua", report: null, crm: kq.gia_nhap.crm };
     for (const d of nhomSo) d.crm = kq;
     for (const x of nhomCrm) x.dung = true;
+    return kq;
   };
 
   /* Lượt 1 — mã bảng giá. */
@@ -277,7 +278,48 @@ function ghepDong(dongSo, dongCrmDs, coGiaNhap) {
     else conLai.push(...nhom);
   }
 
-  for (const d of conLai) d.crm = { tt: "chi_report" };
+  /* Lượt 3 và 4 — GHÉP THEO SỐ (chủ dự án chốt 28/09/2026, sau ca thật
+     BH74058: sổ ghi mã `AWM8-316K B`, CRM ghi `AWM8-316K(B)`, SL · giá nhập ·
+     giá bán trùng từng đồng — vẫn là một lần bán, chỉ mã viết khác). Chỉ
+     chạy trên phần CÒN LẠI sau hai lượt theo mã và tên, và trong MỘT đơn.
+
+     Dòng ghép ở đây mang `khac_ma` để màn hình chấm một dấu xám và nói rõ
+     hai mã trong `title`: doanh số đúng nhưng mã chưa thống nhất — một việc
+     dọn dữ liệu, không phải một cái lệch tiền. */
+  const conCrmLai = () => conCrm.filter((x) => !x.dung);
+  const ghepKhacMa = (d, x) => {
+    const kq = gan([d], [x]);
+    d.crm = Object.assign({}, kq, {
+      khac_ma: { report: d.ma_bang_gia || d.ma_san_pham || "", crm: x.c.ma || "" },
+    });
+  };
+
+  /* Lượt 3 — trùng đủ SL, giá bán, giá nhập. Giá nhập thiếu ở một bên (hoặc
+     lượt này không so giá nhập) thì chỉ đòi SL và giá bán — vế ấy vẫn hiện
+     "thiếu"/"bỏ qua" sau khi ghép. Nhiều dòng trùng số giống hệt nhau thì
+     ghép kiểu nào cũng ra cùng một kết quả so, nên lấy dòng đầu. */
+  const conSau3 = [];
+  for (const d of conLai) {
+    const sl = Number(d.so_luong) || 0;
+    const nhapSo = coGiaNhap && d.gia_nhap !== null && d.gia_nhap !== undefined
+      ? xu(d.gia_nhap) : null;
+    const x = conCrmLai().find((y) => y.c.sl === sl
+      && xu(y.c.gia_ban) === xu(d.gia_ban)
+      && (nhapSo === null || y.c.gia_nhap === null || xu(y.c.gia_nhap) === nhapSo));
+    if (x) ghepKhacMa(d, x);
+    else conSau3.push(d);
+  }
+
+  /* Lượt 4 — mỗi bên còn ĐÚNG một dòng: chính là nhau, so như thường (icon
+     nào lệch thì đỏ). Còn ≥2 dòng mỗi bên mà số không trùng thì không có căn
+     cứ nào nói dòng nào đi với dòng nào — để nguyên là "Ngoài CRM". */
+  const crmCuoi = conCrmLai();
+  if (conSau3.length === 1 && crmCuoi.length === 1) {
+    ghepKhacMa(conSau3[0], crmCuoi[0]);
+    conSau3.length = 0;
+  }
+
+  for (const d of conSau3) d.crm = { tt: "chi_report" };
   return conCrm.filter((x) => !x.dung).map((x) => ({
     ma: x.c.ma, sl: x.c.sl, gia_ban: x.c.gia_ban, gia_nhap: x.c.gia_nhap,
   }));
