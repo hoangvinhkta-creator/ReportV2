@@ -25,10 +25,11 @@ import {
 } from "./bao-hanh.mjs";
 import { coCauNganhHang } from "./co-cau.mjs";
 import { mucPhanLoai, apPhanLoaiTay } from "./phan-loai.mjs";
+import { keHoachCrm, doiChieuCrm } from "./doi-chieu-crm.mjs";
 
 /** Số phiên bản nghiệp vụ Engine — Gateway ghi vào nhật ký cùng mỗi kết quả
  *  khi có nghiệp vụ thật; P1 dùng nó chỉ để chứng minh dây đã nối. */
-const PHIEN_BAN = "0.16.0-phan-loai-tay";
+const PHIEN_BAN = "0.17.0-doi-chieu-crm";
 
 export default class extends WorkerEntrypoint {
   /* Worker nào cũng có fetch(). Của Engine thì luôn 404 — lớp chặn CUỐI,
@@ -537,5 +538,19 @@ export default class extends WorkerEntrypoint {
    *  đây là cột tiền mất định dạng hoặc cột ngày hiện ra số 46235. */
   async boCucSheet() {
     return { cot_ngay: COT_NGAY, cot_tien: COT_TIEN.slice(), hang_dau: HANG_DAU };
+  }
+
+  /** Gateway phải tra những gì bên CRM cho một kỳ — xem `doi-chieu-crm.mjs`.
+   *  Nhận `bc/dong/<kỳ>` hoặc danh sách khoá của nó (lượt đọc nông).
+   *
+   *  ĐẶT LÊN TRƯỚC lượt merge có Gateway gọi nó (bẫy số 4 — ROADMAP.md). */
+  async keHoachCrm(dongHoacKhoa, ky) {
+    return keHoachCrm(dongHoacKhoa, ky);
+  }
+
+  /** Đặt cờ đối chiếu CRM lên bảng đơn đã dựng xong. Không đổi con số nào
+   *  của bảng — chỉ thêm `crm` lên đơn, dòng và bảng. */
+  async doiChieuCrm(bang, crm, ky, tuyChon) {
+    return doiChieuCrm(bang, crm, ky, tuyChon);
   }
 }
