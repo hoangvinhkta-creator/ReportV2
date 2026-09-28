@@ -316,10 +316,12 @@ const GOC = path.resolve(__dirname, '..');
   {
     const mCot = UI.match(/const COT = \[([\s\S]*?)\];/);
     const soCot = mCot ? (mCot[1].match(/"/g) || []).length / 2 : 0;
-    ok('đúng 19 cột', soCot, 19);
+    /* 19 → 20 ngày 28/09/2026: cột "CRM" (đối chiếu đơn CRM) — một cột có
+       mặt ở MỌI tab, khác hẳn cột gia dụng bị từ chối ở đây. */
+    ok('đúng 20 cột', soCot, 20);
     const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
     const soRong = mRong ? mRong[1].split(',').length : 0;
-    ok('đúng 19 bề rộng', soRong, 19);
+    ok('đúng 20 bề rộng', soRong, 20);
     /* Không có cột "Gia dụng" nào — chủ dự án chốt ô tick nằm TRONG ô Mã sản
        phẩm, không cần tiêu đề cột. */
     ok('không sinh cột "Gia dụng"', /"Gia dụng"/.test(mCot ? mCot[1] : ''), false);
@@ -614,9 +616,9 @@ const GOC = path.resolve(__dirname, '..');
        `table-layout: fixed` chia lại theo tỉ lệ, đúng lỗi P4 đã sửa. */
     const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
     const rong = JSON.parse('[' + (mRong ? mRong[1] : '') + ']');
-    ok('cột Mã sản phẩm hẹp lại còn 200px', rong[3], 200);
+    ok('cột Mã sản phẩm hẹp lại còn 200px', rong[4], 200);
     ok('  · và tổng bề rộng đúng con số đã chốt (không tự hụt đi)',
-       rong.reduce((a, b2) => a + b2, 0), 1868);
+       rong.reduce((a, b2) => a + b2, 0), 1952);
     /* 1822 là tổng ĐANG CHẠY từ P4, ghim để lượt chỉnh cột nào cũng phải là
        một phép CHIA LẠI, không phải một phép nới. Chính lượt 12/09/2026 này
        suýt trượt: cắt 60px khỏi hai cột mà chỉ trả lại 50px, và 10px hụt ấy
@@ -628,7 +630,11 @@ const GOC = path.resolve(__dirname, '..');
        phải một phép chia lại: băng ngày dời vào trong cột Ngày (trước đó nó
        là một ô `colSpan` trải hết bảng), nên cột ấy phải nới 58 → 104 để
        chứa đủ mũi tên cộng nhãn ngày đủ năm. Không cột nào bị cắt bớt để bù
-       — cắt bớt mới là thứ bài này chặn. */
+       — cắt bớt mới là thứ bài này chặn.
+
+       1868 → 1952 ngày 28/09/2026, cũng là một lượt nới có chủ ý: cột CRM
+       (84px) thêm vào sau Số BH, đủ chỗ cho ba icon hoặc nhãn "Không có
+       CRM". Không cột nào bị cắt để bù. */
   }
 
   /* ───── P. Sửa/xoá một dòng: máy chủ trả LUÔN bảng đã tính lại ───── */
@@ -640,7 +646,7 @@ const GOC = path.resolve(__dirname, '..');
        /api/don-hang`, tức trả tiền HAI vòng mạng cho cùng một phép tính —
        trong khi máy chủ vừa ghi xong đang đứng cạnh mọi nguyên liệu. */
     ok('có hàm dựng bảng dùng chung cho cả đường đọc lẫn đường ghi',
-       /async function dungBangDonHang\(env, ky, line, rid\)/.test(GW), true);
+       /async function dungBangDonHang\(env, ky, line, rid(, crmSan)?\)/.test(GW), true);
     ok('  · GET /api/don-hang đi qua chính nó',
        /return dungBangDonHang\(env, ky, line, rid\);/.test(GW), true);
     /* Từ lượt bonus (12/09/2026) phần ghép bảng mới nằm ở MỘT hàm dùng chung

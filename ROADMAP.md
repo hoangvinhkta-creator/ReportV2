@@ -26,6 +26,41 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 28/09/2026 — ĐỐI CHIẾU ĐƠN CRM ↔ SỔ (cột "CRM" + bộ lọc).**
+
+Report đọc đơn bên CRM (Firebase `tinphatcrm-b71e7`, project KHÁC) qua số
+BH (`orders/<id>.misa` = số chứng từ MISA) và so từng dòng. Chủ dự án chốt
+trước khi code:
+
+1. Dòng ghép theo **mã bảng giá**; dòng sổ chưa có mã thì theo **tên hàng
+   MISA** (`misaName` bên CRM). Phép BẰNG, không đoán. Cùng mã nhiều dòng
+   thì cộng SL rồi mới so.
+2. So cả **giá nhập** — mục đích là bắt nhân viên khai sai, hoặc thuật toán
+   Report chạy sai.
+3. Lệch là lệch **tuyệt đối**.
+4. **Chiết khấu cả đơn** CRM so với dòng "Chiết khấu" của sổ.
+5. Đối chiếu **chéo**: sổ có mà CRM không (nhãn "Không có CRM" trên đơn),
+   CRM có mà sổ không (danh sách đóng sẵn ở tab [Tổng hợp] — tab line không
+   có, vì CRM không biết line).
+
+Màn hình: cột "CRM" ngay sau Số BH (bảng 19 → 20 cột), ba icon SL · giá nhập
+· giá bán (mờ = khớp, đỏ = lệch, vàng = thiếu số một bên), rê chuột thấy hai
+con số; nút lọc trên đầu cột chỉ hiện ĐƠN chưa khớp. Chỉ Quản trị thấy (cùng
+luật mọi cảnh báo khác). Tự cập nhật: màn hình hỏi `GET /api/doi-chieu-crm`
+mỗi phút; Gateway so dấu vân CRM, trả `khong_doi` hoặc bảng mới. Chỉ đối
+chiếu từ kỳ 09/2026 (`MOC_DOI_CHIEU_CRM` — CRM mới tự nhận số BH từ Đợt 9).
+
+**VIỆC TAY CHỦ DỰ ÁN PHẢI LÀM, không có thì băng đỏ "Chưa đối chiếu được với
+CRM" (bảng vẫn chạy):** (a) tạo service account của project CRM, đặt secret
+`CRM_SA_EMAIL`/`CRM_SA_KEY` cho `reportv2-gateway`; (b) dán `database.rules.json`
+mới của repo CRM (thêm `.indexOn` misa/expectDeliver/created cho `orders`)
+vào Firebase Console của CRM → Publish.
+
+Hai lượt merge đúng bẫy số 4: PR #118 (Engine `doi-chieu-crm.mjs`) trước,
+Gateway (`src/crm.js`, `/api/doi-chieu-crm`) + màn hình sau.
+
+---
+
 **LƯỢT 27/09/2026 (b) — TẢI LẠI SỔ KHÔNG CÒN KHOÁ DÒNG ĐÃ SỬA TAY; KHÔI PHỤC DÒNG ĐÃ XOÁ.**
 
 Gặp thật: `BH74940` nhân viên gõ giá bán 24.500 thay vì 27.500, sửa sổ

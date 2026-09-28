@@ -1,5 +1,6 @@
 import { xacThuc, doiVaiBaoCao, LoiXacThuc } from './auth.js';
 import { docDb, docDbNong, ghiDb, vaDb, xoaDb } from './firebase.js';
+import { docDonCrm, LoiCrm } from './crm.js';
 import { phanTichLink, daySangTab, dinhDangCot, LoiSheet } from './sheet.js';
 import {
   docNguonTracking, docMaBangGia, ghiPhanLoai, cauLoiPhanLoai, docMinNgay, LoiTracking,
@@ -948,7 +949,7 @@ function goiMtd(kyTruocMoc, namTruocMoc) {
  *  Nếu để nguyên trong tay áo của một endpoint thì đường ghi chỉ còn cách
  *  bảo trình duyệt "gọi lại GET đi", tức một vòng mạng thứ hai cho đúng thứ
  *  máy chủ vừa có sẵn mọi nguyên liệu để dựng. */
-async function dungBangDonHang(env, ky, line, rid) {
+async function dungBangDonHang(env, ky, line, rid, crmSan) {
   if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
 
   /* ═══════════ LƯỢT ĐỌC CHẠY SONG SONG — sửa 12/09/2026 ═══════════
@@ -1125,6 +1126,24 @@ async function dungBangDonHang(env, ky, line, rid) {
   }
   const plVal = phanLoai.ok ? (phanLoai.val || {}) : {};
 
+  /* ── Đối chiếu CRM (28/09/2026) — khởi động NGAY khi có `bc/dong`, chạy
+     song song với cả đợt 2 lẫn đợt 3, nên không thêm một nhịp chờ nào vào
+     lượt mở bảng. `crmSan` là bản lượt hỏi định kỳ vừa đọc xong
+     (`/api/doi-chieu-crm`) — có rồi thì không đọc CRM lần thứ hai.
+     Hỏng thì KHÔNG chặn bảng: đó là một lớp cảnh báo phụ. Nhưng cũng không
+     im: `loi_nguon_crm` đi ra màn hình thành một băng nói thẳng "chưa đối
+     chiếu được CRM", để không ai đọc "không có icon nào" thành "mọi đơn
+     đều khớp". */
+  const huaCrm = crmSan ? Promise.resolve({ crm: crmSan, ly: null })
+    : docCrmChoKy(env, ky, dong.val).then(
+      (crm) => ({ crm, ly: null }),
+      /* Bắt MỌI lỗi, không chỉ `LoiCrm`: một lượt `keHoachCrm` hỏng bên
+         Engine cũng chỉ được làm mất cột CRM, không được làm mất cả bảng.
+         Và lời hứa này không bao giờ bị từ chối — nên dù đợt 2/3 ném trước
+         khi kịp await nó, cũng không thành unhandled rejection. */
+      (e) => ({ crm: null,
+        ly: e instanceof LoiCrm ? e.ly : "crm-loi:" + ((e && e.message) || "khong-ro") }));
+
   /* ── Đợt 2 — giá vốn theo NGÀY BÁN. Phải chờ đợt 1 thật: hỏi Engine mã nào
      có mặt trong kỳ (cần `dong` + bảng giá), rồi mới hỏi Tracking giá của
      đúng những mã ấy theo từng ngày. Một đơn ngày 01/09 lấy giá của mốc
@@ -1168,6 +1187,19 @@ async function dungBangDonHang(env, ky, line, rid) {
           kpiVal, gdVal, ky, tongMoc(doanhSoKyTruoc), congVal, bonusVal,
           tongMoc(doanhSoNamTruoc), goiMtd(doanhSoKyTruoc, doanhSoNamTruoc), plVal),
     ]);
+    /* Đối chiếu CRM đặt cờ lên bảng ĐÃ DỰNG XONG — sau mọi lớp, kể cả sửa
+       tay, vì con số sổ đem ra so phải là con số đang hiện trên màn hình.
+       Giá nhập chỉ đem so khi lượt này thật sự có giá nhập: Tracking hỏng
+       mà vẫn so thì cả tháng đỏ lên thành "nhân viên khai sai". */
+    const kqCrm = await huaCrm;
+    let loi_nguon_crm = kqCrm.ly, crm_dau = null, bangCuoi = bang;
+    if (loi_nguon_crm) nhatKy({ rid, duong: "/api/don-hang", canh_bao: "crm-hong:" + loi_nguon_crm });
+    if (kqCrm.crm && env.REPORT_ENGINE.doiChieuCrm) {
+      crm_dau = kqCrm.crm.dau;
+      bangCuoi = await env.REPORT_ENGINE.doiChieuCrm(bang,
+        { don: kqCrm.crm.don, nguoi: kqCrm.crm.nguoi }, ky,
+        { co_gia_nhap: !!nguon && !!coGiaVon && !loi_nguon_ma });
+    }
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ
        đầu như lượt này. */
@@ -1185,11 +1217,24 @@ async function dungBangDonHang(env, ky, line, rid) {
        thật sự trả lời — và vẫn là thứ màn hình cần — là "kỳ này có giá vốn
        theo ngày không". Đổi tên chứ không giữ hai tên: hai tên cho một cờ là
        hai chỗ để lượt sửa sau chọn nhầm. */
-    return { ky, tom_tat_line, bang, loi_nguon_ma, loi_nguon_kpi,
-             loi_nguon_phan_loai, co_gia_von: coGiaVon, sheet };
+    return { ky, tom_tat_line, bang: bangCuoi, loi_nguon_ma, loi_nguon_kpi,
+             loi_nguon_phan_loai, co_gia_von: coGiaVon, sheet,
+             loi_nguon_crm, crm_dau };
   } catch (e) {
     throw new LoiXacThuc(503, "engine-loi-don-hang:" + (e && e.message));
   }
+}
+
+/** Đọc đơn CRM cho một kỳ: hỏi Engine phải tra những gì (luật nằm ở
+ *  Engine), rồi tra. Nhận `bc/dong/<kỳ>` hoặc danh sách khoá của nó.
+ *
+ *  Engine bản cũ chưa có `keHoachCrm` (hai Worker build song song — bẫy số
+ *  4) thì coi như kỳ không đối chiếu, không nổ. */
+async function docCrmChoKy(env, ky, dongHoacKhoa) {
+  if (!env.REPORT_ENGINE.keHoachCrm) return docDonCrm(env, { co: false });
+  const khoa = Array.isArray(dongHoacKhoa) ? dongHoacKhoa : Object.keys(dongHoacKhoa || {});
+  const keHoach = await env.REPORT_ENGINE.keHoachCrm(khoa, ky);
+  return docDonCrm(env, keHoach);
 }
 
 const layDonHang = boc(true, async ({ request, env, rid }) => {
@@ -1218,6 +1263,52 @@ const layDonHang = boc(true, async ({ request, env, rid }) => {
     return { ...kq, ky, ky_so_lieu: nguon, la_ky_tuong_lai: true, chi_doc: true };
   }
   return dungBangDonHang(env, ky, line, rid);
+});
+
+/* =================== GET /api/doi-chieu-crm (28/09/2026) ===================
+ *
+ * Lượt hỏi định kỳ của màn hình để cảnh báo CRM "cập nhật theo" — chủ dự án
+ * muốn sửa bên CRM là bảng bên này đổi theo, không phải bấm tải lại.
+ *
+ * Trình duyệt KHÔNG được nối thẳng Firebase (LUẬT SỐ 1), nên "realtime" ở
+ * đây là hỏi lại mỗi phút. Và lượt hỏi phải RẺ: dựng lại cả bảng mỗi phút là
+ * mỗi phút một lượt kéo `bc/dong` (~390 KB) cùng hai lượt gọi Tracking, cho
+ * một câu trả lời gần như luôn là "không có gì mới". Nên:
+ *
+ *   1. đọc NÔNG `bc/dong/<kỳ>` (chỉ tên khoá — đủ để biết số BH);
+ *   2. đọc CRM theo kế hoạch Engine đưa, lấy dấu vân;
+ *   3. dấu vân trùng cái màn hình đang giữ → trả `khong_doi`, xong;
+ *   4. khác → dựng lại bảng như `/api/don-hang`, dùng luôn bản CRM vừa đọc.
+ *
+ * Chỉ theo dõi phía CRM. Phía sổ đổi (tải sổ, sửa tay) thì chính người làm
+ * việc ấy đang đứng ở màn hình và bảng của họ đã tự vẽ lại. */
+const layDoiChieuCrm = boc(true, async ({ request, env, rid }) => {
+  const q = new URL(request.url).searchParams;
+  const ky = q.get("ky");
+  const line = q.get("line");
+  const dau = q.get("dau");
+  if (!laKy(ky)) throw new LoiXacThuc(400, "thieu-ky");
+  if (line !== null && (typeof line !== "string" || line.length > 60)) {
+    throw new LoiXacThuc(400, "line-khong-hop-le");
+  }
+  if (!env.REPORT_ENGINE) throw new LoiXacThuc(503, "thieu-engine");
+  /* Kỳ chưa tới hiện số năm trước và chỉ đọc — không có gì để theo dõi. */
+  if (laKyTuongLai(ky)) return { khong_doi: true };
+
+  const nong = await docDbNong("bc/dong/" + ky, env);
+  if (!nong.ok) throw new LoiXacThuc(503, "khong-doc-duoc-bc-dong:" + chiTietLoi(nong));
+  let crm;
+  try {
+    crm = await docCrmChoKy(env, ky, Object.keys(nong.val || {}));
+  } catch (e) {
+    if (!(e instanceof LoiCrm)) throw e;
+    nhatKy({ rid, duong: "/api/doi-chieu-crm", canh_bao: "crm-hong:" + e.ly });
+    /* Nói lỗi ra, không dựng lại bảng: bảng đang hiện vẫn đúng với lần đọc
+       CRM cuối cùng, chỉ là không biết có gì mới hay không. */
+    return { khong_doi: true, loi_nguon_crm: e.ly };
+  }
+  if (dau && dau === crm.dau) return { khong_doi: true, crm_dau: crm.dau };
+  return dungBangDonHang(env, ky, line, rid, crm);
 });
 
 /** Ghép BẢNG ĐÃ TÍNH LẠI vào phản hồi của một lượt GHI.
@@ -2544,6 +2635,7 @@ const API_ROUTES = new Map([
   ["GET /api/ban-luu", layBanLuu],
   ["GET /api/ky-co-don", layKyCoDon],
   ["GET /api/don-hang", layDonHang],
+  ["GET /api/doi-chieu-crm", layDoiChieuCrm],
   ["GET /api/ma-bang-gia", layMaBangGia],
   ["POST /api/gan-ma", ganMa],
   ["GET /api/phan-loai/muc", layMucPhanLoai],
