@@ -135,7 +135,10 @@
      án chốt 12/09/2026). Một cột chỉ có mặt ở một tab sẽ làm `RONG_COT` và
      `COT` phải đổi theo tab đang xem — tức bề rộng cố định hết cố định, đúng
      thứ đã phải sửa ở P4. */
-  const COT = ["Ngày", "Số BH", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
+  /* Cột "CRM" (28/09/2026) đứng NGAY SAU Số BH — chủ dự án chỉ đúng chỗ ấy:
+     số BH là thứ nối hai bên, nên cờ đối chiếu đứng sát nó. Có mặt ở MỌI tab
+     line, không phải cột riêng một tab (cùng luật bề rộng cố định ở dưới). */
+  const COT = ["Ngày", "Số BH", "CRM", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
     "Tổng bán", "Lợi nhuận", "Quy đổi",
     "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ghi chú",
     "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
@@ -159,7 +162,7 @@
      12/09/2026 của chủ dự án — băng ngày là chỗ duy nhất còn neo bảng vào
      một mốc thời gian thật khi ai đó chụp màn hình gửi đi. Nới cột là cái
      giá rẻ hơn hẳn việc bỏ mốc ấy. */
-  const RONG_COT = [104, 78, 92, 200, 44, 100, 82, 90, 104, 96,
+  const RONG_COT = [104, 78, 84, 92, 200, 44, 100, 82, 90, 104, 96,
     132, 108, 132, 150, 92, 112, 84, 34, 34];
 
   /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
@@ -220,6 +223,12 @@
       hop: (d) => d.gia_nhap === null || d.gia_nhap === undefined },
     lo: { cot: "Lợi nhuận", nhan: "Chỉ hiện dòng LỖ",
       hop: (d) => !!d.la_lo },
+    /* Lọc theo ĐƠN chứ không theo dòng (chủ dự án chốt 28/09/2026: "các đơn
+       đang có số liệu chưa trùng khớp") — một đơn lệch hiện ĐỦ mọi dòng của
+       nó, vì dòng khớp đứng cạnh dòng lệch là thứ giúp đọc ra vì sao lệch.
+       Cờ `don.crm.tt` do Engine đặt; ở đây chỉ đọc. */
+    crm: { cot: "CRM", nhan: "Chỉ hiện dòng thuộc đơn CHƯA KHỚP CRM",
+      hop: (d, don) => !!(don && don.crm && don.crm.tt !== "khop") },
   };
 
   /** Ghim đầu cột: đổi cách khung `.bocBang` cuộn, không đổi một dòng CSS
@@ -297,6 +306,12 @@
     loc: '<path d="M3 5h18l-7 8v6l-4 2v-8Z"/>',
     cong: '<path d="M12 5v14M5 12h14"/>',
     mo: '<path d="M9 6l6 6-6 6"/>',
+    /* Ba icon của cột CRM — SL, giá nhập, giá bán. Ba HÌNH khác nhau chứ
+       không ba chấm màu: màu nói "lệch hay khớp", hình nói "lệch CÁI GÌ",
+       và người mù màu đỏ/xanh vẫn đọc được bằng hình. */
+    crm_sl: '<path d="M4 7l8-4 8 4-8 4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/>',
+    crm_nhap: '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/>',
+    crm_ban: '<path d="M20 12l-8 8-9-9V3h8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   };
 
   /** Một icon line. `to` = bề dày nét, để icon nhỏ không bị đặc lại. */
@@ -537,6 +552,215 @@
     }
     return td;
   }
+
+  /* ═══════════ ĐỐI CHIẾU CRM (28/09/2026) ═══════════
+   *
+   * Mọi phán đoán "khớp / lệch / thiếu" do ENGINE đặt (`doi-chieu-crm.mjs`);
+   * ở đây chỉ đọc `tt` rồi chọn màu và câu. Tiền trong `title` viết đủ đồng
+   * chứ không theo nghìn như cột bảng: người đang soi một cái lệch 1.000 đ
+   * cần thấy đúng từng đồng, và "11.600" với "11.601" theo nghìn là một con
+   * số đọc được hai cách. */
+  const TEN_TT_CRM = { khop: "khớp", lech: "LỆCH", thieu: "thiếu số một bên",
+    bo_qua: "không so (kỳ/lượt này chưa có giá nhập)" };
+  const dongDu = (v) => (v === null || v === undefined ? "chưa có"
+    : Number(v).toLocaleString("vi-VN", { maximumFractionDigits: 2 }) + " đ");
+
+  function iconCrm(ten, nhan, o, laTien) {
+    const s = el("span", "crmIcon crm-" + o.tt);
+    s.appendChild(icon(ten, 2.2));
+    const viet = laTien ? dongDu : (v) => (v === null || v === undefined ? "chưa có" : soNguyen(v));
+    s.title = nhan + " — " + TEN_TT_CRM[o.tt] + "\nSổ: " + viet(o.report) + "\nCRM: " + viet(o.crm);
+    return s;
+  }
+
+  function nhanCrm(chu, title) {
+    const s = el("span", "crmNhan", chu);
+    s.title = title;
+    return s;
+  }
+
+  /** Ô cột "CRM" của một dòng. Chỉ Quản trị thấy (cùng luật mọi cảnh báo
+   *  khác trên bảng — `lopCanhBao`). */
+  function oCrm(d, don, dauDon) {
+    const td = el("td", "oCrm");
+    if (!duocLoc()) return td;
+    const dc = don.crm, c = d.crm;
+    if (!dc) return td;                 // chứng từ không phải BH, hoặc kỳ chưa đối chiếu
+    if (dc.tt === "khong_co_crm") {
+      if (dauDon) td.appendChild(nhanCrm("Không có CRM",
+        "Số BH " + don.so_ct + " không nằm ở đơn CRM nào — đơn gõ thẳng vào MISA, "
+        + "hoặc đơn CRM chưa nhận được số BH."));
+      return td;
+    }
+    if (!c) return td;
+    if (c.tt === "btl") {
+      td.title = "Dòng dính bán trả lại — sổ đã sửa SL của nó, nên không đem so với CRM.";
+      return td;
+    }
+    if (c.tt === "chi_report") {
+      td.appendChild(nhanCrm("Ngoài CRM",
+        "Đơn CRM " + (dc.nguoi ? "của " + dc.nguoi + " " : "")
+        + "không có mặt hàng này (không trùng mã bảng giá, cũng không trùng tên hàng MISA)."));
+      return td;
+    }
+    const hop = el("div", "crmBa");
+    if (d.la_chiet_khau) {
+      hop.appendChild(iconCrm("crm_ban", "Chiết khấu cả đơn", c.gia_ban, true));
+    } else {
+      hop.appendChild(iconCrm("crm_sl", "Số lượng", c.sl, false));
+      hop.appendChild(iconCrm("crm_nhap", "Giá nhập (đơn giá)", c.gia_nhap, true));
+      hop.appendChild(iconCrm("crm_ban", "Giá bán (đơn giá)", c.gia_ban, true));
+    }
+    td.appendChild(hop);
+    return td;
+  }
+
+  /** Hàng phụ dưới một đơn cho những lệch KHÔNG thuộc dòng nào của sổ:
+   *  mặt hàng CRM có mà sổ không, chiết khấu CRM mà sổ không có dòng chiết
+   *  khấu, đơn CRM đã huỷ, một số BH nằm ở hai đơn CRM. Không có thì không
+   *  vẽ — một hàng trống dưới mỗi đơn là nhiễu. */
+  function hangCrmThem(don) {
+    if (!duocLoc() || !don.crm || don.crm.tt !== "lech") return null;
+    const dc = don.crm, phan = [];
+    if (dc.huy) phan.push("Đơn CRM đã HUỶ mà sổ vẫn còn chứng từ này");
+    if (dc.trung) phan.push("Số BH này nằm ở " + dc.trung.length + " đơn CRM cùng lúc");
+    if (dc.chiet_khau && dc.chiet_khau.tt === "lech" && !dc.chiet_khau.report) {
+      phan.push("Chiết khấu CRM " + dongDu(dc.chiet_khau.crm) + " — sổ không có dòng chiết khấu");
+    }
+    for (const x of dc.chi_crm || []) {
+      phan.push("CRM có thêm " + (x.ma || "(không mã)") + " ×" + soNguyen(x.sl)
+        + " · bán " + dongDu(x.gia_ban) + " · nhập " + dongDu(x.gia_nhap));
+    }
+    if (!phan.length) return null;
+    const tr = el("tr", "hangCrmThem");
+    const tdTrong = el("td");
+    tdTrong.colSpan = COT.indexOf("CRM");
+    tr.appendChild(tdTrong);
+    const td = el("td", "oCrmThem", (dc.nguoi ? "CRM · " + dc.nguoi + ": " : "CRM: ") + phan.join(" · "));
+    td.colSpan = COT.length - COT.indexOf("CRM");
+    tr.appendChild(td);
+    return tr;
+  }
+
+  /** Câu cho băng "chưa đối chiếu được CRM", theo mã lỗi Gateway trả. */
+  function cauLoiCrm(ly) {
+    const s = String(ly || "");
+    if (/thieu-service-account/.test(s)) {
+      return "Gateway chưa có tài khoản dịch vụ của Firebase CRM (secret CRM_SA_EMAIL / CRM_SA_KEY).";
+    }
+    if (/thieu-index/.test(s)) {
+      return "Rules Firebase CRM chưa có .indexOn cho nhánh orders (misa, expectDeliver, created).";
+    }
+    return "Không đọc được Firebase CRM lượt này (" + s + ").";
+  }
+
+  /** Băng lỗi + một dòng tổng kết đối chiếu, đặt trên bảng. Một nguồn hỏng
+   *  phải nói ra: cột CRM trống vì chưa đọc được KHÔNG có nghĩa mọi đơn
+   *  khớp (CLAUDE.md — nguồn hỏng thì báo lỗi, không trả rỗng). */
+  function veTomTatCrm(khung, kq) {
+    if (!duocLoc()) return;
+    if (kq.loi_nguon_crm) {
+      khung.appendChild(el("p", "bangNguonHong",
+        "Chưa đối chiếu được với CRM: " + cauLoiCrm(kq.loi_nguon_crm)
+        + " Cột CRM để trống — KHÔNG có nghĩa là mọi đơn đều khớp."));
+      return;
+    }
+    const t = kq.bang && kq.bang.crm;
+    if (!t) return;
+    khung.appendChild(el("p", t.so_don_lech || t.so_don_khong_co_crm ? "bangConNo" : "ghiChuPhamVi",
+      "Đối chiếu CRM: " + soNguyen(t.so_don_khop) + " đơn khớp · "
+      + soNguyen(t.so_don_lech) + " đơn chưa khớp · "
+      + soNguyen(t.so_don_khong_co_crm) + " đơn không có bên CRM"
+      + ". Tự cập nhật mỗi phút khi CRM đổi."));
+  }
+
+  /* ---- Chiều ngược: CRM có mà sổ không — CHỈ ở tab [Tổng hợp] ----
+     Tab một line không có danh sách này, cố ý: CRM không biết line của đơn,
+     nên không có cách nào nói đúng "đơn CRM này thuộc line nào". ĐÓNG SẴN,
+     cùng lối "Dòng đã xoá". */
+  let moChiCrm = false;
+  function veChiCrm(khung, kq) {
+    if (!duocLoc()) return;
+    const t = kq.bang && kq.bang.crm;
+    if (!t || !t.chi_crm) return;
+    const ds = t.chi_crm.map((x) => Object.assign({ loai: "Có số BH, sổ không có" }, x))
+      .concat((t.chua_bh || []).map((x) => Object.assign({ loai: "Đã giao, chưa có số BH" }, x)));
+    const hop = el("div", "hopDaXoa");
+    const nut = el("button", "tabNut tabNho" + (moChiCrm ? " tabDang" : ""),
+      (moChiCrm ? "▾ " : "▸ ") + "Đơn CRM không có trên sổ (" + ds.length + ")");
+    nut.type = "button";
+    nut.title = "Đơn bên CRM có số BH mà sổ tháng này không có, và đơn CRM đã giao "
+      + "trong tháng mà chưa có số BH nào";
+    nut.addEventListener("click", () => {
+      moChiCrm = !moChiCrm;
+      const moi = el("div");
+      veChiCrm(moi, kq);
+      hop.replaceWith(moi.firstChild);
+    });
+    hop.appendChild(nut);
+    if (moChiCrm && ds.length) {
+      const bang = el("table", "bangDaXoa");
+      const dau = el("thead"), trH = el("tr");
+      for (const c of ["Số BH", "Ngày giao", "Nhân viên CRM", "Tình trạng", "Mặt hàng", "Tổng"]) {
+        trH.appendChild(el("th", null, c));
+      }
+      dau.appendChild(trH);
+      bang.appendChild(dau);
+      const tb = el("tbody");
+      for (const x of ds) {
+        const tr = el("tr");
+        tr.appendChild(el("td", null, x.so_bh || "—"));
+        tr.appendChild(el("td", null, x.ngay || "—"));
+        tr.appendChild(el("td", null, x.nguoi || "—"));
+        tr.appendChild(el("td", null, x.loai));
+        tr.appendChild(el("td", null, (x.dong || []).map((l) =>
+          (l.ma || "?") + " ×" + soNguyen(l.sl)).join(", ")));
+        tr.appendChild(el("td", "oSo", nghin(x.tong)));
+        tb.appendChild(tr);
+      }
+      bang.appendChild(tb);
+      hop.appendChild(bang);
+    }
+    khung.appendChild(hop);
+  }
+
+  /* ---- Tự cập nhật theo CRM, mỗi phút ----
+     Trình duyệt không được nối thẳng Firebase (LUẬT SỐ 1), nên "cập nhật
+     theo CRM" là hỏi Gateway mỗi phút một lượt rẻ: nó trả `khong_doi` khi
+     dấu vân CRM còn nguyên, và chỉ dựng lại bảng khi có gì đó đổi.
+
+     KHÔNG vẽ lại khi người dùng đang gõ dở (ô sửa dòng, ô bonus, ô ngày
+     công…) — thay bảng dưới tay người đang gõ là mất đúng thứ họ đang gõ.
+     Lượt sau hỏi lại, không mất gì. */
+  const CHU_KY_CRM_MS = 60000;
+  let dangHoiCrm = false;
+  async function hoiCrm() {
+    if (dangHoiCrm || document.visibilityState !== "visible") return;
+    const kq = bangCuoi;
+    if (!kq || kq.chi_doc || !trangThai.ky || kq.ky !== trangThai.ky) return;
+    if (!kq.crm_dau && !kq.loi_nguon_crm) return;
+    if (kq.crm_dau === "khong-ap-dung") return;
+    const ve = $("veDonHang");
+    if (!ve || !ve.offsetParent) return;
+    if (dangSua || (document.activeElement && ve.contains(document.activeElement)
+      && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName))) return;
+    dangHoiCrm = true;
+    const ky = trangThai.ky, line = trangThai.line;
+    try {
+      const r = await goi("/api/doi-chieu-crm?ky=" + encodeURIComponent(ky)
+        + (line === null ? "" : "&line=" + encodeURIComponent(line))
+        + "&dau=" + encodeURIComponent(kq.crm_dau || ""));
+      if (r.khong_doi) return;
+      if (ky !== trangThai.ky || line !== trangThai.line || dangSua) return;
+      veKetQua(r);
+    } catch (e) {
+      /* Im lặng ở đây: bảng đang hiện vẫn đúng với lần đọc trước, và lượt
+         sau hỏi lại. Lỗi nguồn thật thì băng cảnh báo trên bảng đã nói. */
+    } finally {
+      dangHoiCrm = false;
+    }
+  }
+  if (typeof setInterval === "function") setInterval(hoiCrm, CHU_KY_CRM_MS);
 
   /* Kết quả `/api/don-hang` gần nhất, giữ lại để bật/tắt bộ lọc vẽ lại được
      mà không phải hỏi máy chủ. KHÔNG dùng nó cho việc gì khác — nó là bản
@@ -2071,6 +2295,8 @@
     const boc = el("div", "bocBangNho");
     boc.appendChild(b);
     ve.appendChild(boc);
+    veTomTatCrm(ve, kq);
+    veChiCrm(ve, kq);
     /* KHÔNG còn đoạn giải thích dưới bảng (chủ dự án chốt 12/09/2026). Mọi
        câu giải thích nay nằm ở `title` của đúng ô mang ý nghĩa ấy — cùng lối
        đã chọn ở P4 khi bỏ dải chú giải màu, và cùng lý do: một đoạn văn dưới
@@ -2431,6 +2657,7 @@
         + "Ngành hàng CHƯA BIẾT — khác với \"không có\". Doanh số và số đơn "
         + "bên dưới không bị ảnh hưởng. Thử tải lại trang sau ít phút."));
     }
+    veTomTatCrm(khung, kq);
 
     /* Kỳ trước mốc dữ liệu giá của Tracking: KHÔNG cảnh báo gì cả (chủ dự án
        chốt 12/09/2026 — ở đó gán mã xong cũng không ra được đồng giá vốn nào,
@@ -2495,7 +2722,7 @@
     for (const ng2 of b.ngay) {
       for (const don2 of ng2.don) {
         for (const d2 of don2.dong) {
-          for (const k of Object.keys(LOC)) if (LOC[k].hop(d2)) demCanhBaoCot[k]++;
+          for (const k of Object.keys(LOC)) if (LOC[k].hop(d2, don2)) demCanhBaoCot[k]++;
         }
       }
     }
@@ -2701,7 +2928,7 @@
         let dauDon = true;
         const hangDon = [];
         for (const d of don.dong) {
-          if (loc && !loc.hop(d)) continue;
+          if (loc && !loc.hop(d, don)) continue;
           /* Dòng 0 đồng (quà tặng kèm) bôi đỏ — chủ dự án chốt 12/09/2026. Cờ
              do Engine đặt, không suy từ `tong_ban === 0` ở đây: luật "0 đồng
              là gì" có ngoại lệ (chứng từ BTL) và ngoại lệ ấy là NGHIỆP VỤ,
@@ -2723,6 +2950,7 @@
              gộp ô, để mắt nhận ra ranh giới giữa hai đơn. */
           tr.appendChild(o(dauDon ? nhanNgayCot(ng.ngay) : "", "oNgay"));
           tr.appendChild(o(dauDon ? don.so_ct : "", "oCt"));
+          tr.appendChild(oCrm(d, don, dauDon));
           const tdNoi = oNoiNhap(d);
           tdNoi.dataset.o = "noi";
           tr.appendChild(tdNoi);
@@ -2766,10 +2994,12 @@
         }
         if (!hangDon.length) continue;
         for (const t of hangDon) hangNgay.push(t);
+        const trCrm = hangCrmThem(don);
+        if (trCrm) hangNgay.push(trCrm);
         if (loc) continue;
         const trTong = el("tr", "hangTongDon");
         const tdTrong = el("td");
-        tdTrong.colSpan = 7;
+        tdTrong.colSpan = COT.indexOf("Tổng bán");
         trTong.appendChild(tdTrong);
         trTong.appendChild(el("td", "oSo", nghinTron(don.tong_ban)));
         /* Ô BONUS đứng dưới đúng cột "Lợi nhuận" — chủ dự án chỉ đúng ô ấy

@@ -91,12 +91,14 @@ console.log('\n3) Năm và tháng nằm cùng một hàng');
      /id="tabNam"/.test(trongBaoCao3), false);
 }
 
-console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
+console.log('\n4) Thứ tự 20 cột của bảng đơn hàng');
 {
   const COT = JSON.parse(cat(JS, /const COT = \[[\s\S]*?\];/)
     .replace(/^const COT = /, '').replace(/;$/, '').replace(/,(\s*\])/, '$1'));
 
-  ok('đủ 19 cột', COT.length, 19);
+  ok('đủ 20 cột', COT.length, 20);
+  /* Cột CRM (28/09/2026) đứng NGAY SAU Số BH — chủ dự án chỉ đúng chỗ ấy. */
+  ok('cột CRM đứng ngay sau Số BH', COT.indexOf('CRM'), COT.indexOf('Số BH') + 1);
   /* Chủ dự án chốt LẠI 12/09/2026: cột quy đổi vẫn chen giữa [Tổng bán] và
      [Tên khách hàng], nhưng [Ghi chú] DỜI ra SAU [Địa chỉ] — ghi chú là chữ
      đọc kèm thông tin khách, không phải một cột tiền, để nó chen vào giữa
@@ -121,7 +123,8 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
 
   /* `hangTongDon` nhảy cóc bằng colSpan tính từ COT.length — nếu ai đó đổi
      số cột mà quên chỗ này thì hàng tổng lệch sang cột khác. */
-  ok('hàng tổng đơn đặt số dưới đúng cột “Tổng bán”', COT.indexOf('Tổng bán'), 7);
+  ok('hàng tổng đơn: ô trống đầu tính từ vị trí cột Tổng bán, không gõ cứng',
+     /tdTrong\.colSpan = COT\.indexOf\("Tổng bán"\)/.test(JS), true);
   /* Hàng tổng đơn nay có BA ô, không phải hai: [trống ×7] [Tổng bán]
      [Lợi nhuận — chỗ của nút bonus] [phần còn lại mang câu lý do]. Nên
      colSpan đuôi là `COT.length - 9`, không còn `- 8`. Vẫn phải tính TỪ
@@ -140,8 +143,8 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
      /COT\.indexOf\("Ghi chú"\) - COT\.indexOf\("Lợi nhuận"\) - 1/.test(JS), true);
   ok('  · phần đuôi cũng vậy',
      /COT\.length - COT\.indexOf\("Ghi chú"\) - 1/.test(JS), true);
-  ok('  · năm ô cộng lại phủ đủ 19 cột',
-     7 + 1 + 1 + (COT.indexOf('Ghi chú') - COT.indexOf('Lợi nhuận') - 1)
+  ok('  · năm ô cộng lại phủ đủ mọi cột',
+     COT.indexOf('Tổng bán') + 1 + 1 + (COT.indexOf('Ghi chú') - COT.indexOf('Lợi nhuận') - 1)
        + 1 + (COT.length - COT.indexOf('Ghi chú') - 1), COT.length);
   /* ── Băng ngày xếp thẳng theo cột (chủ dự án chốt 15/09/2026) ──
      Bản trước là MỘT ô `colSpan` trải hết bề ngang, bên trong có lưới bốn
@@ -160,7 +163,7 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
   ok('khoảng giữa tính từ vị trí cột, không gõ cứng',
      /tdGiua\.colSpan = iTong - iBH - 1/.test(JS), true);
   ok('  · phần đuôi cũng vậy', /tdSau\.colSpan = COT\.length - iQd - 1/.test(JS), true);
-  ok('  · bảy ô cộng lại phủ đủ 19 cột',
+  ok('  · bảy ô cộng lại phủ đủ mọi cột',
      1 + 1 + (COT.indexOf('Tổng bán') - COT.indexOf('Số BH') - 1) + 1 + 1 + 1
        + (COT.length - COT.indexOf('Quy đổi') - 1), COT.length);
   /* Bốn con số đứng dưới ĐÚNG bốn cột chủ dự án nêu tên. Ghim quan hệ thứ
@@ -171,7 +174,8 @@ console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
 
   ok('  · ô bonus đứng dưới đúng cột “Lợi nhuận”',
      /trTong\.appendChild\(el\("td", "oSo", nghinTron\(don\.tong_ban\)\)\);\s*\n[\s\S]{0,320}?trTong\.appendChild\(oBonus\(don\)\);/.test(JS), true);
-  ok('  · ba ô cộng lại phủ đủ 19 cột', 7 + 1 + 1 + (COT.length - 9), COT.length);
+  ok('  · ba ô cộng lại phủ đủ mọi cột', COT.indexOf('Tổng bán') + 1 + 1
+     + (COT.length - COT.indexOf('Tổng bán') - 2), COT.length);
 
   /* Bề rộng cột chốt cố định (P4) — `<colgroup>` chỉ đúng khi số <col> khớp
      số cột. Thiếu một số thì cột cuối mất bề rộng và bảng lại co giãn theo

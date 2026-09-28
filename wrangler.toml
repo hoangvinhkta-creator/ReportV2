@@ -143,7 +143,20 @@ CANONICAL_HOST = "reports.tinphatcrm.com"
 # `reports.tinphatcrm.com` bằng máy thật và thấy V2.
 ENFORCE_CANONICAL_HOST = "0"
 
+# Firebase CỦA CRM — project khác hẳn project trên (đối chiếu đơn CRM ↔ sổ,
+# 28/09/2026, `src/crm.js`). Chỉ ĐỌC `orders` và tên trong `users`.
+CRM_DB_URL = "https://tinphatcrm-b71e7-default-rtdb.asia-southeast1.firebasedatabase.app"
+
 # ---- Secret còn thiếu, phải đặt tay trước khi deploy thật ----
+# CRM_SA_EMAIL, CRM_SA_KEY — tài khoản dịch vụ của project Firebase CRM
+# (`tinphatcrm-b71e7`), KHÔNG phải cặp FB_SA_* ở dưới. Tạo ở Firebase Console
+# của CRM → Project settings → Service accounts → Generate new private key,
+# rồi: wrangler secret put CRM_SA_EMAIL / CRM_SA_KEY (dán `client_email` và
+# `private_key` của file JSON). Thiếu thì bảng đơn VẪN chạy, cột CRM để
+# trống kèm băng đỏ "Chưa đối chiếu được với CRM" — không im lặng.
+# Rules của CRM phải có `.indexOn` cho `orders`: misa, expectDeliver, created
+# (repo CRM, `database.rules.json`) — thiếu thì băng đỏ nói đúng việc ấy.
+#
 # FB_SA_EMAIL, FB_SA_KEY — tài khoản dịch vụ Firebase, dùng để đọc
 # profiles/<uid> khi xác thực (src/auth.js gọi qua src/firebase.js). Đặt
 # bằng: wrangler secret put FB_SA_EMAIL / FB_SA_KEY.
