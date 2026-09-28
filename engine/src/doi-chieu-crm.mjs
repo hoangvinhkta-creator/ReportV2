@@ -45,6 +45,29 @@ const KHOANG_CACH_TOI_DA = 500;
 /** Giờ Việt Nam lệch UTC 7 tiếng, không có giờ mùa hè. */
 const LECH_VN_MS = 7 * 3600 * 1000;
 
+/** Người bên CRM → line bên sổ — chủ dự án chốt 28/09/2026: Ly là Tổng kho,
+ *  Kiên là Tân Á, Tâm là Tín Phát. Hai việc dựa vào bảng này:
+ *
+ *   · CHỈ đơn của ba line này được đối chiếu. Line khác (Nội thành,
+ *     Fanpage…) không lên đơn qua CRM, nên đối chiếu chúng là hàng nghìn
+ *     nhãn "Không có CRM" đúng chữ mà vô dụng — đo thật tháng 09/2026:
+ *     1.031 đơn như thế.
+ *   · Danh sách "đơn CRM không có trên sổ" tách theo NGƯỜI, hiện ở tab line
+ *     của chính người ấy.
+ *
+ *  Khoá là TÊN người dùng CRM (`users/<id>.name`) đã bỏ dấu và hạ chữ
+ *  thường — CRM không có trường nào nói line. Thêm người thì thêm một dòng
+ *  ở đây; tên không có trong bảng thì đơn của họ không được liệt kê ở đâu. */
+export const LINE_THEO_NGUOI_CRM = {
+  "ly": "Tổng kho",
+  "kien": "Tân Á",
+  "tam": "Tín Phát",
+};
+const LINE_DOI_CHIEU = new Set(Object.values(LINE_THEO_NGUOI_CRM));
+const boDau = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
+export const lineCuaNguoiCrm = (ten) => LINE_THEO_NGUOI_CRM[boDau(ten)] || null;
+
 export function kyCoDoiChieuCrm(ky) {
   return typeof ky === "string" && /^\d{4}-\d{2}$/.test(ky) && ky >= MOC_DOI_CHIEU_CRM;
 }
@@ -374,6 +397,7 @@ export function doiChieuCrm(bang, crm, ky, tuyChon) {
   for (const ng of bang.ngay) {
     for (const don of ng.don || []) {
       if (!LA_SO_BH.test(String(don.so_ct || ""))) continue;
+      if (!LINE_DOI_CHIEU.has(don.line)) continue;
       if (!donSo.has(don.so_ct)) donSo.set(don.so_ct, []);
       donSo.get(don.so_ct).push(don);
     }
@@ -419,27 +443,35 @@ export function doiChieuCrm(bang, crm, ky, tuyChon) {
 
   const tomTat = { so_don_khop, so_don_lech, so_don_khong_co_crm };
 
-  /* Chiều ngược chỉ có nghĩa ở bảng CẢ KỲ. Ở tab một line, một đơn CRM
-     không có trong bảng có thể chỉ là đơn của line khác — mà CRM không biết
-     line, nên không có cách nào lọc cho đúng. */
-  if (bang.line === null || bang.line === undefined) {
-    const chi_crm = [], chua_bh = [];
-    for (const d of tatCa) {
-      if (d.huy) continue;
-      const tong = d.dong.reduce((a, x) => a + x.gia_ban * x.sl, 0) - d.chiet_khau;
-      const gon = { id: d.id, so_bh: d.so_bh || null, nguoi: d.nguoi, ngay: d.ngay,
-        trang_thai: d.trang_thai, tong,
-        dong: d.dong.map((x) => ({ ma: x.ma, sl: x.sl, gia_ban: x.gia_ban, gia_nhap: x.gia_nhap })) };
-      if (LA_SO_BH.test(d.so_bh)) {
-        if (!donSo.has(d.so_bh)) chi_crm.push(gon);
-      } else if (d.trang_thai === "done") {
-        chua_bh.push(gon);
-      }
+  /* Chiều ngược, TÁCH THEO NGƯỜI (chủ dự án chốt 28/09/2026): tab một line
+     chỉ liệt kê đơn CRM của đúng người thuộc line ấy (`LINE_THEO_NGUOI_CRM`).
+     Tab [Tổng hợp] vẫn nhận đủ ba người — màn hình không vẽ ra ở đó.
+
+     "Đã có trên sổ" phải hỏi CẢ KỲ, không phải bảng đang lọc: một số BH của
+     Ly mà sổ ghi dưới tên người khác thì vẫn là CÓ trên sổ. Gateway đưa khoá
+     của cả `bc/dong/<kỳ>` qua `tuyChon.khoa_ca_ky`. */
+  const coTrenSo = new Set(donSo.keys());
+  const khoaCaKy = tuyChon && Array.isArray(tuyChon.khoa_ca_ky) ? tuyChon.khoa_ca_ky : [];
+  for (const k of khoaCaKy) coTrenSo.add(String(k).split("|")[0]);
+  const chi_crm = [], chua_bh = [];
+  for (const d of tatCa) {
+    if (d.huy) continue;
+    const lineNguoi = lineCuaNguoiCrm(d.nguoi);
+    if (!lineNguoi) continue;
+    if (bang.line !== null && bang.line !== undefined && lineNguoi !== bang.line) continue;
+    const tong = d.dong.reduce((a, x) => a + x.gia_ban * x.sl, 0) - d.chiet_khau;
+    const gon = { id: d.id, so_bh: d.so_bh || null, nguoi: d.nguoi, ngay: d.ngay,
+      trang_thai: d.trang_thai, tong,
+      dong: d.dong.map((x) => ({ ma: x.ma, sl: x.sl, gia_ban: x.gia_ban, gia_nhap: x.gia_nhap })) };
+    if (LA_SO_BH.test(d.so_bh)) {
+      if (!coTrenSo.has(d.so_bh)) chi_crm.push(gon);
+    } else if (d.trang_thai === "done") {
+      chua_bh.push(gon);
     }
-    const theoSo = (a, b) => (a.so_bh || "").localeCompare(b.so_bh || "") || a.id.localeCompare(b.id);
-    tomTat.chi_crm = chi_crm.sort(theoSo);
-    tomTat.chua_bh = chua_bh.sort(theoSo);
   }
+  const theoSo = (a, b) => (a.so_bh || "").localeCompare(b.so_bh || "") || a.id.localeCompare(b.id);
+  tomTat.chi_crm = chi_crm.sort(theoSo);
+  tomTat.chua_bh = chua_bh.sort(theoSo);
 
   bang.crm = tomTat;
   return bang;

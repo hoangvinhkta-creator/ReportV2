@@ -1198,7 +1198,10 @@ async function dungBangDonHang(env, ky, line, rid, crmSan) {
       crm_dau = kqCrm.crm.dau;
       bangCuoi = await env.REPORT_ENGINE.doiChieuCrm(bang,
         { don: kqCrm.crm.don, nguoi: kqCrm.crm.nguoi }, ky,
-        { co_gia_nhap: !!nguon && !!coGiaVon && !loi_nguon_ma });
+        { co_gia_nhap: !!nguon && !!coGiaVon && !loi_nguon_ma,
+          /* Khoá của CẢ kỳ, không phải bảng đang lọc theo line: "đơn CRM này
+             có trên sổ không" phải hỏi cả sổ (xem `doi-chieu-crm.mjs`). */
+          khoa_ca_ky: Object.keys(dong.val || {}) });
     }
     /* Ba con số thời gian đi vào nhật ký, không đi ra phản hồi: lượt sau còn
        chậm thì `wrangler tail` nói ngay chậm ở ĐÂU, không phải đoán lại từ

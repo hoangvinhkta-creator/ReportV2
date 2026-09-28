@@ -705,10 +705,11 @@
       + ". Tự cập nhật mỗi phút khi CRM đổi."));
   }
 
-  /* ---- Chiều ngược: CRM có mà sổ không — CHỈ ở tab [Tổng hợp] ----
-     Tab một line không có danh sách này, cố ý: CRM không biết line của đơn,
-     nên không có cách nào nói đúng "đơn CRM này thuộc line nào". ĐÓNG SẴN,
-     cùng lối "Dòng đã xoá". */
+  /* ---- Chiều ngược: CRM có mà sổ không — ở TAB LINE của từng người ----
+     Chủ dự án chốt 28/09/2026: bỏ khỏi tab [Tổng hợp] (trả chỗ cho biểu đồ),
+     tách theo nhân viên. Engine đã lọc theo người ↔ line
+     (`LINE_THEO_NGUOI_CRM`); ở đây chỉ vẽ. ĐÓNG SẴN, cùng lối "Dòng đã xoá",
+     và không vẽ gì khi danh sách rỗng. */
   let moChiCrm = false;
   function veChiCrm(khung, kq) {
     if (!duocLoc()) return;
@@ -716,6 +717,7 @@
     if (!t || !t.chi_crm) return;
     const ds = t.chi_crm.map((x) => Object.assign({ loai: "Có số BH, sổ không có" }, x))
       .concat((t.chua_bh || []).map((x) => Object.assign({ loai: "Đã giao, chưa có số BH" }, x)));
+    if (!ds.length) return;
     const hop = el("div", "hopDaXoa");
     const nut = el("button", "tabNut tabNho" + (moChiCrm ? " tabDang" : ""),
       (moChiCrm ? "▾ " : "▸ ") + "Đơn CRM không có trên sổ (" + ds.length + ")");
@@ -2326,8 +2328,6 @@
     const boc = el("div", "bocBangNho");
     boc.appendChild(b);
     ve.appendChild(boc);
-    veTomTatCrm(ve, kq);
-    veChiCrm(ve, kq);
     /* KHÔNG còn đoạn giải thích dưới bảng (chủ dự án chốt 12/09/2026). Mọi
        câu giải thích nay nằm ở `title` của đúng ô mang ý nghĩa ấy — cùng lối
        đã chọn ở P4 khi bỏ dải chú giải màu, và cùng lý do: một đoạn văn dưới
@@ -3215,6 +3215,10 @@
     }
 
     veDaXoa(khung, (b.tom_tat_sua_tay && b.tom_tat_sua_tay.da_xoa) || []);
+    /* Đơn CRM của người thuộc line này mà sổ không có (chủ dự án chốt
+       28/09/2026: tách theo nhân viên, hiện ở tab line của chính người ấy —
+       tab [Tổng hợp] nhường chỗ cho biểu đồ). */
+    veChiCrm(khung, kq);
 
     /* KHÔNG còn chú giải màu dưới bảng (chủ dự án chốt 12/09/2026: "bỏ đi
        không cần"). Nó đã dài thành một đoạn văn mà không ai đọc tới lần thứ
