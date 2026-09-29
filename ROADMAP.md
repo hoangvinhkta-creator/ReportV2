@@ -26,6 +26,13 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 29/09/2026 (b) — BỎ NÚT SỬA; BẤM THẲNG VÀO Ô.** Cột "Sửa" bỏ (bảng
+20 → 19 cột). Quản trị bấm vào ô Giá nhập hoặc Nơi nhập là mở sửa cả hai ô
+của dòng, con trỏ đặt đúng ô vừa bấm; rời dòng tự lưu như cũ. Quản lí không
+bấm được. Nút Xoá giữ nguyên.
+
+---
+
 **LƯỢT 29/09/2026 — BONUS LÊN GOOGLE SHEET.**
 
 Trước lượt này lượt đẩy Sheet không mang bonus (bonus là tiền của ĐƠN, Sheet

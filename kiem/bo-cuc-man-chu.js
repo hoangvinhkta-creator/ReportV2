@@ -91,12 +91,15 @@ console.log('\n3) Năm và tháng nằm cùng một hàng');
      /id="tabNam"/.test(trongBaoCao3), false);
 }
 
-console.log('\n4) Thứ tự 20 cột của bảng đơn hàng');
+console.log('\n4) Thứ tự 19 cột của bảng đơn hàng');
 {
   const COT = JSON.parse(cat(JS, /const COT = \[[\s\S]*?\];/)
     .replace(/^const COT = /, '').replace(/;$/, '').replace(/,(\s*\])/, '$1'));
 
-  ok('đủ 20 cột', COT.length, 20);
+  /* 20 → 19 ngày 29/09/2026: bỏ cột "Sửa", bấm thẳng vào ô Giá nhập / Nơi
+     nhập để sửa. */
+  ok('đủ 19 cột', COT.length, 19);
+  ok('không còn cột Sửa', COT.includes('Sửa'), false);
   /* Cột CRM (28/09/2026) đứng NGAY SAU Số BH — chủ dự án chỉ đúng chỗ ấy. */
   ok('cột CRM đứng ngay sau Số BH', COT.indexOf('CRM'), COT.indexOf('Số BH') + 1);
   /* Chủ dự án chốt LẠI 12/09/2026: cột quy đổi vẫn chen giữa [Tổng bán] và
@@ -119,7 +122,12 @@ console.log('\n4) Thứ tự 20 cột của bảng đơn hàng');
      COT.indexOf('Ghi chú') > COT.indexOf('Tên khách hàng'), true);
   ok('“Ghi chú” chỉ có MỘT cột (dời chỗ, không nhân đôi)',
      COT.filter((c) => c === 'Ghi chú').length, 1);
-  ok('hai cột cuối là Sửa và Xoá', COT.slice(-2), ['Sửa', 'Xoá']);
+  ok('cột cuối là Xoá', COT.slice(-1), ['Xoá']);
+  ok('ô Giá nhập / Nơi nhập bấm được để sửa — chỉ Quản trị',
+     /if \(suaDuoc && laQuanTri\(\)\) \{\s*tr\.dataset\.suaDuoc = "1";/.test(JS), true);
+  ok('  · bấm vào ô thì mở sửa, không qua nút',
+     /closest\('td\[data-o="gia"\], td\[data-o="noi"\]'\)[\s\S]{0,300}moSua\(tr\)/.test(JS), true);
+  ok('  · nút Sửa đã gỡ', /nutDong\("sua"/.test(JS), false);
 
   /* `hangTongDon` nhảy cóc bằng colSpan tính từ COT.length — nếu ai đó đổi
      số cột mà quên chỗ này thì hàng tổng lệch sang cột khác. */

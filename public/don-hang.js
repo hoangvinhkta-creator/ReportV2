@@ -141,7 +141,10 @@
   const COT = ["Ngày", "Số BH", "CRM", "Nơi nhập", "Mã sản phẩm", "SL", "Giá nhập", "Giá bán",
     "Tổng bán", "Lợi nhuận", "Quy đổi",
     "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ghi chú",
-    "Hãng", "Ngành hàng", "IMEI", "Sửa", "Xoá"];
+    "Hãng", "Ngành hàng", "IMEI", "Xoá"];
+  /* Cột "Sửa" BỎ ngày 29/09/2026 (chủ dự án chốt): nút ấy chỉ mở đúng hai ô
+     Giá nhập và Nơi nhập, nên Quản trị bấm THẲNG vào một trong hai ô là
+     sửa — một cột 34px và một cú bấm thừa ít đi. */
 
   /* Bề rộng CHỐT CỐ ĐỊNH cho từng cột, đi cùng `table-layout: fixed` (chủ dự
      án chốt 12/09/2026). Trước đây bề rộng do nội dung quyết định, nên đúng
@@ -163,7 +166,7 @@
      một mốc thời gian thật khi ai đó chụp màn hình gửi đi. Nới cột là cái
      giá rẻ hơn hẳn việc bỏ mốc ấy. */
   const RONG_COT = [104, 78, 84, 92, 200, 44, 100, 82, 90, 104, 96,
-    132, 108, 132, 150, 92, 112, 84, 34, 34];
+    132, 108, 132, 150, 92, 112, 84, 34];
 
   /* `kpiRiengKy`: dải setup đang gõ cho RIÊNG kỳ đang xem, hay đang gõ mặc
      định cho mọi kỳ. Chỉ là trạng thái của màn hình — KHÔNG lưu ở đâu cả, và
@@ -3022,7 +3025,17 @@
              hiện ra ở đâu cả. */
           const suaDuoc = !d.la_chiet_khau && !!d.khoa && kq.co_gia_von !== false
             && !chiDoc;
-          tr.appendChild(nutDong("sua", "Sửa dòng", suaDuoc, "sua"));
+          /* Ô Giá nhập / Nơi nhập BẤM ĐƯỢC để sửa — CHỈ Quản trị (chủ dự án
+             chốt 29/09/2026, thay cho nút Sửa). Đánh dấu ở hàng để listener
+             của bảng biết; hai ô mang lớp riêng để con trỏ và nền báo "bấm
+             được". Nút Xoá giữ nguyên như cũ. */
+          if (suaDuoc && laQuanTri()) {
+            tr.dataset.suaDuoc = "1";
+            tdGia.classList.add("oBamSua");
+            tdNoi.classList.add("oBamSua");
+            tdGia.title = (tdGia.title ? tdGia.title + "\n" : "") + "Bấm để sửa giá nhập / nơi nhập";
+            tdNoi.title = (tdNoi.title ? tdNoi.title + "\n" : "") + "Bấm để sửa giá nhập / nơi nhập";
+          }
           tr.appendChild(nutDong("xoa", "Xoá dòng", suaDuoc, "xoa"));
           if (d.khoa) tr.dataset.khoaDong = d.khoa;
           if (d.da_sua_tay) tr.classList.add("hangSuaTay");
@@ -3099,9 +3112,21 @@
       if (nut && tbody.contains(nut)) {
         const tr = nut.closest("tr");
         if (!tr) return;
-        if (nut.dataset.viec === "sua") moSua(tr);
-        else xoaDongHang(tr);
+        xoaDongHang(tr);
         return;
+      }
+      /* Bấm vào ô Giá nhập / Nơi nhập → mở sửa cả hai ô của dòng, con trỏ
+         đặt vào đúng ô vừa bấm. Bấm vào ô đang là ô nhập thì để yên cho nó
+         (đặt con trỏ, bôi chữ) — `moSua` tự bỏ qua dòng đang sửa. */
+      const tdSua = e.target.closest('td[data-o="gia"], td[data-o="noi"]');
+      if (tdSua && tbody.contains(tdSua) && !e.target.closest("input")) {
+        const tr = tdSua.parentElement;
+        if (tr && tr.dataset.suaDuoc === "1") {
+          moSua(tr);
+          const o = tdSua.querySelector("input");
+          if (o) { o.focus(); o.select(); }
+          return;
+        }
       }
       /* Ô TICK GIA DỤNG phải chặn TRƯỚC phép dò ô Mã — nó nằm BÊN TRONG ô
          ấy, nên một cú bấm vào ô tick cũng khớp `td[data-o="ma"]` và sẽ mở

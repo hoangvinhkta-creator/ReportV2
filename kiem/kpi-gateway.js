@@ -318,10 +318,10 @@ const GOC = path.resolve(__dirname, '..');
     const soCot = mCot ? (mCot[1].match(/"/g) || []).length / 2 : 0;
     /* 19 → 20 ngày 28/09/2026: cột "CRM" (đối chiếu đơn CRM) — một cột có
        mặt ở MỌI tab, khác hẳn cột gia dụng bị từ chối ở đây. */
-    ok('đúng 20 cột', soCot, 20);
+    ok('đúng 19 cột (29/09/2026: bỏ cột Sửa)', soCot, 19);
     const mRong = UI.match(/const RONG_COT = \[([\s\S]*?)\];/);
     const soRong = mRong ? mRong[1].split(',').length : 0;
-    ok('đúng 20 bề rộng', soRong, 20);
+    ok('đúng 19 bề rộng', soRong, 19);
     /* Không có cột "Gia dụng" nào — chủ dự án chốt ô tick nằm TRONG ô Mã sản
        phẩm, không cần tiêu đề cột. */
     ok('không sinh cột "Gia dụng"', /"Gia dụng"/.test(mCot ? mCot[1] : ''), false);
@@ -618,7 +618,7 @@ const GOC = path.resolve(__dirname, '..');
     const rong = JSON.parse('[' + (mRong ? mRong[1] : '') + ']');
     ok('cột Mã sản phẩm hẹp lại còn 200px', rong[4], 200);
     ok('  · và tổng bề rộng đúng con số đã chốt (không tự hụt đi)',
-       rong.reduce((a, b2) => a + b2, 0), 1952);
+       rong.reduce((a, b2) => a + b2, 0), 1918);
     /* 1822 là tổng ĐANG CHẠY từ P4, ghim để lượt chỉnh cột nào cũng phải là
        một phép CHIA LẠI, không phải một phép nới. Chính lượt 12/09/2026 này
        suýt trượt: cắt 60px khỏi hai cột mà chỉ trả lại 50px, và 10px hụt ấy
@@ -634,7 +634,11 @@ const GOC = path.resolve(__dirname, '..');
 
        1868 → 1952 ngày 28/09/2026, cũng là một lượt nới có chủ ý: cột CRM
        (84px) thêm vào sau Số BH, đủ chỗ cho ba icon hoặc nhãn "Không có
-       CRM". Không cột nào bị cắt để bù. */
+       CRM". Không cột nào bị cắt để bù.
+
+       1952 → 1918 ngày 29/09/2026: bỏ hẳn cột "Sửa" (34px) — bấm thẳng vào ô
+       Giá nhập / Nơi nhập để sửa. Bớt một CỘT, không phải cắt bề rộng cột
+       nào, nên không phải thứ bài này chặn. */
   }
 
   /* ───── P. Sửa/xoá một dòng: máy chủ trả LUÔN bảng đã tính lại ───── */
