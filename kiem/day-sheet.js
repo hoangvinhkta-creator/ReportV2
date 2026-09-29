@@ -294,5 +294,32 @@ console.log('\nL) LUẬT SỐ 1 — trình duyệt không dựng một ô nào c
      /goiGhi\("\/api\/day-sheet", \{\s*line: trangThai\.line, ky: trangThai\.ky,\s*\}\)/.test(FE), true);
 }
 
+console.log('\nE) Dòng BONUS — tiền bonus lên Sheet, lý do ngay cạnh ô được cộng');
+{
+  const dongH = (x) => Object.assign({ ma_san_pham: 'X', so_luong: 1, gia_nhap: 1000000,
+    gia_ban: 1300000, tong_ban: 1300000, loi_nhuan: 300000, doanh_so_quy_doi: 4000000 }, x);
+  const bang = { ngay: [{ ngay: '2026-09-05', don: [
+    { so_ct: 'BH1', bonus: { tien: 100000, ly_do: 'KHBH' }, quy_doi_bonus: 1333333.33,
+      dong: [dongH({}), dongH({ ma_san_pham: 'Y' })] },
+    { so_ct: 'BH2', dong: [dongH({})] },
+  ] }] };
+  const k = E.dungKhoiSheet(bang);
+  const trai = k.khoi[0].dong, phai = k.khoi[1].dong;
+  ok('đơn có bonus: 2 dòng hàng + 1 dòng bonus; đơn không bonus: 1 dòng', trai.length, 4);
+  ok('dòng bonus nằm NGAY SAU các dòng hàng của đơn ấy', trai[2][3], 'Bonus');
+  ok('I = tiền bonus theo nghìn, J = quy đổi của bonus', [trai[2][8], trai[2][9]], [100, 1333.333]);
+  ok('lý do ở H — ngay cạnh ô tiền (I)', trai[2][7], 'KHBH');
+  ok('B và E để trống: đếm B vẫn ra số đơn, cộng E vẫn ra số sản phẩm',
+     [trai[2][1], trai[2][4]], [null, null]);
+  ok('A, C, F, G trống', [trai[2][0], trai[2][2], trai[2][5], trai[2][6]], [null, null, null, null]);
+  ok('khối phải của dòng bonus trống hết', phai[2], [null, null, null, null, null]);
+  ok('so_dong vẫn là số dòng HÀNG (không đếm dòng bonus)', k.so_dong, 3);
+  ok('tong_hang có đếm dòng bonus (để tính dải ô)', k.tong_hang, 4);
+
+  const k0 = E.dungKhoiSheet({ ngay: [{ ngay: '2026-09-05', don: [
+    { so_ct: 'BH3', bonus: { tien: 0, ly_do: 'KHBH' }, dong: [dongH({})] }] }] });
+  ok('bonus 0 đ không sinh dòng', k0.khoi[0].dong.length, 1);
+}
+
 xong();
 }
