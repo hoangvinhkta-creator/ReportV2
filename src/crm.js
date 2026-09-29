@@ -31,7 +31,9 @@ export class LoiCrm extends Error {
  * ĐEN: CRM thêm một trường nhạy cảm mới sau này thì nó tự bị bỏ lại. */
 const TRUONG_DON = ["misa", "owner", "status", "discount", "expectDeliver", "created",
   "item", "qty", "unitPrice", "unitCost", "price", "costPrice"];
-const TRUONG_DONG = ["item", "qty", "unitPrice", "unitCost", "misaName", "misaCode"];
+/* `supplier` = nơi nhập nhân viên khai bên CRM (chủ dự án cần nó cạnh giá
+   nhập lệch, 29/09/2026). Là tên nhà cung cấp, không phải thông tin khách. */
+const TRUONG_DONG = ["item", "qty", "unitPrice", "unitCost", "misaName", "misaCode", "supplier"];
 
 function chon(o, truong) {
   const ra = {};

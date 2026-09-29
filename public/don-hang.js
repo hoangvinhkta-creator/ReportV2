@@ -588,7 +588,13 @@
     const s = el("span", "crmIcon crm-" + o.tt);
     s.appendChild(icon(ten, 2.2));
     const viet = laTien ? dongDu : (v) => (v === null || v === undefined ? "chưa có" : soNguyen(v));
-    s.title = nhan + " — " + TEN_TT_CRM[o.tt] + "\nSổ: " + viet(o.report) + "\nCRM: " + viet(o.crm);
+    /* Ô giá nhập mang thêm NƠI NHẬP hai bên (chủ dự án chốt 29/09/2026) —
+       giá lệch thì câu hỏi kế tiếp luôn là "nhập ở đâu". Engine gom sẵn. */
+    const nn = o.noi_nhap;
+    const them = (v) => (nn ? " · " + (v || "chưa ghi nơi nhập") : "");
+    s.title = nhan + " — " + TEN_TT_CRM[o.tt]
+      + "\nSổ: " + viet(o.report) + them(nn && nn.report)
+      + "\nCRM: " + viet(o.crm) + them(nn && nn.crm);
     return s;
   }
 
@@ -660,7 +666,8 @@
     }
     for (const x of dc.chi_crm || []) {
       phan.push("CRM có thêm " + (x.ma || "(không mã)") + " ×" + soNguyen(x.sl)
-        + " · bán " + dongDu(x.gia_ban) + " · nhập " + dongDu(x.gia_nhap));
+        + " · bán " + dongDu(x.gia_ban) + " · nhập " + dongDu(x.gia_nhap)
+        + (x.noi_nhap ? " (" + x.noi_nhap + ")" : ""));
     }
     if (!phan.length) return null;
     const tr = el("tr", "hangCrmThem");
