@@ -28,8 +28,8 @@ const GOC = path.resolve(__dirname, '..');
     ok('giữ trường so sánh', [d.misa, d.owner, d.status, d.discount], ['BH1', 'ly', 'done', 5]);
     ok('bỏ tên/SĐT/địa chỉ/ghi chú/khách', ['cusName', 'cusPhone', 'cusAddr', 'addr', 'note', 'customer']
       .filter((k) => k in d), []);
-    ok('dòng hàng cũng chỉ giữ trường cần', Object.keys(d.lines[0]).sort(),
-       ['item', 'misaName', 'qty', 'unitCost', 'unitPrice']);
+    ok('dòng hàng chỉ giữ trường cần (kể cả nơi nhập — tên NCC, không phải khách)',
+       Object.keys(d.lines[0]).sort(), ['item', 'misaName', 'qty', 'supplier', 'unitCost', 'unitPrice']);
     ok('mảng thưa dạng đối tượng vẫn đọc đúng thứ tự',
        C.locDon({ lines: { 1: { item: 'B' }, 0: { item: 'A' } } }).lines.map((l) => l.item), ['A', 'B']);
   }

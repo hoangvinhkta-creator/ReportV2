@@ -183,6 +183,7 @@ function docDonCrm(id, od, nguoi) {
     /* 0 hay rỗng = nhân viên KHÔNG khai giá nhập. Giữ `null` để nó thành
        "thiếu", không thành "giá nhập bằng 0" — hai chuyện khác nhau. */
     gia_nhap: Number(l.unitCost) > 0 ? dongTuNghin(l.unitCost) : null,
+    noi_nhap: chuanHoaChu(l.supplier),
   }));
   return {
     id,
@@ -267,6 +268,15 @@ function ghepDong(dongSo, dongCrmDs, coGiaNhap) {
     if (!coGiaNhap) r.nhap = null;
     const kq = soNhom(r, c);
     if (!coGiaNhap) kq.gia_nhap = { tt: "bo_qua", report: null, crm: kq.gia_nhap.crm };
+    /* NƠI NHẬP hai bên, đi kèm ô giá nhập (chủ dự án chốt 29/09/2026: giá
+       nhập lệch thì phải thấy luôn nhập ở đâu). Chỉ để ĐỌC — không so, không
+       đổi trạng thái khớp/lệch: tên nơi nhập hai bên gõ tự do, so chữ là
+       báo lệch oan. Nhiều dòng một nhóm thì gom các nơi khác nhau. */
+    const noi = (ds) => [...new Set(ds.map((x) => chuanHoaChu(x)).filter(Boolean))].join(", ") || null;
+    kq.gia_nhap.noi_nhap = {
+      report: noi(nhomSo.map((d) => d.noi_nhap)),
+      crm: noi(nhomCrm.map((x) => x.c.noi_nhap)),
+    };
     for (const d of nhomSo) d.crm = kq;
     for (const x of nhomCrm) x.dung = true;
     return kq;
@@ -344,7 +354,7 @@ function ghepDong(dongSo, dongCrmDs, coGiaNhap) {
 
   for (const d of conSau3) d.crm = { tt: "chi_report" };
   return conCrm.filter((x) => !x.dung).map((x) => ({
-    ma: x.c.ma, sl: x.c.sl, gia_ban: x.c.gia_ban, gia_nhap: x.c.gia_nhap,
+    ma: x.c.ma, sl: x.c.sl, gia_ban: x.c.gia_ban, gia_nhap: x.c.gia_nhap, noi_nhap: x.c.noi_nhap,
   }));
 }
 

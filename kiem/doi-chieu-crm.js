@@ -66,6 +66,24 @@ const GOC = path.resolve(__dirname, '..');
     ok('đơn lệch', b.ngay[0].don[0].crm.tt, 'lech');
   }
 
+  console.log('\n2b) Giá nhập mang NƠI NHẬP hai bên — chỉ để đọc, không đổi khớp/lệch');
+  {
+    const b = bang([don('BH74545', [dong({ ma_bang_gia: '65C6K', so_luong: 1,
+      gia_ban: 27500000, gia_nhap: 11600000, noi_nhap: 'Trung Xuân' })])]);
+    D.doiChieuCrm(b, { don: { o1: crmDon({ lines: [{ item: '65C6K', qty: 1,
+      unitPrice: 27500, unitCost: 11601, supplier: 'Tuyển Dũng' }] }) } }, KY, CO);
+    const g = b.ngay[0].don[0].dong[0].crm.gia_nhap;
+    ok('nơi nhập hai bên đi kèm ô giá nhập', g.noi_nhap, { report: 'Trung Xuân', crm: 'Tuyển Dũng' });
+    ok('  · trạng thái vẫn chỉ theo tiền', g.tt, 'lech');
+
+    const b2 = bang([don('BH74545', [dong({ ma_bang_gia: 'X1', so_luong: 1, gia_ban: 1000, gia_nhap: 900 })])]);
+    D.doiChieuCrm(b2, { don: { o1: crmDon({ lines: [{ item: 'X1', qty: 1, unitPrice: 1, unitCost: 0.9 },
+      { item: 'Q9', qty: 1, unitPrice: 5, unitCost: 4, supplier: 'NCC A' }] }) } }, KY, CO);
+    ok('chưa ghi nơi nhập → null, không bịa', b2.ngay[0].don[0].dong[0].crm.gia_nhap.noi_nhap,
+       { report: null, crm: null });
+    ok('dòng CRM dư ra cũng mang nơi nhập', b2.ngay[0].don[0].crm.chi_crm[0].noi_nhap, 'NCC A');
+  }
+
   console.log('\n3) SL lệch, đơn giá vẫn khớp — hai ô độc lập nhau');
   {
     const b = bang([don('BH74545', [dong({ ma_bang_gia: 'X1', so_luong: 3,
@@ -173,7 +191,7 @@ const GOC = path.resolve(__dirname, '..');
     D.doiChieuCrm(b, { don: { o1: crmDon({ lines: [{ item: 'X1', qty: 1,
       unitPrice: 1, unitCost: 0 }] }) } }, KY, CO);
     ok('giá nhập CRM 0 = chưa khai', b.ngay[0].don[0].dong[0].crm.gia_nhap,
-       { tt: 'thieu', report: 900, crm: null });
+       { tt: 'thieu', report: 900, crm: null, noi_nhap: { report: null, crm: null } });
   }
 
   console.log('\n8) Chiết khấu cả đơn CRM so với dòng "Chiết khấu" của sổ');
