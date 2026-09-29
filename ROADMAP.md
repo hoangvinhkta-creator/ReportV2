@@ -26,6 +26,16 @@ P2/P3 (LINE, đối chiếu, bố cục) vẫn nằm nguyên bên dưới mục 
 trên đây chỉ tóm lại đúng trạng thái ĐANG ĐÚNG hôm nay, không phải nhật
 ký từng lượt.
 
+**LƯỢT 29/09/2026 — BONUS LÊN GOOGLE SHEET.**
+
+Trước lượt này lượt đẩy Sheet không mang bonus (bonus là tiền của ĐƠN, Sheet
+ghi từng DÒNG HÀNG) → Lợi nhuận/Quy đổi trên Sheet thấp hơn app đúng bằng
+tổng bonus. Nay mỗi đơn có bonus thêm một dòng ngay dưới các dòng hàng: D
+"Bonus" · H lý do (ngay cạnh ô tiền — chủ dự án chỉ) · I tiền · J quy đổi.
+B và E để trống — chủ dự án xác nhận hàng 1 và Summary chỉ dùng B, E, I, J.
+
+---
+
 **LƯỢT 28/09/2026 (c) — ĐỐI CHIẾU CRM TÁCH THEO NHÂN VIÊN.**
 
 Chủ dự án chốt sau khi nhìn số thật (245 khớp · 110 chưa khớp · 1.031 không

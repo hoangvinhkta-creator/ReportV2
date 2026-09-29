@@ -174,6 +174,32 @@ export function dungKhoiSheet(bang) {
           /* S */ chu(r.imei),
         ]);
       }
+
+      /* DÒNG BONUS (chủ dự án chốt 29/09/2026). Bonus là tiền của cả ĐƠN,
+         không thuộc dòng hàng nào, nên trước lượt này nó không có mặt trên
+         Sheet — tổng Lợi nhuận/Quy đổi của Sheet thấp hơn app đúng bằng
+         tổng bonus. Nay mỗi đơn có bonus thêm MỘT dòng ngay dưới các dòng
+         hàng của nó, cùng lối dòng "Chiết khấu" trên màn hình:
+
+           D "Bonus" · H lý do · I tiền bonus · J quy đổi của bonus
+
+         Lý do đứng ở H — NGAY CẠNH ô tiền được cộng, đúng chỗ chủ dự án chỉ.
+         H là cột Tổng bán nhưng ô ở đây là CHỮ, và SUM bỏ qua chữ, nên tổng
+         bán của Sheet không đổi. B và E để trống: đếm cột B vẫn ra SỐ ĐƠN,
+         cộng cột E vẫn ra số sản phẩm (chủ dự án xác nhận hàng 1 và Summary
+         chỉ dùng B, E, I, J). Không đếm vào `so_dong` — đó là số dòng HÀNG. */
+      const b = d.bonus;
+      if (dong.length && b && Number(b.tien) > 0) {
+        hang.push([
+          /* A–C */ null, null, null,
+          /* D */ "Bonus",
+          /* E–G */ null, null, null,
+          /* H */ chu(b.ly_do),
+          /* I */ sangNghin(b.tien),
+          /* J */ sangNghin(d.quy_doi_bonus),
+          /* O–S */ null, null, null, null, null,
+        ]);
+      }
     }
 
     /* `tuHang` còn 0 nghĩa là ngày ấy không có dòng nào — không có mảng nào
